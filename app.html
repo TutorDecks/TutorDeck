@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=142">
+<link rel="stylesheet" href="assets/css/app.css?v=143">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#fffdf7,#fbf4e4);border:1px solid var(--gold);
@@ -38,6 +38,9 @@
   .tnote:hover{background:var(--cream)}
   .tnote.has{color:var(--teal);border-color:var(--teal)}
   .tr-subj{color:var(--gold);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;margin-left:7px}
+  .miss-day{display:flex;align-items:baseline;gap:8px;font-weight:800;color:var(--navy);font-size:13px;margin:12px 0 6px}
+  .miss-day:first-child{margin-top:2px}
+  .miss-day span{color:var(--muted);font-weight:600;font-size:11.5px}
   .tr-when{color:var(--muted);font-size:11.5px;font-weight:700;margin-bottom:3px}
   .tr-note{font-size:13px;line-height:1.55;margin-top:1px}
   .tr-note b{color:var(--navy)}
@@ -158,7 +161,7 @@
 
   <div id="teach-view" style="display:none">
     <div class="card panel teach-sec" id="yday-sec" style="display:none">
-      <h2 id="yday-h">Yesterday <span class="hint" id="yday-hint"></span></h2>
+      <h2 id="yday-h">Needs notes <span class="hint" id="yday-hint"></span></h2>
       <div class="teach-sub" id="yday-sub"></div>
       <div id="yday-list"></div>
     </div>
@@ -197,9 +200,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=142"></script>
-<script src="assets/js/supabase.js?v=142"></script>
-<script src="assets/js/app.js?v=142"></script>
-<script src="assets/js/dashboard.js?v=142"></script>
+<script src="assets/js/config.js?v=143"></script>
+<script src="assets/js/supabase.js?v=143"></script>
+<script src="assets/js/app.js?v=143"></script>
+<script src="assets/js/dashboard.js?v=143"></script>
 </body>
 </html>
