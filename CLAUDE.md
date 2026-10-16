@@ -50,6 +50,38 @@ Preview and dev deployments also hit this live DB. So:
 - No Node here. Syntax-check JS with JavaScriptCore by wrapping the file in `new Function`:
   `/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc -e "new Function(readFile('assets/js/ledger.js')); print('ok')"`
 
+## Working agreements
+- Only open the `dev` → `main` PR when the person you're working with explicitly says to ship.
+- Before running anything that changes real rows in Supabase, show the SELECT preview first and
+  get a yes.
+- Explain data-model choices plainly. Raphael came from a Google Sheets workflow (household id,
+  student sheet, lesson master, invoice generator), so mapping onto that helps.
+
+## How the data model behaves (gotchas)
+- `lessons` is the ground truth for everything: Ledger, Calendar, student profile, invoices and
+  the monthly schedule all read the same table. `recurring_slots` is only the weekly template
+  that projects "not logged" blocks and generates lessons.
+- `lessons.one_off` (boolean): true = manual ad-hoc lesson, false = generated from a slot. The ✦
+  marker reads this column, not `slot_id`. Deleting a slot nulls `slot_id` on its lessons (FK
+  `on delete set null`) but leaves `one_off` intact, so Planner "Remove" hard-deletes safely.
+- `students.end_date` = "lessons run until" (inclusive). After it, the student counts as
+  discontinued everywhere: Ledger generation, Calendar projection, Planner and pickers skip them.
+  Shared helpers: `TL.isEnded(end)` and `TL.pastEnd(end, dateISO)`.
+- Discontinuing a student sets their `recurring_slots.active=false` (reactivating turns them all
+  back on). Planner, Calendar and Ledger only load `active=true` slots.
+- A cancelled lesson's billable amount is its `compensation` (0 if none); pages normalise
+  `amount` on load.
+- Invoice "subject" comes from the billed lessons; "level" comes from the student profile.
+
+## Open threads
+- T-Leng has past lessons wrongly showing ✦ one-off: an old slot deletion (before `one_off`
+  existed) nulled their `slot_id`, and the backfill set `one_off=true`. Fix per student with a
+  targeted `update lessons set one_off=false …` after previewing the rows with T-Leng.
+- Mobile navigation (paused, Oct 2026): idea of a persistent bottom tab bar
+  Home · Calendar · Ledger · Students · More, with More holding the rest. The Dashboard has since
+  gained a Finance | Teaching toggle, so revisit the plan before building.
+- A dummy test account (dummy students only) is planned for testing write flows safely.
+
 ## Current to-dos
 1. Rebrand "T-Leng Tuition" → "TutorDeck" across the UI (titles, login card, invoices, emails).
 2. Find/replace any hard-coded old github.io URLs (Supabase redirectTo, emails, etc.).
