@@ -1,8 +1,10 @@
-# T-Leng Tuition — Dashboard
+# TutorDeck
+
+*(formerly the T-Leng Tuition Dashboard — TutorDeck Pte. Ltd., Singapore)*
 
 A password-protected dashboard for running a private tutoring business: students,
 weekly schedule, lessons, payments, PayNow invoices, WhatsApp reminders, exams and
-per-student profiles. Static frontend on **GitHub Pages**, real accounts + database
+per-student profiles. Static frontend on **Vercel**, real accounts + database
 on **Supabase**. No build step — plain HTML/CSS/JS.
 
 ---
@@ -54,12 +56,15 @@ on **Supabase**. No build step — plain HTML/CSS/JS.
 into `assets/js/config.js`. The publishable key is safe to commit — RLS protects the
 data, not the secrecy of the key.
 
-### c. Deploy on GitHub Pages
-1. Push all files to your repo (drag-and-drop via **Add file → Upload files**, keeping
-   the folder structure, or use git).
-2. **Settings → Pages → Source: Deploy from a branch → `main` / `/ (root)`**, Save.
-3. The site goes live at `https://<you>.github.io/<your-repo>/` after the
-   **github-pages** deployment finishes (watch repo → Environments).
+### c. Deploy on Vercel
+The repo (**TutorDecks/TutorDeck** on GitHub) is connected to the Vercel project **tutordeck**.
+No build step — Vercel serves the files as-is.
+- **`main` → production:** https://tutordeck.vercel.app (custom domain
+  **www.tutordeck.com.sg** being activated). Every merge to `main` deploys within ~1 min.
+- **`dev` and feature branches → preview URLs** (see the PR / Vercel dashboard).
+- GitHub Pages is no longer used — the old `github.io` URLs are dead. If you add the site URL
+  anywhere (Supabase **Auth → URL Configuration** redirect URLs, email templates), use the Vercel
+  / custom domain.
 
 ### d. Create your account
 Open the site → **Create account** → you're in.
@@ -126,13 +131,21 @@ each step feeds the next:
 
 ## Updating the app (important for deploys)
 
-- **CSS cache-busting:** every page links `assets/css/app.css?v=N`. After changing the
-  stylesheet, bump `N` everywhere so browsers fetch the fresh file. The current version
+- **Branch workflow:** `main` is production and **protected** (PR only, no direct pushes, no
+  force-push). Work on a short-lived `feature/<short-name>` branch off `dev` → PR into `dev` →
+  test on the preview URL → PR `dev` → `main`.
+- **One live database:** previews and `dev` hit the **same Supabase DB as production**, with real
+  student and payment data. Test with dummy students, and never bulk-modify data from a script.
+- **Migrations first:** run any new `db/migration_*.sql` in the Supabase SQL editor **before**
+  the code that needs it reaches any deployed branch (`dev` included), or pages error with
+  `column … does not exist`.
+- **Cache-busting:** every page links `assets/css/app.css?v=N` (and the JS with the same `?v=N`).
+  After a change, run `bash bump-version.sh <N>` to bump it everywhere so browsers fetch fresh
+  files. Check `main` first so two people don't ship the same number. The current version
   is marked at the top of `app.css` (e.g. `/* v9 */`); you can confirm the live file by
   opening `…/assets/css/app.css?v=N` and checking the first line.
-- **Deploys vs. cache:** a green CI check isn't the same as "live" — wait for the
-  **github-pages** environment to go Active, and hard-refresh (or use DevTools → Network
-  → Disable cache) when iterating.
+- **Deploys vs. cache:** wait for the Vercel deployment to show **Ready**, then hard-refresh
+  (or DevTools → Network → Disable cache) when iterating.
 - **Email / SMTP (optional):** Supabase's built-in email is rate-limited (testing only).
   To send real confirmation/reset emails, set up **custom SMTP** (e.g. Brevo or Resend)
   under **Authentication → SMTP Settings**, then raise the limit under Rate Limits.
@@ -185,6 +198,14 @@ db/
 ## Raphael's updates
 
 A running log of Raphael's changes, newest first.
+
+### 2026-10-17 — Sync `dev` with `main`, add CLAUDE.md, README for Vercel (v144)
+
+Merged `main` into `dev` (T-Leng's Teaching "needs notes" + Planner-names change and the landing
+footer), which had also been numbered v143, so this bumps to **v144** to keep the cache-buster
+unique. Added `CLAUDE.md` (project context, protected-`main` branch workflow, live-DB warnings,
+conventions) so every Claude session loads it. README now documents the Vercel hosting and the
+feature-branch → PR workflow instead of GitHub Pages.
 
 ### 2026-10-02 — Explicit `one_off` flag on lessons; Planner can hard-delete slots again (v143)
 

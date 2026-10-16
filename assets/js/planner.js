@@ -90,7 +90,7 @@
           '<button class="x" data-del="'+s.id+'" title="Remove">×</button>'+
           '<div class="t">'+hhmm(s.start_time)+"–"+hhmm(s.end_time)+warnBadge(s)+'</div>'+
           (s.subject||s.level?'<div class="subj">'+esc([s.subject,s.level].filter(Boolean).join(" · "))+'</div>':"")+
-          '<div class="s"><a class="snl" href="student.html?id='+s.student_id+'">'+esc(nameOf(s.student_id))+'</a></div>'+
+          '<div class="s">'+esc(nameOf(s.student_id))+'</div>'+
           '<div class="c">'+TL.sgd(cost)+(sp>1?' <span class="muted" style="font-weight:400">(÷'+sp+')</span>':'')+'</div></div>';
       }
       // Same-time slots (e.g. two students split one lesson) share one time header
@@ -101,7 +101,7 @@
         return '<div class="sg-item'+(clash[s.id]?" clash":"")+'" data-edit="'+s.id+'">'+
           '<button class="x" data-del="'+s.id+'" title="Remove">×</button>'+
           (s.subject||s.level?'<div class="subj">'+esc([s.subject,s.level].filter(Boolean).join(" · "))+'</div>':"")+
-          '<div class="s"><a class="snl" href="student.html?id='+s.student_id+'">'+esc(nameOf(s.student_id))+'</a>'+warnBadge(s)+'</div>'+
+          '<div class="s">'+esc(nameOf(s.student_id))+''+warnBadge(s)+'</div>'+
           '<div class="c">'+TL.sgd(cost)+(sp>1?' <span class="muted" style="font-weight:400">(÷'+sp+')</span>':'')+'</div></div>';
       }
       function groupHTML(g){
@@ -128,7 +128,6 @@
     $("p-total").innerHTML=allSlots.length?"Weekly total <b>"+TL.sgd(weekTotal)+"</b> · "+allSlots.length+" slots":"No recurring slots yet — add your first.";
 
     $("week").querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(e){e.stopPropagation();removeSlot(b.dataset.del);});});
-    $("week").querySelectorAll("a.snl").forEach(function(a){a.addEventListener("click",function(e){e.stopPropagation();});});
     $("week").querySelectorAll("[data-edit]").forEach(function(el){el.addEventListener("click",function(){
       var s=allSlots.find(function(x){return x.id===el.dataset.edit;});if(s)openModal(true,s);});});
   }
