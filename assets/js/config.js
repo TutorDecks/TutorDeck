@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------
 // ---------------------------------------------------------------------
-// Supabase project values for the T-Leng Tuition dashboard.
+// Supabase project values for TutorDeck.
 // These (URL + publishable key) are the ONLY place you set credentials.
 // Find them in Supabase → Settings → API Keys (or the Connect dialog).
 // The publishable key is SAFE to commit publicly — Row Level Security is
