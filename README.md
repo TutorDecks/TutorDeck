@@ -199,6 +199,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Sign out always visible in the phone menu (v146)
+
+On iPhone the ☰ drawer was sized with `100vh`, which is taller than the visible screen when Safari's
+toolbar is showing, so the Sign out button at the bottom sat hidden behind it. The drawer now uses
+`100dvh` (the visible height) plus the safe-area inset, and Sign out has a bigger tap target.
+
 ### 2026-10-17 — Rebrand "T-Leng Tuition" → TutorDeck across the UI (v145)
 
 Every page title, the login / email-confirmed / password-reset cards, the landing page header and
