@@ -158,20 +158,34 @@
       }).join("");
       if(withNote)$(listId).querySelectorAll("[data-note-id]").forEach(function(b){b.addEventListener("click",function(){openNote(b.dataset.noteId);});});
     }
-    // Yesterday — only lessons you actually taught that still have no notes
+    // Past 7 days — lessons already taught (not cancelled) that still have no notes
     (function(){
-      var yday=new Date(today); yday.setDate(today.getDate()-1);
-      var yISO=iso(yday);
+      var DAYS_BACK=7;
+      var from=new Date(today); from.setDate(today.getDate()-DAYS_BACK);
+      var fromISO=iso(from), todayISO=iso(today);
       var missing=lessons.filter(function(l){
-        return l.lesson_date===yISO && l.status==="done" && !(l.topics||l.homework||l.remarks);
-      }).sort(function(a,b){return (a.start_time||"").localeCompare(b.start_time||"");});
+        return l.lesson_date>=fromISO && l.lesson_date<todayISO && l.status!=="cancelled" &&
+               !(l.topics||l.homework||l.remarks);
+      }).sort(function(a,b){   // most recent day first, then by time within the day
+        return b.lesson_date.localeCompare(a.lesson_date)||(a.start_time||"").localeCompare(b.start_time||"");
+      });
       var sec=$("yday-sec"); if(!sec)return;
       if(!missing.length){ sec.style.display="none"; return; }
       sec.style.display="";
       $("yday-hint").textContent=missing.length+" without notes";
-      $("yday-sub").textContent=yday.toLocaleDateString("en-SG",{weekday:"long",day:"numeric",month:"long"});
+      $("yday-sub").textContent="Past "+DAYS_BACK+" days · "+
+        from.toLocaleDateString("en-SG",{day:"numeric",month:"short"})+" – "+
+        new Date(today.getTime()-86400000).toLocaleDateString("en-SG",{day:"numeric",month:"short"});
+      var lastDay=null;
       $("yday-list").innerHTML=missing.map(function(l){
-        return '<div class="teach-row"><div class="tr-time">'+hm(l.start_time)+'</div>'+
+        var head="";
+        if(l.lesson_date!==lastDay){
+          lastDay=l.lesson_date;
+          var d=new Date(l.lesson_date+"T00:00:00"), ago=Math.round((today-d)/86400000);
+          head='<div class="miss-day">'+d.toLocaleDateString("en-SG",{weekday:"short",day:"numeric",month:"short"})+
+               '<span>'+(ago===1?"yesterday":ago+" days ago")+'</span></div>';
+        }
+        return head+'<div class="teach-row"><div class="tr-time">'+hm(l.start_time)+'</div>'+
           '<div class="tr-body"><div class="tr-head"><div class="tr-name"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a>'+
           (l.subject?'<span class="tr-subj">'+esc(l.subject)+'</span>':'')+'</div>'+
           '<button class="tnote" data-note-id="'+l.id+'">Add note</button></div>'+
