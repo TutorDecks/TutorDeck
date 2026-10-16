@@ -83,9 +83,11 @@ Preview and dev deployments also hit this live DB. So:
 - A dummy test account (dummy students only) is planned for testing write flows safely.
 
 ## Current to-dos
-1. Rebrand "T-Leng Tuition" → "TutorDeck" across the UI (titles, login card, invoices, emails).
+1. Rebrand "T-Leng Tuition" → "TutorDeck" across the UI — done in feature/rebrand-ui (v145).
+   Still outside the repo: Supabase auth email templates / sender name. Landing footer still has
+   the "Also by T-Leng Tuition: MugCorner" cross-promo line (decide whether to keep).
 2. Find/replace any hard-coded old github.io URLs (Supabase redirectTo, emails, etc.).
-   As of 2026-10-17 none remain in the code; check Supabase Auth → URL Configuration
+   As of 2026-10-17 none remain in the code (last one, the landing footer, removed in v145); check Supabase Auth → URL Configuration
    and email templates, which live outside the repo.
 3. Sync `dev` with `main` (done on 2026-10-17 in feature/sync-main-claude-md, v144).
 4. Later: separate dev Supabase project; custom SMTP for auth emails; Vercel Pro before

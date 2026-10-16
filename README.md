@@ -199,6 +199,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Rebrand "T-Leng Tuition" → TutorDeck across the UI (v145)
+
+Every page title, the login / email-confirmed / password-reset cards, the landing page header and
+footer, and the Privacy/Terms pages now say **TutorDeck** (monogram **TD**). Privacy/Terms name
+**TutorDeck Pte. Ltd.** as the provider. The sidebar still shows each tutor's own business name; only
+its fallback (no business name set) changed to TutorDeck. Reminder messages with no business name now
+say "from your tutor" instead of "from T-Leng Tuition". Business-name placeholders read
+"e.g. Bright Minds Tuition". Data export downloads as `tutordeck-data-YYYY-MM-DD.json`. Removed the dead
+`tlengengtuition-oss.github.io` link from the landing footer. Internal identifiers (`TLENG_CONFIG`,
+the `tlengSync` Google Calendar tag) are unchanged on purpose — renaming the tag would orphan
+already-synced calendar events.
+
 ### 2026-10-17 — Sync `dev` with `main`, add CLAUDE.md, README for Vercel (v144)
 
 Merged `main` into `dev` (T-Leng's Teaching "needs notes" + Planner-names change and the landing

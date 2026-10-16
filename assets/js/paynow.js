@@ -1,6 +1,6 @@
 // PayNow (SGQR / EMVCo) payload builder. No backend needed — pure string + CRC.
 // Usage: PayNow.build({ type:'mobile'|'uen', id:'+6591234567'|'53312345A',
-//                       amount:67.5, name:'T-Leng Tuition', reference:'INV-0001' })
+//                       amount:67.5, name:'TutorDeck', reference:'INV-0001' })
 window.PayNow = (function () {
 
   // tag-length-value; length is 2-digit, char count

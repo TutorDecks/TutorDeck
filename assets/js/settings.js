@@ -127,7 +127,7 @@
       var blob=new Blob([JSON.stringify(bundle,null,2)],{type:"application/json"});
       var url=URL.createObjectURL(blob),a=document.createElement("a");
       var d=new Date();
-      a.href=url;a.download="tleng-data-"+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+".json";
+      a.href=url;a.download="tutordeck-data-"+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+".json";
       document.body.appendChild(a);a.click();a.remove();
       setTimeout(function(){URL.revokeObjectURL(url);},4000);
       m.textContent="Downloaded."; m.className="msg ok";

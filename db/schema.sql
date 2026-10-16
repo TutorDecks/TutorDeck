@@ -1,5 +1,5 @@
 -- =====================================================================
--- T-Leng Tuition Dashboard — Supabase schema
+-- TutorDeck — Supabase schema
 -- Run this in the Supabase SQL editor (Dashboard → SQL → New query → Run).
 -- Multi-tenant: every row is owned by a tutor (auth.uid()) and isolated by RLS.
 -- Future-proofed: a `role` column + clean ownership means student/parent
