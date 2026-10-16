@@ -17,7 +17,7 @@ window.TL = (function () {
     { id: "settings",  label: "Settings",  href: "settings.html", ic: "⚙" }
   ];
 
-  var DEFAULT_BRAND = "T-Leng Tuition";
+  var DEFAULT_BRAND = "TutorDeck";
   var brandName = DEFAULT_BRAND;   // set per-user from profiles.business_name in requireAuth
 
   // Two-letter badge from the brand: initials of the first two words
@@ -25,7 +25,7 @@ window.TL = (function () {
   function monogram(name) {
     var w = String(name || "").split(/[\s-]+/).filter(function (t) { return /[A-Za-z0-9]/.test(t); });
     var s = w.length >= 2 ? (w[0][0] + w[1][0]) : (w[0] || "").slice(0, 2);
-    return s.toUpperCase() || "TL";
+    return s.toUpperCase() || "TD";
   }
 
   function esc(s) {

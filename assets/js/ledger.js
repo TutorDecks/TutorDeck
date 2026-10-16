@@ -238,7 +238,7 @@
     var rows=outGroups[id]||[];
     if(!rows.length)return;
     var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
-    var vars={name:recipientById[id]||nameById[id]||"",student:nameById[id]||"",business:(profile&&profile.business_name)||"T-Leng Tuition",
+    var vars={name:recipientById[id]||nameById[id]||"",student:nameById[id]||"",business:(profile&&profile.business_name)||"your tutor",
       amount:TL.sgd(sum),count:rows.length,invoice:"",paynow:(profile&&profile.paynow_id)||"",
       month:monthsLabel(rows),date:prettyDate(iso(new Date())),year:String(new Date().getFullYear())};
     var tpl=(profile&&profile.reminder_message)||DEFAULT_REMINDER;
@@ -254,7 +254,7 @@
     var sum=all.reduce(function(t,l){return t+Number(l.amount);},0);
     var names=ids.map(function(id){return nameById[id]||"";}).filter(Boolean);
     var who=names.length===2?names[0]+" & "+names[1]:names.join(", ");
-    var vars={name:recipientById[targetId]||nameById[targetId]||"",student:who,business:(profile&&profile.business_name)||"T-Leng Tuition",
+    var vars={name:recipientById[targetId]||nameById[targetId]||"",student:who,business:(profile&&profile.business_name)||"your tutor",
       amount:TL.sgd(sum),count:all.length,invoice:"",paynow:(profile&&profile.paynow_id)||"",
       month:monthsLabel(all),date:prettyDate(iso(new Date())),year:String(new Date().getFullYear())};
     var tpl=(profile&&profile.reminder_message)||DEFAULT_REMINDER;
@@ -679,8 +679,8 @@
       status:statusFor(date,end),paid:paid,paid_date:paid?date:null,postponed:$("m-postponed").checked,compensation:null};
     $("m-save").disabled=true;
     var res=editLessonId
-      ? await window.sb.from("lessons").update(fields).eq("id",editLessonId)
-      : await window.sb.from("lessons").insert(Object.assign({tutor_id:userId},fields));
+      ? await window.sb.from("lessons").update(fields).eq("id",editLessonId)   // editing never changes one_off
+      : await window.sb.from("lessons").insert(Object.assign({tutor_id:userId,one_off:true},fields));   // manual add = one-off
     $("m-save").disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
     // Ticking/unticking "already paid" here must flow through to any invoice covering this lesson.
@@ -975,7 +975,7 @@
     var isCombined=!m.studentId;
     var byBank=isCombined?anyBank(m.students||[]):!!payByBankById[m.studentId];
     var vars={name:isCombined?(m.recipient||m.name||""):(recipientById[m.studentId]||nameById[m.studentId]||""),
-      student:isCombined?(m.name||""):(nameById[m.studentId]||""),business:(profile&&profile.business_name)||"T-Leng Tuition",
+      student:isCombined?(m.name||""):(nameById[m.studentId]||""),business:(profile&&profile.business_name)||"your tutor",
       amount:TL.sgd(m.total),count:"",invoice:m.invoiceNo,paynow:byBank?"":((profile&&profile.paynow_id)||""),
       month:m.month||"",date:prettyDate(m.issuedDate),year:(m.issuedDate||"").slice(0,4)};
     // Bank clients can't use PayNow — the default message points them to the on-invoice bank details.

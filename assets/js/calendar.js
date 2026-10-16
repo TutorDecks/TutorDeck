@@ -87,7 +87,7 @@
     var p=key.split("-"), y=+p[0], m=+p[1]-1;
     var first=iso(new Date(y,m,1)), last=iso(new Date(y,m+1,0));
     pending[key]=window.sb.from("lessons")
-      .select("id,slot_id,slot_date,student_id,lesson_date,start_time,end_time,subject,level,amount,rate,split,paid,status,postponed,compensation")
+      .select("id,slot_id,slot_date,student_id,lesson_date,start_time,end_time,subject,level,amount,rate,split,paid,status,postponed,compensation,one_off")
       .gte("lesson_date",first).lte("lesson_date",last)
       .then(function(ls){
         var rows=ls.error?[]:(ls.data||[]);
@@ -150,7 +150,7 @@
       blocks.push({ id:l.id, dateISO:l.lesson_date, day:dayIdx(l.lesson_date), startMin:toMin(l.start_time), endMin:toMin(l.end_time),
         name:nameById[l.student_id]||"—", subject:l.subject||"", level:l.level||"", location:locById[l.student_id]||"", amount:l.amount,
         rate:l.rate, split:l.split,
-        kind:"lesson", state:st, postponed:!!l.postponed, adhoc:!l.slot_id, slotId:l.slot_id, slotDate:l.slot_date, hh:hhById[l.student_id]||null });
+        kind:"lesson", state:st, postponed:!!l.postponed, adhoc:!!l.one_off, slotId:l.slot_id, slotDate:l.slot_date, hh:hhById[l.student_id]||null });
     });
     for(var d=new Date(range.start); iso(d)<=iso(range.end); d=addDays(d,1)){
       var di=iso(d), wd=(d.getDay()+6)%7;
@@ -447,7 +447,7 @@
     var row={ tutor_id:userId, student_id:sid, lesson_date:date, start_time:start, end_time:end,
       subject:$("ca-subject").value.trim()||null, level:$("ca-level").value.trim()||null,
       rate:rate, split:split, amount:splitAmt(rate,start,end,split), status:statusFor(date,end),
-      paid:paid, paid_date:paid?date:null };
+      paid:paid, paid_date:paid?date:null, one_off:true };   // manual add from the calendar = one-off
     var b=$("ca-save"); b.disabled=true;
     var res=await window.sb.from("lessons").insert(row);
     b.disabled=false;
@@ -660,11 +660,11 @@
   }
 
   function gEvent(l){
-    var sym=(l.postponed?"↻":"")+(!l.slot_id?"✦":"");     // ↻ postponed, ✦ one-off — same keys as the app
+    var sym=(l.postponed?"↻":"")+(l.one_off?"✦":"");     // ↻ postponed, ✦ one-off — same keys as the app
     var summary=(sym?sym+" ":"")+[nameById[l.student_id]||"Lesson", l.subject].filter(Boolean).join(" · ");
     var d=[]; if(l.level)d.push("Level: "+l.level); if(l.amount!=null)d.push("Amount: S$"+l.amount);
     d.push(l.status==="scheduled"?"Scheduled":(l.paid?"Paid":"Unpaid"));
-    if(l.postponed)d.push("Postponed (↻)"); if(!l.slot_id)d.push("One-off (✦)");
+    if(l.postponed)d.push("Postponed (↻)"); if(l.one_off)d.push("One-off (✦)");
     var e={ summary:summary, description:d.join("\n"),
       start:{ dateTime:l.lesson_date+"T"+hhmm(l.start_time)+":00", timeZone:GTZ },
       end:{ dateTime:l.lesson_date+"T"+hhmm(l.end_time)+":00", timeZone:GTZ },
@@ -718,7 +718,7 @@
     var byLesson={}, extra=[];                              // extra = duplicates or legacy events (no lesson id)
     events.forEach(function(ev){ var lid=evLessonId(ev); if(lid && !byLesson[lid]) byLesson[lid]=ev; else extra.push(ev); });
     var ls=await window.sb.from("lessons")
-      .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id")
+      .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id,one_off")
       .gte("lesson_date", w.firstISO).lte("lesson_date", w.lastISO);
     if(ls.error) return { created:0, updated:0, deleted:0, skipped:0, fail:1 };
     var rows=(ls.data||[]).filter(function(l){ return l.status!=="cancelled"; });

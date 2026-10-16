@@ -151,16 +151,13 @@
   }
 
   async function removeSlot(id){
-    // Never hard-delete a slot: deleting it cascades slot_id=NULL onto its lessons (DB "on delete
-    // set null"), orphaning them as ✦ one-off, AND throws away the slot itself — both are history
-    // we want to keep for analytics. "Remove" = retire: deactivate it so it leaves the Planner,
-    // stops projecting, and stops generating new lessons, while everything stays stored and linked.
-    // Reactivating the student (or re-adding the slot) brings it back.
-    if(!confirm("Remove this weekly slot from the planner?\n\nIt stops showing here and stops "+
-                "generating new lessons. Any logged lessons stay in your records (still linked), and "+
-                "nothing is deleted — add the slot back anytime, or it returns if you reactivate the student."))return;
-    var up=await window.sb.from("recurring_slots").update({active:false}).eq("id",id);
-    if(up.error){alert("Couldn't remove: "+up.error.message);return;}
+    // Deleting a slot is safe now: each lesson carries its own one_off flag, so even though the DB
+    // nulls slot_id on its past lessons ("on delete set null"), they keep the correct recurring/one-off
+    // label and all their other data. The slot is just a template — binning it loses no lesson history.
+    if(!confirm("Remove this weekly slot?\n\nIt stops generating new lessons. Logged lessons stay in "+
+                "your records unchanged."))return;
+    var res=await window.sb.from("recurring_slots").delete().eq("id",id);
+    if(res.error){alert("Couldn't remove: "+res.error.message);return;}
     load();
   }
 
