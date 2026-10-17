@@ -199,6 +199,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Login + landing in the TutorDeck look (v180)
+
+- **Login:** ink background with a teal glow, the real logo instead of the gold "TD" badge, "Welcome
+  back" / "Set up your tuition business in a minute", full-width Sign in | Create account tabs, teal
+  primary button, links to home/Privacy/Terms under the card. Logic untouched.
+- **Landing (index.html + landing.html):** Manrope + ink/teal instead of Georgia + navy/gold. The hero
+  card now shows a slice of the real app (Collected bar, an amber "Not invoiced" row, sent and paid
+  rows); feature icons are proper line icons on teal tint; teal CTA (full width on phones).
+  landing.html keeps its MugCorner footer line (to-do 1 still open).
+
 ### 2026-10-18 — Settings: grouped cards, one Save (v179)
 
 Same fields and ids, regrouped: **Business** (name, invoice prefix, financial year), **Getting paid**
