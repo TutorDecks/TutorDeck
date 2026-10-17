@@ -50,6 +50,13 @@ Preview and dev deployments also hit this live DB. So:
 - No Node here. Syntax-check JS with JavaScriptCore by wrapping the file in `new Function`:
   `/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc -e "new Function(readFile('assets/js/ledger.js')); print('ok')"`
 
+## Look & feel (TutorDeck house style, v150+)
+- Font: Manrope only. Colours: ink #13233F, accent teal #0F766E (the ONLY accent: primary buttons,
+  active tab, paid), owed #B4432F, warning amber #B45309, ground #FAF9F6, lines #E8E5DE.
+- Colour = meaning. Don't add new accent colours; neutral greys for everything else.
+- One primary action per screen. Lists show info; actions live in the item's detail sheet.
+- Use the CSS variables in assets/css/app.css, not hard-coded hex.
+
 ## Working agreements
 - Only open the `dev` → `main` PR when the person you're working with explicitly says to ship.
 - Before running anything that changes real rows in Supabase, show the SELECT preview first and

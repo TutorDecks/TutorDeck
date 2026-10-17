@@ -23,9 +23,9 @@
     return new Chart(ctx,{
       type:"bar",
       data:{labels:labels,datasets:[
-        {label:"Collected",data:collected.map(r2),backgroundColor:"#0E7C7B",maxBarThickness:34,stack:"s",borderRadius:3},
-        {label:"Pending payment",data:pending.map(r2),backgroundColor:"#B3402F",maxBarThickness:34,stack:"s",borderRadius:3},
-        {label:"Projected (upcoming)",data:upcoming.map(r2),backgroundColor:"#BCB3A0",maxBarThickness:34,stack:"s",borderRadius:3}
+        {label:"Collected",data:collected.map(r2),backgroundColor:"#0F766E",maxBarThickness:34,stack:"s",borderRadius:3},
+        {label:"Pending payment",data:pending.map(r2),backgroundColor:"#B4432F",maxBarThickness:34,stack:"s",borderRadius:3},
+        {label:"Projected (upcoming)",data:upcoming.map(r2),backgroundColor:"#C9C5BC",maxBarThickness:34,stack:"s",borderRadius:3}
       ]},
       options:{
         responsive:true,maintainAspectRatio:false,
@@ -35,7 +35,7 @@
         },
         scales:{
           x:{stacked:true,grid:{display:false}},
-          y:{stacked:true,beginAtZero:true,ticks:{callback:function(v){return "$"+v;}},grid:{color:"#eee7d6"}}
+          y:{stacked:true,beginAtZero:true,ticks:{callback:function(v){return "$"+v;}},grid:{color:"#ECE9E2"}}
         }
       }
     });

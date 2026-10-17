@@ -335,9 +335,9 @@
     var b=findBlock(node.dataset.ev); if(!b) return;
     popNode=node;
     var pop=$("cal-pop");
-    var label={paid:["Paid","rgba(14,124,123,.14)","#0b5b5a"], unpaid:["Unpaid","rgba(179,64,47,.12)","#8a2f22"],
-      sched:["Scheduled","rgba(26,42,79,.10)","var(--navy)"], cancel:["Cancelled","#f3f0e8","var(--muted)"],
-      proj:["Not logged yet","rgba(181,137,43,.12)","#7a5f1f"]}[b.state];
+    var label={paid:["Paid","rgba(15,118,110,.14)","#0B5D57"], unpaid:["Unpaid","rgba(180,67,47,.12)","#8a2f22"],
+      sched:["Scheduled","rgba(19,35,63,.10)","var(--navy)"], cancel:["Cancelled","#F1EFEA","var(--muted)"],
+      proj:["Not logged yet","rgba(15,118,110,.12)","#0B5D57"]}[b.state];
     var dt=new Date(b.dateISO+"T00:00:00");
     var when=DAY[(dt.getDay()+6)%7]+" "+dt.getDate()+" "+MON[dt.getMonth()]+" · "+hhmm2(b.startMin)+"–"+hhmm2(b.endMin);
     var sub=[b.subject,b.level].filter(Boolean).join(" · ");
@@ -348,8 +348,8 @@
       (b.kind==="lesson"&&b.amount!=null?'<div class="cp-row">'+(b.state==="cancel"?"Compensation":"Amount")+' <b>'+TL.sgd(b.amount)+'</b></div>':'')+
       (b.clash?'<div class="cp-row" style="color:var(--owed);font-weight:700">⚠ Overlaps another lesson</div>':'')+
       '<span class="cp-tag" style="background:'+label[1]+';color:'+label[2]+'">'+label[0]+'</span>'+
-      (b.adhoc?' <span class="cp-tag" style="background:rgba(26,42,79,.10);color:var(--navy)">✦ One-off</span>':'')+
-      (b.postponed?' <span class="cp-tag" style="background:rgba(200,146,42,.18);color:#8a5f14">Postponed</span>':'')+
+      (b.adhoc?' <span class="cp-tag" style="background:rgba(19,35,63,.10);color:var(--navy)">✦ One-off</span>':'')+
+      (b.postponed?' <span class="cp-tag" style="background:rgba(180,83,9,.18);color:#92400E">Postponed</span>':'')+
       actionButtons(b)+
       '<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Log in Ledger →":"Edit in Ledger →")+'</a>';
     pop.style.display="block";

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · TutorDeck</title>
-<link rel="stylesheet" href="assets/css/app.css?v=149">
+<link rel="stylesheet" href="assets/css/app.css?v=150">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -19,7 +19,7 @@
   .btn-gcal .gicon{display:inline-flex;align-items:center;justify-content:center;flex:none}
   .btn-gcal.btn-connect{display:inline-flex;align-items:center;gap:10px;background:#fff;border:1px solid #dadce0;color:#3c4043;font-weight:600;padding:9px 16px;border-radius:11px;box-shadow:0 1px 2px rgba(60,64,67,.12)}
   .btn-gcal.btn-connect:hover{background:#f7f8f8;border-color:#d2d3d6}
-  .btn-gcal.btn-sync{display:inline-flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-weight:700;font-size:13px;padding:8px 15px;border-radius:9px;box-shadow:0 1px 2px rgba(14,124,123,.3)}
+  .btn-gcal.btn-sync{display:inline-flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-weight:700;font-size:13px;padding:8px 15px;border-radius:9px;box-shadow:0 1px 2px rgba(15,118,110,.3)}
   .btn-gcal.btn-sync:hover{background:#0b6a69}
   .btn-gcal.btn-sync .gicon{display:none}   /* Sync state: the ↻ label carries it, no Google mark */
   .gcal-hide{display:none !important}
@@ -38,11 +38,11 @@
   .cal-legend .leg:hover{color:var(--ink)}
   .cal-legend .leg.off{opacity:.4;text-decoration:line-through}
   .cal-sw{width:12px;height:12px;border-radius:3px;border:1px solid}
-  .sw-cancel{background:#f3f0e8;border-color:var(--line)}
-  .sw-paid{background:rgba(14,124,123,.14);border-color:rgba(14,124,123,.5)}
-  .sw-unpaid{background:rgba(179,64,47,.12);border-color:rgba(179,64,47,.5)}
-  .sw-sched{background:rgba(26,42,79,.10);border-color:rgba(26,42,79,.4)}
-  .sw-proj{background:rgba(181,137,43,.08);border:1px dashed rgba(181,137,43,.7)}
+  .sw-cancel{background:#F1EFEA;border-color:var(--line)}
+  .sw-paid{background:rgba(15,118,110,.14);border-color:rgba(15,118,110,.5)}
+  .sw-unpaid{background:rgba(180,67,47,.12);border-color:rgba(180,67,47,.5)}
+  .sw-sched{background:rgba(19,35,63,.10);border-color:rgba(19,35,63,.4)}
+  .sw-proj{background:rgba(15,118,110,.08);border:1px dashed rgba(15,118,110,.7)}
   .sw-clash{background:#fff;border:2px solid var(--owed)}
 
   .cal-card{padding:0;overflow:hidden}
@@ -71,12 +71,12 @@
   .cal-ev.tight{padding:1px 6px}
   .cal-ev.tight .ce-t{display:inline} .cal-ev.tight .ce-n{display:inline;margin-left:4px}
   .cal-ev.tight .ce-s,.cal-ev.tight .ce-loc{display:none}
-  .is-paid{background:rgba(14,124,123,.14);border-color:rgba(14,124,123,.5);color:#0b5b5a}
-  .is-unpaid{background:rgba(179,64,47,.12);border-color:rgba(179,64,47,.5);color:#8a2f22}
-  .is-sched{background:rgba(26,42,79,.10);border-color:rgba(26,42,79,.4);color:var(--navy)}
-  .is-cancel{background:#f3f0e8;border-color:var(--line);color:var(--muted);opacity:.7}
+  .is-paid{background:rgba(15,118,110,.14);border-color:rgba(15,118,110,.5);color:#0B5D57}
+  .is-unpaid{background:rgba(180,67,47,.12);border-color:rgba(180,67,47,.5);color:#8a2f22}
+  .is-sched{background:rgba(19,35,63,.10);border-color:rgba(19,35,63,.4);color:var(--navy)}
+  .is-cancel{background:#F1EFEA;border-color:var(--line);color:var(--muted);opacity:.7}
   .is-cancel .ce-n{text-decoration:line-through}
-  .is-proj{background:rgba(181,137,43,.08);border-style:dashed;border-color:rgba(181,137,43,.7);color:#7a5f1f}
+  .is-proj{background:rgba(15,118,110,.08);border-style:dashed;border-color:rgba(15,118,110,.7);color:#0B5D57}
   .is-clash{outline:2px solid var(--owed);outline-offset:-2px;border-color:var(--owed)}
   .ce-warn{color:var(--owed);font-weight:900;margin-left:3px}
 
@@ -90,7 +90,7 @@
   .cal-mday{min-height:96px;border-left:1px solid var(--line);border-top:1px solid var(--line);padding:4px 5px 6px;cursor:pointer;overflow:hidden}
   .cal-mday:nth-child(7n+1){border-left:none}
   .cal-mday:nth-child(-n+7){border-top:none}
-  .cal-mday:hover{background:#fcfaf3}
+  .cal-mday:hover{background:#F7F6F2}
   .cal-mday.other{background:#faf8f2}
   .cal-mday.other .md-num{color:#c3bba6}
   .cal-mday.today{background:var(--cream)}
@@ -99,13 +99,13 @@
     background:var(--gold);color:#fff;font-size:11.5px;line-height:1}
   .cal-chip{display:block;font-size:10.5px;font-weight:600;line-height:1.35;padding:1px 5px;margin-top:2px;
     border-radius:4px;border-left:3px solid;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-  .cal-chip.is-paid{background:rgba(14,124,123,.12);border-color:var(--teal);color:#0b5b5a}
-  .cal-chip.is-unpaid{background:rgba(179,64,47,.10);border-color:var(--owed);color:#8a2f22}
-  .cal-chip.is-sched{background:rgba(26,42,79,.08);border-color:var(--navy);color:var(--navy)}
-  .cal-chip.is-cancel{background:#f3f0e8;border-color:var(--line);color:var(--muted);text-decoration:line-through}
-  .cal-chip.is-proj{background:rgba(181,137,43,.08);border-color:rgba(181,137,43,.7);border-left-style:dashed;color:#7a5f1f}
+  .cal-chip.is-paid{background:rgba(15,118,110,.12);border-color:var(--teal);color:#0B5D57}
+  .cal-chip.is-unpaid{background:rgba(180,67,47,.10);border-color:var(--owed);color:#8a2f22}
+  .cal-chip.is-sched{background:rgba(19,35,63,.08);border-color:var(--navy);color:var(--navy)}
+  .cal-chip.is-cancel{background:#F1EFEA;border-color:var(--line);color:var(--muted);text-decoration:line-through}
+  .cal-chip.is-proj{background:rgba(15,118,110,.08);border-color:rgba(15,118,110,.7);border-left-style:dashed;color:#0B5D57}
   .cal-chip.is-clash{border-color:var(--owed);box-shadow:inset 0 0 0 1px var(--owed)}
-  .cal-chip.is-exam{background:rgba(179,64,47,.10);border-color:var(--owed);border-left-style:solid;color:#8a2f22;font-weight:700}
+  .cal-chip.is-exam{background:rgba(180,67,47,.10);border-color:var(--owed);border-left-style:solid;color:#8a2f22;font-weight:700}
   .cal-more{font-size:10px;color:var(--muted);margin-top:2px;font-weight:600}
 
   /* all-day exam strip (week view) */
@@ -128,7 +128,7 @@
   .cal-pop .cp-btn:hover{background:var(--bg)}
   .cal-pop .cp-btn.warn{color:var(--gold-2);border-color:var(--gold-2)}
   .cal-pop .cp-btn.danger{color:var(--owed);border-color:var(--owed)}
-  .cal-pop .cp-btn.danger:hover{background:rgba(179,64,47,.08)}
+  .cal-pop .cp-btn.danger:hover{background:rgba(180,67,47,.08)}
   .cal-pop .cp-btn.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
   .cal-pop .cp-btn.primary:hover{background:var(--navy-2)}
   .cal-pop .cp-field{margin-top:8px}
@@ -237,9 +237,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=149"></script>
-<script src="assets/js/supabase.js?v=149"></script>
-<script src="assets/js/app.js?v=149"></script>
-<script src="assets/js/calendar.js?v=149"></script>
+<script src="assets/js/config.js?v=150"></script>
+<script src="assets/js/supabase.js?v=150"></script>
+<script src="assets/js/app.js?v=150"></script>
+<script src="assets/js/calendar.js?v=150"></script>
 </body>
 </html>

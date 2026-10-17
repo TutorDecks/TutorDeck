@@ -326,17 +326,17 @@
     var tmin=pts[0].t,tmax=pts[pts.length-1].t; if(tmax===tmin)tmax=tmin+1;
     function X(t){return x0+(t-tmin)/(tmax-tmin)*(x1-x0);}
     function Y(p){return y0-(p/100)*(y0-y1);}
-    var colors=["#0E7C7B","#B5892B","#1A2A4F","#B3402F","#6C4F8C","#2E7D32"];
+    var colors=["#0F766E","#0F766E","#13233F","#B4432F","#6C4F8C","#2E7D32"];
     // group by subject
     var bySub={},order=[];
     pts.forEach(function(p){ if(!bySub[p.subject]){bySub[p.subject]=[];order.push(p.subject);} bySub[p.subject].push(p); });
     var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:520px;display:block">';
     // y gridlines 0/50/100
-    [0,50,100].forEach(function(g){var y=Y(g);svg+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#e7ddc7"/>'+
-      '<text x="'+(x0-6)+'" y="'+(y+3)+'" text-anchor="end" font-size="9" fill="#8a8577">'+g+'%</text>';});
+    [0,50,100].forEach(function(g){var y=Y(g);svg+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#E2DED5"/>'+
+      '<text x="'+(x0-6)+'" y="'+(y+3)+'" text-anchor="end" font-size="9" fill="#6F7480">'+g+'%</text>';});
     // x labels (first + last date)
-    svg+='<text x="'+x0+'" y="'+(H-8)+'" font-size="9" fill="#8a8577">'+prettyDate(pts[0].date)+'</text>'+
-         '<text x="'+x1+'" y="'+(H-8)+'" text-anchor="end" font-size="9" fill="#8a8577">'+prettyDate(pts[pts.length-1].date)+'</text>';
+    svg+='<text x="'+x0+'" y="'+(H-8)+'" font-size="9" fill="#6F7480">'+prettyDate(pts[0].date)+'</text>'+
+         '<text x="'+x1+'" y="'+(H-8)+'" text-anchor="end" font-size="9" fill="#6F7480">'+prettyDate(pts[pts.length-1].date)+'</text>';
     order.forEach(function(sub,i){
       var col=colors[i%colors.length],ps=bySub[sub];
       if(ps.length>1){

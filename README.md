@@ -199,6 +199,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — New TutorDeck look: ink + teal, Manrope (v150)
+
+Picked from three mocked directions (canvas "TutorDeck visual directions", option B with C's font).
+- **Font:** Manrope everywhere (headings, body, numbers; tabular figures). `--serif` now points at the
+  same family so older rules keep working.
+- **Colours:** ink `#13233F` (text, sidebar), one accent teal `#0F766E` (primary actions, active tab, paid),
+  owed `#B4432F`, warning amber `#B45309`, warm-white ground `#FAF9F6`, lines `#E8E5DE`. The old gold and
+  cream are gone; the var names (`--gold`, `--cream`, `--navy`) still exist but now hold the new values.
+- Phone tab bar is white with a teal active tab; desktop sidebar stays ink with a teal active item.
+- Overdue tags are amber (a warning), not the accent.
+- Marketing pages (index/landing/privacy/terms) not restyled yet.
+
 ### 2026-10-17 — Ledger declutter (v149)
 
 - The three big KPI cards became one slim summary strip: **Owed** · **Collected** · **Booked** for the

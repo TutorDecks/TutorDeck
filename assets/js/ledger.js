@@ -338,7 +338,7 @@
       var badge=l.status==="cancelled"
         ?'<span class="kind-tag">cancelled</span>'+(l.amount>0?(l.paid?' <span class="badge paid">Paid</span>':' <span class="badge owed">Unpaid</span>'):'')
         :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
-      if(l.postponed)badge+=' <span class="kind-tag" style="background:#C8922A;color:#fff">postponed</span>';
+      if(l.postponed)badge+=' <span class="kind-tag" style="background:#B45309;color:#fff">postponed</span>';
       var cancelBtn=l.status==="cancelled"
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
         : '<button class="tact warn" data-cancel="'+l.id+'">Cancel</button>';
@@ -373,7 +373,7 @@
     var badge=l.status==="cancelled"
       ?'<span class="kind-tag">cancelled</span>'+(l.amount>0?(l.paid?' <span class="badge paid">Paid</span>':' <span class="badge owed">Unpaid</span>'):'')
       :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
-    if(l.postponed)badge+=' <span class="kind-tag" style="background:#C8922A;color:#fff">postponed</span>';
+    if(l.postponed)badge+=' <span class="kind-tag" style="background:#B45309;color:#fff">postponed</span>';
     $("rd-title").textContent=recDate(l.lesson_date);
     var time=(l.start_time&&l.end_time)?(hm(l.start_time)+"–"+hm(l.end_time)):"";
     var items=[["Student",esc(nameById[l.student_id]||"—")],["Subject",l.subject?esc(l.subject):"—"],["Level",l.level?esc(l.level):"—"]];
@@ -776,11 +776,11 @@
       d.lessons.forEach(function(l){ var w=l._who||"—"; if(!byWho[w]){byWho[w]=[];order.push(w);} byWho[w].push(l); });
       rows=order.map(function(w){
         var grp=byWho[w], sub=Math.round(grp.reduce(function(t,l){return t+(Number(l.amount)||0);},0)*100)/100, sl=subjLevel(grp), rn=rateNote(grp);
-        return '<tr><td colspan="3" style="background:#faf6ec;padding:9px 8px 6px"><span style="font-weight:700;color:#1A2A4F">'+esc(w)+'</span>'+
-            (sl?' <span style="color:#6b7280;font-size:12px">— '+esc(sl)+'</span>':'')+'</td></tr>'+
+        return '<tr><td colspan="3" style="background:#faf6ec;padding:9px 8px 6px"><span style="font-weight:700;color:#13233F">'+esc(w)+'</span>'+
+            (sl?' <span style="color:#5E6676;font-size:12px">— '+esc(sl)+'</span>':'')+'</td></tr>'+
           grp.map(lrow).join("")+
-          '<tr><td colspan="2" class="r" style="color:#6b7280;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">Subtotal'+(rn?' · '+rn:'')+'</td>'+
-          '<td class="r" style="color:#6b7280;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">'+TL.sgd(sub)+'</td></tr>';
+          '<tr><td colspan="2" class="r" style="color:#5E6676;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">Subtotal'+(rn?' · '+rn:'')+'</td>'+
+          '<td class="r" style="color:#5E6676;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">'+TL.sgd(sub)+'</td></tr>';
       }).join("");
     } else {
       rows=d.lessons.map(lrow).join("");
@@ -790,10 +790,10 @@
       '<div class="inv-head"><div class="inv-biz">'+esc(d.biz)+'<small>Invoice</small></div>'+
         '<div class="inv-meta"><b>'+esc(d.invoiceNo)+'</b><br>'+d.dateStr+'</div></div>'+
       '<div class="inv-to"><span class="lbl">Bill to</span><br><b>'+esc(d.student)+'</b>'+
-        (billSL?'<br><span style="color:#6b7280;font-size:12.5px">'+esc(billSL)+'</span>':'')+'</div>'+
+        (billSL?'<br><span style="color:#5E6676;font-size:12.5px">'+esc(billSL)+'</span>':'')+'</div>'+
       '<table class="inv-table"><thead><tr><th>Date</th><th>Duration</th><th class="r">Amount</th></tr></thead>'+
         '<tbody>'+rows+'</tbody></table>'+
-      (totalRN?'<div class="r" style="color:#6b7280;font-size:12px;padding:5px 8px 0">'+esc(totalRN)+'</div>':'')+
+      (totalRN?'<div class="r" style="color:#5E6676;font-size:12px;padding:5px 8px 0">'+esc(totalRN)+'</div>':'')+
       '<div class="inv-total"><span>'+(d.paid?"Total paid":"Total due")+'</span><span>'+TL.sgd(d.total)+'</span></div>'+
       (d.paid
         ? '<div class="inv-pay"><div><div class="pn-h"><span class="pn-dot"></span>Paid</div>'+
