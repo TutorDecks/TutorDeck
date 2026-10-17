@@ -199,6 +199,11 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Home greeting toned down (v163)
+
+Dropped the handwritten Sacramento script (too loud next to the rest of the app). The greeting is back
+to a small grey Manrope line over the business name, now 40px desktop / 32px phone (was 64 / 44).
+
 ### 2026-10-17 — Handwritten Home greeting (v162)
 
 The greeting line is now a teal handwritten script (Google Font **Sacramento**, the closest free match

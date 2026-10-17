@@ -51,7 +51,7 @@ Preview and dev deployments also hit this live DB. So:
   `/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc -e "new Function(readFile('assets/js/ledger.js')); print('ok')"`
 
 ## Look & feel (TutorDeck house style, v150+)
-- Font: Manrope everywhere (exception: the Home greeting uses the Sacramento script). Colours: ink #13233F, accent teal #0F766E (the ONLY accent: primary buttons,
+- Font: Manrope only. Colours: ink #13233F, accent teal #0F766E (the ONLY accent: primary buttons,
   active tab, paid), owed #B4432F, warning amber #B45309, ground #FAF9F6, lines #E8E5DE.
 - Colour = meaning. Don't add new accent colours; neutral greys for everything else.
 - One primary action per screen. Lists show info; actions live in the item's detail sheet.

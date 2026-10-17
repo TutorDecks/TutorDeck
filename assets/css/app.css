@@ -1,6 +1,5 @@
-/* v162 */
+/* v163 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Sacramento&display=swap");   /* Home greeting only */
 /* =====================================================================
    TutorDeck — house style (v150)
    Ink #13233F · one accent, teal #0F766E · owed #B4432F · warm-white ground
@@ -567,12 +566,11 @@ a.btn{text-decoration:none}
 @keyframes td-tip-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.td-tip{animation:none}}
 /* v161: Home hero greeting */
-/* handwritten greeting (like the Mac "hello") over the business name in large heavy type */
-.topbar h1 .hi-eyebrow{display:block;font-family:"Sacramento",cursive;font-weight:400;font-size:54px;letter-spacing:0;
-  color:var(--accent);line-height:1;margin:0 0 2px -2px}
-.topbar h1 .hi-name{display:block;font-size:64px;font-weight:800;letter-spacing:-.045em;line-height:1;color:var(--ink)}
-.topbar:has(.hi-name) .sub{margin-top:14px;font-size:14.5px}
+/* small grey greeting over the business name: stands out, but in the app's own type */
+.topbar h1 .hi-eyebrow{display:block;font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--muted);margin-bottom:4px;line-height:1.2}
+.topbar h1 .hi-name{display:block;font-size:40px;font-weight:800;letter-spacing:-.035em;line-height:1.05;color:var(--ink)}
+.topbar:has(.hi-name) .sub{margin-top:8px;font-size:14px}
 @media(max-width:820px){
-  .topbar h1 .hi-eyebrow{font-size:42px}
-  .topbar h1 .hi-name{font-size:44px}
+  .topbar h1 .hi-eyebrow{font-size:15px}
+  .topbar h1 .hi-name{font-size:32px}
 }
