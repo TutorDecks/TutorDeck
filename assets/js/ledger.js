@@ -105,6 +105,28 @@
     var cls=days>=30?"age bad":(days>=14?"age warn":"age");
     return '<span class="'+cls+'">'+lbl+' overdue</span>';
   }
+  // ---- invoice "sent" status per lesson (needs db/migration_invoice_sent.sql; quietly off without it) ----
+  var sentByLesson={}, sentKnown=false;
+  async function loadSentMap(){
+    sentByLesson={}; sentKnown=false;
+    try{
+      var r=await window.sb.from("invoices").select("data,sent_at").not("sent_at","is",null);
+      if(r.error) return;
+      sentKnown=true;
+      (r.data||[]).forEach(function(v){ var ids=(v.data&&v.data.lesson_ids)||[]; ids.forEach(function(id){
+        if(!sentByLesson[id]||v.sent_at>sentByLesson[id]) sentByLesson[id]=v.sent_at; }); });
+    }catch(e){}
+  }
+  // A set of unpaid lessons is "sent" only when every one of them is on an invoice that went out;
+  // returns the latest send date, or null (= not invoiced: never invoiced, saved-not-sent, or new lessons since).
+  function sentFor(rows){
+    if(!sentKnown||!rows.length) return null;
+    var latest=null;
+    for(var i=0;i<rows.length;i++){ var d=sentByLesson[rows[i].id]; if(!d) return null; if(!latest||d>latest) latest=d; }
+    return latest;
+  }
+  function fmtSent(d){ return new Date(d).toLocaleDateString("en-SG",{day:"numeric",month:"short"}); }
+
   function renderOutstanding(unpaidAll){
     lastUnpaid=unpaidAll;
     // Shared period (header) — scope the whole view (counts, invoicing, marking) to it.
@@ -138,7 +160,7 @@
           :(l.subject?esc(l.subject):'<span class="muted">lesson</span>');
         return '<div class="lrow"><input type="checkbox" class="lchk" data-lsel="'+l.id+'"'+(selectedLessons[l.id]?" checked":"")+'><span class="lwhen">'+prettyDate(l.lesson_date)+(d>=14?' <span class="agedot" title="'+d+' days unpaid">•</span>':"")+"</span><span>"+label+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
       var selBtn=selIds.length?'<button class="mark lite" data-invsel="'+id+'::'+selIds.join(",")+'">Invoice '+selIds.length+' selected</button><button class="mark" data-paysel="'+selIds.join(",")+'">Mark '+selIds.length+' selected paid</button>':"";
-      return '<div class="card group collapsed"><div class="group-head" data-grp="'+id+'"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select all lessons for this student"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'<span class="grp-caret" aria-hidden="true">›</span></span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button>'+selBtn+'<button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
+      return '<div class="card group collapsed"><div class="group-head" data-grp="'+id+'"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select all lessons for this student"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'<span class="grp-caret" aria-hidden="true">›</span></span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite'+(sentKnown&&!sentFor(rows)?' need':'')+'" data-inv="'+id+'">'+(!sentKnown?'Invoice':(sentFor(rows)?'Resend invoice':'Send invoice'))+'</button>'+selBtn+'<button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
     }
     // group owing students by household
     var byHH={}; ids.forEach(function(id){var h=householdBy[id];if(h)(byHH[h]=byHH[h]||[]).push(id);});
@@ -160,13 +182,14 @@
         var hhSelIds=members.reduce(function(a,m){return a.concat((groups[m]||[]).filter(function(l){return selectedLessons[l.id];}).map(function(l){return l.id;}));},[]);
         var hhSelBtns=hhSelIds.length?'<button class="mark lite" data-hhinvsel="'+members.join(",")+'::'+hhSelIds.join(",")+'">Invoice '+hhSelIds.length+' selected</button><button class="mark" data-hhpaysel="'+hhSelIds.join(",")+'">Mark '+hhSelIds.length+' selected paid</button>':'';
         var nLes=members.reduce(function(t,m){return t+groups[m].length;},0);
+        var hhRows=members.reduce(function(a,m){return a.concat(groups[m]);},[]), hhSent=sentFor(hhRows);
         var hhHtml='<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all lessons in this household"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span>'+ageTag(daysSince(hhOldest))+'</span>'+
-          '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+' <small>total</small></span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite" data-hhinv="'+members.join(",")+'">Invoice together</button>'+hhSelBtns+'<button class="mark" data-hhpayall="'+hhLessonIds.join(",")+'">Mark all paid</button></span></div>'+members.map(studentCard).join("")+'</div>';
-        blocks.push({key:'hh:'+h,html:hhHtml,name:hhLabel,sub:members.map(function(m){return (nameById[m]||'').split(' ')[0];}).join(', ')+' · '+nLes+' lesson'+(nLes===1?'':'s'),sum:hhSum,oldest:hhOldest,hh:true});
+          '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+' <small>total</small></span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite'+(sentKnown&&!hhSent?' need':'')+'" data-hhinv="'+members.join(",")+'">'+(!sentKnown?'Invoice together':(hhSent?'Resend invoice':'Send invoice'))+'</button>'+hhSelBtns+'<button class="mark" data-hhpayall="'+hhLessonIds.join(",")+'">Mark all paid</button></span></div>'+members.map(studentCard).join("")+'</div>';
+        blocks.push({key:'hh:'+h,html:hhHtml,name:hhLabel,sub:members.map(function(m){return (nameById[m]||'').split(' ')[0];}).join(', ')+' · '+nLes+' lesson'+(nLes===1?'':'s'),sum:hhSum,oldest:hhOldest,hh:true,sent:hhSent});
         return;
       }
       var sum1=groups[id].reduce(function(t,l){return t+Number(l.amount);},0);
-      blocks.push({key:id,html:studentCard(id),name:nameById[id]||"—",sub:groups[id].length+' lesson'+(groups[id].length===1?'':'s'),sum:sum1,oldest:oldestOf(id)});
+      blocks.push({key:id,html:studentCard(id),name:nameById[id]||"—",sub:groups[id].length+' lesson'+(groups[id].length===1?'':'s'),sum:sum1,oldest:oldestOf(id),sent:sentFor(groups[id])});
     });
     outBlocks={};blocks.forEach(function(bk){outBlocks[bk.key]=bk;});
     function initials(n){var w=String(n||"").replace(/[^A-Za-z0-9 ]/g," ").split(/\s+/).filter(Boolean);return ((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();}
@@ -175,8 +198,9 @@
       var age=d<=0?"today":(d===1?"1 day":d+" days");
       return '<button type="button" class="owe-row" data-owe="'+esc(bk.key)+'">'+
         '<span class="owe-av'+(bk.hh?' hh':'')+'">'+(bk.hh?'⌂':esc(initials(bk.name)))+'</span>'+
-        '<span class="owe-main"><span class="owe-name">'+esc(bk.name)+'</span>'+
-        '<span class="owe-sub '+cls+'">'+esc(bk.sub)+' · oldest '+age+'</span></span>'+
+        '<span class="owe-main"><span class="owe-name"><span class="nm">'+esc(bk.name)+'</span></span>'+
+        '<span class="owe-sub">'+(sentKnown&&!bk.sent?'<span class="inv-need">Not invoiced</span>':'')+'<span class="'+cls+'">'+'<span class="lc">'+esc(bk.sub)+' · </span><span class="lw">oldest </span>'+age+'</span>'+
+          (bk.sent?' · <span class="lw">invoice </span>sent '+fmtSent(bk.sent):'')+'</span></span>'+
         '<span class="owe-amt">'+TL.sgd(bk.sum)+'</span>'+
         '<svg class="owe-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>';
     }).join("")+'</div>';
@@ -1046,7 +1070,8 @@
     b.disabled=true;b.textContent="Preparing…";
     if(!window._invSaved){ try{ await saveInvoice(); }catch(e){} }   // sending records the invoice in the Invoices tab
     // …and marks it "Sent" (sent_at; ignored if db/migration_invoice_sent.sql hasn't been run yet)
-    if(window._invSavedId){ try{ await window.sb.from("invoices").update({sent_at:new Date().toISOString()}).eq("id",window._invSavedId); }catch(e){} }
+    if(window._invSavedId){ try{ await window.sb.from("invoices").update({sent_at:new Date().toISOString()}).eq("id",window._invSavedId);
+      await loadSentMap(); renderOutstanding(lastUnpaid); }catch(e){} }
     // WhatsApp often drops the text when an image is shared/attached, so keep the message on the
     // clipboard — it can always be pasted into the chat even if it doesn't prefill.
     var copied=await copyText(msg);
@@ -1118,6 +1143,7 @@
     lessons.forEach(function(l){ if(l.status==="cancelled") l.amount=Number(l.compensation)||0; });
 
     allLessons=lessons;
+    await loadSentMap();
     var unpaid=lessons.filter(function(l){return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));});
     lastUnpaid=unpaid;
     renderPendingKpi();   // pending follows the month picker (All = all-time total)

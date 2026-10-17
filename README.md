@@ -199,6 +199,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — "Not invoiced" on Who owes you (v171)
+
+Uses `invoices.sent_at` (needs db/migration_invoice_sent.sql; hidden until it's run). Ledger loads every sent
+invoice's `data.lesson_ids` (`loadSentMap()`); a student/household's unpaid lessons count as invoiced only if
+**every** one is on a sent invoice (`sentFor()`), so new lessons since the last invoice flip it back.
+- Rows: amber **Not invoiced** chip, or quiet grey "invoice sent 17 Oct". Phones show the short form
+  ("9 days", "sent 17 Oct"); lesson count lives in the sheet header.
+- Sheet: the invoice button reads **Send invoice** with an amber outline when not invoiced, otherwise a plain
+  **Resend invoice**. Sending on WhatsApp refreshes the list immediately.
+
 ### 2026-10-17 — Invoices: Saved → Sent → Paid; "Payment screenshot" (v170)
 
 **Needs `db/migration_invoice_sent.sql`** (adds nullable `invoices.sent_at`). The pages work before it's run:
