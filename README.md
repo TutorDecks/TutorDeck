@@ -199,6 +199,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Floating + on Students, Planner and Exams (v184)
+
+On phones, a page's main add button (marked `data-fab="…"`) becomes the same floating teal + as the
+Calendar, bottom right in thumb reach; app.js creates it and clicks the original (hidden on phones).
+Add student / Add slot / Add exam. Desktop unchanged. Ledger left alone (its main action varies).
+
 ### 2026-10-18 — Calendar opens on Week everywhere (v183)
 
 Week is the default on phones and desktop until you pick another view; your choice is remembered per
