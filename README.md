@@ -199,6 +199,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — New navigation: 5 grouped tabs with icons (v147)
+
+Nine equal nav items became four groups plus "More", so it's clearer where things live:
+**Home** (Dashboard) · **Schedule** (Calendar, Weekly planner) · **Students** (Roster, Exams, student
+profiles) · **Money** (Ledger, Invoices) · **More** (Materials, Settings, Sign out).
+- Phones: a fixed bottom tab bar (icon + label) replaces the ☰ drawer; More opens a bottom sheet with
+  Settings, Materials and Sign out.
+- Desktop: the sidebar shows the four groups; Materials/Settings/Sign out sit at the foot.
+- Pages inside a group show as underline sub-tabs under the title (e.g. Calendar | Weekly planner).
+- Proper line icons (Lucide paths, inline SVG) replace the old text symbols. All in `mountShell()` in
+  `assets/js/app.js` (`GROUPS` / `EXTRA`) and the "Navigation v2" block at the end of `app.css`.
+
 ### 2026-10-17 — Sign out always visible in the phone menu (v146)
 
 On iPhone the ☰ drawer was sized with `100vh`, which is taller than the visible screen when Safari's

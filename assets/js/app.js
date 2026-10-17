@@ -5,17 +5,46 @@
 window.TL = (function () {
   var OWNER_ID = "ad4e2f4f-90c9-4fd9-8d51-e85b0e0bebb4";  // only this account sees Materials
   var isOwner = false;
-  var NAV = [
-    { id: "dashboard", label: "Dashboard", href: "app.html",    ic: "◧" },
-    { id: "planner",   label: "Planner",   href: "planner.html",  ic: "▦" },
-    { id: "calendar",  label: "Calendar",  href: "calendar.html", ic: "⊞" },
-    { id: "ledger",    label: "Ledger",    href: "ledger.html",   ic: "₪" },
-    { id: "students",  label: "Students",  href: "students.html", ic: "☺" },
-    { id: "exams",     label: "Exams",     href: "exams.html",    ic: "◷" },
-    { id: "invoices",  label: "Invoices",  href: "invoices.html", ic: "❑" },
-    { id: "materials", label: "Materials", href: "materials.html",ic: "▤", ownerOnly: true },
-    { id: "settings",  label: "Settings",  href: "settings.html", ic: "⚙" }
+  // Navigation is grouped by job. Each group is one tab (bottom bar on phones, sidebar on
+  // desktop); its pages show as sub-tabs under the page title.
+  var ICONS = {
+    home:     '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    schedule: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/>',
+    students: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    money:    '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+    more:     '<circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/><circle cx="5" cy="12" r="1.4"/>',
+    settings: '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
+    materials:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+    signout:  '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>'
+  };
+  function icon(name, size) {
+    var z = size || 20;
+    return '<svg class="i" width="' + z + '" height="' + z + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+           'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || "") + '</svg>';
+  }
+  var GROUPS = [
+    { id: "home",     label: "Home",     ic: "home",     pages: [ { id: "dashboard", label: "Dashboard", href: "app.html" } ] },
+    { id: "schedule", label: "Schedule", ic: "schedule", pages: [ { id: "calendar", label: "Calendar", href: "calendar.html" },
+                                                                  { id: "planner",  label: "Weekly planner", href: "planner.html" } ] },
+    { id: "students", label: "Students", ic: "students", pages: [ { id: "students", label: "Roster", href: "students.html" },
+                                                                  { id: "exams",    label: "Exams",  href: "exams.html" } ],
+      also: ["student"] },
+    { id: "money",    label: "Money",    ic: "money",    pages: [ { id: "ledger",   label: "Ledger",   href: "ledger.html" },
+                                                                  { id: "invoices", label: "Invoices", href: "invoices.html" } ] }
   ];
+  // Secondary destinations: sidebar footer on desktop, "More" sheet on phones.
+  var EXTRA = [
+    { id: "materials", label: "Materials", href: "materials.html", ic: "materials", ownerOnly: true },
+    { id: "settings",  label: "Settings",  href: "settings.html",  ic: "settings" }
+  ];
+  function groupOf(active) {
+    for (var i = 0; i < GROUPS.length; i++) {
+      var g = GROUPS[i];
+      if ((g.also || []).indexOf(active) > -1) return g;
+      for (var j = 0; j < g.pages.length; j++) if (g.pages[j].id === active) return g;
+    }
+    return null;
+  }
 
   var DEFAULT_BRAND = "TutorDeck";
   var brandName = DEFAULT_BRAND;   // set per-user from profiles.business_name in requireAuth
@@ -23,6 +52,7 @@ window.TL = (function () {
   // Two-letter badge from the brand: initials of the first two words
   // ("T-Leng Tuition" → "TL", "Raphael Tuition" → "RT"), else first two letters.
   function monogram(name) {
+    if (name === DEFAULT_BRAND) return "TD";
     var w = String(name || "").split(/[\s-]+/).filter(function (t) { return /[A-Za-z0-9]/.test(t); });
     var s = w.length >= 2 ? (w[0][0] + w[1][0]) : (w[0] || "").slice(0, 2);
     return s.toUpperCase() || "TD";
@@ -41,7 +71,7 @@ window.TL = (function () {
 
   function mono() {
     return '<span class="mono">' + esc(monogram(brandName)) + '</span><span><b>' +
-           esc(possessive(brandName)) + '</b><small>Dashboard</small></span>';
+           esc(brandName === DEFAULT_BRAND ? brandName : possessive(brandName)) + '</b><small>Dashboard</small></span>';
   }
 
   function configBanner() {
@@ -52,48 +82,82 @@ window.TL = (function () {
 
   // Build sidebar + topbar around the page's <div id="view">
   function mountShell(active, email, title, sub) {
-    var nav = NAV.filter(function (n) { return !n.ownerOnly || isOwner; }).map(function (n) {
-      return '<a href="' + n.href + '" class="' + (n.id === active ? "active" : "") +
-             '"><span class="ic">' + n.ic + '</span>' + n.label + "</a>";
+    var grp = groupOf(active);
+    var extras = EXTRA.filter(function (n) { return !n.ownerOnly || isOwner; });
+    var onExtra = extras.some(function (n) { return n.id === active; });
+
+    // Desktop sidebar: the four groups, then Materials / Settings / Sign out at the bottom.
+    var side = GROUPS.map(function (g) {
+      return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "active" : "") + '">' +
+             icon(g.ic) + '<span>' + g.label + '</span></a>';
     }).join("");
+    var sideExtra = extras.map(function (n) {
+      return '<a href="' + n.href + '" class="' + (n.id === active ? "active" : "") + '">' +
+             icon(n.ic, 18) + '<span>' + n.label + '</span></a>';
+    }).join("");
+
+    // Phone bottom bar: the four groups + More.
+    var bar = GROUPS.map(function (g) {
+      return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "on" : "") + '"' +
+             (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 22) + '<span>' + g.label + '</span></a>';
+    }).join("") +
+      '<button type="button" id="tl-more" class="' + (onExtra ? "on" : "") + '" aria-haspopup="dialog" aria-expanded="false">' +
+      icon("more", 22) + '<span>More</span></button>';
+
+    // Sub-tabs: the other pages in this group (hidden when the group has one page).
+    var subtabs = "";
+    if (grp && grp.pages.length > 1) {
+      subtabs = '<nav class="subtabs" aria-label="' + grp.label + '">' + grp.pages.map(function (p) {
+        return '<a href="' + p.href + '" class="' + (p.id === active ? "on" : "") + '"' +
+               (p.id === active ? ' aria-current="page"' : "") + '>' + p.label + '</a>';
+      }).join("") + '</nav>';
+    }
+
+    var sheet = '<div class="more-sheet" id="tl-sheet" role="dialog" aria-label="More">' +
+      '<div class="ms-grab"></div>' +
+      '<div class="ms-brand">' + mono() + '</div>' +
+      extras.map(function (n) {
+        return '<a href="' + n.href + '" class="' + (n.id === active ? "on" : "") + '">' + icon(n.ic) + '<span>' + n.label + '</span></a>';
+      }).join("") +
+      '<div class="ms-who">' + esc(email || "") + '</div>' +
+      '<button type="button" class="ms-out" id="tl-signout-m">' + icon("signout") + '<span>Sign out</span></button>' +
+      '</div>';
 
     var view = document.getElementById("view");
     var inner = view.innerHTML;
     var app = document.createElement("div");
     app.className = "app";
-    var burgerSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>';
     app.innerHTML = `
       <aside class="sidebar">
         <div class="brand">${mono()}</div>
-        <nav class="nav">${nav}</nav>
+        <nav class="nav" aria-label="Main">${side}</nav>
         <div class="side-foot">
-          <div class="who">${email || ""}</div>
-          <button id="tl-signout">Sign out</button>
+          <nav class="nav nav-extra">${sideExtra}</nav>
+          <div class="who">${esc(email || "")}</div>
+          <button id="tl-signout">${icon("signout", 16)}<span>Sign out</span></button>
         </div>
       </aside>
-      <div class="nav-scrim" id="tl-scrim"></div>
       <div class="main">
-        <div class="mnav">
-          <span class="mmono">${esc(monogram(brandName))}</span>
-          <span class="mbrand">${esc(brandName)}</span>
-          <button class="burger" id="tl-burger" aria-label="Open menu" aria-expanded="false">${burgerSvg}</button>
-        </div>
         <div class="topbar">
           <div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div>
         </div>
+        ${subtabs}
         ${configBanner()}
         <div class="content" id="content">${inner}</div>
-      </div>`;
+      </div>
+      <nav class="tabbar" aria-label="Main">${bar}</nav>
+      <div class="nav-scrim" id="tl-scrim"></div>
+      ${sheet}`;
     document.body.innerHTML = "";
     document.body.appendChild(app);
     document.getElementById("tl-signout").addEventListener("click", signOut);
-    // Mobile nav: hamburger opens a slide-in drawer; scrim / a tab / Esc closes it.
-    var burger = document.getElementById("tl-burger"), scrim = document.getElementById("tl-scrim");
-    function setNav(open) { app.classList.toggle("nav-open", open); if (burger) burger.setAttribute("aria-expanded", open ? "true" : "false"); }
-    if (burger) burger.addEventListener("click", function () { setNav(!app.classList.contains("nav-open")); });
-    if (scrim) scrim.addEventListener("click", function () { setNav(false); });
-    app.querySelectorAll(".nav a").forEach(function (a) { a.addEventListener("click", function () { setNav(false); }); });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape") setNav(false); });
+    document.getElementById("tl-signout-m").addEventListener("click", signOut);
+    // Phone "More" sheet: opens from the bottom; scrim / Esc / a link closes it.
+    var more = document.getElementById("tl-more"), scrim = document.getElementById("tl-scrim");
+    function setSheet(open) { app.classList.toggle("sheet-open", open); more.setAttribute("aria-expanded", open ? "true" : "false"); }
+    more.addEventListener("click", function () { setSheet(!app.classList.contains("sheet-open")); });
+    scrim.addEventListener("click", function () { setSheet(false); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") setSheet(false); });
   }
 
   async function requireAuth(active, init) {

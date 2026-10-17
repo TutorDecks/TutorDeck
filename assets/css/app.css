@@ -1,4 +1,4 @@
-/* v146 */
+/* v147 */
 /* =====================================================================
    TutorDeck — house style
    navy / gold / cream / teal · Georgia headings · sans body
@@ -36,7 +36,7 @@ body:has(#view)::after{content:"";position:fixed;top:50%;left:calc(236px + (100%
 @keyframes tl-spin{to{transform:rotate(360deg)}}
 @media(max-width:820px){
   /* mobile nav is a bottom bar — navy strip along the bottom + centred spinner above it */
-  body:has(#view)::before{background:linear-gradient(to top,var(--navy) 58px,var(--bg) 58px)}
+  body:has(#view)::before{background:linear-gradient(to top,var(--navy) 64px,var(--bg) 64px)}
   body:has(#view)::after{left:50%}
 }
 @media(prefers-reduced-motion:reduce){body:has(#view)::after{animation:none}}
@@ -52,7 +52,7 @@ body:has(#view)::after{content:"";position:fixed;top:50%;left:calc(236px + (100%
 .nav a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:9px;color:#dfe5f1;text-decoration:none;font-size:14.5px;font-weight:500;transition:background .12s,color .12s}
 .nav a:hover{background:rgba(255,255,255,.06);color:#fff}
 .nav a.active{background:var(--gold);color:#231a05}
-.nav a .ic{width:18px;text-align:center;opacity:.9}
+.nav a .i{flex:none;opacity:.92}
 .side-foot{margin-top:auto;padding-top:16px;border-top:1px solid rgba(255,255,255,.12);font-size:12.5px;color:#aeb9d2}
 .side-foot .who{color:#eaeefa;font-weight:600;word-break:break-all;margin-bottom:8px}
 .side-foot button{all:unset;cursor:pointer;color:var(--gold);font-weight:600;font-size:12.5px}
@@ -382,54 +382,6 @@ tr.inactive td.name{color:var(--muted)}
 a.snl{color:inherit;text-decoration:none;cursor:pointer}
 a.snl:hover{color:var(--gold);text-decoration:underline}
 
-/* ============================================================
-   Mobile navigation — fixed top bar + hamburger + slide-in drawer.
-   Authoritative: kept at end of file so it overrides the earlier
-   "sidebar becomes a pill row" mobile rules above.
-   ============================================================ */
-.mnav{display:none}        /* mobile top bar — shown only ≤820px */
-.nav-scrim{display:none}   /* drawer backdrop */
-@media(max-width:820px){
-  .app{grid-template-columns:1fr}
-  .main{padding-bottom:calc(58px + env(safe-area-inset-bottom,0px))}   /* clear the fixed bottom bar */
-
-  /* Bottom bar: compact brand on the left, hamburger on the right (thumb-reachable) */
-  .mnav{display:flex;align-items:center;gap:11px;position:fixed;left:0;right:0;bottom:0;top:auto;
-        min-height:58px;z-index:60;background:var(--navy);color:var(--cream);padding:0 6px 0 14px;
-        padding-bottom:env(safe-area-inset-bottom,0px);box-shadow:0 -2px 16px rgba(20,30,60,.22)}
-  .mnav .burger{all:unset;cursor:pointer;margin-left:auto;display:inline-flex;align-items:center;
-        justify-content:center;width:44px;height:44px;border-radius:10px;color:var(--cream)}
-  .mnav .burger:hover,.mnav .burger:active{background:rgba(255,255,255,.1)}
-  .mnav .mmono{width:30px;height:30px;border-radius:8px;border:1.5px solid var(--gold);color:var(--gold);
-        display:grid;place-items:center;font-family:var(--serif);font-weight:700;font-size:13px;flex:none}
-  .mnav .mbrand{font-family:var(--serif);font-weight:600;font-size:16px;color:#fff;min-width:0;
-        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-  /* Sidebar → off-canvas drawer sliding in from the RIGHT (matches the bottom-right trigger) */
-  .sidebar{position:fixed;top:0;right:0;bottom:0;left:auto;height:100vh;height:100dvh;width:262px;max-width:82vw;
-        flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:0;padding:18px 14px;
-        z-index:70;transform:translateX(100%);transition:transform .24s ease;
-        overflow-y:auto;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 0 44px rgba(0,0,0,.4)}
-  .app.nav-open .sidebar{transform:translateX(0)}
-  .brand{margin:0;padding:2px 6px 16px}
-  .nav{flex-direction:column;flex-wrap:nowrap;width:auto;overflow:visible;gap:3px;margin-top:2px}
-  .nav a{flex:0 0 auto;white-space:nowrap;padding:12px 12px;font-size:15px}
-  .side-foot{order:2;margin-top:auto;padding-top:16px;border-top:1px solid rgba(255,255,255,.12);display:block;padding-bottom:4px}
-  .side-foot button{display:inline-block;padding:10px 0;font-size:15px}
-  .side-foot .who{display:block;margin-bottom:8px}
-
-  /* Backdrop behind the open drawer */
-  .nav-scrim{display:block;position:fixed;inset:0;background:rgba(19,24,40,.5);z-index:65;
-        opacity:0;visibility:hidden;transition:opacity .24s ease}
-  .app.nav-open .nav-scrim{opacity:1;visibility:visible}
-
-  /* stop the page scrolling behind an open drawer */
-  .app.nav-open{overflow:hidden}
-}
-@media(max-width:820px) and (prefers-reduced-motion:reduce){
-  .sidebar,.nav-scrim{transition:none}
-}
-
 /* multi-category filter bars (ledger records, students roster) */
 .filters{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:13px;align-items:center}
 .filters input[type=search]{flex:1 1 170px;min-width:0;padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;font-family:inherit}
@@ -443,4 +395,70 @@ a.snl:hover{color:var(--gold);text-decoration:underline}
 @media(max-width:820px){
   input,select,textarea{font-size:16px}
   .filters input[type=search],.filters select{font-size:16px}
+}
+
+/* ============================================================
+   Navigation v2 (v147) — grouped tabs.
+   Desktop: sidebar with 4 groups + Materials/Settings at the foot.
+   Phone (≤820px): fixed bottom tab bar (Home · Schedule · Students ·
+   Money · More); More opens a bottom sheet. Pages inside a group show
+   as sub-tabs under the title. Authoritative: keep at end of file.
+   ============================================================ */
+.side-foot .nav-extra{margin:0 0 12px;gap:2px}
+.side-foot .nav-extra a{padding:8px 12px;font-size:13.5px;color:#c9d2e6}
+.side-foot .nav-extra a.active{background:rgba(255,255,255,.1);color:#fff}
+.side-foot #tl-signout{display:inline-flex;align-items:center;gap:7px}
+
+/* sub-tabs: underline style, distinct from in-page .seg toggles */
+.subtabs{display:flex;gap:4px;padding:0 32px;border-bottom:1px solid var(--line);margin-bottom:6px;
+  overflow-x:auto;scrollbar-width:none}
+.subtabs::-webkit-scrollbar{display:none}
+.subtabs a{position:relative;padding:10px 12px 11px;font-size:14.5px;font-weight:600;color:var(--muted);
+  text-decoration:none;white-space:nowrap;border-radius:8px 8px 0 0}
+.subtabs a:hover{color:var(--navy)}
+.subtabs a.on{color:var(--navy)}
+.subtabs a.on::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2.5px;
+  border-radius:2px;background:var(--gold)}
+
+.tabbar,.more-sheet,.nav-scrim{display:none}
+
+@media(max-width:820px){
+  .app{display:block;min-height:100vh}
+  .sidebar{display:none}
+  .main{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+  .subtabs{padding:0 14px}
+  .subtabs a{flex:1;text-align:center;font-size:15px}
+
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--navy);
+    padding:0 4px env(safe-area-inset-bottom,0px);box-shadow:0 -2px 16px rgba(20,30,60,.22)}
+  .tabbar a,.tabbar button{all:unset;box-sizing:border-box;flex:1;min-width:0;height:64px;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    color:#aeb9d2;font-size:11px;font-weight:600;letter-spacing:.01em;-webkit-tap-highlight-color:transparent}
+  .tabbar .i{transition:transform .15s}
+  .tabbar a.on,.tabbar button.on{color:var(--gold)}
+  .tabbar a:active .i,.tabbar button:active .i{transform:scale(.9)}
+
+  .nav-scrim{display:block;position:fixed;inset:0;background:rgba(19,24,40,.45);z-index:65;
+    opacity:0;visibility:hidden;transition:opacity .2s ease}
+  .more-sheet{display:block;position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--paper);
+    border-radius:18px 18px 0 0;padding:8px 14px calc(14px + env(safe-area-inset-bottom,0px));
+    transform:translateY(100%);transition:transform .24s ease;box-shadow:0 -10px 40px rgba(0,0,0,.25)}
+  .app.sheet-open .nav-scrim{opacity:1;visibility:visible}
+  .app.sheet-open .more-sheet{transform:translateY(0)}
+  .ms-grab{width:38px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 12px}
+  .ms-brand{display:flex;align-items:center;gap:11px;padding:2px 6px 14px;border-bottom:1px solid var(--line);margin-bottom:6px}
+  .ms-brand .mono{width:34px;height:34px;border-radius:9px;border:1.5px solid var(--gold);color:var(--gold);
+    display:grid;place-items:center;font-family:var(--serif);font-weight:700;font-size:15px;flex:none}
+  .ms-brand b{font-family:var(--serif);font-size:16px;color:var(--navy)}
+  .ms-brand small{display:block;color:var(--muted);font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+  .more-sheet a,.more-sheet .ms-out{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:13px;
+    width:100%;padding:14px 8px;font-size:16px;font-weight:600;color:var(--ink);border-radius:10px;cursor:pointer}
+  .more-sheet a.on{color:var(--navy);background:var(--cream)}
+  .more-sheet a .i,.more-sheet .ms-out .i{color:var(--muted)}
+  .ms-who{font-size:13px;color:var(--muted);padding:12px 8px 2px;border-top:1px solid var(--line);margin-top:6px;word-break:break-all}
+  .more-sheet .ms-out{color:var(--owed)}
+  .more-sheet .ms-out .i{color:var(--owed)}
+}
+@media(max-width:820px) and (prefers-reduced-motion:reduce){
+  .more-sheet,.nav-scrim{transition:none}
 }
