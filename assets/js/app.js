@@ -189,7 +189,7 @@ window.TL = (function () {
                  planner: ["Weekly planner", "Mon–Sun schedule"],
                  calendar: ["Calendar", "Lessons across the week"],
                  ledger: ["Ledger", "Lessons, payments & projections"],
-                 settings: ["Settings", "Business & PayNow details"],
+                 settings: ["Settings", "Business, payments & your account"],
                  exams: ["Exams", "Upcoming assessments"],
                  invoices: ["Invoices", "Saved invoices"],
                  materials: ["Teaching materials", "Your resource library"],

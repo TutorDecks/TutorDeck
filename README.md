@@ -199,6 +199,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Settings: grouped cards, one Save (v179)
+
+Same fields and ids, regrouped: **Business** (name, invoice prefix, financial year), **Getting paid**
+(PayNow type + ID with "Parents pay to …" preview; bank transfer folded into a "Bank transfer details"
+expander), **WhatsApp messages** (templates in an expander), then a sticky **Save changes** bar (teal;
+floats above the phone tab bar). Two-factor and Your data are separate cards below; their buttons are
+secondary, and Delete account is red text. Fields sit two-up on desktop.
+
 ### 2026-10-18 — Exams: list + detail sheet (v178)
 
 Each exam is one row: date block (day + month, year shown if not this year), student, type · subject ·
