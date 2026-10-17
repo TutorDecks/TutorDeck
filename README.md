@@ -199,6 +199,17 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Invoices redesign: list + detail sheet (v169)
+
+- Summary strip: **Paid** · **Awaiting payment** · **Proof attached (x / y)** for the chosen period.
+- One control row: **All | Awaiting · N | Paid**, a period picker (This year / Last year / All time /
+  Custom dates…) and ⋯ → Export CSV. Period now counts paid invoices by paid date and awaiting ones by
+  issue date (previously any date range silently hid every unpaid invoice).
+- Each invoice is one row (initials, student, invoice no · issued date, amount, Paid <date> / Awaiting chip,
+  📎 when proof is attached). Tap → sheet (bottom on phones, right panel on desktop) with **Mark as paid**
+  (primary) / Mark as unpaid, Print / Save PDF, Open Ledger, paid date, proof attach/view/remove, the invoice
+  preview, and Delete. All actions reuse the existing functions (togglePaid still syncs lessons).
+
 ### 2026-10-17 — Needs notes above Today on phones (v168)
 
 Phone order is now Needs notes (only shown when something is missing notes) → Today → Tomorrow → Exams.

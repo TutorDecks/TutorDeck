@@ -1,6 +1,6 @@
 // Invoices — list saved invoices; re-view, re-print, mark paid, delete.
 (function () {
-  var userId=null, nameById={}, invoices=[], current=null, fFrom="", fTo="", proofTarget=null;
+  var userId=null, nameById={}, invoices=[], current=null, fFrom="", fTo="", fStat="", openId=null, proofTarget=null;
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
   function prettyDate(s){if(!s)return"—";var p=s.split("-");var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return (+p[2])+" "+mo[(+p[1])-1]+" "+p[0];}
@@ -12,13 +12,6 @@
     var parts=t.split("_");
     return parts.length>=3?parts[1]:"—";
   }
-
-  function openView(inv){
-    current=inv;
-    $("inv-body").innerHTML=(inv.data&&inv.data.html)||"<p>Snapshot unavailable.</p>";
-    $("inv-backdrop").classList.add("on");
-  }
-  function closeView(){$("inv-backdrop").classList.remove("on");current=null;}
 
   function printInvoice(){
     if(!current||!current.data||!current.data.html)return;
@@ -65,13 +58,15 @@
   // ---- income filter (by paid date) ----
   function inRange(v){
     if(!fFrom && !fTo) return true;
-    var d=v.paid_date||"";
-    if(!d) return false;                 // a range is set → only paid invoices with a paid date
+    // paid invoices count by the day they were paid; awaiting ones by the day they were issued
+    var d=v.status==="paid"?(v.paid_date||v.issued_date||""):(v.issued_date||"");
+    if(!d) return false;
     if(fFrom && d<fFrom) return false;
     if(fTo && d>fTo) return false;
     return true;
   }
-  function filtered(){ return invoices.filter(inRange); }
+  function inPeriod(){ return invoices.filter(inRange); }
+  function filtered(){ return inPeriod().filter(function(v){ return !fStat || (fStat==="paid"?v.status==="paid":v.status!=="paid"); }); }
 
   // ---- transaction screenshot (proof) ----
   function startAttach(id){ proofTarget=id; var f=$("proof-file"); f.value=""; f.click(); }
@@ -115,52 +110,90 @@
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
   }
 
+  function initials(n){var w=String(n||"").split(/\s+/).filter(Boolean);return ((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();}
+  var CLIP='<svg class="iv-clip" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Proof attached"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>';
+  function shortDate(s){if(!s)return"";var p=s.split("-");var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return (+p[2])+" "+mo[(+p[1])-1];}
+
   function render(){
-    var table=$("i-table"),empty=$("i-empty"),body=$("i-body");
-    var list=filtered(), paidList=list.filter(function(v){return v.status==="paid";});
-    var income=paidList.reduce(function(t,v){return t+Number(v.total||0);},0);
-    var withProof=paidList.filter(function(v){return v.proof_path;}).length, ranged=!!(fFrom||fTo);
-    $("i-count").textContent=list.length?list.length+(list.length===1?" invoice":" invoices"):(invoices.length?"none in range":"");
-    $("i-income").textContent=paidList.length
-      ? "Income"+(ranged?" in range":"")+": "+TL.sgd(income)+" · "+paidList.length+" paid · "+withProof+"/"+paidList.length+" with proof"
-      : "";
+    var period=inPeriod(), list=filtered();
+    var paid=period.filter(function(v){return v.status==="paid";}), wait=period.filter(function(v){return v.status!=="paid";});
+    var sum=function(a){return a.reduce(function(t,v){return t+Number(v.total||0);},0);};
+    $("iv-paid").textContent=TL.sgd(sum(paid)); $("iv-paid-n").textContent=paid.length+(paid.length===1?" invoice":" invoices");
+    $("iv-wait").textContent=TL.sgd(sum(wait)); $("iv-wait-n").textContent=wait.length+(wait.length===1?" invoice":" invoices");
+    $("iv-proof").textContent=paid.filter(function(v){return v.proof_path;}).length+" / "+paid.length;
+    $("iv-wait-c").textContent=wait.length?" · "+wait.length:"";
+    document.querySelectorAll("#iv-seg [data-st]").forEach(function(b){b.classList.toggle("on",b.dataset.st===fStat);});
+    $("i-count").textContent=list.length+(list.length===1?" invoice":" invoices");
+    var box=$("iv-list"), empty=$("i-empty");
     if(!list.length){
-      table.style.display="none"; empty.style.display="block";
-      empty.querySelector("h3").textContent=invoices.length?"No invoices match this range":"No saved invoices yet";
-      return;
+      box.style.display="none"; empty.style.display="block";
+      empty.querySelector("h3").textContent=invoices.length?"No invoices here":"No saved invoices yet";
+      empty.querySelector("p").style.display=invoices.length?"none":"";
+    } else {
+      empty.style.display="none"; box.style.display="";
+      box.innerHTML=list.map(function(v){
+        var isPaid=v.status==="paid", nm=studentName(v);
+        var st=isPaid?'<span class="iv-st paid">Paid'+(v.paid_date?' '+shortDate(v.paid_date):'')+'</span>':'<span class="iv-st wait">Awaiting</span>';
+        return '<button type="button" class="iv-row" data-open="'+v.id+'">'+
+          '<span class="iv-av" aria-hidden="true">'+esc(initials(nm))+'</span>'+
+          '<span class="iv-main"><span class="iv-name">'+esc(nm)+'</span><span class="iv-sub">'+esc(v.invoice_no)+' · issued '+shortDate(v.issued_date)+'</span></span>'+
+          (v.proof_path?CLIP:'')+
+          '<span class="iv-right2"><span class="iv-amt">'+TL.sgd(v.total)+'</span>'+st+'</span></button>';
+      }).join("");
+      box.querySelectorAll("[data-open]").forEach(function(b){b.addEventListener("click",function(){openSheet(b.dataset.open);});});
     }
-    empty.style.display="none"; table.style.display="table";
-    body.innerHTML=list.map(function(v){
-      var paid=v.status==="paid";
-      var badge=paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Issued</span>';
-      var pd=paid?' <input type="date" data-pd="'+v.id+'" value="'+(v.paid_date||"")+'" title="Paid on" style="font-size:12px;padding:2px 5px;border:1px solid var(--line);border-radius:6px;margin-left:6px;color:var(--muted)">':'';
-      var proof=v.proof_path
-        ? '<span style="display:inline-flex;align-items:center;gap:14px">'+
-            '<button class="tact" data-vproof="'+v.id+'" title="View transaction screenshot">📎 View</button>'+
-            '<button class="tact del" data-rproof="'+v.id+'" title="Detach screenshot" aria-label="Detach screenshot">✕ Detach</button>'+
-          '</span>'
-        : '<button class="tact" data-aproof="'+v.id+'">Attach</button>';
-      return '<tr>'+
-        '<td data-label="Issued">'+prettyDate(v.issued_date)+'</td>'+
-        '<td class="name" data-label="Student">'+(v.student_id?'<a class="snl" href="student.html?id='+v.student_id+'">'+esc(studentName(v))+'</a>':esc(studentName(v)))+'</td>'+
-        '<td data-label="Invoice no.">'+esc(v.invoice_no)+'</td>'+
-        '<td data-label="Total">'+TL.sgd(v.total)+'</td>'+
-        '<td data-label="Proof">'+proof+'</td>'+
-        '<td data-label="Status">'+badge+pd+'</td>'+
-        '<td class="acts">'+
-          '<button class="tact" data-view="'+v.id+'">View</button>'+
-          '<button class="tact" data-paid="'+v.id+'">'+(paid?"Mark unpaid":"Mark paid")+'</button>'+
-          '<button class="tact del" data-del="'+v.id+'">Delete</button>'+
-        '</td></tr>';
-    }).join("");
-    function find(id){return invoices.filter(function(v){return v.id===id;})[0];}
-    body.querySelectorAll("[data-view]").forEach(function(b){b.addEventListener("click",function(){openView(find(b.dataset.view));});});
-    body.querySelectorAll("[data-paid]").forEach(function(b){b.addEventListener("click",function(){togglePaid(find(b.dataset.paid));});});
-    body.querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(){del(b.dataset.del);});});
-    body.querySelectorAll("[data-pd]").forEach(function(inp){inp.addEventListener("change",function(){updatePaidDate(inp.dataset.pd,inp.value);});});
-    body.querySelectorAll("[data-aproof]").forEach(function(b){b.addEventListener("click",function(){startAttach(b.dataset.aproof);});});
-    body.querySelectorAll("[data-vproof]").forEach(function(b){b.addEventListener("click",function(){viewProof(find(b.dataset.vproof));});});
-    body.querySelectorAll("[data-rproof]").forEach(function(b){b.addEventListener("click",function(){removeProof(find(b.dataset.rproof));});});
+    if(openId) renderSheet();
+  }
+
+  // ---- invoice sheet ----
+  function find(id){return invoices.filter(function(v){return v.id===id;})[0];}
+  function openSheet(id){ openId=id; renderSheet(); $("iv-sheet").classList.add("on"); document.body.classList.add("sheet-lock"); }
+  function closeSheet(){ openId=null; current=null; $("iv-sheet").classList.remove("on"); document.body.classList.remove("sheet-lock"); }
+  function renderSheet(){
+    var v=find(openId); if(!v){ closeSheet(); return; }
+    current=v;
+    var isPaid=v.status==="paid";
+    $("iv-s-name").textContent=studentName(v);
+    $("iv-s-meta").textContent=v.invoice_no+" · issued "+prettyDate(v.issued_date);
+    $("iv-s-amt").textContent=TL.sgd(v.total);
+    $("iv-s-amt").style.color=isPaid?"var(--accent)":"var(--owed)";
+    var proof=v.proof_path
+      ? '<span><button class="tact" data-vproof>View</button><button class="tact del" data-rproof>Remove</button></span>'
+      : '<button class="tact" data-aproof>Attach screenshot</button>';
+    $("iv-s-body").innerHTML=
+      '<div class="ivs-acts">'+
+        (isPaid?'<button class="btn wide" data-paid>Mark as unpaid</button>'
+               :'<button class="btn btn-gold wide" data-paid>Mark as paid</button>')+
+        '<button class="btn" data-print>Print / Save PDF</button>'+
+        '<a class="btn" href="ledger.html">Open Ledger</a>'+
+      '</div>'+
+      '<div class="ivs-box">'+
+        '<div class="ivs-line"><span class="k">Status</span>'+(isPaid?'<span class="iv-st paid">Paid</span>':'<span class="iv-st wait">Awaiting payment</span>')+'</div>'+
+        (isPaid?'<div class="ivs-line"><span class="k">Paid on</span><input type="date" data-pd value="'+(v.paid_date||"")+'"></div>':'')+
+        '<div class="ivs-line"><span class="k">Payment proof</span>'+proof+'</div>'+
+      '</div>'+
+      '<div class="ivs-prev">'+((v.data&&v.data.html)||'<p class="muted">Snapshot unavailable.</p>')+'</div>'+
+      '<button class="ivs-del" data-del>Delete invoice</button>';
+    var B=$("iv-s-body");
+    function on(sel,fn){var el=B.querySelector(sel);if(el)el.addEventListener("click",fn);}
+    on("[data-paid]",function(){togglePaid(v);});
+    on("[data-print]",printInvoice);
+    on("[data-aproof]",function(){startAttach(v.id);});
+    on("[data-vproof]",function(){viewProof(v);});
+    on("[data-rproof]",function(){removeProof(v);});
+    on("[data-del]",function(){del(v.id);});
+    var pd=B.querySelector("[data-pd]"); if(pd)pd.addEventListener("change",function(){updatePaidDate(v.id,pd.value).then(render);});
+  }
+
+  // ---- period picker ----
+  function setPeriod(p){
+    var y=new Date().getFullYear();
+    $("iv-custom").classList.toggle("on",p==="custom");
+    if(p==="year"){fFrom=y+"-01-01";fTo=y+"-12-31";}
+    else if(p==="lastyear"){fFrom=(y-1)+"-01-01";fTo=(y-1)+"-12-31";}
+    else if(p==="all"){fFrom="";fTo="";}
+    else {fFrom=$("f-from").value;fTo=$("f-to").value;}
+    render();
   }
 
   async function load(){
@@ -173,14 +206,17 @@
 
   function init(user){
     userId=user.id;
-    $("inv-close").addEventListener("click",closeView);
-    $("inv-backdrop").addEventListener("click",function(e){if(e.target===$("inv-backdrop"))closeView();});
-    $("inv-print").addEventListener("click",printInvoice);
+    $("iv-s-close").addEventListener("click",closeSheet);
+    $("iv-sheet").addEventListener("click",function(e){if(e.target===$("iv-sheet"))closeSheet();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&openId)closeSheet();});
+    document.querySelectorAll("#iv-seg [data-st]").forEach(function(b){b.addEventListener("click",function(){fStat=b.dataset.st;render();});});
+    $("iv-period").addEventListener("change",function(){setPeriod(this.value);});
     $("f-from").addEventListener("change",function(){fFrom=this.value;render();});
     $("f-to").addEventListener("change",function(){fTo=this.value;render();});
-    $("f-year").addEventListener("click",function(){var y=new Date().getFullYear();fFrom=y+"-01-01";fTo=y+"-12-31";$("f-from").value=fFrom;$("f-to").value=fTo;render();});
-    $("f-clear").addEventListener("click",function(){fFrom="";fTo="";$("f-from").value="";$("f-to").value="";render();});
-    $("i-csv").addEventListener("click",exportCSV);
+    var dd=$("iv-more"), ddb=dd.querySelector("button");
+    ddb.addEventListener("click",function(e){e.stopPropagation();dd.classList.toggle("open");});
+    document.addEventListener("click",function(){dd.classList.remove("open");});
+    $("i-csv").addEventListener("click",function(){dd.classList.remove("open");exportCSV();});
     $("proof-file").addEventListener("change",onProofFile);
     load();
   }
