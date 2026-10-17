@@ -418,38 +418,45 @@
         updateRecSelBar();
       });
     });
-    // Mobile: rows are compact — tapping one (not a link/button) opens its detail sheet.
+    // Tapping a row (not its checkbox or the student link) opens the lesson sheet.
     body.querySelectorAll("tr[data-lid]").forEach(function(tr){
       tr.addEventListener("click",function(e){
-        if(!window.matchMedia("(max-width:820px)").matches)return;
         if(e.target.closest("a,button,input,label"))return;
         openRecDetail(tr.dataset.lid);
       });
     });
     updateRecSelBar();
   }
-  // Read-friendly detail sheet for one lesson (mobile), carrying the same row actions.
+  // Lesson detail sheet (every screen size): who/when up top, details, then the actions.
   function openRecDetail(id){
     var l=monthById[id]; if(!l)return;
-    var badge=l.status==="cancelled"
-      ?'<span class="kind-tag">cancelled</span>'+(l.amount>0?(l.paid?' <span class="badge paid">Paid</span>':' <span class="badge owed">Unpaid</span>'):'')
-      :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
-    if(l.postponed)badge+=' <span class="kind-tag" style="background:#B45309;color:#fff">postponed</span>';
-    $("rd-title").textContent=recDate(l.lesson_date);
+    var canc=l.status==="cancelled", sched=l.status==="scheduled";
+    var tag=canc?'<span class="rd-tag">Cancelled</span>':(l.paid?'<span class="rd-tag paid">Paid</span>':(sched?'<span class="rd-tag">Upcoming</span>':'<span class="rd-tag owed">Unpaid</span>'));
+    if(l.postponed)tag+=' <span class="rd-tag post">Postponed</span>';
+    if(l.one_off)tag+=' <span class="rd-tag">✦ One-off</span>';
     var time=(l.start_time&&l.end_time)?(hm(l.start_time)+"–"+hm(l.end_time)):"";
-    var items=[["Student",esc(nameById[l.student_id]||"—")],["Subject",l.subject?esc(l.subject):"—"],["Level",l.level?esc(l.level):"—"]];
-    if(time)items.push(["Time",time]);
-    items.push([l.status==="cancelled"?"Compensation":"Amount","<b>"+TL.sgd(l.amount)+"</b>"],["Status",badge]);
+    $("rd-title").textContent=nameById[l.student_id]||"Lesson";
+    $("rd-sub").textContent=recDate(l.lesson_date)+(time?" · "+time:"");
+    var amt=$("rd-amt"); amt.textContent=TL.sgd(l.amount);
+    amt.className="owe-total"+(l.paid?" paid":((canc||sched||!(l.amount>0))?" plain":""));
+    var items=[["Subject",l.subject?esc(l.subject):"—"],["Level",l.level?esc(l.level):"—"]];
+    if(canc)items.push(["Compensation",TL.sgd(l.amount)]);
+    items.push(["Status",tag]);
     $("rd-body").innerHTML='<div class="rd-list">'+items.map(function(r){return '<div class="rd-row"><span class="rd-k">'+r[0]+'</span><span class="rd-v">'+r[1]+'</span></div>';}).join("")+'</div>';
-    var canc=l.status==="cancelled"?'<button class="btn" id="rd-restore">Restore</button>':'<button class="btn" id="rd-cancel" style="color:var(--gold-2)">Cancel lesson</button>';
-    $("rd-actions").innerHTML='<button class="btn" id="rd-del" style="color:var(--owed)">Delete</button><span style="display:inline-flex;gap:8px;margin-left:auto">'+canc+'<button class="btn btn-primary" id="rd-edit">Postpone / edit</button></span>';
+    var canPay=!l.paid&&!canc&&l.amount>0;
+    $("rd-actions").innerHTML=(canPay?'<button class="btn rd-primary" id="rd-pay">Mark '+TL.sgd(l.amount)+' as paid</button>':'')+
+      '<button class="btn" id="rd-edit">Edit or postpone</button>'+
+      (canc?'<button class="btn" id="rd-restore">Restore lesson</button>':'<button class="btn" id="rd-cancel">Cancel lesson</button>')+
+      '<a class="btn" href="student.html?id='+encodeURIComponent(l.student_id)+'" style="grid-column:1/-1;text-decoration:none">Open student profile</a>'+
+      '<button class="btn rd-del" id="rd-del">Delete lesson</button>';
     $("rd-edit").onclick=function(){closeRecDetail();openAdd(true,l);};
     $("rd-del").onclick=function(){closeRecDetail();deleteLesson(id);};
+    var rp=$("rd-pay");if(rp)rp.onclick=function(){closeRecDetail();openPayModal([id]);};
     var rc=$("rd-cancel");if(rc)rc.onclick=function(){closeRecDetail();cancelLesson(id);};
     var rr=$("rd-restore");if(rr)rr.onclick=function(){closeRecDetail();restoreLesson(l);};
-    $("rec-detail").classList.add("on");
+    $("rec-detail").classList.add("on");document.body.classList.add("sheet-lock");
   }
-  function closeRecDetail(){$("rec-detail").classList.remove("on");}
+  function closeRecDetail(){$("rec-detail").classList.remove("on");if(!$("owe-sheet").classList.contains("on"))document.body.classList.remove("sheet-lock");}
   function updateRecSelBar(){
     var n=Object.keys(selectedRecords).length;
     var btn=$("rec-delsel-btn");
@@ -1257,6 +1264,7 @@
     on("owe-close","click",closeOwe);
     on("owe-sheet","click",function(e){if(e.target===$("owe-sheet"))closeOwe();});
     document.addEventListener("keydown",function(e){if(e.key==="Escape"&&openOweKey)closeOwe();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&$("rec-detail").classList.contains("on"))closeRecDetail();});
     on("seg-rec","click",function(){setLedgerMode("rec");});
     var savedMode="out";
     try{savedMode=localStorage.getItem("tl_ledger_mode")||"out";}catch(e){}

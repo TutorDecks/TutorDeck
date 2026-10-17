@@ -199,6 +199,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Records: one lesson sheet everywhere (v177)
+
+Tapping any Records row (phone **and** desktop) opens the lesson sheet: student + date · time and the
+amount up top, subject/level/status, then **Mark $X as paid** (teal, only when unpaid), Edit or
+postpone, Cancel/Restore, Open student profile, and Delete (red text). Desktop's hover Edit/Cancel/
+Delete links are retired (checkboxes for bulk actions stay). Phone rows lead with the student name.
+
 ### 2026-10-18 — Schedule redesign: Calendar + Planner (v176)
 
 - **Calendar:** one toolbar (‹ range › · Today · Week | Month · **Add lesson**); the status filters
