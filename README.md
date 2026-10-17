@@ -199,6 +199,11 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Cleaner gaps between Who owes you cards (v174)
+
+Row cards used the big two-layer page shadow, which stacked into a grey band between rows. They now use
+a hairline shadow only.
+
 ### 2026-10-17 — Calmer not-invoiced rows (v173)
 
 One amber cue per row: the outline stays, "Not invoiced" becomes plain amber text (no pill), and the

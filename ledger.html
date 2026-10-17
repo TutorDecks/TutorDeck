@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=173">
+<link rel="stylesheet" href="assets/css/app.css?v=174">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -165,7 +165,7 @@
   @media(max-width:820px){ .owe-sub .lw,.owe-sub .lc{display:none} .owe-sub{white-space:nowrap!important} }
   /* v172: rows are separate cards; not-invoiced ones carry an amber outline (same cue as the sheet's Send invoice) */
   .owe-list{background:transparent!important;border:none!important;box-shadow:none!important;overflow:visible!important;display:flex;flex-direction:column;gap:8px}
-  .owe-list .owe-row{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+  .owe-list .owe-row{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(20,30,60,.05)}
   .owe-list .owe-row:first-child{border-top:1px solid var(--line)}
   .owe-list .owe-row.need{border:1.5px solid var(--warn)}
   .owe-list .owe-row:hover{background:#FDFCFA}
@@ -431,10 +431,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=173"></script>
-<script src="assets/js/supabase.js?v=173"></script>
-<script src="assets/js/app.js?v=173"></script>
-<script src="assets/js/paynow.js?v=173"></script>
-<script src="assets/js/ledger.js?v=173"></script>
+<script src="assets/js/config.js?v=174"></script>
+<script src="assets/js/supabase.js?v=174"></script>
+<script src="assets/js/app.js?v=174"></script>
+<script src="assets/js/paynow.js?v=174"></script>
+<script src="assets/js/ledger.js?v=174"></script>
 </body>
 </html>
