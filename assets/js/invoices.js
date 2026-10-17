@@ -1,6 +1,7 @@
 // Invoices — list saved invoices; re-view, re-print, mark paid, delete.
 (function () {
   var userId=null, nameById={}, invoices=[], current=null, fFrom="", fTo="", fStat="", openId=null, proofTarget=null;
+  var hasSent=true;   // false until db/migration_invoice_sent.sql has been run (sent_at column)
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
   function prettyDate(s){if(!s)return"—";var p=s.split("-");var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return (+p[2])+" "+mo[(+p[1])-1]+" "+p[0];}
@@ -66,7 +67,13 @@
     return true;
   }
   function inPeriod(){ return invoices.filter(inRange); }
-  function filtered(){ return inPeriod().filter(function(v){ return !fStat || (fStat==="paid"?v.status==="paid":v.status!=="paid"); }); }
+  function isSent(v){ return !!v.sent_at; }
+  function filtered(){ return inPeriod().filter(function(v){
+    if(!fStat) return true;
+    if(fStat==="paid") return v.status==="paid";
+    if(fStat==="unsent") return v.status!=="paid" && !isSent(v);
+    return v.status!=="paid";
+  }); }
 
   // ---- transaction screenshot (proof) ----
   function startAttach(id){ proofTarget=id; var f=$("proof-file"); f.value=""; f.click(); }
@@ -100,9 +107,9 @@
   function csvCell(s){ s=String(s==null?"":s); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
   function exportCSV(){
     var list=filtered();
-    var lines=[["Paid date","Issued date","Student","Invoice no.","Total","Status","Proof"].join(",")];
+    var lines=[["Paid date","Issued date","Student","Invoice no.","Total","Status","Sent","Payment screenshot"].join(",")];
     list.forEach(function(v){
-      lines.push([v.paid_date||"",v.issued_date||"",studentName(v),v.invoice_no,Number(v.total||0).toFixed(2),v.status,v.proof_path?"yes":"no"].map(csvCell).join(","));
+      lines.push([v.paid_date||"",v.issued_date||"",studentName(v),v.invoice_no,Number(v.total||0).toFixed(2),v.status,v.sent_at?String(v.sent_at).slice(0,10):"",v.proof_path?"yes":"no"].map(csvCell).join(","));
     });
     var blob=new Blob([lines.join("\n")],{type:"text/csv"});
     var a=document.createElement("a"); a.href=URL.createObjectURL(blob);
@@ -111,7 +118,7 @@
   }
 
   function initials(n){var w=String(n||"").split(/\s+/).filter(Boolean);return ((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();}
-  var CLIP='<svg class="iv-clip" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Proof attached"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>';
+  var CLIP='<svg class="iv-clip" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Payment screenshot attached"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>';
   function shortDate(s){if(!s)return"";var p=s.split("-");var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return (+p[2])+" "+mo[(+p[1])-1];}
 
   function render(){
@@ -120,7 +127,10 @@
     var sum=function(a){return a.reduce(function(t,v){return t+Number(v.total||0);},0);};
     $("iv-paid").textContent=TL.sgd(sum(paid)); $("iv-paid-n").textContent=paid.length+(paid.length===1?" invoice":" invoices");
     $("iv-wait").textContent=TL.sgd(sum(wait)); $("iv-wait-n").textContent=wait.length+(wait.length===1?" invoice":" invoices");
-    $("iv-proof").textContent=paid.filter(function(v){return v.proof_path;}).length+" / "+paid.length;
+    var unsent=wait.filter(function(v){return !isSent(v);});
+    $("iv-unsent").textContent=hasSent?String(unsent.length):"—";
+    $("iv-unsent-n").textContent=hasSent?TL.sgd(sum(unsent))+" waiting to go out":"run the sent-date update";
+    $("iv-unsent-c").textContent=hasSent&&unsent.length?" · "+unsent.length:"";
     $("iv-wait-c").textContent=wait.length?" · "+wait.length:"";
     document.querySelectorAll("#iv-seg [data-st]").forEach(function(b){b.classList.toggle("on",b.dataset.st===fStat);});
     $("i-count").textContent=list.length+(list.length===1?" invoice":" invoices");
@@ -133,7 +143,9 @@
       empty.style.display="none"; box.style.display="";
       box.innerHTML=list.map(function(v){
         var isPaid=v.status==="paid", nm=studentName(v);
-        var st=isPaid?'<span class="iv-st paid">Paid'+(v.paid_date?' '+shortDate(v.paid_date):'')+'</span>':'<span class="iv-st wait">Awaiting</span>';
+        var st=isPaid?'<span class="iv-st paid">Paid'+(v.paid_date?' '+shortDate(v.paid_date):'')+'</span>'
+          :(!hasSent?'<span class="iv-st wait">Awaiting</span>'
+          :(isSent(v)?'<span class="iv-st sent">Sent '+shortDate(String(v.sent_at).slice(0,10))+'</span>':'<span class="iv-st unsent">Not sent</span>'));
         return '<button type="button" class="iv-row" data-open="'+v.id+'">'+
           '<span class="iv-av" aria-hidden="true">'+esc(initials(nm))+'</span>'+
           '<span class="iv-main"><span class="iv-name">'+esc(nm)+'</span><span class="iv-sub">'+esc(v.invoice_no)+' · issued '+shortDate(v.issued_date)+'</span></span>'+
@@ -164,25 +176,38 @@
       '<div class="ivs-acts">'+
         (isPaid?'<button class="btn wide" data-paid>Mark as unpaid</button>'
                :'<button class="btn btn-gold wide" data-paid>Mark as paid</button>')+
+        (!isPaid&&hasSent&&!isSent(v)?'<button class="btn wide" data-sent>Mark as sent</button>':'')+
         '<button class="btn" data-print>Print / Save PDF</button>'+
         '<a class="btn" href="ledger.html">Open Ledger</a>'+
       '</div>'+
       '<div class="ivs-box">'+
         '<div class="ivs-line"><span class="k">Status</span>'+(isPaid?'<span class="iv-st paid">Paid</span>':'<span class="iv-st wait">Awaiting payment</span>')+'</div>'+
+        (hasSent?'<div class="ivs-line"><span class="k">Sent to parent</span>'+(isSent(v)
+          ?'<span>'+prettyDate(String(v.sent_at).slice(0,10))+' <button class="tact" data-unsent>Undo</button></span>'
+          :'<span class="iv-st unsent">Not sent yet</span>')+'</div>':'')+
         (isPaid?'<div class="ivs-line"><span class="k">Paid on</span><input type="date" data-pd value="'+(v.paid_date||"")+'"></div>':'')+
-        '<div class="ivs-line"><span class="k">Payment proof</span>'+proof+'</div>'+
+        '<div class="ivs-line"><span class="k">Payment screenshot</span>'+proof+'</div>'+
       '</div>'+
       '<div class="ivs-prev">'+((v.data&&v.data.html)||'<p class="muted">Snapshot unavailable.</p>')+'</div>'+
       '<button class="ivs-del" data-del>Delete invoice</button>';
     var B=$("iv-s-body");
     function on(sel,fn){var el=B.querySelector(sel);if(el)el.addEventListener("click",fn);}
     on("[data-paid]",function(){togglePaid(v);});
+    on("[data-sent]",function(){setSent(v,true);});
+    on("[data-unsent]",function(){setSent(v,false);});
     on("[data-print]",printInvoice);
     on("[data-aproof]",function(){startAttach(v.id);});
     on("[data-vproof]",function(){viewProof(v);});
     on("[data-rproof]",function(){removeProof(v);});
     on("[data-del]",function(){del(v.id);});
     var pd=B.querySelector("[data-pd]"); if(pd)pd.addEventListener("change",function(){updatePaidDate(v.id,pd.value).then(render);});
+  }
+
+  async function setSent(v,sent){
+    var at=sent?new Date().toISOString():null;
+    var res=await window.sb.from("invoices").update({sent_at:at}).eq("id",v.id);
+    if(res.error){alert("Couldn't update: "+res.error.message);return;}
+    v.sent_at=at; render();
   }
 
   // ---- period picker ----
@@ -199,7 +224,13 @@
   async function load(){
     var st=await window.sb.from("students").select("id,name");
     nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
-    var res=await window.sb.from("invoices").select("id,student_id,invoice_no,issued_date,total,status,paid_date,proof_path,data").order("issued_date",{ascending:false}).order("created_at",{ascending:false});
+    var cols="id,student_id,invoice_no,issued_date,total,status,paid_date,proof_path,data";
+    var res=await window.sb.from("invoices").select(cols+",sent_at").order("issued_date",{ascending:false}).order("created_at",{ascending:false});
+    // Before db/migration_invoice_sent.sql is run there's no sent_at column — fall back and hide "Sent".
+    if(res.error&&/sent_at/.test(res.error.message||"")){
+      hasSent=false;
+      res=await window.sb.from("invoices").select(cols).order("issued_date",{ascending:false}).order("created_at",{ascending:false});
+    } else hasSent=true;
     if(res.error){$("i-count").textContent="Couldn't load invoices: "+res.error.message;return;}
     invoices=res.data||[];render();
   }

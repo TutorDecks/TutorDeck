@@ -199,6 +199,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Invoices: Saved → Sent → Paid; "Payment screenshot" (v170)
+
+**Needs `db/migration_invoice_sent.sql`** (adds nullable `invoices.sent_at`). The pages work before it's run:
+Invoices detects the missing column and simply hides the Sent bits.
+- Tapping **Send on WhatsApp** in the Ledger now stamps `sent_at` on the saved invoice ("Save to app" alone
+  does not). Invoices shows **Not sent** (amber) / **Sent <date>** / **Paid <date>**, a **Not sent** filter,
+  a "Not sent yet" count in the summary strip, and **Mark as sent** / Undo in the sheet for invoices sent
+  some other way. CSV export gains a Sent column.
+- "Proof" is now called **Payment screenshot** in the UI (the stored field is still `proof_path`).
+
 ### 2026-10-17 — Invoices redesign: list + detail sheet (v169)
 
 - Summary strip: **Paid** · **Awaiting payment** · **Proof attached (x / y)** for the chosen period.

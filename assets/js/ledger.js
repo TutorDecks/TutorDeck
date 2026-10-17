@@ -871,7 +871,7 @@
 
   // Show the built invoice in the overlay (shared by the PayNow and bank-transfer paths).
   function presentInvoice(data, qrUrl, meta){
-    window._invHTML=invoiceHTML(data,qrUrl); window._invSaved=false;
+    window._invHTML=invoiceHTML(data,qrUrl); window._invSaved=false; window._invSavedId=null;
     window._invMeta=meta;
     $("inv-body").innerHTML=window._invHTML;
     $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
@@ -979,7 +979,8 @@
       issued_date:m.issuedDate,total:m.total,status:"issued",
       data:{html:window._invHTML,title:window._invTitle||("Invoice_"+m.invoiceNo),
         students:m.students||null,name:m.name||null,lesson_ids:m.lessonIds||null}
-    });
+    }).select("id").single();
+    if(!res.error&&res.data)window._invSavedId=res.data.id;
     b.disabled=false;
     if(res.error){b.textContent="Save to app";alert("Couldn't save invoice: "+res.error.message);return;}
     window._invSaved=true;   // recorded in the Invoices tab
@@ -1044,6 +1045,8 @@
     var m=window._invMeta,b=$("inv-wa"),msg=invoiceMsg(m);
     b.disabled=true;b.textContent="Preparing…";
     if(!window._invSaved){ try{ await saveInvoice(); }catch(e){} }   // sending records the invoice in the Invoices tab
+    // …and marks it "Sent" (sent_at; ignored if db/migration_invoice_sent.sql hasn't been run yet)
+    if(window._invSavedId){ try{ await window.sb.from("invoices").update({sent_at:new Date().toISOString()}).eq("id",window._invSavedId); }catch(e){} }
     // WhatsApp often drops the text when an image is shared/attached, so keep the message on the
     // clipboard — it can always be pasted into the chat even if it doesn't prefill.
     var copied=await copyText(msg);
