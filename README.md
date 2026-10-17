@@ -199,6 +199,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — TutorDeck logo (v153)
+
+New product mark: a small stack of cards in white on a teal rounded square (`assets/img/logo.svg`, also
+inlined as `LOGO` in app.js). Desktop top bar now shows the logo + "TutorDeck" on the left; the round
+avatar on the right keeps the tutor's own business initials, and its menu shows the business name + email.
+The phone More sheet shows the logo with the tutor's business name. Every page uses the logo as its
+browser-tab icon (favicon).
+
 ### 2026-10-17 — Outstanding: plain list + slide-up detail sheet (v152)
 
 "Who owes you" is now a clean list — avatar, name, lesson count, how old the oldest debt is (amber ≥7 days,

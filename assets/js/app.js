@@ -47,6 +47,13 @@ window.TL = (function () {
     return null;
   }
 
+  // TutorDeck product mark (same art as assets/img/logo.svg), inline so it never flashes.
+  var LOGO = '<svg class="td-logo" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">' +
+    '<rect width="32" height="32" rx="8" fill="#0F766E"/>' +
+    '<rect x="10.5" y="6.5" width="14" height="17.5" rx="2.6" fill="#fff" fill-opacity=".42" transform="rotate(9 17.5 15)"/>' +
+    '<rect x="8" y="8.5" width="14" height="17.5" rx="2.6" fill="#fff"/>' +
+    '<rect x="10.6" y="12.2" width="8.8" height="1.9" rx=".95" fill="#0F766E"/>' +
+    '<rect x="10.6" y="16" width="6.2" height="1.9" rx=".95" fill="#0F766E" fill-opacity=".55"/></svg>';
   var DEFAULT_BRAND = "TutorDeck";
   var brandName = DEFAULT_BRAND;   // set per-user from profiles.business_name in requireAuth
 
@@ -117,7 +124,7 @@ window.TL = (function () {
 
     var sheet = '<div class="more-sheet" id="tl-sheet" role="dialog" aria-label="More">' +
       '<div class="ms-grab"></div>' +
-      '<div class="ms-brand">' + mono() + '</div>' +
+      '<div class="ms-brand">' + LOGO + '<span><b>' + esc(brandName) + '</b><small>TutorDeck</small></span></div>' +
       extras.map(function (n) {
         return '<a href="' + n.href + '" class="' + (n.id === active ? "on" : "") + '">' + icon(n.ic) + '<span>' + n.label + '</span></a>';
       }).join("") +
@@ -132,14 +139,14 @@ window.TL = (function () {
     app.innerHTML = `
       <header class="topnav">
         <div class="tn-in">
-          <a class="tn-brand" href="app.html"><span class="mono">${esc(initials)}</span><b>${esc(brandName)}</b></a>
+          <a class="tn-brand" href="app.html" aria-label="TutorDeck home">${LOGO}<b>TutorDeck</b></a>
           <nav class="tn-links" aria-label="Main">${side}</nav>
           <div class="tn-right">
             ${sideExtra}
             <div class="tn-acct">
-              <button type="button" id="tl-acct" class="tn-avatar" aria-haspopup="true" aria-expanded="false" aria-label="Account">${esc(initials)}</button>
+              <button type="button" id="tl-acct" class="tn-avatar" aria-haspopup="true" aria-expanded="false" aria-label="Account" title="${esc(brandName)}">${esc(initials)}</button>
               <div class="tn-menu" id="tl-acct-menu">
-                <div class="tn-who">${esc(email || "")}</div>
+                <div class="tn-who"><b>${esc(brandName)}</b>${esc(email || "")}</div>
                 <button id="tl-signout">${icon("signout", 16)}<span>Sign out</span></button>
               </div>
             </div>

@@ -1,4 +1,4 @@
-/* v152 */
+/* v153 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -548,3 +548,8 @@ body:has(#view)::after{left:50%}
   body:has(#view)::before{background:linear-gradient(to top,#fff 64px,var(--bg) 64px)}
 }
 .modal-backdrop{z-index:90}
+/* v153: TutorDeck mark */
+.td-logo{width:32px;height:32px;flex:none;display:block}
+.tn-brand b{font-size:16.5px;letter-spacing:-.02em}
+.tn-who b{display:block;color:var(--ink);font-size:13.5px;margin-bottom:1px}
+@media(max-width:820px){ .ms-brand .td-logo{width:34px;height:34px} }
