@@ -38,6 +38,7 @@
     renderLessons(lessons);        // tutor: lesson-history table
     renderNotes(lessons);          // tutor: separate notes list
     renderClientLessons(lessons);  // client: combined lessons + notes
+    renderParentKpis(lessons, exams);
     renderSlots(slots);
     renderSchedule();              // tutor: copy-ready monthly schedule
     renderExams(exams);
@@ -148,8 +149,28 @@
   }
 
   // Client view only: one clean list combining each lesson with its notes — no money, no editing.
+  // Parent view headline: attendance, latest score per subject (with change), next exam. No money.
+  function renderParentKpis(lessons, exams){
+    var box=$("pv-kpis"); if(!box)return;
+    var today=todayISO();
+    var attended=lessons.filter(function(l){return l.status==="done";}).length;
+    var scored=exams.filter(function(e){return e.score!=null&&e.max_score>0&&e.exam_date&&e.exam_date<=today;})
+      .sort(function(a,b){return a.exam_date.localeCompare(b.exam_date);});
+    var bySub={}; scored.forEach(function(e){(bySub[e.subject||"General"]=bySub[e.subject||"General"]||[]).push(Math.round(e.score/e.max_score*100));});
+    var subs=Object.keys(bySub).slice(0,2);
+    var next=exams.filter(function(e){return e.exam_date&&e.exam_date>=today;}).sort(function(a,b){return a.exam_date.localeCompare(b.exam_date);})[0];
+    function cell(label,val,sub){return '<div class="kpi"><div class="lbl">'+label+'</div><div class="val">'+val+'</div>'+(sub?'<div class="sub">'+sub+'</div>':'')+'</div>';}
+    var html=cell("Lessons attended",attended,"");
+    subs.forEach(function(sname){var a=bySub[sname],last=a[a.length-1],prev=a.length>1?a[a.length-2]:null;
+      var ch=prev==null?"":(last>prev?'<small class="up">▲ '+(last-prev)+'</small>':(last<prev?'<small class="down">▼ '+(prev-last)+'</small>':'<small>—</small>'));
+      html+=cell("Latest · "+esc(sname),last+"%"+ch,"");});
+    html+=next?cell("Next exam",prettyDate(next.exam_date),esc((next.assessment_type?next.assessment_type+" · ":"")+(next.subject||""))):cell("Next exam","—","none scheduled");
+    box.innerHTML=html;
+    box.dataset.n=String(2+subs.length);   // 2–4 cells; CSS lays them out per screen size
+  }
   function renderClientLessons(lessons){
-    var live=lessons.filter(function(l){return l.status!=="cancelled";});
+    var today=todayISO();
+    var live=lessons.filter(function(l){return l.status!=="cancelled"&&l.lesson_date<=today;});
     live.sort(function(a,b){return (b.lesson_date+(b.start_time||"")).localeCompare(a.lesson_date+(a.start_time||""));});
     var box=$("p-lessons");
     if(!live.length){box.innerHTML='<p class="muted" style="font-size:13.5px;margin:0">No lessons yet.</p>';$("p-lhint2").textContent="";return;}
@@ -466,7 +487,9 @@
     // Tutor / Client view — Client hides money + editing so the page can be shown to a parent.
     function setViewMode(client){
       var v=$("view")||document.body; v.classList.toggle("client",client);
-      if(client){var nb=document.querySelector('#sp-tabs [data-tab="notes"].on');if(nb)document.querySelector('#sp-tabs [data-tab="lessons"]').click();}
+      // parent view opens on Progress; leaving it returns to Lessons
+      var pane=document.querySelector(client?'#sp-tabs [data-tab="progress"]':'#sp-tabs [data-tab="lessons"]'); if(pane)pane.click();
+      window.scrollTo(0,0);
       var t=$("vm-tutor"),c=$("vm-client"); if(t)t.classList.toggle("on",!client); if(c)c.classList.toggle("on",client);
     }
     if($("vm-tutor"))$("vm-tutor").addEventListener("click",function(){setViewMode(false);});

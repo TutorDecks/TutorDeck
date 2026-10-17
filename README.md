@@ -199,6 +199,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Parent view rebuilt around progress (v156)
+
+The Tutor | Parent toggle became one **Parent view** button (eye icon). In Parent view:
+- a slim teal banner "Parent view · fees and editing are hidden" with **Exit** sits above the card;
+- the money strip is replaced by parent-friendly stats — lessons attended, latest score per subject
+  (up to two, with ▲/▼ vs the previous exam) and the next exam (`renderParentKpis()` in student.js);
+- the Progress tab opens first (tabs: Progress · Lessons · Schedule); Edit, Ledger, contact details and
+  the Notes tab are hidden; Lessons shows past lessons only (no empty "No notes recorded" future rows).
+Also fixes the card losing its bottom padding (clipped avatar) when the money strip was hidden.
+
 ### 2026-10-17 — Cleaner student profile header; "More info" on phones (v155)
 
 The header's label wall (LEVEL / CONTACT / LOCATION / MESSAGES TO) became a level chip (plus
