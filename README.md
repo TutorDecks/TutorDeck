@@ -210,6 +210,8 @@ Ready for Google OAuth verification of Calendar sync. Consent version stays **v1
   `assets/js/calendar.js`: only events tagged `tlengSync=1` are read, updated or deleted.
 - **terms.html:** dated; contact email; Payments now says the Service is free and fees will be
   announced before any charge.
+- Review fixes: section 1 now lists uploaded files (payment screenshots, materials); consent section
+  points to Settings → delete account; fixed "Pte. Ltd.." in the terms.
 
 ### 2026-10-17 — Sign out always visible in the phone menu (v146)
 
