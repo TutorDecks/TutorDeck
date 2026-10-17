@@ -199,6 +199,11 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Landing copy: "Made by tutors, for tutors" (no version bump)
+
+Hero line, meta description and the closing CTA ("we'll let you know") now speak for both founders
+instead of one tutor. index.html + landing.html; text only.
+
 ### 2026-10-18 — Login + landing in the TutorDeck look (v180)
 
 - **Login:** ink background with a teal glow, the real logo instead of the gold "TD" badge, "Welcome
