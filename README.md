@@ -199,6 +199,28 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Calendar opens on Week everywhere (v183)
+
+Week is the default on phones and desktop until you pick another view; your choice is remembered per
+device (`tl_cal_mode`). Retired 3 days / List choices fall back to Week.
+
+### 2026-10-18 — Phone calendar: Day | Week | Month, thumb-friendly (v182)
+
+Trial views trimmed: phones get **Day** (default) | **Week** | **Month**; 3 days and List retired (a saved
+`tl_cal_mode` of either falls back to Day). Thumb zone: **Add lesson** is a floating teal + at bottom
+right (pre-fills the day you're viewing in Day view); the top Today/Add buttons are hidden on phones —
+**tap the Schedule tab again to jump to today** (app.js fires `td:tabagain` when the active tab is
+re-tapped; any page can listen). Swipe still moves day/week. Week keeps starting on Monday so the
+weekend stays together. Desktop unchanged.
+
+### 2026-10-18 — Phone calendar: Day / 3 days / Week / List / Month to try (v181)
+
+Phones get five views (desktop unchanged: Week | Month). **Day** (new default on phones): Mon–Sun strip
+with a dot per lesson (red dot = exam), tap a day for its Google-style timeline at taller hours.
+**3 days**: the timeline with three columns. **Week**: the original 7-column grid, now with names on
+whole words. **List**: the v176 agenda. Swipe left/right on the calendar to move along. The choice is
+remembered per device (`tl_cal_mode`). `renderWeek` is now a general `renderGrid(range, dates, el)`.
+
 ### 2026-10-18 — Landing copy: "Made by tutors, for tutors" (no version bump)
 
 Hero line, meta description and the closing CTA ("we'll let you know") now speak for both founders
