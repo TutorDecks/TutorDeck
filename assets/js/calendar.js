@@ -8,7 +8,7 @@
 // month already seen is instant. All fetches for a view run in parallel.
 (function () {
   var $ = function (id) { return document.getElementById(id); };
-  var HOUR_PX = 46, MIN_HR = 6;
+  var HOUR_PX = 46, HOUR_PX_BASE = 46, MIN_HR = 6;
 
   var userId = null, anchor = null, mode = "week";
   var students = [], slots = [], exams = [], nameById = {}, locById = {}, hhById = {}, endById = {}, loadedStatic = false;
@@ -30,8 +30,19 @@
   var MONF=["January","February","March","April","May","June","July","August","September","October","November","December"];
   var DAY=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
+  // ---- view modes ----
+  // Desktop: week | month. Phone adds day (week strip + one-day timeline), 3day and list.
+  var PHONE_ONLY={day:1};
+  function isPhone(){ return !!(window.matchMedia && window.matchMedia("(max-width:820px)").matches); }
+  function effMode(m){ m=m||mode;
+    if(m==="3day"||m==="list") m="week";   // retired trial views
+    return (PHONE_ONLY[m] && !isPhone()) ? "week" : m; }
+  function stepDays(m){ return m==="day"?1:(m==="3day"?3:7); }
+
   // ---- what span a given anchor+mode covers ----
   function rangeFor(a, m){
+    m=effMode(m);
+    if(m==="3day"){ var s0=new Date(a); s0.setHours(0,0,0,0); return { start:s0, end:addDays(s0,2) }; }
     if(m==="month"){
       var first=new Date(a.getFullYear(),a.getMonth(),1);
       var last=new Date(a.getFullYear(),a.getMonth()+1,0);
@@ -41,6 +52,7 @@
     return { start:ws, end:addDays(ws,6) };
   }
   function visibleRange(){ return rangeFor(anchor, mode); }
+  var WDF=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   function monthsIn(range){
     var out=[], d=new Date(range.start.getFullYear(),range.start.getMonth(),1),
         endM=new Date(range.end.getFullYear(),range.end.getMonth(),1);
@@ -48,8 +60,10 @@
     return out;
   }
   function rangeLabel(){
-    if(mode==="month") return MONF[anchor.getMonth()]+" "+anchor.getFullYear();
-    var ws=mondayOf(anchor), end=addDays(ws,6);
+    var m=effMode();
+    if(m==="month") return MONF[anchor.getMonth()]+" "+anchor.getFullYear();
+    if(m==="day") return MONF[anchor.getMonth()]+" "+anchor.getFullYear();
+    var ws=(m==="3day")?rangeFor(anchor,m).start:mondayOf(anchor), end=addDays(ws,m==="3day"?2:6);
     return ws.getMonth()===end.getMonth()
       ? ws.getDate()+"–"+end.getDate()+" "+MON[end.getMonth()]
       : ws.getDate()+" "+MON[ws.getMonth()]+" – "+end.getDate()+" "+MON[end.getMonth()];
@@ -119,7 +133,8 @@
   function neighborMonths(){
     var out={};
     [-1,1].forEach(function(dir){
-      var a2 = mode==="month" ? new Date(anchor.getFullYear(),anchor.getMonth()+dir,1) : addDays(anchor,dir*7);
+      var m=effMode();
+      var a2 = m==="month" ? new Date(anchor.getFullYear(),anchor.getMonth()+dir,1) : addDays(anchor,dir*stepDays(m));
       monthsIn(rangeFor(a2,mode)).forEach(function(k){ out[k]=1; });
     });
     return Object.keys(out);
@@ -221,47 +236,74 @@
       (sub?'<span class="ce-s">'+esc(sub)+'</span>':'')+
       (b.location?'<span class="ce-loc">◍ '+esc(b.location)+'</span>':'')+'</div>';
   }
-  function renderWeek(range){
-    var ws=range.start, blocks=buildBlocks(range);
-    var byDay=[[],[],[],[],[],[],[]];
-    blocks.forEach(function(b){ byDay[b.day].push(b); });
-    byDay.forEach(laneAssign);
+  function renderWeek(range){ renderGrid(range, [0,1,2,3,4,5,6].map(function(d){ return addDays(range.start,d); }), $("cal")); }
+  // Time grid for any run of dates (1 = day, 3 = three days, 7 = week), Google-Calendar style.
+  function renderGrid(range, dates, el, opts){
+    opts=opts||{}; var HOUR_PX=opts.hourPx||HOUR_PX_BASE;
+    var blocks=buildBlocks(range), keys=dates.map(iso);
+    var byCol=dates.map(function(){ return []; });
+    blocks.forEach(function(b){ var i=keys.indexOf(b.dateISO); if(i>=0) byCol[i].push(b); });
+    byCol.forEach(laneAssign);
     lastBlocks=blocks;
-    var bd=bounds(blocks), hours=(bd.end-bd.start)/60, gridH=hours*HOUR_PX, today=iso(new Date());
-
+    var shown=[].concat.apply([],byCol);
+    var bd=bounds(opts.boundsFrom||shown), hours=(bd.end-bd.start)/60, gridH=hours*HOUR_PX, today=iso(new Date());
     var headCells="";
-    for(var d=0; d<7; d++){
-      var date=addDays(ws,d), isT=iso(date)===today;
-      headCells+='<div class="cal-day-h'+(isT?" today":"")+'">'+DAY[d]+'<b>'+date.getDate()+'</b></div>';
-    }
-    var examsByDt=examsByDate(), adCells="", weekHasExams=false;
-    for(var de=0; de<7; de++){
-      var dayExams=examsByDt[iso(addDays(ws,de))]||[];
-      if(dayExams.length) weekHasExams=true;
+    dates.forEach(function(date){
+      var isT=iso(date)===today;
+      headCells+='<div class="cal-day-h'+(isT?" today":"")+'">'+DAY[(date.getDay()+6)%7]+'<b>'+date.getDate()+'</b></div>';
+    });
+    var examsByDt=examsByDate(), adCells="", hasEx=false;
+    dates.forEach(function(date){
+      var dayExams=examsByDt[iso(date)]||[];
+      if(dayExams.length) hasEx=true;
       adCells+='<div class="cal-ad-cell">'+dayExams.map(examChipHTML).join("")+'</div>';
-    }
+    });
     var gutter="";
     for(var h=0; h<hours; h++)
       gutter+='<div class="cal-hr" style="height:'+HOUR_PX+'px"><span>'+hourLabel(bd.start+h*60)+'</span></div>';
     var cols="";
-    for(var c=0; c<7; c++){
-      var isTc=iso(addDays(ws,c))===today, evs="";
-      byDay[c].forEach(function(b){
+    dates.forEach(function(date,c){
+      var isTc=iso(date)===today, evs="";
+      byCol[c].forEach(function(b){
         var top=(b.startMin-bd.start)/60*HOUR_PX, height=(b.endMin-b.startMin)/60*HOUR_PX;
         evs+=evHTML(b, top, height);
       });
       cols+='<div class="cal-col'+(isTc?" today":"")+'">'+evs+'</div>';
-    }
+    });
     var gridBg="background-image:repeating-linear-gradient(var(--line) 0 1px,transparent 1px "+HOUR_PX+"px)";
-    var el=$("cal");
-    el.innerHTML='<div class="cal-head"><div class="cal-gutter-h"></div>'+headCells+'</div>'+
-      (weekHasExams?('<div class="cal-allday"><div class="cal-gutter-h"></div>'+adCells+'</div>'):'')+
+    el.innerHTML=(opts.noHead?'':'<div class="cal-head"><div class="cal-gutter-h"></div>'+headCells+'</div>')+
+      (hasEx?('<div class="cal-allday"><div class="cal-gutter-h"></div>'+adCells+'</div>'):'')+
       '<div class="cal-body"><div class="cal-gutter">'+gutter+'</div>'+
-      '<div class="cal-cols" style="height:'+gridH+'px;'+gridBg+'">'+cols+'</div></div>';
-    if(!blocks.length)
-      el.innerHTML+='<div class="cal-empty">No lessons or recurring slots this week. Add slots on the Planner, or log lessons in the Ledger.</div>';
+      '<div class="cal-cols cols-'+dates.length+'" style="height:'+gridH+'px;'+gridBg+'">'+cols+'</div></div>';
+    if(!shown.length && opts.noHead){ el.innerHTML='<div class="cal-empty">Nothing on '+WDF[(dates[0].getDay()+6)%7]+'. Swipe or tap another day.</div>'; wireEvents(); return; }
+    if(!shown.length)
+      el.innerHTML+='<div class="cal-empty">'+(dates.length===1?'No lessons on '+WDF[(dates[0].getDay()+6)%7]+'.':'No lessons or recurring slots in these days. Add slots on the Planner, or tap +.')+'</div>';
     wireEvents();
   }
+
+  // Phone day view: Mon–Sun strip (dots = lessons that day), then the chosen day's timeline.
+  function renderDay(range){
+    var ws=range.start, blocks=buildBlocks(range), today=iso(new Date()), sel=iso(anchor);
+    var count={}; blocks.forEach(function(b){ if(b.state!=="cancel") count[b.dateISO]=(count[b.dateISO]||0)+1; });
+    var exD=examsByDate();
+    var strip='<div class="dstrip">'+[0,1,2,3,4,5,6].map(function(d){
+      var date=addDays(ws,d), k=iso(date), n=count[k]||0, dots="";
+      for(var i=0;i<Math.min(n,3);i++) dots+='<i></i>';
+      if((exD[k]||[]).length) dots+='<i class="ex"></i>';
+      return '<button type="button" class="ds-d'+(k===sel?' on':'')+(k===today?' today':'')+'" data-day="'+k+'">'+
+        '<span class="ds-w">'+DAY[d].charAt(0)+'</span><span class="ds-n">'+date.getDate()+'</span><span class="ds-dots">'+dots+'</span></button>';
+    }).join("")+'</div>';
+    var d=new Date(anchor); d.setHours(0,0,0,0);
+    var nLess=count[sel]||0;
+    $("cal").innerHTML=strip+'<div class="dhead"><b>'+WDF[(d.getDay()+6)%7]+'</b> '+d.getDate()+' '+MON[d.getMonth()]+
+      '<span>'+(nLess?nLess+' lesson'+(nLess===1?'':'s'):'')+'</span></div><div id="cal-day"></div>';
+    // keep the hour range steady across the week so swiping between days doesn't jump
+    renderGrid(range, [d], $("cal-day"), { noHead:true, hourPx:68 });
+    $("cal").querySelectorAll(".ds-d").forEach(function(btn){
+      btn.addEventListener("click", function(e){ e.stopPropagation(); anchor=new Date(btn.dataset.day+"T00:00:00"); render(); });
+    });
+  }
+  function render3(range){ renderGrid(range, [0,1,2].map(function(i){ return addDays(range.start,i); }), $("cal"), { hourPx:56 }); }
 
   // ---- month (day-cell grid) ----
   function chipHTML(b){
@@ -334,9 +376,14 @@
   function render(){
     if(!$("cal")) return;
     $("cal-range").textContent=rangeLabel();
-    document.body.classList.toggle("cal-agenda", mode!=="month" && phoneMQ.matches);
-    if(mode==="month") renderMonth(visibleRange());
-    else if(phoneMQ.matches) renderAgenda(visibleRange());
+    var m=effMode();
+    document.body.classList.toggle("cal-agenda", m==="list");
+    document.body.classList.toggle("cal-dayview", m==="day");
+    ["day","3day","week","list","month"].forEach(function(k){ var b=$("seg-"+k); if(b) b.classList.toggle("on", k===m); });
+    if(m==="month") renderMonth(visibleRange());
+    else if(m==="list") renderAgenda(visibleRange());
+    else if(m==="day") renderDay(visibleRange());
+    else if(m==="3day") render3(visibleRange());
     else renderWeek(visibleRange());
   }
   if(phoneMQ.addEventListener) phoneMQ.addEventListener("change", function(){ if(loadedStatic) render(); });
@@ -826,16 +873,17 @@
   function setMode(m){
     mode=m;
     try{ localStorage.setItem("tl_cal_mode",m); }catch(e){}
-    $("seg-week").classList.toggle("on",m==="week");
-    $("seg-month").classList.toggle("on",m==="month");
     ensureData();
   }
   function shiftRange(dir){
-    if(mode==="month") anchor=new Date(anchor.getFullYear(),anchor.getMonth()+dir,1);
-    else anchor=addDays(anchor,dir*7);
+    var m=effMode();
+    if(m==="month") anchor=new Date(anchor.getFullYear(),anchor.getMonth()+dir,1);
+    else anchor=addDays(anchor,dir*stepDays(m));
     ensureData();
   }
   function goToday(){ anchor=new Date(); ensureData(); }
+  // FAB in Day view: start the new lesson on the day you're looking at.
+  function m2prefill(){ return effMode()==="day" ? { date: iso(anchor) } : undefined; }
 
   function initLegend(){
     document.querySelectorAll(".cal-legend .leg").forEach(function(btn){
@@ -853,19 +901,27 @@
 
   function init(user){
     userId=user.id; anchor=new Date();
-    try{ mode=localStorage.getItem("tl_cal_mode")||"week"; }catch(e){ mode="week"; }
+    try{ mode=localStorage.getItem("tl_cal_mode")||""; }catch(e){ mode=""; }
+    if(!mode) mode="week";   // default everywhere; the user's last choice is remembered (tl_cal_mode)
     try{ hidden=JSON.parse(localStorage.getItem("tl_cal_hidden")||"{}")||{}; }catch(e){ hidden={}; }
-    $("seg-week").classList.toggle("on",mode==="week");
-    $("seg-month").classList.toggle("on",mode==="month");
     $("cal-prev").addEventListener("click", function(){ shiftRange(-1); });
     $("cal-next").addEventListener("click", function(){ shiftRange(1); });
     $("cal-today").addEventListener("click", goToday);
     if($("gcal-btn")) $("gcal-btn").addEventListener("click", connectGcal);
     if($("gcal-cal")) $("gcal-cal").addEventListener("change", function(){ if(this.value) setGcalTarget(this.value); });
     initGcal();
-    $("seg-week").addEventListener("click", function(){ setMode("week"); });
-    $("seg-month").addEventListener("click", function(){ setMode("month"); });
+    ["day","3day","week","list","month"].forEach(function(k){ var b=$("seg-"+k); if(b) b.addEventListener("click", function(){ setMode(k); }); });
+    // phone: swipe left/right on the calendar to move a day / 3 days / week
+    (function(){ var x0=null,y0=null, el=$("cal");
+      el.addEventListener("touchstart", function(e){ var t=e.touches[0]; x0=t.clientX; y0=t.clientY; }, {passive:true});
+      el.addEventListener("touchend", function(e){
+        if(x0===null) return; var t=e.changedTouches[0], dx=t.clientX-x0, dy=t.clientY-y0; x0=null;
+        if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5 && effMode()!=="month"){ hidePopover(); shiftRange(dx<0?1:-1); }
+      }, {passive:true});
+    })();
     if($("cal-add")) $("cal-add").addEventListener("click", function(){ openAdd(); });
+    if($("cal-fab")) $("cal-fab").addEventListener("click", function(e){ e.stopPropagation(); openAdd(m2prefill()); });
+    window.addEventListener("td:tabagain", function(){ hidePopover(); goToday(); });
     if($("ca-student")) $("ca-student").addEventListener("change", applyStudentDefaults);
     if($("ca-cancel")) $("ca-cancel").addEventListener("click", closeAdd);
     if($("ca-save")) $("ca-save").addEventListener("click", saveAdd);

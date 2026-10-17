@@ -179,6 +179,16 @@ window.TL = (function () {
     more.addEventListener("click", function () { setSheet(!app.classList.contains("sheet-open")); });
     scrim.addEventListener("click", function () { setSheet(false); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") { setSheet(false); acctWrap.classList.remove("open"); } });
+    // Tapping the tab you're already on: scroll to the top and tell the page (Calendar jumps to today).
+    document.querySelectorAll(".tabbar a.on").forEach(function (a) {
+      a.addEventListener("click", function (e) {
+        var here = location.pathname.split("/").pop() || "index.html";
+        if (a.getAttribute("href") !== here) return;
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        window.dispatchEvent(new CustomEvent("td:tabagain"));
+      });
+    });
   }
 
   async function requireAuth(active, init) {

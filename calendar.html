@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=180">
+<link rel="stylesheet" href="assets/css/app.css?v=183">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -200,6 +200,50 @@
   .ag-ex .cal-chip{white-space:normal;font-size:12.5px;padding:6px 9px;border-radius:8px}
   body.cal-agenda .cal-card{background:transparent;border:none;box-shadow:none}
   body.cal-agenda .ag{padding:0}
+  /* ---- v181: phone Day / 3 days / Week / List ---- */
+  #cal-seg .ph{display:none}
+  .dstrip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:10px 8px 8px;border-bottom:1px solid var(--line)}
+  .ds-d{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0 5px;border-radius:12px}
+  .ds-w{font-size:11px;font-weight:700;color:var(--muted)}
+  .ds-n{font-size:16px;font-weight:800;color:var(--ink);width:32px;height:32px;display:grid;place-items:center;border-radius:16px}
+  .ds-d.today .ds-n{color:var(--accent)}
+  .ds-d.on .ds-n{background:var(--ink);color:#fff}
+  .ds-d.on.today .ds-n{background:var(--accent)}
+  .ds-dots{display:flex;gap:3px;height:5px}
+  .ds-dots i{width:5px;height:5px;border-radius:3px;background:#B9BDC6}
+  .ds-dots i.ex{background:var(--owed)}
+  .ds-d.on .ds-dots i{background:var(--ink)} .ds-d.on .ds-dots i.ex{background:var(--owed)}
+  .dhead{display:flex;align-items:baseline;gap:6px;padding:12px 14px 8px;font-size:14px;color:var(--muted)}
+  .dhead b{color:var(--ink);font-size:15px}
+  .dhead span{margin-left:auto;font-size:12.5px}
+  .cols-1 .cal-ev{padding:6px 10px;border-radius:10px}
+  .cols-1 .cal-ev .ce-t{font-size:11.5px}
+  .cols-1 .cal-ev .ce-n{font-size:14.5px}
+  .cols-1 .cal-ev .ce-s{font-size:12px}
+  .cols-1 .cal-ev .ce-loc{font-size:11.5px}
+  .cols-1 .cal-ev.tight .ce-n{font-size:13px}
+  .cols-3 .cal-ev .ce-n{font-size:12.5px}
+  .cols-3 .cal-ev .ce-s{font-size:11px}
+  .cal-hr span{white-space:nowrap}
+  .cal-fab{display:none}
+  @media(max-width:820px){
+    /* thumb zone: add lives in a floating button, Today = tap Schedule again (or swipe) */
+    .cal-addbtn,.cal-todaybtn{display:none!important}
+    .cal-fab{all:unset;box-sizing:border-box;display:grid;place-items:center;position:fixed;right:18px;
+      bottom:calc(80px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:18px;cursor:pointer;z-index:55;
+      background:var(--accent);color:#fff;box-shadow:0 8px 22px rgba(15,118,110,.35),0 2px 6px rgba(19,35,63,.15)}
+    .cal-fab:active{transform:scale(.95)}
+    #view{padding-bottom:70px}
+    .cal-gutter,.cal-gutter-h{flex-basis:44px}
+    .cal-hr span{font-size:10px;right:5px}
+    .cols-7 .cal-ev{padding:2px 3px}
+    .cols-7 .cal-ev .ce-n{overflow-wrap:normal;word-break:normal;font-size:10px;line-height:1.15}
+    .cols-7 .cal-ev .ce-t{font-size:9px}
+    .cols-7 .cal-ev .ce-s,.cols-7 .cal-ev .ce-loc{display:none}
+    .cal-allday .cal-chip{font-size:10px}
+    #cal-seg .ph{display:inline-block}
+    .cal-right .seg button{padding:9px 0;font-size:14px}
+  }
 
   @media(max-width:820px){
     .cal-bar{flex-direction:column;align-items:stretch;gap:10px}
@@ -236,6 +280,7 @@
     </div>
     <div class="cal-right">
       <div class="seg" id="cal-seg">
+        <button id="seg-day" class="ph">Day</button>
         <button id="seg-week" class="on">Week</button>
         <button id="seg-month">Month</button>
       </div>
@@ -267,6 +312,7 @@
       <span class="gcal-status" id="gcal-status"></span>
     </div>
   </div>
+  <button type="button" class="cal-fab" id="cal-fab" aria-label="Add lesson"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
   <div id="cal-pop-bd" class="cal-pop-bd"></div>
   <div id="cal-pop" class="cal-pop" style="display:none"></div>
 
@@ -312,9 +358,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=180"></script>
-<script src="assets/js/supabase.js?v=180"></script>
-<script src="assets/js/app.js?v=180"></script>
-<script src="assets/js/calendar.js?v=180"></script>
+<script src="assets/js/config.js?v=183"></script>
+<script src="assets/js/supabase.js?v=183"></script>
+<script src="assets/js/app.js?v=183"></script>
+<script src="assets/js/calendar.js?v=183"></script>
 </body>
 </html>
