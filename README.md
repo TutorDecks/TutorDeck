@@ -199,6 +199,10 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Needs notes above Today on phones (v168)
+
+Phone order is now Needs notes (only shown when something is missing notes) → Today → Tomorrow → Exams.
+
 ### 2026-10-17 — Shorter Home on phones (v167)
 
 Phone-only (≤820px): Money card drops the bar legend; **Needs notes** collapses to one tappable line
