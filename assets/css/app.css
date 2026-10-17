@@ -1,4 +1,4 @@
-/* v151 */
+/* v152 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -547,3 +547,4 @@ body:has(#view)::after{left:50%}
   .note-banner{margin-left:18px;margin-right:18px}
   body:has(#view)::before{background:linear-gradient(to top,#fff 64px,var(--bg) 64px)}
 }
+.modal-backdrop{z-index:90}

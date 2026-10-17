@@ -143,10 +143,13 @@
     // group owing students by household
     var byHH={}; ids.forEach(function(id){var h=householdBy[id];if(h)(byHH[h]=byHH[h]||[]).push(id);});
     var doneHH={};
-    $("outstanding").innerHTML=ids.map(function(id){
+    // Each owing student (or household) becomes one tappable summary row; its full card — lessons,
+    // checkboxes and actions — renders inside the slide-up "owe sheet" when tapped.
+    var blocks=[];
+    ids.forEach(function(id){
       var h=householdBy[id];
       if(h&&byHH[h].length>=2){
-        if(doneHH[h])return "";
+        if(doneHH[h])return;
         doneHH[h]=1;
         var members=byHH[h];
         var hhLabel=members.map(function(m){return recipientById[m];}).filter(Boolean)[0]||contactById[members[0]]||"Household";
@@ -156,36 +159,60 @@
         // lessons checked across the whole household → invoice/mark-paid just those together
         var hhSelIds=members.reduce(function(a,m){return a.concat((groups[m]||[]).filter(function(l){return selectedLessons[l.id];}).map(function(l){return l.id;}));},[]);
         var hhSelBtns=hhSelIds.length?'<button class="mark lite" data-hhinvsel="'+members.join(",")+'::'+hhSelIds.join(",")+'">Invoice '+hhSelIds.length+' selected</button><button class="mark" data-hhpaysel="'+hhSelIds.join(",")+'">Mark '+hhSelIds.length+' selected paid</button>':'';
-        return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all lessons in this household"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span>'+ageTag(daysSince(hhOldest))+'</span>'+
+        var nLes=members.reduce(function(t,m){return t+groups[m].length;},0);
+        var hhHtml='<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all lessons in this household"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span>'+ageTag(daysSince(hhOldest))+'</span>'+
           '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+' <small>total</small></span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite" data-hhinv="'+members.join(",")+'">Invoice together</button>'+hhSelBtns+'<button class="mark" data-hhpayall="'+hhLessonIds.join(",")+'">Mark all paid</button></span></div>'+members.map(studentCard).join("")+'</div>';
+        blocks.push({key:'hh:'+h,html:hhHtml,name:hhLabel,sub:members.map(function(m){return (nameById[m]||'').split(' ')[0];}).join(', ')+' · '+nLes+' lesson'+(nLes===1?'':'s'),sum:hhSum,oldest:hhOldest,hh:true});
+        return;
       }
-      return studentCard(id);
-    }).join("");
-    $("outstanding").querySelectorAll("[data-pay]").forEach(function(b){b.addEventListener("click",function(){openPayModal([b.dataset.pay]);});});
-    $("outstanding").querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.payall.split(",");if(await confirmBox("Mark all "+ids.length+" of this student's lessons as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
-    $("outstanding").querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpayall.split(",");if(await confirmBox("Mark all "+ids.length+" lessons for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
-    $("outstanding").querySelectorAll("[data-paysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.paysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
-    $("outstanding").querySelectorAll("[data-invsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.invsel.split("::");openInvoice(p[0], p[1]?p[1].split(","):null);});});
-    $("outstanding").querySelectorAll("[data-hhpaysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpaysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
-    $("outstanding").querySelectorAll("[data-hhinvsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.hhinvsel.split("::");openInvoiceMany(p[0].split(","), p[1]?p[1].split(","):null);});});
+      var sum1=groups[id].reduce(function(t,l){return t+Number(l.amount);},0);
+      blocks.push({key:id,html:studentCard(id),name:nameById[id]||"—",sub:groups[id].length+' lesson'+(groups[id].length===1?'':'s'),sum:sum1,oldest:oldestOf(id)});
+    });
+    outBlocks={};blocks.forEach(function(bk){outBlocks[bk.key]=bk;});
+    function initials(n){var w=String(n||"").replace(/[^A-Za-z0-9 ]/g," ").split(/\s+/).filter(Boolean);return ((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();}
+    $("outstanding").innerHTML='<div class="card owe-list">'+blocks.map(function(bk){
+      var d=daysSince(bk.oldest), cls=d>=14?"bad":(d>=7?"warn":"");
+      var age=d<=0?"today":(d===1?"1 day":d+" days");
+      return '<button type="button" class="owe-row" data-owe="'+esc(bk.key)+'">'+
+        '<span class="owe-av'+(bk.hh?' hh':'')+'">'+(bk.hh?'⌂':esc(initials(bk.name)))+'</span>'+
+        '<span class="owe-main"><span class="owe-name">'+esc(bk.name)+'</span>'+
+        '<span class="owe-sub '+cls+'">'+esc(bk.sub)+' · oldest '+age+'</span></span>'+
+        '<span class="owe-amt">'+TL.sgd(bk.sum)+'</span>'+
+        '<svg class="owe-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>';
+    }).join("")+'</div>';
+    $("outstanding").querySelectorAll("[data-owe]").forEach(function(r){r.addEventListener("click",function(){openOwe(r.dataset.owe);});});
+    // Render the open sheet (if any) from fresh data; close it once that debt is settled.
+    var W=$("owe-body");
+    if(openOweKey&&outBlocks[openOweKey]){
+      var bk=outBlocks[openOweKey];
+      $("owe-name").textContent=bk.name;$("owe-sub").textContent=bk.sub;$("owe-amt").textContent=TL.sgd(bk.sum);
+      W.innerHTML=bk.html.replace(/card group collapsed/g,"card group");
+    } else { if(openOweKey)closeOwe(); W=document.createElement("div"); }
+    W.querySelectorAll("[data-pay]").forEach(function(b){b.addEventListener("click",function(){openPayModal([b.dataset.pay]);});});
+    W.querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.payall.split(",");if(await confirmBox("Mark all "+ids.length+" of this student's lessons as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
+    W.querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpayall.split(",");if(await confirmBox("Mark all "+ids.length+" lessons for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
+    W.querySelectorAll("[data-paysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.paysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
+    W.querySelectorAll("[data-invsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.invsel.split("::");openInvoice(p[0], p[1]?p[1].split(","):null);});});
+    W.querySelectorAll("[data-hhpaysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpaysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
+    W.querySelectorAll("[data-hhinvsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.hhinvsel.split("::");openInvoiceMany(p[0].split(","), p[1]?p[1].split(","):null);});});
     // Collapsed by default: tapping a student header (not its buttons/checkbox/link) shows its lessons.
-    $("outstanding").querySelectorAll(".group-head[data-grp]").forEach(function(h){
+    W.querySelectorAll(".group-head[data-grp]").forEach(function(h){
       h.addEventListener("click",function(e){
         if(e.target.closest("input,button,a,label"))return;
         h.parentNode.classList.toggle("collapsed");
       });
     });
-    $("outstanding").querySelectorAll("[data-lsel]").forEach(function(cb){
+    W.querySelectorAll("[data-lsel]").forEach(function(cb){
       cb.addEventListener("change",function(){
         if(cb.checked)selectedLessons[cb.dataset.lsel]=1; else delete selectedLessons[cb.dataset.lsel];
         renderOutstanding(lastUnpaid);
       });
     });
-    $("outstanding").querySelectorAll("[data-inv]").forEach(function(b){b.addEventListener("click",function(){openInvoice(b.dataset.inv);});});
-    $("outstanding").querySelectorAll("[data-remind]").forEach(function(b){b.addEventListener("click",function(){remind(b.dataset.remind);});});
+    W.querySelectorAll("[data-inv]").forEach(function(b){b.addEventListener("click",function(){openInvoice(b.dataset.inv);});});
+    W.querySelectorAll("[data-remind]").forEach(function(b){b.addEventListener("click",function(){remind(b.dataset.remind);});});
     // Master checkbox by the name → tick/untick ALL that student's outstanding lessons.
     // Shows a dash (indeterminate) when only some of the student's lessons are ticked.
-    $("outstanding").querySelectorAll("[data-sel]").forEach(function(cb){
+    W.querySelectorAll("[data-sel]").forEach(function(cb){
       var lids=(groups[cb.dataset.sel]||[]).map(function(l){return String(l.id);});
       var n=lids.filter(function(x){return selectedLessons[x];}).length;
       cb.checked=lids.length>0&&n===lids.length; cb.indeterminate=n>0&&n<lids.length;
@@ -195,7 +222,7 @@
       });
     });
     // Household master checkbox → tick/untick every lesson across the household.
-    $("outstanding").querySelectorAll("[data-hh]").forEach(function(cb){
+    W.querySelectorAll("[data-hh]").forEach(function(cb){
       var h=decodeURIComponent(cb.dataset.hh), members=ids.filter(function(id){return householdBy[id]===h;});
       var lids=members.reduce(function(a,m){return a.concat((groups[m]||[]).map(function(l){return String(l.id);}));},[]);
       var n=lids.filter(function(x){return selectedLessons[x];}).length;
@@ -205,9 +232,14 @@
         renderOutstanding(lastUnpaid);
       });
     });
-    $("outstanding").querySelectorAll("[data-hhinv]").forEach(function(b){b.addEventListener("click",function(){openInvoiceMany(b.dataset.hhinv.split(","));});});
-    $("outstanding").querySelectorAll("[data-hhrem]").forEach(function(b){b.addEventListener("click",function(){remindMany(b.dataset.hhrem.split(","));});});
+    W.querySelectorAll("[data-hhinv]").forEach(function(b){b.addEventListener("click",function(){openInvoiceMany(b.dataset.hhinv.split(","));});});
+    W.querySelectorAll("[data-hhrem]").forEach(function(b){b.addEventListener("click",function(){remindMany(b.dataset.hhrem.split(","));});});
   }
+
+  // ---- owe sheet (tap a student/household in Outstanding) ----
+  var openOweKey=null, outBlocks={};
+  function openOwe(key){openOweKey=key;renderOutstanding(lastUnpaid);$("owe-sheet").classList.add("on");document.body.classList.add("sheet-lock");}
+  function closeOwe(){openOweKey=null;$("owe-sheet").classList.remove("on");document.body.classList.remove("sheet-lock");}
 
   function waNumber(raw){
     var d=String(raw||"").replace(/\D/g,"");
@@ -1188,6 +1220,9 @@
     on("rec-selall","change",toggleSelectAllRecords);
     on("rec-delsel-btn","click",deleteSelectedRecords);
     on("seg-out","click",function(){setLedgerMode("out");});
+    on("owe-close","click",closeOwe);
+    on("owe-sheet","click",function(e){if(e.target===$("owe-sheet"))closeOwe();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&openOweKey)closeOwe();});
     on("seg-rec","click",function(){setLedgerMode("rec");});
     var savedMode="out";
     try{savedMode=localStorage.getItem("tl_ledger_mode")||"out";}catch(e){}

@@ -199,6 +199,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Outstanding: plain list + slide-up detail sheet (v152)
+
+"Who owes you" is now a clean list — avatar, name, lesson count, how old the oldest debt is (amber ≥7 days,
+red ≥14) and the amount. Tap a row (student or household) to open its **sheet**: a bottom sheet on phones,
+a right-hand panel on desktop. The sheet holds everything the old card had: tick lessons, **Mark all paid**
+(primary), Remind, Invoice, per-lesson Mark paid, and the household "together" actions. Ticking lessons
+swaps the whole-balance buttons for "… selected" ones. The sheet re-renders from fresh data after each
+action and closes itself once that balance is cleared.
+Implementation: `renderOutstanding()` builds `outBlocks` (one HTML card per student/household, same
+markup and data-attributes as before) and wires the existing handlers on `#owe-body` instead of
+`#outstanding`; `openOwe(key)` / `closeOwe()` manage the sheet. No payment/invoice logic changed.
+
 ### 2026-10-17 — Top navigation bar on desktop; sidebar removed (v151)
 
 Desktop now has a slim sticky bar across the top: brand · Home · Schedule · Students · Money, with
