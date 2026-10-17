@@ -199,6 +199,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Phone calendar: Day / 3 days / Week / List / Month to try (v181)
+
+Phones get five views (desktop unchanged: Week | Month). **Day** (new default on phones): Mon–Sun strip
+with a dot per lesson (red dot = exam), tap a day for its Google-style timeline at taller hours.
+**3 days**: the timeline with three columns. **Week**: the original 7-column grid, now with names on
+whole words. **List**: the v176 agenda. Swipe left/right on the calendar to move along. The choice is
+remembered per device (`tl_cal_mode`). `renderWeek` is now a general `renderGrid(range, dates, el)`.
+
 ### 2026-10-18 — Landing copy: "Made by tutors, for tutors" (no version bump)
 
 Hero line, meta description and the closing CTA ("we'll let you know") now speak for both founders
