@@ -294,11 +294,52 @@
     wireEvents();
   }
 
+  // ---- phone week: agenda list (a 7-column time grid is unreadable at 390px) ----
+  var phoneMQ = window.matchMedia ? window.matchMedia("(max-width:820px)") : { matches:false };
+  var STATE_TAG = { paid:"Paid", unpaid:"Unpaid", sched:"", proj:"Not logged", cancel:"Cancelled" };
+  function durLabel(min){ var h=min/60; return (Math.round(h*10)/10)+" h"; }
+  function renderAgenda(range){
+    var ws=range.start, blocks=buildBlocks(range);
+    var byDay=[[],[],[],[],[],[],[]];
+    blocks.forEach(function(b){ byDay[b.day].push(b); });
+    byDay.forEach(laneAssign);   // flags clashes
+    lastBlocks=blocks;
+    var today=iso(new Date()), examsByDt=examsByDate(), html="", any=false;
+    for(var d=0; d<7; d++){
+      var date=addDays(ws,d), di=iso(date), isT=di===today;
+      var rows=byDay[d].slice().sort(function(a,b){ return a.startMin-b.startMin; });
+      var ex=examsByDt[di]||[];
+      if(!rows.length && !ex.length && !isT) continue;
+      any=true;
+      html+='<section class="ag-day'+(isT?' today':'')+'"><div class="ag-dh"><span class="ag-dw">'+DAY[d]+'</span> '+
+        date.getDate()+' '+MON[date.getMonth()]+(isT?'<span class="ag-today">Today</span>':'')+'</div>';
+      if(ex.length) html+='<div class="ag-ex">'+ex.map(examChipHTML).join("")+'</div>';
+      if(!rows.length) html+='<div class="ag-none">No lessons</div>';
+      else html+='<div class="ag-list">'+rows.map(function(b){
+        var sub=[b.subject,b.level,b.location].filter(Boolean).join(" · "), tag=STATE_TAG[b.state]||"";
+        return '<button type="button" class="ag-row is-'+b.state+(b.clash?' is-clash':'')+'" data-ev="'+esc(String(b.id))+'">'+
+          '<span class="ag-t"><b>'+hhmm2(b.startMin)+'</b><small>'+durLabel(b.endMin-b.startMin)+'</small></span>'+
+          '<span class="ag-bar"></span>'+
+          '<span class="ag-main"><span class="ag-n">'+esc(b.name)+(b.adhoc?' ✦':'')+(b.postponed?' ↻':'')+'</span>'+
+          (sub?'<span class="ag-s">'+esc(sub)+'</span>':'')+'</span>'+
+          (b.clash?'<span class="ag-tag clash">Clash</span>':(tag?'<span class="ag-tag">'+tag+'</span>':''))+'</button>';
+      }).join("")+'</div>';
+      html+='</section>';
+    }
+    $("cal").innerHTML = any ? '<div class="ag">'+html+'</div>' :
+      '<div class="cal-empty">No lessons this week. Add slots on the Planner, or tap + Add.</div>';
+    wireEvents();
+  }
+
   function render(){
     if(!$("cal")) return;
     $("cal-range").textContent=rangeLabel();
-    if(mode==="month") renderMonth(visibleRange()); else renderWeek(visibleRange());
+    document.body.classList.toggle("cal-agenda", mode!=="month" && phoneMQ.matches);
+    if(mode==="month") renderMonth(visibleRange());
+    else if(phoneMQ.matches) renderAgenda(visibleRange());
+    else renderWeek(visibleRange());
   }
+  if(phoneMQ.addEventListener) phoneMQ.addEventListener("change", function(){ if(loadedStatic) render(); });
 
   function wireEvents(){
     $("cal").querySelectorAll("[data-ev]").forEach(function(node){
@@ -351,8 +392,9 @@
       (b.adhoc?' <span class="cp-tag" style="background:rgba(19,35,63,.10);color:var(--navy)">✦ One-off</span>':'')+
       (b.postponed?' <span class="cp-tag" style="background:rgba(180,83,9,.18);color:#92400E">Postponed</span>':'')+
       actionButtons(b)+
-      '<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Log in Ledger →":"Edit in Ledger →")+'</a>';
+      '<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Open Ledger":"Edit in Ledger")+' →</a>';
     pop.style.display="block";
+    var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
     positionPopover(node);
     $("cp-x").addEventListener("click", hidePopover);
     var cancelBtn=$("cp-cancel"); if(cancelBtn) cancelBtn.addEventListener("click", function(){ showCancelForm(b); });
@@ -362,7 +404,7 @@
     var revertBtn=$("cp-revert"); if(revertBtn) revertBtn.addEventListener("click", function(){ doRevert(b); });
     var logBtn=$("cp-log"); if(logBtn) logBtn.addEventListener("click", function(){ doLogProjected(b); });
   }
-  function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; popNode=null; }
+  function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.remove("on"); popNode=null; }
   // After any write, the visible range (and whichever month a lesson may have moved
   // into/out of) needs fresh data — simplest correct fix is to drop the whole cache.
   function refreshAfterMutation(){ hidePopover(); lessonCache={}; ensureData(); }

@@ -199,6 +199,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Schedule redesign: Calendar + Planner (v176)
+
+- **Calendar:** one toolbar (‹ range › · Today · Week | Month · **Add lesson**); the status filters
+  moved into the key under the calendar ("Scheduled" is now "Upcoming"). **Phones get an agenda list
+  for Week** (day headers, time + duration, status bar and label) instead of a 7-column grid; the
+  lesson details open as a bottom sheet with a backdrop. Desktop grid restyled (teal today, softer).
+- **Planner:** light day headers with the day total, "Every week $X · N slots" summary, calm slot
+  cards (time, student, subject · level, amount in ink, not teal). **The × on each card is gone:
+  tap a slot → Edit → "Remove slot"** (same confirm). Empty days collapse to one dashed line.
+
 ### 2026-10-18 — Privacy policy and terms filled in (no version bump)
 
 Ready for Google OAuth verification of Calendar sync. Consent version stays **v1**.
