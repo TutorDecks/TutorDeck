@@ -223,7 +223,7 @@ window.TL = (function () {
     // Home greets the tutor by their business name ("Good afternoon, Raphael Tuition")
     // Apple-style hero: small grey greeting over the business name in large, heavy type.
     if (active === "dashboard" && brandName && brandName !== DEFAULT_BRAND)
-      meta[0] = '<span class="hi-eyebrow">' + meta[0] + '</span><span class="hi-name">' + esc(brandName) + '.</span>';
+      meta[0] = '<span class="hi-eyebrow">' + meta[0] + '</span><span class="hi-name">' + esc(brandName) + '</span>';
     mountShell(active, session.user.email, meta[0], meta[1]);
     if (typeof init === "function") init(session.user);
   }
