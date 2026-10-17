@@ -199,6 +199,19 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Privacy policy and terms filled in (no version bump)
+
+Ready for Google OAuth verification of Calendar sync. Consent version stays **v1**.
+- **privacy.html:** dated 18 October 2026; contact/DPO email tutordeckadmin@gmail.com; hosting named
+  (Supabase in Singapore, website served by Vercel); overseas-transfer paragraph rewritten.
+- **New section 6, "Google sign-in and Google Calendar":** the two scopes, what synced events contain
+  (name, subject, level, time, fee, paid status), the token living only in the browser, the Limited Use
+  statement and how to revoke access. Later sections renumbered 7–12. Checked against
+  `assets/js/calendar.js`: only events tagged `tlengSync=1` are read, updated or deleted.
+- **terms.html:** dated; contact email; Payments now says the Service is free and fees will be
+  announced before any charge.
+- Review fixes: section 1 now lists uploaded files (payment screenshots, materials); consent section
+  points to Settings → delete account; fixed "Pte. Ltd.." in the terms.
 ### 2026-10-17 — "Since 8 Oct" instead of "oldest 9 days" (v175)
 
 Who owes you rows show the date of the oldest unpaid lesson ("since 8 Oct"; desktop: "2 lessons · unpaid
