@@ -119,7 +119,7 @@ each step feeds the next:
 
 - **Projected this month** = the sum of this month's ledger lessons (scheduled + done,
   paid + unpaid), excluding cancelled. Fill the month (step 4) to see the full figure.
-- **De-duplicating students:** use **Merge** (moves lessons/slots/exams onto the kept
+- **De-duplicating students:** (Merge is hidden from the roster menu since v160 — see that entry) use **Merge** (moves lessons/slots/exams onto the kept
   student), never **Remove** — Remove deletes the student *and* their lessons.
 - **Stopped lessons:** use **Discontinue** to hide a student from the slot/lesson
   pickers while keeping their history; Reactivate anytime.
@@ -199,6 +199,54 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Landing copy: "Made by tutors, for tutors" (no version bump)
+
+Hero line, meta description and the closing CTA ("we'll let you know") now speak for both founders
+instead of one tutor. index.html + landing.html; text only.
+
+### 2026-10-18 — Login + landing in the TutorDeck look (v180)
+
+- **Login:** ink background with a teal glow, the real logo instead of the gold "TD" badge, "Welcome
+  back" / "Set up your tuition business in a minute", full-width Sign in | Create account tabs, teal
+  primary button, links to home/Privacy/Terms under the card. Logic untouched.
+- **Landing (index.html + landing.html):** Manrope + ink/teal instead of Georgia + navy/gold. The hero
+  card now shows a slice of the real app (Collected bar, an amber "Not invoiced" row, sent and paid
+  rows); feature icons are proper line icons on teal tint; teal CTA (full width on phones).
+  landing.html keeps its MugCorner footer line (to-do 1 still open).
+
+### 2026-10-18 — Settings: grouped cards, one Save (v179)
+
+Same fields and ids, regrouped: **Business** (name, invoice prefix, financial year), **Getting paid**
+(PayNow type + ID with "Parents pay to …" preview; bank transfer folded into a "Bank transfer details"
+expander), **WhatsApp messages** (templates in an expander), then a sticky **Save changes** bar (teal;
+floats above the phone tab bar). Two-factor and Your data are separate cards below; their buttons are
+secondary, and Delete account is red text. Fields sit two-up on desktop.
+
+### 2026-10-18 — Exams: list + detail sheet (v178)
+
+Each exam is one row: date block (day + month, year shown if not this year), student, type · subject ·
+topics, and on the right "in 5 days" (amber within 14 days) or the score (78/100 · 78%) / "Add result".
+Tap → sheet with date, topics, result, remarks; **Add result** (teal, past exams without a score),
+Edit exam, Student profile, Delete (red text). The per-row Edit/Delete links are gone.
+Calendar's exam chips still deep-link and highlight the row (`?highlight=`).
+
+### 2026-10-18 — Records: one lesson sheet everywhere (v177)
+
+Tapping any Records row (phone **and** desktop) opens the lesson sheet: student + date · time and the
+amount up top, subject/level/status, then **Mark $X as paid** (teal, only when unpaid), Edit or
+postpone, Cancel/Restore, Open student profile, and Delete (red text). Desktop's hover Edit/Cancel/
+Delete links are retired (checkboxes for bulk actions stay). Phone rows lead with the student name.
+
+### 2026-10-18 — Schedule redesign: Calendar + Planner (v176)
+
+- **Calendar:** one toolbar (‹ range › · Today · Week | Month · **Add lesson**); the status filters
+  moved into the key under the calendar ("Scheduled" is now "Upcoming"). **Phones get an agenda list
+  for Week** (day headers, time + duration, status bar and label) instead of a 7-column grid; the
+  lesson details open as a bottom sheet with a backdrop. Desktop grid restyled (teal today, softer).
+- **Planner:** light day headers with the day total, "Every week $X · N slots" summary, calm slot
+  cards (time, student, subject · level, amount in ink, not teal). **The × on each card is gone:
+  tap a slot → Edit → "Remove slot"** (same confirm). Empty days collapse to one dashed line.
+
 ### 2026-10-18 — Privacy policy and terms filled in (no version bump)
 
 Ready for Google OAuth verification of Calendar sync. Consent version stays **v1**.
@@ -212,6 +260,235 @@ Ready for Google OAuth verification of Calendar sync. Consent version stays **v1
   announced before any charge.
 - Review fixes: section 1 now lists uploaded files (payment screenshots, materials); consent section
   points to Settings → delete account; fixed "Pte. Ltd.." in the terms.
+### 2026-10-17 — "Since 8 Oct" instead of "oldest 9 days" (v175)
+
+Who owes you rows show the date of the oldest unpaid lesson ("since 8 Oct"; desktop: "2 lessons · unpaid
+since 8 Oct") instead of a day count. Invoiced rows lead with "Invoice sent 17 Oct". Turns owed-red at 30+
+days (and only then shows on phone for invoiced rows).
+
+### 2026-10-17 — Cleaner gaps between Who owes you cards (v174)
+
+Row cards used the big two-layer page shadow, which stacked into a grey band between rows. They now use
+a hairline shadow only.
+
+### 2026-10-17 — Calmer not-invoiced rows (v173)
+
+One amber cue per row: the outline stays, "Not invoiced" becomes plain amber text (no pill), and the
+age ("9 days") is grey unless the oldest lesson is 30+ days old (then owed-red).
+
+### 2026-10-17 — Not-invoiced rows outlined in amber (v172)
+
+Who owes you rows are now separate cards; rows not yet invoiced get a 1.5px amber outline and an amber
+*outlined* "Not invoiced" label, matching the sheet's amber-outlined **Send invoice** button.
+
+### 2026-10-17 — "Not invoiced" on Who owes you (v171)
+
+Uses `invoices.sent_at` (needs db/migration_invoice_sent.sql; hidden until it's run). Ledger loads every sent
+invoice's `data.lesson_ids` (`loadSentMap()`); a student/household's unpaid lessons count as invoiced only if
+**every** one is on a sent invoice (`sentFor()`), so new lessons since the last invoice flip it back.
+- Rows: amber **Not invoiced** chip, or quiet grey "invoice sent 17 Oct". Phones show the short form
+  ("9 days", "sent 17 Oct"); lesson count lives in the sheet header.
+- Sheet: the invoice button reads **Send invoice** with an amber outline when not invoiced, otherwise a plain
+  **Resend invoice**. Sending on WhatsApp refreshes the list immediately.
+
+### 2026-10-17 — Invoices: Saved → Sent → Paid; "Payment screenshot" (v170)
+
+**Needs `db/migration_invoice_sent.sql`** (adds nullable `invoices.sent_at`). The pages work before it's run:
+Invoices detects the missing column and simply hides the Sent bits.
+- Tapping **Send on WhatsApp** in the Ledger now stamps `sent_at` on the saved invoice ("Save to app" alone
+  does not). Invoices shows **Not sent** (amber) / **Sent <date>** / **Paid <date>**, a **Not sent** filter,
+  a "Not sent yet" count in the summary strip, and **Mark as sent** / Undo in the sheet for invoices sent
+  some other way. CSV export gains a Sent column.
+- "Proof" is now called **Payment screenshot** in the UI (the stored field is still `proof_path`).
+
+### 2026-10-17 — Invoices redesign: list + detail sheet (v169)
+
+- Summary strip: **Paid** · **Awaiting payment** · **Proof attached (x / y)** for the chosen period.
+- One control row: **All | Awaiting · N | Paid**, a period picker (This year / Last year / All time /
+  Custom dates…) and ⋯ → Export CSV. Period now counts paid invoices by paid date and awaiting ones by
+  issue date (previously any date range silently hid every unpaid invoice).
+- Each invoice is one row (initials, student, invoice no · issued date, amount, Paid <date> / Awaiting chip,
+  📎 when proof is attached). Tap → sheet (bottom on phones, right panel on desktop) with **Mark as paid**
+  (primary) / Mark as unpaid, Print / Save PDF, Open Ledger, paid date, proof attach/view/remove, the invoice
+  preview, and Delete. All actions reuse the existing functions (togglePaid still syncs lessons).
+
+### 2026-10-17 — Needs notes above Today on phones (v168)
+
+Phone order is now Needs notes (only shown when something is missing notes) → Today → Tomorrow → Exams.
+
+### 2026-10-17 — Shorter Home on phones (v167)
+
+Phone-only (≤820px): Money card drops the bar legend; **Needs notes** collapses to one tappable line
+("Needs notes · 3 ▾", `#yd-toggle`); an empty **Tomorrow** shrinks to one slim line; Today's lessons are
+flat rows; Upcoming exams shows the next 3 (All → Exams). Desktop unchanged. Roughly 30% less scrolling.
+
+### 2026-10-17 — Home: one Money card + labelled Money / Teaching sections (v166)
+
+The four stat tiles and the separate "This month" bar repeated the same numbers, so they became one
+**Money** card: Collected (with "26% of $X booked") beside Owed to you (all-time, links to the Ledger), the
+month's collected / unpaid / upcoming bar underneath, and "See income ›" to Insights. Below it, a
+**Teaching** section (header shows lessons this week) holds Today, Needs notes, Tomorrow and Upcoming exams
+("N in the next 14 days" now sits in the exams card). Today no longer repeats the date.
+
+### 2026-10-17 — No full stop after the business name on Home (v165)
+
+Avoids "Ltd.." on names ending in "Pte. Ltd." and reads less like a slogan.
+
+### 2026-10-17 — Home greeting toned down (v163)
+
+Dropped the handwritten Sacramento script (too loud next to the rest of the app). The greeting is back
+to a small grey Manrope line over the business name, now 40px desktop / 32px phone (was 64 / 44).
+
+### 2026-10-17 — Handwritten Home greeting (v162)
+
+The greeting line is now a teal handwritten script (Google Font **Sacramento**, the closest free match
+to the Mac's "hello"), over a bigger business name (64px desktop / 44px phone). Sacramento is only used
+here; it's loaded via a second `@import` at the top of app.css.
+
+### 2026-10-17 — Apple-style Home headline (v161)
+
+Home's title is now two lines instead of "Good afternoon, Raphael Tuition": a small grey greeting
+("Good afternoon") over the business name in large, heavy, tightly-tracked type with a full stop
+("Raphael Tuition."), then the date. Classes `.hi-eyebrow` / `.hi-name` in app.css; built in
+`requireAuth()` (app.js). Falls back to just the greeting if no business name is set.
+
+### 2026-10-17 — Merge removed from the roster menu (v160)
+
+The ⋯ menu is now Edit details / Discontinue (or Reactivate) / Remove. The merge code (`openMerge`, `doMerge`,
+`#merge-modal`) is left in place, unused; to bring it back, re-add the `data-merge` button in `rowHtml()`
+(students.js — there's a comment with the exact line).
+
+### 2026-10-17 — Cleaner Students roster (v159)
+
+- Rows: initials avatar, name, level chip, parent, contact. The whole row opens the profile (desktop too),
+  so the "Profile" button is gone; Edit details / Merge with… / Discontinue (or Reactivate) / Remove moved
+  into one **⋯** menu per row.
+- **Active | Discontinued · N | All** toggle replaces the status dropdown (default Active; the hidden
+  `#s-status` select still drives `renderRoster()`). Level/Parent filters stay on desktop and fold behind a
+  **Filter** button on phones. Search also matches parent names in the placeholder copy.
+- Phones: a single white list with "level · parent" under each name.
+
+### 2026-10-17 — Quieter "Exit parent view" pill (v158)
+
+The pill is now frosted white with grey text and a thin border (was solid navy), smaller, and sits
+bottom-right on desktop / centred above the tab bar on phones. Extra bottom padding in Parent view so it
+never covers the last row.
+
+### 2026-10-17 — First-time tips; Parent view exit pill (v157)
+
+- New helper **`TL.coach(key, anchorEl, html)`** (app.js): a small dark tip under an element, shown ONCE
+  per browser until the tutor taps **Got it** (remembered in localStorage as `td_tip_<key>`). Use it to
+  introduce new / non-obvious features instead of permanent banners.
+- First use: the student page's **Parent view** button explains itself once.
+- Parent view no longer shows the "fees and editing are hidden" banner (the parent saw it too). Instead a
+  neutral floating **Exit parent view** pill sits at the bottom of the screen (above the phone tab bar).
+
+### 2026-10-17 — Parent view rebuilt around progress (v156)
+
+The Tutor | Parent toggle became one **Parent view** button (eye icon). In Parent view:
+- a slim teal banner "Parent view · fees and editing are hidden" with **Exit** sits above the card;
+- the money strip is replaced by parent-friendly stats — lessons attended, latest score per subject
+  (up to two, with ▲/▼ vs the previous exam) and the next exam (`renderParentKpis()` in student.js);
+- the Progress tab opens first (tabs: Progress · Lessons · Schedule); Edit, Ledger, contact details and
+  the Notes tab are hidden; Lessons shows past lessons only (no empty "No notes recorded" future rows).
+Also fixes the card losing its bottom padding (clipped avatar) when the money strip was hidden.
+
+### 2026-10-17 — Cleaner student profile header; "More info" on phones (v155)
+
+The header's label wall (LEVEL / CONTACT / LOCATION / MESSAGES TO) became a level chip (plus
+Discontinued / "Until <date>" chips when relevant) and icon lines: phone (tap → WhatsApp chat via wa.me),
+location, "Messages to <name>", notes. Desktop shows the lines inline; phones hide them behind a
+**More info ▾** toggle so the card is just initials, level, buttons and totals.
+
+### 2026-10-17 — Student profile redesign; named greeting on Home (v154)
+
+- **Student page** (`student.html`): a profile card (initials avatar, level/contact/location/messages-to,
+  Edit + Ledger, Tutor | Parent view) with the four totals in one strip, then tabs
+  **Lessons · Notes · Progress · Schedule** instead of one long scroll (last tab remembered per browser).
+  Parent view (was "Client view") hides money/editing as before and folds Notes into Lessons.
+- **Progress chart:** fixed a bug where the first two subjects were both teal. Subjects now get a fixed,
+  colour-blind-checked order (blue `#2a78d6`, orange `#eb6834`, violet `#6250d6`, pink `#e87ba4`,
+  yellow `#eda100`, aqua `#1baf7a`; validated with the dataviz palette checker) and each line ends in a
+  direct label with its latest %. Phones get a smaller canvas so labels stay readable.
+- Group sub-tabs (Roster | Exams) no longer show on the student page, where neither applies.
+- **Home** greets by business name: "Good afternoon, Raphael Tuition" (falls back to just the greeting).
+
+### 2026-10-17 — TutorDeck logo (v153)
+
+New product mark: a small stack of cards in white on a teal rounded square (`assets/img/logo.svg`, also
+inlined as `LOGO` in app.js). Desktop top bar now shows the logo + "TutorDeck" on the left; the round
+avatar on the right keeps the tutor's own business initials, and its menu shows the business name + email.
+The phone More sheet shows the logo with the tutor's business name. Every page uses the logo as its
+browser-tab icon (favicon).
+
+### 2026-10-17 — Outstanding: plain list + slide-up detail sheet (v152)
+
+"Who owes you" is now a clean list — avatar, name, lesson count, how old the oldest debt is (amber ≥7 days,
+red ≥14) and the amount. Tap a row (student or household) to open its **sheet**: a bottom sheet on phones,
+a right-hand panel on desktop. The sheet holds everything the old card had: tick lessons, **Mark all paid**
+(primary), Remind, Invoice, per-lesson Mark paid, and the household "together" actions. Ticking lessons
+swaps the whole-balance buttons for "… selected" ones. The sheet re-renders from fresh data after each
+action and closes itself once that balance is cleared.
+Implementation: `renderOutstanding()` builds `outBlocks` (one HTML card per student/household, same
+markup and data-attributes as before) and wires the existing handlers on `#owe-body` instead of
+`#outstanding`; `openOwe(key)` / `closeOwe()` manage the sheet. No payment/invoice logic changed.
+
+### 2026-10-17 — Top navigation bar on desktop; sidebar removed (v151)
+
+Desktop now has a slim sticky bar across the top: brand · Home · Schedule · Students · Money, with
+Materials/Settings as icon buttons and an account avatar (email + Sign out) on the right. Page content
+is centred (max 1240px). Under 1000px the nav shows icons only; phones (≤820px) keep the bottom tab bar.
+The old `.sidebar` markup is no longer rendered (`mountShell()` in app.js builds `.topnav`).
+
+### 2026-10-17 — New TutorDeck look: ink + teal, Manrope (v150)
+
+Picked from three mocked directions (canvas "TutorDeck visual directions", option B with C's font).
+- **Font:** Manrope everywhere (headings, body, numbers; tabular figures). `--serif` now points at the
+  same family so older rules keep working.
+- **Colours:** ink `#13233F` (text, sidebar), one accent teal `#0F766E` (primary actions, active tab, paid),
+  owed `#B4432F`, warning amber `#B45309`, warm-white ground `#FAF9F6`, lines `#E8E5DE`. The old gold and
+  cream are gone; the var names (`--gold`, `--cream`, `--navy`) still exist but now hold the new values.
+- Phone tab bar is white with a teal active tab; desktop sidebar stays ink with a teal active item.
+- Overdue tags are amber (a warning), not the accent.
+- Marketing pages (index/landing/privacy/terms) not restyled yet.
+
+### 2026-10-17 — Ledger declutter (v149)
+
+- The three big KPI cards became one slim summary strip: **Owed** · **Collected** · **Booked** for the
+  selected month (same ids, so `ledger.js` logic is unchanged).
+- One control row: Outstanding | Records + a compact month navigator. "This month" only appears when
+  you've moved off the current month; "All" is now an "All time" chip.
+- Records toolbar: **+ Add lesson** is the one primary button. Log this week / Log this month / custom
+  range live in a **Log lessons ▾** menu; Export CSV moved into **⋯**.
+- Desktop rows: actions ("Edit", Cancel, Delete) stay hidden until you hover the row. "Postpone / edit"
+  is now just "Edit" (the form still handles postponing).
+- Phones: Records filters fold behind a **Filter** button next to search; the Outstanding cards make
+  **Mark all paid** the solid primary button with Remind / Invoice as quiet text buttons.
+
+### 2026-10-17 — Home redesign; finance moves to Money → Insights (v148)
+
+The Dashboard's Finance | Teaching and Month | Year toggles are gone from Home.
+- **Home** (`app.html`): greeting + date, four small tap-through tiles (Owed to you → Ledger, Collected
+  this month → Insights, Lessons this week → Calendar, Exams in the next 14 days → Exams), then Today,
+  Needs notes, Tomorrow, Upcoming exams and a slim "This month" collection bar. Desktop is two columns
+  (Today/Tomorrow left; Needs notes/Exams/This month right); phones stack them in that priority order.
+- **Insights** (`insights.html`, new Money sub-tab): the old Finance view unchanged (month KPIs,
+  collection bar, income chart, Year view with by-student / by-subject breakdowns).
+- `dashboard.js` serves both pages: it reads the page id from `#view[data-page]` and skips any element a
+  page doesn't have (`setText`, guarded chart/teaching/toggle code).
+- KPI tiles are 2-per-row and smaller on phones everywhere.
+
+### 2026-10-17 — New navigation: 5 grouped tabs with icons (v147)
+
+Nine equal nav items became four groups plus "More", so it's clearer where things live:
+**Home** (Dashboard) · **Schedule** (Calendar, Weekly planner) · **Students** (Roster, Exams, student
+profiles) · **Money** (Ledger, Invoices) · **More** (Materials, Settings, Sign out).
+- Phones: a fixed bottom tab bar (icon + label) replaces the ☰ drawer; More opens a bottom sheet with
+  Settings, Materials and Sign out.
+- Desktop: the sidebar shows the four groups; Materials/Settings/Sign out sit at the foot.
+- Pages inside a group show as underline sub-tabs under the title (e.g. Calendar | Weekly planner).
+- Proper line icons (Lucide paths, inline SVG) replace the old text symbols. All in `mountShell()` in
+  `assets/js/app.js` (`GROUPS` / `EXTRA`) and the "Navigation v2" block at the end of `app.css`.
 
 ### 2026-10-17 — Sign out always visible in the phone menu (v146)
 

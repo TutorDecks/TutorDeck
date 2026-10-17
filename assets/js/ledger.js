@@ -105,6 +105,28 @@
     var cls=days>=30?"age bad":(days>=14?"age warn":"age");
     return '<span class="'+cls+'">'+lbl+' overdue</span>';
   }
+  // ---- invoice "sent" status per lesson (needs db/migration_invoice_sent.sql; quietly off without it) ----
+  var sentByLesson={}, sentKnown=false;
+  async function loadSentMap(){
+    sentByLesson={}; sentKnown=false;
+    try{
+      var r=await window.sb.from("invoices").select("data,sent_at").not("sent_at","is",null);
+      if(r.error) return;
+      sentKnown=true;
+      (r.data||[]).forEach(function(v){ var ids=(v.data&&v.data.lesson_ids)||[]; ids.forEach(function(id){
+        if(!sentByLesson[id]||v.sent_at>sentByLesson[id]) sentByLesson[id]=v.sent_at; }); });
+    }catch(e){}
+  }
+  // A set of unpaid lessons is "sent" only when every one of them is on an invoice that went out;
+  // returns the latest send date, or null (= not invoiced: never invoiced, saved-not-sent, or new lessons since).
+  function sentFor(rows){
+    if(!sentKnown||!rows.length) return null;
+    var latest=null;
+    for(var i=0;i<rows.length;i++){ var d=sentByLesson[rows[i].id]; if(!d) return null; if(!latest||d>latest) latest=d; }
+    return latest;
+  }
+  function fmtSent(d){ return new Date(d).toLocaleDateString("en-SG",{day:"numeric",month:"short"}); }
+
   function renderOutstanding(unpaidAll){
     lastUnpaid=unpaidAll;
     // Shared period (header) — scope the whole view (counts, invoicing, marking) to it.
@@ -138,15 +160,18 @@
           :(l.subject?esc(l.subject):'<span class="muted">lesson</span>');
         return '<div class="lrow"><input type="checkbox" class="lchk" data-lsel="'+l.id+'"'+(selectedLessons[l.id]?" checked":"")+'><span class="lwhen">'+prettyDate(l.lesson_date)+(d>=14?' <span class="agedot" title="'+d+' days unpaid">•</span>':"")+"</span><span>"+label+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
       var selBtn=selIds.length?'<button class="mark lite" data-invsel="'+id+'::'+selIds.join(",")+'">Invoice '+selIds.length+' selected</button><button class="mark" data-paysel="'+selIds.join(",")+'">Mark '+selIds.length+' selected paid</button>':"";
-      return '<div class="card group collapsed"><div class="group-head" data-grp="'+id+'"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select all lessons for this student"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'<span class="grp-caret" aria-hidden="true">›</span></span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button>'+selBtn+'<button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
+      return '<div class="card group collapsed"><div class="group-head" data-grp="'+id+'"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select all lessons for this student"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'<span class="grp-caret" aria-hidden="true">›</span></span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite'+(sentKnown&&!sentFor(rows)?' need':'')+'" data-inv="'+id+'">'+(!sentKnown?'Invoice':(sentFor(rows)?'Resend invoice':'Send invoice'))+'</button>'+selBtn+'<button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
     }
     // group owing students by household
     var byHH={}; ids.forEach(function(id){var h=householdBy[id];if(h)(byHH[h]=byHH[h]||[]).push(id);});
     var doneHH={};
-    $("outstanding").innerHTML=ids.map(function(id){
+    // Each owing student (or household) becomes one tappable summary row; its full card — lessons,
+    // checkboxes and actions — renders inside the slide-up "owe sheet" when tapped.
+    var blocks=[];
+    ids.forEach(function(id){
       var h=householdBy[id];
       if(h&&byHH[h].length>=2){
-        if(doneHH[h])return "";
+        if(doneHH[h])return;
         doneHH[h]=1;
         var members=byHH[h];
         var hhLabel=members.map(function(m){return recipientById[m];}).filter(Boolean)[0]||contactById[members[0]]||"Household";
@@ -156,36 +181,67 @@
         // lessons checked across the whole household → invoice/mark-paid just those together
         var hhSelIds=members.reduce(function(a,m){return a.concat((groups[m]||[]).filter(function(l){return selectedLessons[l.id];}).map(function(l){return l.id;}));},[]);
         var hhSelBtns=hhSelIds.length?'<button class="mark lite" data-hhinvsel="'+members.join(",")+'::'+hhSelIds.join(",")+'">Invoice '+hhSelIds.length+' selected</button><button class="mark" data-hhpaysel="'+hhSelIds.join(",")+'">Mark '+hhSelIds.length+' selected paid</button>':'';
-        return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all lessons in this household"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span>'+ageTag(daysSince(hhOldest))+'</span>'+
-          '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+' <small>total</small></span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite" data-hhinv="'+members.join(",")+'">Invoice together</button>'+hhSelBtns+'<button class="mark" data-hhpayall="'+hhLessonIds.join(",")+'">Mark all paid</button></span></div>'+members.map(studentCard).join("")+'</div>';
+        var nLes=members.reduce(function(t,m){return t+groups[m].length;},0);
+        var hhRows=members.reduce(function(a,m){return a.concat(groups[m]);},[]), hhSent=sentFor(hhRows);
+        var hhHtml='<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all lessons in this household"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span>'+ageTag(daysSince(hhOldest))+'</span>'+
+          '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+' <small>total</small></span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite'+(sentKnown&&!hhSent?' need':'')+'" data-hhinv="'+members.join(",")+'">'+(!sentKnown?'Invoice together':(hhSent?'Resend invoice':'Send invoice'))+'</button>'+hhSelBtns+'<button class="mark" data-hhpayall="'+hhLessonIds.join(",")+'">Mark all paid</button></span></div>'+members.map(studentCard).join("")+'</div>';
+        blocks.push({key:'hh:'+h,html:hhHtml,name:hhLabel,sub:members.map(function(m){return (nameById[m]||'').split(' ')[0];}).join(', ')+' · '+nLes+' lesson'+(nLes===1?'':'s'),sum:hhSum,oldest:hhOldest,hh:true,sent:hhSent});
+        return;
       }
-      return studentCard(id);
-    }).join("");
-    $("outstanding").querySelectorAll("[data-pay]").forEach(function(b){b.addEventListener("click",function(){openPayModal([b.dataset.pay]);});});
-    $("outstanding").querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.payall.split(",");if(await confirmBox("Mark all "+ids.length+" of this student's lessons as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
-    $("outstanding").querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpayall.split(",");if(await confirmBox("Mark all "+ids.length+" lessons for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
-    $("outstanding").querySelectorAll("[data-paysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.paysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
-    $("outstanding").querySelectorAll("[data-invsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.invsel.split("::");openInvoice(p[0], p[1]?p[1].split(","):null);});});
-    $("outstanding").querySelectorAll("[data-hhpaysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpaysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
-    $("outstanding").querySelectorAll("[data-hhinvsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.hhinvsel.split("::");openInvoiceMany(p[0].split(","), p[1]?p[1].split(","):null);});});
+      var sum1=groups[id].reduce(function(t,l){return t+Number(l.amount);},0);
+      blocks.push({key:id,html:studentCard(id),name:nameById[id]||"—",sub:groups[id].length+' lesson'+(groups[id].length===1?'':'s'),sum:sum1,oldest:oldestOf(id),sent:sentFor(groups[id])});
+    });
+    outBlocks={};blocks.forEach(function(bk){outBlocks[bk.key]=bk;});
+    function initials(n){var w=String(n||"").replace(/[^A-Za-z0-9 ]/g," ").split(/\s+/).filter(Boolean);return ((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();}
+    $("outstanding").innerHTML='<div class="card owe-list">'+blocks.map(function(bk){
+      var d=daysSince(bk.oldest), cls=d>=30?"bad":"";
+      var since='<span class="lw">unpaid </span>since '+prettyDate(bk.oldest), need=sentKnown&&!bk.sent, sub;
+      if(bk.sent){
+        // sent: lead with the invoice; the age only shows on phone once it's overdue (30+ days)
+        sub='Invoice sent '+fmtSent(bk.sent)+'<span class="'+(cls?'':'lc')+'"> · <span class="'+cls+'"><span class="lc">'+esc(bk.sub)+' · </span>'+since+'</span></span>';
+      } else {
+        sub=(need?'<span class="inv-need">Not invoiced</span><span class="inv-dot"> · </span>':'')+'<span class="'+cls+'"><span class="lc">'+esc(bk.sub)+' · </span>'+since+'</span>';
+      }
+      return '<button type="button" class="owe-row'+(sentKnown&&!bk.sent?' need':'')+'" data-owe="'+esc(bk.key)+'">'+
+        '<span class="owe-av'+(bk.hh?' hh':'')+'">'+(bk.hh?'⌂':esc(initials(bk.name)))+'</span>'+
+        '<span class="owe-main"><span class="owe-name"><span class="nm">'+esc(bk.name)+'</span></span>'+
+        '<span class="owe-sub">'+sub+'</span></span>'+
+        '<span class="owe-amt">'+TL.sgd(bk.sum)+'</span>'+
+        '<svg class="owe-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>';
+    }).join("")+'</div>';
+    $("outstanding").querySelectorAll("[data-owe]").forEach(function(r){r.addEventListener("click",function(){openOwe(r.dataset.owe);});});
+    // Render the open sheet (if any) from fresh data; close it once that debt is settled.
+    var W=$("owe-body");
+    if(openOweKey&&outBlocks[openOweKey]){
+      var bk=outBlocks[openOweKey];
+      $("owe-name").textContent=bk.name;$("owe-sub").textContent=bk.sub;$("owe-amt").textContent=TL.sgd(bk.sum);
+      W.innerHTML=bk.html.replace(/card group collapsed/g,"card group");
+    } else { if(openOweKey)closeOwe(); W=document.createElement("div"); }
+    W.querySelectorAll("[data-pay]").forEach(function(b){b.addEventListener("click",function(){openPayModal([b.dataset.pay]);});});
+    W.querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.payall.split(",");if(await confirmBox("Mark all "+ids.length+" of this student's lessons as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
+    W.querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpayall.split(",");if(await confirmBox("Mark all "+ids.length+" lessons for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
+    W.querySelectorAll("[data-paysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.paysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
+    W.querySelectorAll("[data-invsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.invsel.split("::");openInvoice(p[0], p[1]?p[1].split(","):null);});});
+    W.querySelectorAll("[data-hhpaysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpaysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
+    W.querySelectorAll("[data-hhinvsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.hhinvsel.split("::");openInvoiceMany(p[0].split(","), p[1]?p[1].split(","):null);});});
     // Collapsed by default: tapping a student header (not its buttons/checkbox/link) shows its lessons.
-    $("outstanding").querySelectorAll(".group-head[data-grp]").forEach(function(h){
+    W.querySelectorAll(".group-head[data-grp]").forEach(function(h){
       h.addEventListener("click",function(e){
         if(e.target.closest("input,button,a,label"))return;
         h.parentNode.classList.toggle("collapsed");
       });
     });
-    $("outstanding").querySelectorAll("[data-lsel]").forEach(function(cb){
+    W.querySelectorAll("[data-lsel]").forEach(function(cb){
       cb.addEventListener("change",function(){
         if(cb.checked)selectedLessons[cb.dataset.lsel]=1; else delete selectedLessons[cb.dataset.lsel];
         renderOutstanding(lastUnpaid);
       });
     });
-    $("outstanding").querySelectorAll("[data-inv]").forEach(function(b){b.addEventListener("click",function(){openInvoice(b.dataset.inv);});});
-    $("outstanding").querySelectorAll("[data-remind]").forEach(function(b){b.addEventListener("click",function(){remind(b.dataset.remind);});});
+    W.querySelectorAll("[data-inv]").forEach(function(b){b.addEventListener("click",function(){openInvoice(b.dataset.inv);});});
+    W.querySelectorAll("[data-remind]").forEach(function(b){b.addEventListener("click",function(){remind(b.dataset.remind);});});
     // Master checkbox by the name → tick/untick ALL that student's outstanding lessons.
     // Shows a dash (indeterminate) when only some of the student's lessons are ticked.
-    $("outstanding").querySelectorAll("[data-sel]").forEach(function(cb){
+    W.querySelectorAll("[data-sel]").forEach(function(cb){
       var lids=(groups[cb.dataset.sel]||[]).map(function(l){return String(l.id);});
       var n=lids.filter(function(x){return selectedLessons[x];}).length;
       cb.checked=lids.length>0&&n===lids.length; cb.indeterminate=n>0&&n<lids.length;
@@ -195,7 +251,7 @@
       });
     });
     // Household master checkbox → tick/untick every lesson across the household.
-    $("outstanding").querySelectorAll("[data-hh]").forEach(function(cb){
+    W.querySelectorAll("[data-hh]").forEach(function(cb){
       var h=decodeURIComponent(cb.dataset.hh), members=ids.filter(function(id){return householdBy[id]===h;});
       var lids=members.reduce(function(a,m){return a.concat((groups[m]||[]).map(function(l){return String(l.id);}));},[]);
       var n=lids.filter(function(x){return selectedLessons[x];}).length;
@@ -205,9 +261,14 @@
         renderOutstanding(lastUnpaid);
       });
     });
-    $("outstanding").querySelectorAll("[data-hhinv]").forEach(function(b){b.addEventListener("click",function(){openInvoiceMany(b.dataset.hhinv.split(","));});});
-    $("outstanding").querySelectorAll("[data-hhrem]").forEach(function(b){b.addEventListener("click",function(){remindMany(b.dataset.hhrem.split(","));});});
+    W.querySelectorAll("[data-hhinv]").forEach(function(b){b.addEventListener("click",function(){openInvoiceMany(b.dataset.hhinv.split(","));});});
+    W.querySelectorAll("[data-hhrem]").forEach(function(b){b.addEventListener("click",function(){remindMany(b.dataset.hhrem.split(","));});});
   }
+
+  // ---- owe sheet (tap a student/household in Outstanding) ----
+  var openOweKey=null, outBlocks={};
+  function openOwe(key){openOweKey=key;renderOutstanding(lastUnpaid);$("owe-sheet").classList.add("on");document.body.classList.add("sheet-lock");}
+  function closeOwe(){openOweKey=null;$("owe-sheet").classList.remove("on");document.body.classList.remove("sheet-lock");}
 
   function waNumber(raw){
     var d=String(raw||"").replace(/\D/g,"");
@@ -338,12 +399,12 @@
       var badge=l.status==="cancelled"
         ?'<span class="kind-tag">cancelled</span>'+(l.amount>0?(l.paid?' <span class="badge paid">Paid</span>':' <span class="badge owed">Unpaid</span>'):'')
         :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
-      if(l.postponed)badge+=' <span class="kind-tag" style="background:#C8922A;color:#fff">postponed</span>';
+      if(l.postponed)badge+=' <span class="kind-tag" style="background:#B45309;color:#fff">postponed</span>';
       var cancelBtn=l.status==="cancelled"
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
         : '<button class="tact warn" data-cancel="'+l.id+'">Cancel</button>';
       return lead+'<tr data-lid="'+l.id+'"'+attrs+'><td data-label=""><input type="checkbox" class="lchk" data-rsel="'+l.id+'"'+(selectedRecords[l.id]?" checked":"")+'></td><td data-label="Date">'+recDate(l.lesson_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a></td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
-        '<td class="acts"><button class="tact" data-edit="'+l.id+'">Postpone / edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
+        '<td class="acts"><button class="tact" data-edit="'+l.id+'">Edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
     }).join("")
       // every row is newer than today (or filters hid it) — today belongs at the bottom
       +(todayInView&&!placed?divider:"");
@@ -357,38 +418,45 @@
         updateRecSelBar();
       });
     });
-    // Mobile: rows are compact — tapping one (not a link/button) opens its detail sheet.
+    // Tapping a row (not its checkbox or the student link) opens the lesson sheet.
     body.querySelectorAll("tr[data-lid]").forEach(function(tr){
       tr.addEventListener("click",function(e){
-        if(!window.matchMedia("(max-width:820px)").matches)return;
         if(e.target.closest("a,button,input,label"))return;
         openRecDetail(tr.dataset.lid);
       });
     });
     updateRecSelBar();
   }
-  // Read-friendly detail sheet for one lesson (mobile), carrying the same row actions.
+  // Lesson detail sheet (every screen size): who/when up top, details, then the actions.
   function openRecDetail(id){
     var l=monthById[id]; if(!l)return;
-    var badge=l.status==="cancelled"
-      ?'<span class="kind-tag">cancelled</span>'+(l.amount>0?(l.paid?' <span class="badge paid">Paid</span>':' <span class="badge owed">Unpaid</span>'):'')
-      :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
-    if(l.postponed)badge+=' <span class="kind-tag" style="background:#C8922A;color:#fff">postponed</span>';
-    $("rd-title").textContent=recDate(l.lesson_date);
+    var canc=l.status==="cancelled", sched=l.status==="scheduled";
+    var tag=canc?'<span class="rd-tag">Cancelled</span>':(l.paid?'<span class="rd-tag paid">Paid</span>':(sched?'<span class="rd-tag">Upcoming</span>':'<span class="rd-tag owed">Unpaid</span>'));
+    if(l.postponed)tag+=' <span class="rd-tag post">Postponed</span>';
+    if(l.one_off)tag+=' <span class="rd-tag">✦ One-off</span>';
     var time=(l.start_time&&l.end_time)?(hm(l.start_time)+"–"+hm(l.end_time)):"";
-    var items=[["Student",esc(nameById[l.student_id]||"—")],["Subject",l.subject?esc(l.subject):"—"],["Level",l.level?esc(l.level):"—"]];
-    if(time)items.push(["Time",time]);
-    items.push([l.status==="cancelled"?"Compensation":"Amount","<b>"+TL.sgd(l.amount)+"</b>"],["Status",badge]);
+    $("rd-title").textContent=nameById[l.student_id]||"Lesson";
+    $("rd-sub").textContent=recDate(l.lesson_date)+(time?" · "+time:"");
+    var amt=$("rd-amt"); amt.textContent=TL.sgd(l.amount);
+    amt.className="owe-total"+(l.paid?" paid":((canc||sched||!(l.amount>0))?" plain":""));
+    var items=[["Subject",l.subject?esc(l.subject):"—"],["Level",l.level?esc(l.level):"—"]];
+    if(canc)items.push(["Compensation",TL.sgd(l.amount)]);
+    items.push(["Status",tag]);
     $("rd-body").innerHTML='<div class="rd-list">'+items.map(function(r){return '<div class="rd-row"><span class="rd-k">'+r[0]+'</span><span class="rd-v">'+r[1]+'</span></div>';}).join("")+'</div>';
-    var canc=l.status==="cancelled"?'<button class="btn" id="rd-restore">Restore</button>':'<button class="btn" id="rd-cancel" style="color:var(--gold-2)">Cancel lesson</button>';
-    $("rd-actions").innerHTML='<button class="btn" id="rd-del" style="color:var(--owed)">Delete</button><span style="display:inline-flex;gap:8px;margin-left:auto">'+canc+'<button class="btn btn-primary" id="rd-edit">Postpone / edit</button></span>';
+    var canPay=!l.paid&&!canc&&l.amount>0;
+    $("rd-actions").innerHTML=(canPay?'<button class="btn rd-primary" id="rd-pay">Mark '+TL.sgd(l.amount)+' as paid</button>':'')+
+      '<button class="btn" id="rd-edit">Edit or postpone</button>'+
+      (canc?'<button class="btn" id="rd-restore">Restore lesson</button>':'<button class="btn" id="rd-cancel">Cancel lesson</button>')+
+      '<a class="btn" href="student.html?id='+encodeURIComponent(l.student_id)+'" style="grid-column:1/-1;text-decoration:none">Open student profile</a>'+
+      '<button class="btn rd-del" id="rd-del">Delete lesson</button>';
     $("rd-edit").onclick=function(){closeRecDetail();openAdd(true,l);};
     $("rd-del").onclick=function(){closeRecDetail();deleteLesson(id);};
+    var rp=$("rd-pay");if(rp)rp.onclick=function(){closeRecDetail();openPayModal([id]);};
     var rc=$("rd-cancel");if(rc)rc.onclick=function(){closeRecDetail();cancelLesson(id);};
     var rr=$("rd-restore");if(rr)rr.onclick=function(){closeRecDetail();restoreLesson(l);};
-    $("rec-detail").classList.add("on");
+    $("rec-detail").classList.add("on");document.body.classList.add("sheet-lock");
   }
-  function closeRecDetail(){$("rec-detail").classList.remove("on");}
+  function closeRecDetail(){$("rec-detail").classList.remove("on");if(!$("owe-sheet").classList.contains("on"))document.body.classList.remove("sheet-lock");}
   function updateRecSelBar(){
     var n=Object.keys(selectedRecords).length;
     var btn=$("rec-delsel-btn");
@@ -776,11 +844,11 @@
       d.lessons.forEach(function(l){ var w=l._who||"—"; if(!byWho[w]){byWho[w]=[];order.push(w);} byWho[w].push(l); });
       rows=order.map(function(w){
         var grp=byWho[w], sub=Math.round(grp.reduce(function(t,l){return t+(Number(l.amount)||0);},0)*100)/100, sl=subjLevel(grp), rn=rateNote(grp);
-        return '<tr><td colspan="3" style="background:#faf6ec;padding:9px 8px 6px"><span style="font-weight:700;color:#1A2A4F">'+esc(w)+'</span>'+
-            (sl?' <span style="color:#6b7280;font-size:12px">— '+esc(sl)+'</span>':'')+'</td></tr>'+
+        return '<tr><td colspan="3" style="background:#faf6ec;padding:9px 8px 6px"><span style="font-weight:700;color:#13233F">'+esc(w)+'</span>'+
+            (sl?' <span style="color:#5E6676;font-size:12px">— '+esc(sl)+'</span>':'')+'</td></tr>'+
           grp.map(lrow).join("")+
-          '<tr><td colspan="2" class="r" style="color:#6b7280;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">Subtotal'+(rn?' · '+rn:'')+'</td>'+
-          '<td class="r" style="color:#6b7280;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">'+TL.sgd(sub)+'</td></tr>';
+          '<tr><td colspan="2" class="r" style="color:#5E6676;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">Subtotal'+(rn?' · '+rn:'')+'</td>'+
+          '<td class="r" style="color:#5E6676;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">'+TL.sgd(sub)+'</td></tr>';
       }).join("");
     } else {
       rows=d.lessons.map(lrow).join("");
@@ -790,10 +858,10 @@
       '<div class="inv-head"><div class="inv-biz">'+esc(d.biz)+'<small>Invoice</small></div>'+
         '<div class="inv-meta"><b>'+esc(d.invoiceNo)+'</b><br>'+d.dateStr+'</div></div>'+
       '<div class="inv-to"><span class="lbl">Bill to</span><br><b>'+esc(d.student)+'</b>'+
-        (billSL?'<br><span style="color:#6b7280;font-size:12.5px">'+esc(billSL)+'</span>':'')+'</div>'+
+        (billSL?'<br><span style="color:#5E6676;font-size:12.5px">'+esc(billSL)+'</span>':'')+'</div>'+
       '<table class="inv-table"><thead><tr><th>Date</th><th>Duration</th><th class="r">Amount</th></tr></thead>'+
         '<tbody>'+rows+'</tbody></table>'+
-      (totalRN?'<div class="r" style="color:#6b7280;font-size:12px;padding:5px 8px 0">'+esc(totalRN)+'</div>':'')+
+      (totalRN?'<div class="r" style="color:#5E6676;font-size:12px;padding:5px 8px 0">'+esc(totalRN)+'</div>':'')+
       '<div class="inv-total"><span>'+(d.paid?"Total paid":"Total due")+'</span><span>'+TL.sgd(d.total)+'</span></div>'+
       (d.paid
         ? '<div class="inv-pay"><div><div class="pn-h"><span class="pn-dot"></span>Paid</div>'+
@@ -839,7 +907,7 @@
 
   // Show the built invoice in the overlay (shared by the PayNow and bank-transfer paths).
   function presentInvoice(data, qrUrl, meta){
-    window._invHTML=invoiceHTML(data,qrUrl); window._invSaved=false;
+    window._invHTML=invoiceHTML(data,qrUrl); window._invSaved=false; window._invSavedId=null;
     window._invMeta=meta;
     $("inv-body").innerHTML=window._invHTML;
     $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
@@ -947,7 +1015,8 @@
       issued_date:m.issuedDate,total:m.total,status:"issued",
       data:{html:window._invHTML,title:window._invTitle||("Invoice_"+m.invoiceNo),
         students:m.students||null,name:m.name||null,lesson_ids:m.lessonIds||null}
-    });
+    }).select("id").single();
+    if(!res.error&&res.data)window._invSavedId=res.data.id;
     b.disabled=false;
     if(res.error){b.textContent="Save to app";alert("Couldn't save invoice: "+res.error.message);return;}
     window._invSaved=true;   // recorded in the Invoices tab
@@ -1012,6 +1081,9 @@
     var m=window._invMeta,b=$("inv-wa"),msg=invoiceMsg(m);
     b.disabled=true;b.textContent="Preparing…";
     if(!window._invSaved){ try{ await saveInvoice(); }catch(e){} }   // sending records the invoice in the Invoices tab
+    // …and marks it "Sent" (sent_at; ignored if db/migration_invoice_sent.sql hasn't been run yet)
+    if(window._invSavedId){ try{ await window.sb.from("invoices").update({sent_at:new Date().toISOString()}).eq("id",window._invSavedId);
+      await loadSentMap(); renderOutstanding(lastUnpaid); }catch(e){} }
     // WhatsApp often drops the text when an image is shared/attached, so keep the message on the
     // clipboard — it can always be pasted into the chat even if it doesn't prefill.
     var copied=await copyText(msg);
@@ -1083,6 +1155,7 @@
     lessons.forEach(function(l){ if(l.status==="cancelled") l.amount=Number(l.compensation)||0; });
 
     allLessons=lessons;
+    await loadSentMap();
     var unpaid=lessons.filter(function(l){return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));});
     lastUnpaid=unpaid;
     renderPendingKpi();   // pending follows the month picker (All = all-time total)
@@ -1095,7 +1168,13 @@
 
   // One shared period (the header navigator) drives the KPIs, Outstanding, and Records.
   function periodKey(){ return period.mode==="all"?"all":(period.y+"-"+pad(period.m+1)); }
-  function updatePeriodUI(){ if($("p-label"))$("p-label").textContent=periodLabel(); if($("p-all"))$("p-all").classList.toggle("on",period.mode==="all"); }
+  function updatePeriodUI(){
+    if($("p-label"))$("p-label").textContent=periodLabel();
+    if($("p-all"))$("p-all").classList.toggle("on",period.mode==="all");
+    // "This month" only shows when you've moved away from the current month
+    var n=new Date(), cur=period.mode==="month"&&period.y===n.getFullYear()&&period.m===n.getMonth();
+    if($("p-today"))$("p-today").style.display=cur?"none":"";
+  }
   function persistPeriod(){ try{localStorage.setItem("tl_period",JSON.stringify(period));}catch(e){} }
   function refreshPeriod(){ persistPeriod(); updatePeriodUI(); renderPendingKpi(); renderMonthKpis(); renderOutstanding(lastUnpaid); renderRecords(); }
   // Pending KPI: All = all-time total; a specific month = that month's pending.
@@ -1105,8 +1184,8 @@
     var amt=sel.reduce(function(t,l){return t+Number(l.amount);},0);
     var lbl=$("k-pending-lbl"), note=$("k-pending-n");
     $("k-pending").textContent=TL.sgd(amt);
-    if(pk==="all"){ if(lbl)lbl.textContent="Total pending"; if(note)note.textContent=all.length+" unpaid lesson"+(all.length===1?"":"s"); }
-    else{ if(lbl)lbl.textContent="Pending"; if(note)note.textContent=periodLabel()+" · "+sel.length+" unpaid"; }
+    if(pk==="all"){ if(lbl)lbl.textContent="Owed (all time)"; if(note)note.textContent=all.length+" unpaid lesson"+(all.length===1?"":"s"); }
+    else{ if(lbl)lbl.textContent="Owed"; if(note)note.textContent=sel.length+" unpaid"; }
   }
   // Collected/Projected describe the picked month (current month while on All).
   function activeMonthRange(){
@@ -1122,8 +1201,8 @@
     // its compensation (0 if none), so a plain lesson-run vs. a compensated cancellation
     // both contribute correctly, and a no-compensation cancellation contributes $0.
     var projected=month.reduce(function(t,l){return t+Number(l.amount);},0);
-    $("k-collected").textContent=TL.sgd(collected); if($("k-collected-n"))$("k-collected-n").textContent=r.label;
-    $("k-projected").textContent=TL.sgd(projected);  if($("k-projected-n"))$("k-projected-n").textContent=r.label+" · excl. uncompensated cancellations";
+    $("k-collected").textContent=TL.sgd(collected); if($("k-collected-n"))$("k-collected-n").textContent=period.mode==="all"?r.label:"this month";
+    $("k-projected").textContent=TL.sgd(projected);  if($("k-projected-n"))$("k-projected-n").textContent=period.mode==="all"?r.label:"lessons this month";
   }
   function init(user){
     userId=user.id;
@@ -1166,13 +1245,26 @@
     on("inv-wa","click",shareInvoice);
     on("inv-save","click",saveInvoice);
     // period nav is the shared header control (p-prev/p-next/p-today/p-all), wired above
-    on("csv-btn","click",exportCSV);
+    on("csv-btn","click",function(){closeMenus();exportCSV();});
+    // dropdown menus (Log lessons, ⋯): toggle on tap, close on outside tap / Esc
+    function closeMenus(except){document.querySelectorAll(".dd.open").forEach(function(d){if(d!==except){d.classList.remove("open");var b=d.querySelector("[aria-expanded]");if(b)b.setAttribute("aria-expanded","false");}});}
+    ["log-dd","more-dd"].forEach(function(id){var d=$(id);if(!d)return;var b=d.querySelector("button");
+      b.addEventListener("click",function(e){e.stopPropagation();var open=!d.classList.contains("open");closeMenus(d);d.classList.toggle("open",open);b.setAttribute("aria-expanded",open?"true":"false");});
+      d.querySelector(".dd-menu").addEventListener("click",function(e){e.stopPropagation();});});
+    document.addEventListener("click",function(){closeMenus();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape")closeMenus();});
+    ["gen-custom-btn","gen-btn","gen-month-btn"].forEach(function(id){on(id,"click",function(){closeMenus();});});
+    on("rec-ftoggle","click",function(){var f=document.querySelector("#rec-view .filters");var open=!f.classList.contains("open");f.classList.toggle("open",open);$("rec-ftoggle").setAttribute("aria-expanded",open?"true":"false");});
     on("rec-search","input",renderRecords);
     ["rec-student","rec-subject","rec-level","rec-status"].forEach(function(id){on(id,"change",renderRecords);});
     on("rec-clear","click",clearRecFilters);
     on("rec-selall","change",toggleSelectAllRecords);
     on("rec-delsel-btn","click",deleteSelectedRecords);
     on("seg-out","click",function(){setLedgerMode("out");});
+    on("owe-close","click",closeOwe);
+    on("owe-sheet","click",function(e){if(e.target===$("owe-sheet"))closeOwe();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&openOweKey)closeOwe();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&$("rec-detail").classList.contains("on"))closeRecDetail();});
     on("seg-rec","click",function(){setLedgerMode("rec");});
     var savedMode="out";
     try{savedMode=localStorage.getItem("tl_ledger_mode")||"out";}catch(e){}

@@ -51,12 +51,14 @@
     if(slot){
       editingId=slot.id;
       $("m-title").textContent="Edit slot";$("m-save").textContent="Save changes";
+      if($("m-remove")) $("m-remove").style.display="";
       $("m-student").value=slot.student_id;$("m-day").value=slot.weekday;
       $("m-subject").value=slot.subject||"";$("m-level").value=slot.level||"";$("m-start").value=hhmm(slot.start_time);
       $("m-end").value=hhmm(slot.end_time);$("m-rate").value=slot.rate;$("m-split").value=slot.split||1;splitHint();
     }else{
       editingId=null;clearForm();
       $("m-title").textContent="Add weekly slot";$("m-save").textContent="Save slot";
+      if($("m-remove")) $("m-remove").style.display="none";
     }
     if(!students.length){$("m-msg").textContent="Add a student first (Students tab).";$("m-msg").className="msg err";}
   }
@@ -87,7 +89,6 @@
         var sp=s.split||1;
         var cost=Math.round(TL.amount(s.rate,hhmm(s.start_time),hhmm(s.end_time))/sp*100)/100;dayTotal+=cost;
         return '<div class="slot'+(clash[s.id]?" clash":"")+'" data-edit="'+s.id+'">'+
-          '<button class="x" data-del="'+s.id+'" title="Remove">×</button>'+
           '<div class="t">'+hhmm(s.start_time)+"–"+hhmm(s.end_time)+warnBadge(s)+'</div>'+
           (s.subject||s.level?'<div class="subj">'+esc([s.subject,s.level].filter(Boolean).join(" · "))+'</div>':"")+
           '<div class="s">'+esc(nameOf(s.student_id))+'</div>'+
@@ -99,7 +100,6 @@
         var sp=s.split||1;
         var cost=Math.round(TL.amount(s.rate,hhmm(s.start_time),hhmm(s.end_time))/sp*100)/100;dayTotal+=cost;
         return '<div class="sg-item'+(clash[s.id]?" clash":"")+'" data-edit="'+s.id+'">'+
-          '<button class="x" data-del="'+s.id+'" title="Remove">×</button>'+
           (s.subject||s.level?'<div class="subj">'+esc([s.subject,s.level].filter(Boolean).join(" · "))+'</div>':"")+
           '<div class="s">'+esc(nameOf(s.student_id))+''+warnBadge(s)+'</div>'+
           '<div class="c">'+TL.sgd(cost)+(sp>1?' <span class="muted" style="font-weight:400">(÷'+sp+')</span>':'')+'</div></div>';
@@ -109,7 +109,7 @@
         return '<div class="slot slot-group"><div class="t">'+t+'</div>'+g.items.map(groupItemHTML).join("")+'</div>';
       }
       var inner;
-      if(!arr.length){ inner='<div class="none">—</div>'; }
+      if(!arr.length){ inner=''; }
       else {
         // group consecutive slots that start at the same time (a split lesson)
         var groups=[],cur=null;
@@ -122,10 +122,10 @@
         }).join("");
       }
       weekTotal+=dayTotal;
-      return '<div class="day"><h3 class="'+(arr.length?"has":"")+'"><span>'+SHORT[d]+'</span>'+
-        '<span class="dtot">'+(dayTotal?TL.sgd(dayTotal):"")+'</span></h3><div class="slots">'+inner+'</div></div>';
+      return '<div class="day'+(arr.length?'':' dempty')+'"><h3 class="'+(arr.length?"has":"")+'"><span>'+SHORT[d]+'</span>'+
+        '<span class="dtot">'+(dayTotal?TL.sgd(dayTotal):"No slots")+'</span></h3><div class="slots">'+inner+'</div></div>';
     }).join("");
-    $("p-total").innerHTML=allSlots.length?"Weekly total <b>"+TL.sgd(weekTotal)+"</b> · "+allSlots.length+" slots":"No recurring slots yet — add your first.";
+    $("p-total").innerHTML=allSlots.length?'<span class="wt-k">Every week</span><b>'+TL.sgd(weekTotal)+'</b><span class="wt-n">'+allSlots.length+' slot'+(allSlots.length===1?'':'s')+'</span>':"No recurring slots yet — add your first.";
 
     $("week").querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(e){e.stopPropagation();removeSlot(b.dataset.del);});});
     $("week").querySelectorAll("[data-edit]").forEach(function(el){el.addEventListener("click",function(){
@@ -158,7 +158,7 @@
                 "your records unchanged."))return;
     var res=await window.sb.from("recurring_slots").delete().eq("id",id);
     if(res.error){alert("Couldn't remove: "+res.error.message);return;}
-    load();
+    openModal(false);load();
   }
 
   async function save(){
@@ -185,6 +185,7 @@
     $("m-cancel").addEventListener("click",function(){openModal(false);});
     $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openModal(false);});
     $("m-save").addEventListener("click",save);
+    if($("m-remove")) $("m-remove").addEventListener("click",function(){ if(editingId) removeSlot(editingId); });
     $("m-student").addEventListener("change",planPrefill);
     ["m-rate","m-split","m-start","m-end"].forEach(function(id){var el=$(id);if(el)el.addEventListener("input",splitHint);});
     load();

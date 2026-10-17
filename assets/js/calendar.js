@@ -294,11 +294,52 @@
     wireEvents();
   }
 
+  // ---- phone week: agenda list (a 7-column time grid is unreadable at 390px) ----
+  var phoneMQ = window.matchMedia ? window.matchMedia("(max-width:820px)") : { matches:false };
+  var STATE_TAG = { paid:"Paid", unpaid:"Unpaid", sched:"", proj:"Not logged", cancel:"Cancelled" };
+  function durLabel(min){ var h=min/60; return (Math.round(h*10)/10)+" h"; }
+  function renderAgenda(range){
+    var ws=range.start, blocks=buildBlocks(range);
+    var byDay=[[],[],[],[],[],[],[]];
+    blocks.forEach(function(b){ byDay[b.day].push(b); });
+    byDay.forEach(laneAssign);   // flags clashes
+    lastBlocks=blocks;
+    var today=iso(new Date()), examsByDt=examsByDate(), html="", any=false;
+    for(var d=0; d<7; d++){
+      var date=addDays(ws,d), di=iso(date), isT=di===today;
+      var rows=byDay[d].slice().sort(function(a,b){ return a.startMin-b.startMin; });
+      var ex=examsByDt[di]||[];
+      if(!rows.length && !ex.length && !isT) continue;
+      any=true;
+      html+='<section class="ag-day'+(isT?' today':'')+'"><div class="ag-dh"><span class="ag-dw">'+DAY[d]+'</span> '+
+        date.getDate()+' '+MON[date.getMonth()]+(isT?'<span class="ag-today">Today</span>':'')+'</div>';
+      if(ex.length) html+='<div class="ag-ex">'+ex.map(examChipHTML).join("")+'</div>';
+      if(!rows.length) html+='<div class="ag-none">No lessons</div>';
+      else html+='<div class="ag-list">'+rows.map(function(b){
+        var sub=[b.subject,b.level,b.location].filter(Boolean).join(" · "), tag=STATE_TAG[b.state]||"";
+        return '<button type="button" class="ag-row is-'+b.state+(b.clash?' is-clash':'')+'" data-ev="'+esc(String(b.id))+'">'+
+          '<span class="ag-t"><b>'+hhmm2(b.startMin)+'</b><small>'+durLabel(b.endMin-b.startMin)+'</small></span>'+
+          '<span class="ag-bar"></span>'+
+          '<span class="ag-main"><span class="ag-n">'+esc(b.name)+(b.adhoc?' ✦':'')+(b.postponed?' ↻':'')+'</span>'+
+          (sub?'<span class="ag-s">'+esc(sub)+'</span>':'')+'</span>'+
+          (b.clash?'<span class="ag-tag clash">Clash</span>':(tag?'<span class="ag-tag">'+tag+'</span>':''))+'</button>';
+      }).join("")+'</div>';
+      html+='</section>';
+    }
+    $("cal").innerHTML = any ? '<div class="ag">'+html+'</div>' :
+      '<div class="cal-empty">No lessons this week. Add slots on the Planner, or tap + Add.</div>';
+    wireEvents();
+  }
+
   function render(){
     if(!$("cal")) return;
     $("cal-range").textContent=rangeLabel();
-    if(mode==="month") renderMonth(visibleRange()); else renderWeek(visibleRange());
+    document.body.classList.toggle("cal-agenda", mode!=="month" && phoneMQ.matches);
+    if(mode==="month") renderMonth(visibleRange());
+    else if(phoneMQ.matches) renderAgenda(visibleRange());
+    else renderWeek(visibleRange());
   }
+  if(phoneMQ.addEventListener) phoneMQ.addEventListener("change", function(){ if(loadedStatic) render(); });
 
   function wireEvents(){
     $("cal").querySelectorAll("[data-ev]").forEach(function(node){
@@ -335,9 +376,9 @@
     var b=findBlock(node.dataset.ev); if(!b) return;
     popNode=node;
     var pop=$("cal-pop");
-    var label={paid:["Paid","rgba(14,124,123,.14)","#0b5b5a"], unpaid:["Unpaid","rgba(179,64,47,.12)","#8a2f22"],
-      sched:["Scheduled","rgba(26,42,79,.10)","var(--navy)"], cancel:["Cancelled","#f3f0e8","var(--muted)"],
-      proj:["Not logged yet","rgba(181,137,43,.12)","#7a5f1f"]}[b.state];
+    var label={paid:["Paid","rgba(15,118,110,.14)","#0B5D57"], unpaid:["Unpaid","rgba(180,67,47,.12)","#8a2f22"],
+      sched:["Scheduled","rgba(19,35,63,.10)","var(--navy)"], cancel:["Cancelled","#F1EFEA","var(--muted)"],
+      proj:["Not logged yet","rgba(15,118,110,.12)","#0B5D57"]}[b.state];
     var dt=new Date(b.dateISO+"T00:00:00");
     var when=DAY[(dt.getDay()+6)%7]+" "+dt.getDate()+" "+MON[dt.getMonth()]+" · "+hhmm2(b.startMin)+"–"+hhmm2(b.endMin);
     var sub=[b.subject,b.level].filter(Boolean).join(" · ");
@@ -348,11 +389,12 @@
       (b.kind==="lesson"&&b.amount!=null?'<div class="cp-row">'+(b.state==="cancel"?"Compensation":"Amount")+' <b>'+TL.sgd(b.amount)+'</b></div>':'')+
       (b.clash?'<div class="cp-row" style="color:var(--owed);font-weight:700">⚠ Overlaps another lesson</div>':'')+
       '<span class="cp-tag" style="background:'+label[1]+';color:'+label[2]+'">'+label[0]+'</span>'+
-      (b.adhoc?' <span class="cp-tag" style="background:rgba(26,42,79,.10);color:var(--navy)">✦ One-off</span>':'')+
-      (b.postponed?' <span class="cp-tag" style="background:rgba(200,146,42,.18);color:#8a5f14">Postponed</span>':'')+
+      (b.adhoc?' <span class="cp-tag" style="background:rgba(19,35,63,.10);color:var(--navy)">✦ One-off</span>':'')+
+      (b.postponed?' <span class="cp-tag" style="background:rgba(180,83,9,.18);color:#92400E">Postponed</span>':'')+
       actionButtons(b)+
-      '<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Log in Ledger →":"Edit in Ledger →")+'</a>';
+      '<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Open Ledger":"Edit in Ledger")+' →</a>';
     pop.style.display="block";
+    var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
     positionPopover(node);
     $("cp-x").addEventListener("click", hidePopover);
     var cancelBtn=$("cp-cancel"); if(cancelBtn) cancelBtn.addEventListener("click", function(){ showCancelForm(b); });
@@ -362,7 +404,7 @@
     var revertBtn=$("cp-revert"); if(revertBtn) revertBtn.addEventListener("click", function(){ doRevert(b); });
     var logBtn=$("cp-log"); if(logBtn) logBtn.addEventListener("click", function(){ doLogProjected(b); });
   }
-  function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; popNode=null; }
+  function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.remove("on"); popNode=null; }
   // After any write, the visible range (and whichever month a lesson may have moved
   // into/out of) needs fresh data — simplest correct fix is to drop the whole cache.
   function refreshAfterMutation(){ hidePopover(); lessonCache={}; ensureData(); }

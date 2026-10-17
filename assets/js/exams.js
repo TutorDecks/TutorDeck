@@ -57,24 +57,47 @@
     load();
   }
 
+  var MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  function inLabel(d){return d===0?"Today":(d===1?"Tomorrow":"in "+d+" days");}
+  function scoreOf(ex){return (ex.score!=null&&ex.max_score)?{t:ex.score+"/"+ex.max_score,p:Math.round(ex.score/ex.max_score*100)}:null;}
   function row(ex, upcoming){
-    var acts='<button class="tact" data-edit="'+ex.id+'">Edit</button><button class="tact del" data-del="'+ex.id+'">Delete</button>';
-    var base='<td data-label="Date">'+prettyDate(ex.exam_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student.html?id='+ex.student_id+'">'+esc(nameById[ex.student_id]||"—")+'</a></td>'+
-      '<td data-label="Type">'+(ex.assessment_type?'<span class="kind-tag">'+esc(ex.assessment_type)+'</span>':'<span class="muted">—</span>')+"</td>"+
-      '<td data-label="Subject">'+(ex.subject?esc(ex.subject):'<span class="muted">—</span>')+"</td>"+
-      '<td data-label="Topics">'+(ex.topics?esc(ex.topics):'<span class="muted">—</span>')+"</td>";
-    if(upcoming){
-      var d=daysAway(ex.exam_date);
-      var soon=d<=14;
-      base+='<td data-label="In"><span class="days'+(soon?" soon":"")+'" style="display:inline-block;min-width:46px"><b>'+d+'</b><small>'+(d===1?"day":"days")+'</small></span></td>';
-    }else{
-      var rhtml=(ex.score!=null&&ex.max_score)
-        ? '<b>'+esc(ex.score+"/"+ex.max_score)+'</b> <small class="muted">('+Math.round(ex.score/ex.max_score*100)+'%)</small>'
-        : '<span class="muted">— add result</span>';
-      base+='<td data-label="Result">'+rhtml+'</td>';
-    }
-    return '<tr id="ex-row-'+esc(String(ex.id))+'">'+base+'<td class="acts">'+acts+'</td></tr>';
+    var dt=ex.exam_date?new Date(ex.exam_date+"T00:00:00"):null;
+    var date=dt?'<b>'+dt.getDate()+'</b><small>'+MO[dt.getMonth()]+(dt.getFullYear()!==new Date().getFullYear()?" '"+String(dt.getFullYear()).slice(2):"")+'</small>':'<b>—</b>';
+    var sub=[ex.assessment_type,ex.subject].filter(Boolean).join(" · ")||"Exam";
+    var right;
+    if(upcoming){var d=daysAway(ex.exam_date);right='<span class="ex-right'+(d<=14?' soon':'')+'">'+inLabel(d)+'</span>';}
+    else{var sc=scoreOf(ex);right=sc?'<span class="ex-right score">'+esc(sc.t)+'<span class="pct">'+sc.p+'%</span></span>':'<span class="ex-right add">Add result</span>';}
+    return '<button type="button" class="ex-row" id="ex-row-'+esc(String(ex.id))+'" data-ex="'+esc(String(ex.id))+'">'+
+      '<span class="ex-date">'+date+'</span>'+
+      '<span class="ex-main"><span class="ex-name">'+esc(nameById[ex.student_id]||"—")+'</span><span class="ex-sub">'+esc(sub)+(ex.topics?' · '+esc(ex.topics):'')+'</span></span>'+
+      right+'<svg class="ex-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>';
   }
+
+  function openSheet(ex){
+    if(!ex)return;
+    var today=todayISO(), upcoming=ex.exam_date&&ex.exam_date>=today, sc=scoreOf(ex);
+    $("xs-title").textContent=nameById[ex.student_id]||"Exam";
+    $("xs-sub").textContent=[ex.assessment_type,ex.subject].filter(Boolean).join(" · ")||"Exam";
+    var r=$("xs-right");
+    if(upcoming){var d=daysAway(ex.exam_date);r.textContent=inLabel(d);r.className="owe-total"+(d<=14?" soon":" plain");r.style.fontSize="17px";}
+    else{r.textContent=sc?sc.p+"%":"";r.className="owe-total plain";r.style.fontSize="";}
+    var dt=ex.exam_date?new Date(ex.exam_date+"T00:00:00"):null;
+    var items=[["Date",dt?WD[dt.getDay()]+" "+dt.getDate()+" "+MO[dt.getMonth()]+" "+dt.getFullYear():"—"],
+      ["Topics",ex.topics?esc(ex.topics):"—"]];
+    if(!upcoming||sc)items.push(["Result",sc?"<b>"+esc(sc.t)+"</b> ("+sc.p+"%)":'<span class="muted">Not added yet</span>']);
+    if(ex.remarks)items.push(["Remarks",esc(ex.remarks)]);
+    $("xs-body").innerHTML='<div class="rd-list">'+items.map(function(i){return '<div class="rd-row"><span class="rd-k">'+i[0]+'</span><span class="rd-v">'+i[1]+'</span></div>';}).join("")+'</div>';
+    var needResult=!upcoming&&!sc;
+    $("xs-acts").innerHTML=(needResult?'<button class="btn rd-primary" id="xs-result">Add result</button>':'')+
+      '<button class="btn" id="xs-edit">Edit exam</button>'+
+      '<a class="btn" href="student.html?id='+encodeURIComponent(ex.student_id)+'">Student profile</a>'+
+      '<button class="btn rd-del" id="xs-del">Delete exam</button>';
+    function edit(){closeSheet();openModal(true,ex);}
+    $("xs-edit").onclick=edit; if($("xs-result"))$("xs-result").onclick=function(){edit();setTimeout(function(){$("m-score").focus();},50);};
+    $("xs-del").onclick=function(){closeSheet();del(ex.id);};
+    $("ex-sheet").classList.add("on");document.body.classList.add("sheet-lock");
+  }
+  function closeSheet(){$("ex-sheet").classList.remove("on");document.body.classList.remove("sheet-lock");}
 
   function highlightParam(){
     var m=location.search.match(/[?&]highlight=([^&]+)/);
@@ -90,8 +113,7 @@
 
   function wire(scope){
     function find(id){return exams.filter(function(e){return e.id===id;})[0];}
-    scope.querySelectorAll("[data-edit]").forEach(function(b){b.addEventListener("click",function(){openModal(true,find(b.dataset.edit));});});
-    scope.querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(){del(b.dataset.del);});});
+    scope.querySelectorAll("[data-ex]").forEach(function(b){b.addEventListener("click",function(){openSheet(find(b.dataset.ex));});});
   }
 
   async function load(){
@@ -106,17 +128,15 @@
     var up=exams.filter(function(e){return e.exam_date&&e.exam_date>=today;}).sort(function(a,b){return a.exam_date.localeCompare(b.exam_date);});
     var past=exams.filter(function(e){return !e.exam_date||e.exam_date<today;}).sort(function(a,b){return (b.exam_date||"").localeCompare(a.exam_date||"");});
 
-    $("x-count").textContent=exams.length?exams.length+(exams.length===1?" exam":" exams"):"";
-    $("up-hint").textContent=up.length?up.length+" ahead":"";
+    $("x-count").innerHTML=exams.length?'<b>'+up.length+'</b> coming up · '+exams.length+' in total':"No exams yet — add the first one.";
 
-    var upTable=$("up-table"),upEmpty=$("up-empty");
-    if(!up.length){upTable.style.display="none";upEmpty.style.display="block";}
-    else{upEmpty.style.display="none";upTable.style.display="table";$("up-body").innerHTML=up.map(function(e){return row(e,true);}).join("");wire($("up-body"));}
 
+    $("up-list").innerHTML=up.length?up.map(function(e){return row(e,true);}).join(""):'<div class="ex-emp">No upcoming exams.</div>';
+    wire($("up-list"));
     if(past.length){
-      $("past-title").style.display="";$("past-card").style.display="";
-      $("past-body").innerHTML=past.map(function(e){return row(e,false);}).join("");wire($("past-body"));
-    }else{$("past-title").style.display="none";$("past-card").style.display="none";}
+      $("past-title").style.display="";$("past-list").style.display="";
+      $("past-list").innerHTML=past.map(function(e){return row(e,false);}).join("");wire($("past-list"));
+    }else{$("past-title").style.display="none";$("past-list").style.display="none";}
 
     highlightExam();
   }
@@ -127,6 +147,9 @@
     $("m-cancel").addEventListener("click",function(){openModal(false);});
     $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openModal(false);});
     $("m-save").addEventListener("click",save);
+    $("xs-close").addEventListener("click",closeSheet);
+    $("ex-sheet").addEventListener("click",function(e){if(e.target===$("ex-sheet"))closeSheet();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape")closeSheet();});
     load();
   }
   TL.requireAuth("exams",init);
