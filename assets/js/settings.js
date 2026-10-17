@@ -6,7 +6,7 @@
   function preview() {
     var type = $("ptype").value, id = $("pid").value.trim();
     if (!id) { $("preview").textContent = ""; return; }
-    $("preview").textContent = "Pays to: " + PayNow.normalize(type, id);
+    $("preview").textContent = "Parents pay to " + PayNow.normalize(type, id);
   }
 
   async function load() {

@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Student · TutorDeck</title>
-<link rel="stylesheet" href="assets/css/app.css?v=146">
+<link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
+<link rel="stylesheet" href="assets/css/app.css?v=180">
 <style>
   /* borderless header meta strip */
   .phead{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline;margin:2px 2px 10px}
@@ -36,12 +37,12 @@
   a.plink{display:block;padding:11px 0 3px;text-align:right}
   /* monthly-schedule preview */
   #sch-text{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;font:inherit;
-    font-size:13.5px;line-height:1.55;background:#fffdf8;color:var(--ink);resize:vertical;min-height:150px}
-  #sch-text:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(181,137,43,.18)}
+    font-size:13.5px;line-height:1.55;background:#FFFFFF;color:var(--ink);resize:vertical;min-height:150px}
+  #sch-text:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(15,118,110,.18)}
   /* notes modal textareas */
   .field textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
-    font:inherit;background:#fffdf8;color:var(--ink);resize:vertical;line-height:1.45}
-  .field textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(181,137,43,.18)}
+    font:inherit;background:#FFFFFF;color:var(--ink);resize:vertical;line-height:1.45}
+  .field textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(15,118,110,.18)}
   /* Client view — hide money + editing so the page is safe to show a parent.
      Tutor keeps the lesson-history table + separate notes list; client swaps them
      for one combined lesson+notes list (#p-lessons-sec), no money, no editing. */
@@ -59,15 +60,10 @@
   @media(max-width:820px){
     /* drop the white container so each white lesson card stands out on the cream page */
     #p-lhist-sec .card:has(#p-ltable){background:transparent;border:none;box-shadow:none}
-    /* KPIs: compact 2×2 grid instead of four tall stacked blocks */
-    #p-kpis{grid-template-columns:1fr 1fr;gap:10px 16px;margin-bottom:16px}
-    #p-kpis .kpi{padding:6px 2px}
-    #p-kpis .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
-    #p-kpis .val{font-size:22px;margin-top:2px}
     /* Lesson history → compact tappable rows (date+amount / subject+status); tap opens the edit sheet */
     #p-ltable tbody tr{display:grid;grid-template-columns:1fr auto;gap:1px 12px;padding:12px 14px;
       cursor:pointer;align-items:baseline}
-    #p-ltable tbody tr:active{background:#fcfaf3}
+    #p-ltable tbody tr:active{background:#F7F6F2}
     #p-ltable tbody tr td{display:block;border:none;padding:0;font-size:14px;text-align:left}
     #p-ltable tbody tr td::before{display:none}
     #p-ltable td.acts{display:none}
@@ -78,52 +74,184 @@
     /* toolbar: align controls to the left and wrap cleanly (no right-floating sprawl) */
     .toolbar>span{width:100%;justify-content:flex-start!important}
   }
+
+  /* ---- v154: profile card + tabs ---- */
+  .sp-back{display:inline-block;color:var(--muted);text-decoration:none;font-weight:700;font-size:13.5px;margin:0 0 10px}
+  .sp-back:hover{color:var(--ink)}
+  .sp-card{padding:18px 20px 0;margin-bottom:18px;overflow:hidden}
+  .sp-top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .sp-av{width:52px;height:52px;border-radius:26px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;
+    font-weight:800;font-size:18px;flex:none}
+  .sp-meta{flex:1;min-width:220px}
+  .sp-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  .lvl{font-size:12px;font-weight:800;color:var(--accent);background:var(--accent-soft);border-radius:20px;padding:3px 10px}
+  .lvl.off{color:#92400E;background:#FEF3E2}
+  .lvl.soft{color:var(--muted);background:#F1EFEA}
+  .sp-info{display:flex;flex-wrap:wrap;gap:6px 22px}
+  .ii{display:inline-flex;align-items:center;gap:7px;font-size:14px;color:var(--ink);text-decoration:none;min-width:0}
+  .ii svg{color:var(--muted);flex:none}
+  .ii b{font-weight:700}
+  a.ii:hover{color:var(--accent)} a.ii:hover svg{color:var(--accent)}
+  .sp-moreb{all:unset;cursor:pointer;display:none;font-size:13px;font-weight:700;color:var(--accent);margin-left:auto;padding:4px 2px}
+  .sp-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .sp-acts .btn{padding:8px 13px;font-size:13.5px}
+  .sp-vm{margin:0}
+  .sp-vm button{padding:7px 13px;font-size:13px}
+  .sp-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:16px -20px 0;border-top:1px solid var(--line)}
+  .sp-kpis .kpi{padding:12px 20px;border-left:1px solid var(--line);box-shadow:none;border-radius:0}
+  .sp-kpis .kpi:first-child{border-left:none}
+  .sp-kpis .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+  .sp-kpis .val{font-size:20px;font-weight:800;letter-spacing:-.02em;margin-top:2px;font-family:var(--sans)}
+  .sp-kpis .val.owed{color:var(--owed)}
+  .sp-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto;scrollbar-width:none}
+  .sp-tabs::-webkit-scrollbar{display:none}
+  .sp-tabs button{all:unset;cursor:pointer;position:relative;padding:10px 14px 12px;font-weight:700;font-size:14.5px;color:var(--muted);white-space:nowrap}
+  .sp-tabs button:hover{color:var(--ink)}
+  .sp-tabs button.on{color:var(--ink)}
+  .sp-tabs button.on::after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:2.5px;border-radius:2px;background:var(--accent)}
+  .sp-pane{display:none}
+  .sp-pane.on{display:block}
+  .sp-h{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px;letter-spacing:-.01em;margin:0 0 10px}
+  .sp-h .hint{font-weight:500;font-size:12.5px;color:var(--muted)}
+  .sp-h .btn,.sp-h .pnav-s{margin-left:auto}
+  .sp-h .btn{padding:6px 12px;font-size:13px}
+  .pnav-s{display:inline-flex;align-items:center;gap:6px}
+  .pnav-s .btn{padding:5px 10px}
+  .pnav-s .lbl{min-width:110px;text-align:center;font-size:13.5px;font-weight:700}
+  .sp-two{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start}
+  .sp-chart{padding:16px 16px 12px}
+  .sp-nochart p{margin:0;font-size:13.5px}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  /* ---- parent view (v156): progress-first, no fees, no editing ---- */
+  .pv-exit{display:none;position:fixed;right:24px;bottom:24px;z-index:65;align-items:center;gap:7px;cursor:pointer;
+    background:rgba(255,255,255,.88);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    color:var(--muted);border:1px solid var(--line);font:inherit;font-weight:600;font-size:13px;padding:8px 13px;
+    border-radius:999px;box-shadow:0 2px 10px rgba(19,35,63,.08)}
+  .pv-exit:hover{color:var(--ink);border-color:#D6D2C9}
+  .client .pv-exit{display:inline-flex}
+  .client .content{padding-bottom:90px}
+  @media(max-width:820px){ .pv-exit{right:auto;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px))} }
+  .pv-kpis{display:none}
+  .client .pv-kpis{display:grid}
+  .pv-kpis[data-n="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pv-kpis[data-n="3"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .client .sp-acts{display:none}
+  .client .sp-info,.client .sp-moreb{display:none!important}
+  .client .sp-chips{margin-bottom:0}
+  .pv-kpis .val small{font-size:12.5px;font-weight:700;margin-left:4px}
+  .pv-kpis .up{color:var(--accent)} .pv-kpis .down{color:var(--owed)}
+  .pv-kpis .sub{font-size:12px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #vm-client svg{margin-right:2px}
+  .client .sp-tabs [data-tab="notes"]{display:none}
+  .client .sp-tabs [data-tab="progress"]{order:-1}
+  .sp-tabs{display:flex}
+  @media(max-width:880px){ .sp-two{grid-template-columns:1fr} }
+  @media(max-width:820px){
+    .sp-card{padding:16px 16px 0}
+    .sp-av{width:44px;height:44px;font-size:16px}
+    .sp-meta{min-width:0;flex-basis:calc(100% - 60px)}
+    .sp-chips{margin-bottom:0;min-height:44px}
+    .sp-top{align-items:flex-start}
+    .sp-moreb{display:inline-block}
+    .sp-info{display:none;flex-direction:column;gap:9px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+    #p-head.open .sp-info{display:flex}
+    .ii{align-items:flex-start;font-size:14.5px}
+    .ii svg{margin-top:2px}
+    .sp-acts{width:100%;flex-wrap:nowrap}
+    .sp-acts .btn{padding:7px 11px}
+    .sp-vm{margin-left:auto}
+    .sp-vm button{padding:7px 10px;font-size:12.5px}
+    .sp-kpis{grid-template-columns:repeat(2,minmax(0,1fr));margin:14px -16px 0}
+    .sp-kpis .kpi{padding:10px 16px}
+    .sp-kpis .kpi:nth-child(3){border-left:none}
+    .sp-kpis .kpi:nth-child(n+3){border-top:1px solid var(--line)}
+    .sp-tabs button{flex:1;text-align:center;padding:10px 6px 12px}
+    .pv-kpis,.pv-kpis[data-n]{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .pv-kpis[data-n="3"] .kpi:last-child{grid-column:1/-1;border-left:none}
+    .client .sp-chips{min-height:0}
+    .client .sp-top{align-items:center}
+  }
 </style>
 </head>
 <body>
 <div id="view">
-  <div class="toolbar">
-    <a class="btn" href="students.html">‹ Back to students</a>
-    <span style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
-      <span id="p-actions" class="tutor-only"></span>
-      <span class="seg" id="view-mode" style="margin:0">
-        <button id="vm-tutor" class="on">Tutor view</button>
-        <button id="vm-client">Client view</button>
-      </span>
-    </span>
-  </div>
-
-  <div id="p-head"></div>
-
-  <div class="kpi-grid" id="p-kpis"></div>
-
-  <div class="grid2">
-    <div>
-      <div id="p-lhist-sec">
-        <div class="section-title">Lesson history <span class="hint" id="p-lhint"></span></div>
-        <div class="card">
-          <div class="empty" id="p-lempty" style="display:none"><h3>No lessons logged yet</h3></div>
-          <table class="tbl" id="p-ltable" style="display:none">
-            <thead><tr><th>Date</th><th>Subject</th><th>Amount</th><th>Status</th><th></th></tr></thead>
-            <tbody id="p-lbody"></tbody>
-          </table>
-        </div>
-      </div>
-      <div id="p-lessons-sec">
-        <div class="section-title">Lessons &amp; notes <span class="hint" id="p-lhint2"></span></div>
-        <div class="card" id="p-lessons"></div>
+  <a class="sp-back" href="students.html">‹ All students</a>
+  <div class="card sp-card">
+    <div class="sp-top">
+      <span class="sp-av" id="sp-av" aria-hidden="true"></span>
+      <div class="sp-meta" id="p-head"></div>
+      <div class="sp-acts">
+        <span id="p-actions" class="tutor-only"></span>
+        <button class="btn tutor-only" id="vm-client" type="button" title="Show this page without fees, to share with a parent">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>Parent view</button>
       </div>
     </div>
-    <div>
-      <div class="section-title">Weekly slots</div>
-      <div class="card" id="p-slots"></div>
+    <div class="sp-kpis" id="p-kpis"></div>
+    <div class="sp-kpis pv-kpis" id="pv-kpis"></div>
+  </div>
 
+  <nav class="sp-tabs" id="sp-tabs" aria-label="Student sections">
+    <button data-tab="lessons" class="on">Lessons</button>
+    <button data-tab="notes" class="tutor-only">Notes</button>
+    <button data-tab="progress">Progress</button>
+    <button data-tab="schedule">Schedule</button>
+  </nav>
+
+  <!-- shown only in Parent view: neutral to the parent, easy for the tutor to find -->
+  <button class="pv-exit" id="vm-tutor" type="button">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.5 8 10 8a10 10 0 0 0 5.4-1.6"/><path d="M2 2l20 20"/></svg>
+    Exit parent view</button>
+
+  <section class="sp-pane on" data-pane="lessons">
+    <div id="p-lhist-sec">
+      <div class="sp-h">Lesson history <span class="hint" id="p-lhint"></span></div>
+      <div class="card">
+        <div class="empty" id="p-lempty" style="display:none"><h3>No lessons logged yet</h3></div>
+        <table class="tbl" id="p-ltable" style="display:none">
+          <thead><tr><th>Date</th><th>Subject</th><th>Amount</th><th>Status</th><th><span class="sr">Actions</span></th></tr></thead>
+          <tbody id="p-lbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="p-lessons-sec">
+      <div class="sp-h">Lessons &amp; notes <span class="hint" id="p-lhint2"></span></div>
+      <div class="card" id="p-lessons"></div>
+    </div>
+  </section>
+
+  <section class="sp-pane" data-pane="notes">
+    <div id="p-notes-sec">
+      <div class="sp-h">Lesson notes <span class="hint" id="p-nhint"></span></div>
+      <div class="card" id="p-notes"></div>
+    </div>
+  </section>
+
+  <section class="sp-pane" data-pane="progress">
+    <div class="sp-two">
+      <div>
+        <div class="sp-h">Scores over time</div>
+        <div class="card sp-chart" id="p-progress-card" style="display:none"><div id="p-progress"></div></div>
+        <div class="card sp-chart sp-nochart" id="p-progress-empty"><p class="muted">Log at least two scored exams to see a trend.</p></div>
+      </div>
+      <div>
+        <div class="sp-h">Exams <button class="btn" id="p-addexam">+ Add exam</button></div>
+        <div class="card" id="p-exams"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sp-pane" data-pane="schedule">
+    <div class="sp-two">
+      <div>
+        <div class="sp-h">Weekly slots</div>
+        <div class="card" id="p-slots"></div>
+      </div>
       <div class="tutor-only" id="p-sched-sec">
-        <div class="section-title" style="flex-wrap:wrap">Monthly schedule
-          <span class="period" style="margin-left:auto;margin-bottom:0">
-            <button class="btn" id="sch-prev" title="Earlier month">‹</button>
-            <span class="lbl" id="sch-label" style="min-width:118px">—</span>
-            <button class="btn" id="sch-next" title="Later month">›</button>
+        <div class="sp-h">Monthly schedule
+          <span class="pnav-s">
+            <button class="btn" id="sch-prev" title="Earlier month" aria-label="Earlier month">‹</button>
+            <span class="lbl" id="sch-label">—</span>
+            <button class="btn" id="sch-next" title="Later month" aria-label="Later month">›</button>
           </span>
         </div>
         <div class="card" style="padding:14px">
@@ -135,19 +263,8 @@
           </div>
         </div>
       </div>
-
-      <div class="section-title">Progress</div>
-      <div class="card" id="p-progress-card" style="display:none"><div id="p-progress"></div></div>
-
-      <div class="section-title">Exams <button class="btn" id="p-addexam" style="margin-left:auto;padding:5px 11px;font-size:13px">+ Add</button></div>
-      <div class="card" id="p-exams"></div>
-
-      <div id="p-notes-sec">
-        <div class="section-title">Lesson notes <span class="hint" id="p-nhint"></span></div>
-        <div class="card" id="p-notes"></div>
-      </div>
     </div>
-  </div>
+  </section>
 
   <!-- edit student modal -->
   <div class="modal-backdrop" id="e-modal">
@@ -265,9 +382,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=146"></script>
-<script src="assets/js/supabase.js?v=146"></script>
-<script src="assets/js/app.js?v=146"></script>
-<script src="assets/js/student.js?v=146"></script>
+<script src="assets/js/config.js?v=180"></script>
+<script src="assets/js/supabase.js?v=180"></script>
+<script src="assets/js/app.js?v=180"></script>
+<script src="assets/js/student.js?v=180"></script>
 </body>
 </html>

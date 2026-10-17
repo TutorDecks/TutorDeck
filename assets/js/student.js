@@ -38,6 +38,7 @@
     renderLessons(lessons);        // tutor: lesson-history table
     renderNotes(lessons);          // tutor: separate notes list
     renderClientLessons(lessons);  // client: combined lessons + notes
+    renderParentKpis(lessons, exams);
     renderSlots(slots);
     renderSchedule();              // tutor: copy-ready monthly schedule
     renderExams(exams);
@@ -45,18 +46,36 @@
   }
 
   function renderHead(){
-    var items=[];
-    if(!student.active)items.push({k:"Status",v:'<span class="kind-tag">discontinued</span>'});
-    if(student.level)items.push({k:"Level",v:esc(student.level)});
-    if(student.contact)items.push({k:"Contact",v:esc(student.contact)});
-    if(student.location)items.push({k:"Location",v:esc(student.location)});
-    if(student.recipient_name)items.push({k:"Messages to",v:esc(student.recipient_name)});
-    if(student.notes)items.push({k:"Notes",v:esc(student.notes)});
-    $("p-head").innerHTML='<div class="phead">'+items.map(function(i){
-      return '<div class="pi"><span class="k">'+i.k+'</span><span class="v">'+i.v+'</span></div>';
-    }).join("")+'</div>';
-    $("p-actions").innerHTML='<button class="btn" id="p-edit">Edit details</button> <a class="btn btn-gold" href="ledger.html">Open ledger</a>';
+    // Icon + value lines (no label wall). Phone opens WhatsApp. On phones the lines sit behind "More info".
+    var IC={
+      phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+      pin:'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+      msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+      note:'<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>'
+    };
+    function ic(n){return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';}
+    function wa(raw){var d=String(raw||"").replace(/\D/g,"").replace(/^0+/,"");if(d.length===8)d="65"+d;return d;}
+    var lines=[];
+    if(student.contact){var n=wa(student.contact);
+      lines.push(n?'<a class="ii" href="https://wa.me/'+n+'" target="_blank" rel="noopener">'+ic("phone")+'<span>'+esc(student.contact)+'</span></a>'
+                  :'<span class="ii">'+ic("phone")+'<span>'+esc(student.contact)+'</span></span>');}
+    if(student.location)lines.push('<span class="ii">'+ic("pin")+'<span>'+esc(student.location)+'</span></span>');
+    if(student.recipient_name)lines.push('<span class="ii">'+ic("msg")+'<span>Messages to <b>'+esc(student.recipient_name)+'</b></span></span>');
+    if(student.notes)lines.push('<span class="ii">'+ic("note")+'<span>'+esc(student.notes)+'</span></span>');
+    var chips=(student.level?'<span class="lvl">'+esc(student.level)+'</span>':'')+
+      (!student.active?'<span class="lvl off">Discontinued</span>':'')+
+      (student.end_date&&student.active?'<span class="lvl soft">Until '+prettyDate(student.end_date)+'</span>':'');
+    $("p-head").innerHTML='<div class="sp-chips">'+chips+
+      (lines.length?'<button type="button" class="sp-moreb" id="sp-moreb" aria-expanded="false">More info <span aria-hidden="true">▾</span></button>':'')+
+      '</div>'+(lines.length?'<div class="sp-info" id="sp-info">'+lines.join("")+'</div>':'');
+    var mb=$("sp-moreb");
+    if(mb)mb.addEventListener("click",function(){var o=$("p-head").classList.toggle("open");mb.setAttribute("aria-expanded",o?"true":"false");
+      mb.firstChild.textContent=o?"Less info ":"More info ";mb.lastChild.textContent=o?"▴":"▾";});
+    var w=String(student.name||"").split(/\s+/).filter(Boolean);
+    if($("sp-av"))$("sp-av").textContent=((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();
+    $("p-actions").innerHTML='<button class="btn" id="p-edit">Edit</button> <a class="btn" href="ledger.html">Ledger</a>';
     $("p-edit").addEventListener("click",openEdit);
+    TL.coach("parent-view",$("vm-client"),"<b>Parent view</b><br>Showing this page to a parent? Tap here to hide fees and editing. They'll see scores and lesson notes only.");
   }
   function openEdit(){
     if(!student)return;
@@ -131,8 +150,28 @@
   }
 
   // Client view only: one clean list combining each lesson with its notes — no money, no editing.
+  // Parent view headline: attendance, latest score per subject (with change), next exam. No money.
+  function renderParentKpis(lessons, exams){
+    var box=$("pv-kpis"); if(!box)return;
+    var today=todayISO();
+    var attended=lessons.filter(function(l){return l.status==="done";}).length;
+    var scored=exams.filter(function(e){return e.score!=null&&e.max_score>0&&e.exam_date&&e.exam_date<=today;})
+      .sort(function(a,b){return a.exam_date.localeCompare(b.exam_date);});
+    var bySub={}; scored.forEach(function(e){(bySub[e.subject||"General"]=bySub[e.subject||"General"]||[]).push(Math.round(e.score/e.max_score*100));});
+    var subs=Object.keys(bySub).slice(0,2);
+    var next=exams.filter(function(e){return e.exam_date&&e.exam_date>=today;}).sort(function(a,b){return a.exam_date.localeCompare(b.exam_date);})[0];
+    function cell(label,val,sub){return '<div class="kpi"><div class="lbl">'+label+'</div><div class="val">'+val+'</div>'+(sub?'<div class="sub">'+sub+'</div>':'')+'</div>';}
+    var html=cell("Lessons attended",attended,"");
+    subs.forEach(function(sname){var a=bySub[sname],last=a[a.length-1],prev=a.length>1?a[a.length-2]:null;
+      var ch=prev==null?"":(last>prev?'<small class="up">▲ '+(last-prev)+'</small>':(last<prev?'<small class="down">▼ '+(prev-last)+'</small>':'<small>—</small>'));
+      html+=cell("Latest · "+esc(sname),last+"%"+ch,"");});
+    html+=next?cell("Next exam",prettyDate(next.exam_date),esc((next.assessment_type?next.assessment_type+" · ":"")+(next.subject||""))):cell("Next exam","—","none scheduled");
+    box.innerHTML=html;
+    box.dataset.n=String(2+subs.length);   // 2–4 cells; CSS lays them out per screen size
+  }
   function renderClientLessons(lessons){
-    var live=lessons.filter(function(l){return l.status!=="cancelled";});
+    var today=todayISO();
+    var live=lessons.filter(function(l){return l.status!=="cancelled"&&l.lesson_date<=today;});
     live.sort(function(a,b){return (b.lesson_date+(b.start_time||"")).localeCompare(a.lesson_date+(a.start_time||""));});
     var box=$("p-lessons");
     if(!live.length){box.innerHTML='<p class="muted" style="font-size:13.5px;margin:0">No lessons yet.</p>';$("p-lhint2").textContent="";return;}
@@ -318,32 +357,43 @@
     var pts=rows.filter(function(e){return e.score!=null&&e.max_score>0&&e.exam_date;})
       .map(function(e){return {t:new Date(e.exam_date+"T00:00:00").getTime(),date:e.exam_date,pct:Math.round(e.score/e.max_score*100),subject:(e.subject||"General")};})
       .sort(function(a,b){return a.t-b.t;});
-    var card=$("p-progress-card");
-    if(pts.length<2){ card.style.display="none"; return; }
-    card.style.display="";
-    var W=360,H=190,padL=32,padR=12,padT=12,padB=26;
+    var card=$("p-progress-card"), none=$("p-progress-empty");
+    if(pts.length<2){ card.style.display="none"; if(none)none.style.display=""; return; }
+    card.style.display=""; if(none)none.style.display="none";
+    var narrow=window.innerWidth<600;   // phone: smaller canvas so text stays readable when scaled
+    var W=narrow?340:520,H=narrow?200:230,padL=34,padR=narrow?84:96,padT=14,padB=26;
     var x0=padL,x1=W-padR,y0=H-padB,y1=padT;
     var tmin=pts[0].t,tmax=pts[pts.length-1].t; if(tmax===tmin)tmax=tmin+1;
     function X(t){return x0+(t-tmin)/(tmax-tmin)*(x1-x0);}
     function Y(p){return y0-(p/100)*(y0-y1);}
-    var colors=["#0E7C7B","#B5892B","#1A2A4F","#B3402F","#6C4F8C","#2E7D32"];
+    // One colour per subject, fixed order (validated for colour-blind separation; see README v154).
+    var colors=["#2a78d6","#eb6834","#6250d6","#e87ba4","#eda100","#1baf7a"];
     // group by subject
     var bySub={},order=[];
     pts.forEach(function(p){ if(!bySub[p.subject]){bySub[p.subject]=[];order.push(p.subject);} bySub[p.subject].push(p); });
-    var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:520px;display:block">';
+    var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block" role="img" aria-label="Exam scores over time by subject">';
     // y gridlines 0/50/100
-    [0,50,100].forEach(function(g){var y=Y(g);svg+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#e7ddc7"/>'+
-      '<text x="'+(x0-6)+'" y="'+(y+3)+'" text-anchor="end" font-size="9" fill="#8a8577">'+g+'%</text>';});
+    [0,50,100].forEach(function(g){var y=Y(g);svg+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#E2DED5"/>'+
+      '<text x="'+(x0-6)+'" y="'+(y+3)+'" text-anchor="end" font-size="9" fill="#6F7480">'+g+'%</text>';});
     // x labels (first + last date)
-    svg+='<text x="'+x0+'" y="'+(H-8)+'" font-size="9" fill="#8a8577">'+prettyDate(pts[0].date)+'</text>'+
-         '<text x="'+x1+'" y="'+(H-8)+'" text-anchor="end" font-size="9" fill="#8a8577">'+prettyDate(pts[pts.length-1].date)+'</text>';
+    svg+='<text x="'+x0+'" y="'+(H-8)+'" font-size="9" fill="#6F7480">'+prettyDate(pts[0].date)+'</text>'+
+         '<text x="'+x1+'" y="'+(H-8)+'" text-anchor="end" font-size="9" fill="#6F7480">'+prettyDate(pts[pts.length-1].date)+'</text>';
     order.forEach(function(sub,i){
       var col=colors[i%colors.length],ps=bySub[sub];
       if(ps.length>1){
         var d=ps.map(function(p,j){return (j?"L":"M")+X(p.t).toFixed(1)+" "+Y(p.pct).toFixed(1);}).join(" ");
         svg+='<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="2"/>';
       }
-      ps.forEach(function(p){svg+='<circle cx="'+X(p.t).toFixed(1)+'" cy="'+Y(p.pct).toFixed(1)+'" r="3.2" fill="'+col+'"><title>'+esc(sub)+" · "+prettyDate(p.date)+" · "+p.pct+'%</title></circle>';});
+      ps.forEach(function(p){svg+='<circle cx="'+X(p.t).toFixed(1)+'" cy="'+Y(p.pct).toFixed(1)+'" r="4" fill="'+col+'" stroke="#fff" stroke-width="1.5"><title>'+esc(sub)+" · "+prettyDate(p.date)+" · "+p.pct+'%</title></circle>';});
+    });
+    // direct labels at each line's end: subject + latest %, nudged apart so they never overlap
+    var ends=order.map(function(sub,i){var ps=bySub[sub],l=ps[ps.length-1];return {sub:sub,col:colors[i%colors.length],x:X(l.t),y:Y(l.pct),pct:l.pct};})
+      .sort(function(a,b){return a.y-b.y;});
+    for(var k=1;k<ends.length;k++){ if(ends[k].y-ends[k-1].y<13) ends[k].y=ends[k-1].y+13; }
+    ends.forEach(function(e){
+      svg+='<circle cx="'+(x1+8)+'" cy="'+(e.y-3.5).toFixed(1)+'" r="3.5" fill="'+e.col+'"/>'+
+           '<text x="'+(x1+15)+'" y="'+e.y.toFixed(1)+'" font-size="10.5" font-weight="700" fill="#13233F">'+esc(e.sub)+
+           ' <tspan font-weight="500" fill="#5E6676">'+e.pct+'%</tspan></text>';
     });
     svg+='</svg>';
     var legend='<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:12px">'+
@@ -438,10 +488,22 @@
     // Tutor / Client view — Client hides money + editing so the page can be shown to a parent.
     function setViewMode(client){
       var v=$("view")||document.body; v.classList.toggle("client",client);
+      // parent view opens on Progress; leaving it returns to Lessons
+      var pane=document.querySelector(client?'#sp-tabs [data-tab="progress"]':'#sp-tabs [data-tab="lessons"]'); if(pane)pane.click();
+      window.scrollTo(0,0);
       var t=$("vm-tutor"),c=$("vm-client"); if(t)t.classList.toggle("on",!client); if(c)c.classList.toggle("on",client);
     }
     if($("vm-tutor"))$("vm-tutor").addEventListener("click",function(){setViewMode(false);});
     if($("vm-client"))$("vm-client").addEventListener("click",function(){setViewMode(true);});
+    // Tabs: Lessons · Notes · Progress · Schedule (remembered per browser)
+    function setTab(t){
+      document.querySelectorAll("#sp-tabs [data-tab]").forEach(function(b){b.classList.toggle("on",b.dataset.tab===t);});
+      document.querySelectorAll(".sp-pane").forEach(function(p){p.classList.toggle("on",p.dataset.pane===t);});
+      try{localStorage.setItem("tl_student_tab",t);}catch(e){}
+    }
+    document.querySelectorAll("#sp-tabs [data-tab]").forEach(function(b){b.addEventListener("click",function(){setTab(b.dataset.tab);});});
+    var st="lessons"; try{st=localStorage.getItem("tl_student_tab")||"lessons";}catch(e){}
+    setTab(st);
     load();
   }
   TL.requireAuth("student",init);

@@ -3,15 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard · TutorDeck</title>
-<link rel="stylesheet" href="assets/css/app.css?v=146">
+<title>Home · TutorDeck</title>
+<link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
+<link rel="stylesheet" href="assets/css/app.css?v=180">
 <style>
   #onboard{display:none;margin-bottom:20px}
-  .ob-card{background:linear-gradient(180deg,#fffdf7,#fbf4e4);border:1px solid var(--gold);
+  .ob-card{background:linear-gradient(180deg,#FFFFFF,#EEF6F4);border:1px solid var(--gold);
     border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
   .ob-h{font-family:var(--serif,Georgia);font-size:18px;color:var(--navy);margin:0 0 3px}
   .ob-sub{color:var(--muted);font-size:13.5px;margin:0 0 16px}
-  .ob-step{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-top:1px solid rgba(181,137,43,.25)}
+  .ob-step{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-top:1px solid rgba(15,118,110,.25)}
   .ob-num{flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
     font-weight:800;font-size:14px;background:var(--navy);color:#fff}
   .ob-step.done .ob-num{background:var(--teal)}
@@ -47,10 +48,10 @@
   .tr-recap.prev{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);opacity:.9}
   .tr-cols{display:flex;gap:12px;align-items:stretch;margin-top:9px;flex-wrap:wrap;min-width:0}
   .tr-notes{flex:1 1 220px;min-width:0;max-width:100%;background:var(--cream);border:1px solid var(--line);border-radius:10px;padding:9px 12px;overflow-wrap:anywhere}
-  .tr-exams{flex:0 1 250px;min-width:0;max-width:100%;background:rgba(179,64,47,.06);border:1px solid rgba(179,64,47,.25);border-radius:10px;padding:9px 12px}
+  .tr-exams{flex:0 1 250px;min-width:0;max-width:100%;background:rgba(180,67,47,.06);border:1px solid rgba(180,67,47,.25);border-radius:10px;padding:9px 12px}
   .tr-exh{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--owed);margin-bottom:5px}
-  .exchip{display:block;padding:5px 0;border-top:1px solid rgba(179,64,47,.15);color:inherit;text-decoration:none;cursor:pointer;border-radius:4px}
-  .exchip:hover{background:rgba(179,64,47,.06)}
+  .exchip{display:block;padding:5px 0;border-top:1px solid rgba(180,67,47,.15);color:inherit;text-decoration:none;cursor:pointer;border-radius:4px}
+  .exchip:hover{background:rgba(180,67,47,.06)}
   .exchip:first-of-type{border-top:none;padding-top:0}
   .exchip .ex-l{font-weight:700;color:var(--navy);font-size:12.5px}
   .exchip .ex-m{font-weight:700;color:var(--owed);font-size:11px;margin-left:2px}
@@ -61,7 +62,7 @@
   @media (max-width:600px){
     .teach-row{padding:12px}
     .tr-cols{flex-direction:column;gap:9px}
-    .tr-notes{min-width:0;width:100%}
+    .tr-notes{min-width:0;width:100%;flex:0 0 auto}
     .tr-exams{width:100%}
   }
   .brk{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
@@ -75,111 +76,149 @@
   .mprog-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
   .mprog-lbl{font-weight:700;font-size:14px;color:var(--navy)}
   .mprog-pct{font-weight:800;font-size:17px;color:var(--teal)}
-  .mprog-track{height:12px;background:#eee7d6;border-radius:7px;overflow:hidden;display:flex}
+  .mprog-track{height:12px;background:#ECE9E2;border-radius:7px;overflow:hidden;display:flex}
   .mprog-fill{height:100%;background:var(--teal);transition:width .35s ease}
   .mprog-owed{height:100%;background:var(--owed);transition:width .35s ease}
   .mprog-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12.5px;color:var(--muted)}
   .mprog-legend b{color:var(--ink);font-weight:700}
   .mprog-legend .mdot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
-  .mdot.teal{background:var(--teal)} .mdot.red{background:var(--owed)} .mdot.grey{background:#BCB3A0}
+  .mdot.teal{background:var(--teal)} .mdot.red{background:var(--owed)} .mdot.grey{background:#C9C5BC}
   .mprog-sub{margin-top:8px;color:var(--muted);font-size:12.5px}
+
+  /* ---- Home (v148) ---- */
+  .hstats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .hstat{display:flex;flex-direction:column;gap:2px;padding:13px 15px;background:var(--paper);border:1px solid var(--line);
+    border-radius:12px;text-decoration:none;color:inherit;box-shadow:var(--shadow);transition:border-color .12s,transform .12s}
+  .hstat:hover{border-color:var(--gold)}
+  .hstat:active{transform:scale(.98)}
+  .hs-l{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .hs-v{font-family:var(--sans);font-weight:800;letter-spacing:-.02em;font-size:23px;line-height:1.15;color:var(--navy)}
+  .hstat.owed .hs-v{color:var(--owed)} .hstat.paid .hs-v{color:var(--teal)}
+  .hs-n{font-size:12px;color:var(--muted)}
+  .home-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:16px;align-items:start}
+  .home-col{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .home-col .teach-sec{margin-bottom:0}
+  .h-more{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--gold);text-decoration:none}
+  .h-more:hover{text-decoration:underline}
+  @media(max-width:980px){ .hstats{grid-template-columns:repeat(2,1fr);gap:10px} }
+  /* v166: Money / Teaching sections */
+  .h-sec{margin-bottom:26px}
+  .h-sec-h{display:flex;align-items:baseline;gap:10px;margin:0 0 10px}
+  .h-sec-t{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .h-sec-n{font-size:13px;color:var(--muted)}
+  .h-sec-h .h-more{margin-left:auto}
+  .money-card{padding:18px 20px 16px}
+  .mc-top{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px}
+  .mc-col{display:flex;flex-direction:column;gap:1px;text-decoration:none;color:inherit;border-radius:10px;margin:-6px;padding:6px}
+  .mc-col:hover{background:#F7F6F2}
+  .mc-col+.mc-col{border-left:1px solid var(--line);padding-left:20px;margin-left:0;border-radius:0 10px 10px 0}
+  .mc-l{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .mc-v{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1.15;color:var(--ink)}
+  .mc-v.paid{color:var(--accent)} .mc-v.owed{color:var(--owed)}
+  .mc-n{font-size:12.5px;color:var(--muted)}
+  .mc-n b{color:var(--ink)}
+  .money-card .mprog-legend{margin-top:10px}
+  #today-sub{display:none}   /* the date is already under the greeting */
+  .yd-toggle{all:unset;display:flex;align-items:baseline;gap:8px;width:100%;cursor:default}
+  .yd-toggle h2{flex:1}
+  .yd-caret{display:none}
+
+  /* ---- phone: keep Home short (v167) ---- */
+  @media(max-width:820px){
+    .money-card .mprog-legend{display:none!important}
+    .money-card{padding:14px 16px}
+    .mc-top{margin-bottom:12px}
+    .mc-v{font-size:22px}
+    .h-sec-h{margin-bottom:8px}
+    .panel.teach-sec{padding:14px 16px}
+    .teach-sec h2{font-size:16px}
+    /* Needs notes collapses to one tappable line */
+    .yd-toggle{cursor:pointer}
+    .yd-caret{display:inline;color:var(--muted);font-size:14px;transition:transform .15s}
+    #yday-sec.open .yd-caret{transform:rotate(180deg)}
+    #yday-sec:not(.open) #yday-sub,#yday-sec:not(.open) #yday-list{display:none}
+    #yday-sec:not(.open) h2{margin-bottom:0}
+    /* flatter lesson rows */
+    .teach-row{border:none;padding:10px 0;margin:0;border-top:1px solid var(--line);border-radius:0;gap:11px}
+    .teach-row:first-child{border-top:none}
+    .tr-notes{padding:7px 10px;font-size:12.5px}
+    .tr-cols{margin-top:6px}
+    /* empty Tomorrow: one slim line */
+    #tmr-sec:has(.tr-empty){display:flex;align-items:baseline;gap:10px;padding:12px 16px}
+    #tmr-sec:has(.tr-empty) h2{margin:0;font-size:15px}
+    #tmr-sec:has(.tr-empty) .tr-empty{margin:0}
+    #tmr-sec:has(.tr-empty) .teach-sub{display:none}
+    /* exams: next 3 only */
+    #teach-exam-list .exam-row:nth-child(n+4){display:none}
+    #exam-sec .teach-sub{margin-bottom:2px}
+  }
+  @media(max-width:880px){
+    .home-grid{display:flex;flex-direction:column;align-items:stretch;gap:14px}
+    .home-col{display:contents}
+    #yday-sec{order:1} #today-sec{order:2} #tmr-sec{order:3} #exam-sec{order:4}
+    .h-sec{margin-bottom:20px}
+    .money-card{padding:16px}
+    .mc-v{font-size:24px}
+    .mc-col+.mc-col{padding-left:14px}
+    .hs-v{font-size:21px}
+  }
 </style>
 </head>
 <body>
 <div id="view">
   <div id="onboard"></div>
-  <div class="seg" id="dash-seg">
-    <button id="seg-fin" class="on">Finance</button>
-    <button id="seg-teach">Teaching</button>
-  </div>
 
-  <div id="fin-view">
-  <div class="seg" id="fin-seg" style="margin-bottom:14px">
-    <button id="fseg-month" class="on">Month</button>
-    <button id="fseg-year">Year</button>
-  </div>
-
-  <div id="fin-month">
-  <div class="dmonth">
-    <button class="btn gennav" id="dm-prev" title="Previous month">‹</button>
-    <span class="dm-lbl" id="dm-label">—</span>
-    <button class="btn gennav" id="dm-next" title="Next month">›</button>
-    <button class="btn" id="dm-today">This month</button>
-  </div>
-  <div class="kpi-grid">
-    <div class="card kpi owed"><div class="label">Total pending</div>
-      <div class="val" id="k-pending">—</div><div class="note" id="k-pending-n">to collect</div></div>
-    <div class="card kpi paid"><div class="label">Collected this month</div>
-      <div class="val" id="k-collected">—</div><div class="note" id="k-collected-n">&nbsp;</div></div>
-    <div class="card kpi accent"><div class="label">Projected this month</div>
-      <div class="val" id="k-projected">—</div><div class="note">booked this month, excl. cancelled</div></div>
-    <div class="card kpi"><div class="label">Lessons this week</div>
-      <div class="val" id="k-week">—</div><div class="note" id="k-week-n">Mon–Sun</div></div>
-  </div>
-
-  <div class="card panel mprog-card">
-    <div class="mprog-top"><span class="mprog-lbl" id="mprog-lbl">Collected this month</span><span class="mprog-pct" id="mprog-pct">—</span></div>
-    <div class="mprog-track"><div class="mprog-fill" id="mprog-fill" style="width:0%"></div><div class="mprog-owed" id="mprog-owed" style="width:0%"></div></div>
-    <div class="mprog-legend" id="mprog-legend">
-      <span><i class="mdot teal"></i>Collected <b id="mprog-c">—</b></span>
-      <span><i class="mdot red"></i>Owed <b id="mprog-o">—</b></span>
-      <span><i class="mdot grey"></i>Upcoming <b id="mprog-u">—</b></span>
-    </div>
-    <div class="mprog-sub" id="mprog-sub"></div>
-  </div>
-
-  <div class="card panel">
-    <h2>Income by month <span class="hint" id="inc-hint"></span></h2>
-    <div class="chart-wrap"><canvas id="incomeChart"></canvas></div>
-  </div>
-  </div>
-
-  <div id="fin-year" style="display:none">
-    <div class="dmonth">
-      <button class="btn gennav" id="fy-prev" title="Previous year">‹</button>
-      <span class="dm-lbl" id="fy-label" style="min-width:96px">—</span>
-      <button class="btn gennav" id="fy-next" title="Next year">›</button>
-      <button class="btn" id="fy-today">This year</button>
-    </div>
-    <div class="kpi-grid" id="fy-tiles"></div>
-    <div class="card panel">
-      <h2 id="fy-chart-h">Income across the year <span class="hint" id="fy-chart-hint"></span></h2>
-      <div class="chart-wrap"><canvas id="yearChart"></canvas></div>
-    </div>
-    <div class="grid2">
-      <div class="card panel">
-        <h2>Income by student</h2>
-        <div id="fy-students"><div class="muted" style="font-size:13.5px">—</div></div>
+  <!-- MONEY: one card — collected vs owed, and the month's progress bar -->
+  <section class="h-sec">
+    <div class="h-sec-h"><h2 class="h-sec-t">Money</h2><span class="h-sec-n" id="k-collected-n"></span>
+      <a class="h-more" href="insights.html">See income ›</a></div>
+    <div class="card money-card">
+      <div class="mc-top">
+        <a class="mc-col" href="insights.html"><span class="mc-l">Collected</span><span class="mc-v paid" id="k-collected">—</span>
+          <span class="mc-n"><b id="mprog-pct">—</b> of <span id="mc-booked">—</span> booked</span></a>
+        <a class="mc-col" href="ledger.html"><span class="mc-l">Owed to you</span><span class="mc-v owed" id="k-pending">—</span>
+          <span class="mc-n" id="k-pending-n">&nbsp;</span></a>
       </div>
-      <div class="card panel">
-        <h2>Income by subject &amp; level</h2>
-        <div id="fy-subjects"><div class="muted" style="font-size:13.5px">—</div></div>
+      <div class="mprog-track" aria-hidden="true"><div class="mprog-fill" id="mprog-fill" style="width:0%"></div><div class="mprog-owed" id="mprog-owed" style="width:0%"></div></div>
+      <div class="mprog-legend" id="mprog-legend">
+        <span><i class="mdot teal"></i>Collected</span>
+        <span><i class="mdot red"></i>Unpaid <b id="mprog-o">—</b></span>
+        <span><i class="mdot grey"></i>Upcoming <b id="mprog-u">—</b></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- TEACHING -->
+  <section class="h-sec">
+    <div class="h-sec-h"><h2 class="h-sec-t">Teaching</h2><span class="h-sec-n"><span id="k-week">—</span> lessons this week</span></div>
+  <div class="home-grid" id="teach-view">
+    <div class="home-col">
+      <div class="card panel teach-sec" id="today-sec">
+        <h2 id="today-h">Today</h2>
+        <div class="teach-sub" id="today-sub"></div>
+        <div id="today-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+      </div>
+      <div class="card panel teach-sec" id="tmr-sec">
+        <h2 id="tmr-h">Tomorrow</h2>
+        <div class="teach-sub" id="tmr-sub"></div>
+        <div id="tmr-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+      </div>
+    </div>
+    <div class="home-col">
+      <div class="card panel teach-sec" id="yday-sec" style="display:none">
+        <button type="button" class="yd-toggle" id="yd-toggle" aria-expanded="false">
+          <h2 id="yday-h">Needs notes <span class="hint" id="yday-hint"></span></h2><span class="yd-caret" aria-hidden="true">▾</span></button>
+        <div class="teach-sub" id="yday-sub"></div>
+        <div id="yday-list"></div>
+      </div>
+      <div class="card panel teach-sec" id="exam-sec">
+        <h2>Upcoming exams <a class="h-more" href="exams.html">All</a></h2>
+        <div class="teach-sub"><span id="k-exams">—</span> in the next 14 days</div>
+        <div id="teach-exam-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
       </div>
     </div>
   </div>
-  </div>
-
-  <div id="teach-view" style="display:none">
-    <div class="card panel teach-sec" id="yday-sec" style="display:none">
-      <h2 id="yday-h">Needs notes <span class="hint" id="yday-hint"></span></h2>
-      <div class="teach-sub" id="yday-sub"></div>
-      <div id="yday-list"></div>
-    </div>
-    <div class="card panel teach-sec">
-      <h2 id="today-h">Today</h2>
-      <div class="teach-sub" id="today-sub"></div>
-      <div id="today-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
-    </div>
-    <div class="card panel teach-sec">
-      <h2 id="tmr-h">Tomorrow</h2>
-      <div class="teach-sub" id="tmr-sub"></div>
-      <div id="tmr-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
-    </div>
-    <div class="card panel teach-sec">
-      <h2>Upcoming exams</h2>
-      <div id="teach-exam-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
-    </div>
-  </div>
+  </section>
 
   <!-- quick lesson-note modal -->
   <div class="modal-backdrop" id="tn-modal">
@@ -200,9 +239,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=146"></script>
-<script src="assets/js/supabase.js?v=146"></script>
-<script src="assets/js/app.js?v=146"></script>
-<script src="assets/js/dashboard.js?v=146"></script>
+<script src="assets/js/config.js?v=180"></script>
+<script src="assets/js/supabase.js?v=180"></script>
+<script src="assets/js/app.js?v=180"></script>
+<script src="assets/js/dashboard.js?v=180"></script>
 </body>
 </html>

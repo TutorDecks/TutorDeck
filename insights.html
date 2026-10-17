@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Insights · TutorDeck</title>
+<link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
+<link rel="stylesheet" href="assets/css/app.css?v=180">
+<style>
+  #onboard{display:none;margin-bottom:20px}
+  .ob-card{background:linear-gradient(180deg,#FFFFFF,#EEF6F4);border:1px solid var(--gold);
+    border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
+  .ob-h{font-family:var(--serif,Georgia);font-size:18px;color:var(--navy);margin:0 0 3px}
+  .ob-sub{color:var(--muted);font-size:13.5px;margin:0 0 16px}
+  .ob-step{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-top:1px solid rgba(15,118,110,.25)}
+  .ob-num{flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:14px;background:var(--navy);color:#fff}
+  .ob-step.done .ob-num{background:var(--teal)}
+  .ob-step.done .ob-t{color:var(--muted);text-decoration:line-through}
+  .ob-body{flex:1;min-width:0}
+  .ob-t{display:block;font-weight:700;font-size:14.5px;color:var(--ink)}
+  .ob-d{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+  .ob-step .btn{flex:0 0 auto;align-self:center;padding:7px 14px;font-size:13px}
+  @media(max-width:520px){ .ob-step{flex-wrap:wrap} .ob-step .btn{margin-left:42px} }
+  .dmonth{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .dmonth .gennav{padding:7px 12px;font-weight:700}
+  .dm-lbl{min-width:150px;text-align:center;font-weight:700;font-size:14.5px;color:var(--navy)}
+  .teach-sec{margin-bottom:16px}
+  .teach-sec h2{margin-bottom:2px}
+  .teach-sub{color:var(--muted);font-size:13px;margin-bottom:6px}
+  .teach-row{display:flex;gap:13px;align-items:flex-start;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:10px;overflow:hidden}
+  .teach-row:first-child{border-top:1px solid var(--line)}
+  .tr-time{flex:0 0 auto;min-width:52px;text-align:center;background:var(--cream);border:1px solid var(--line);color:var(--navy);font-weight:800;font-size:12.5px;border-radius:8px;padding:6px 8px}
+  .tr-body{flex:1;min-width:0}
+  .tr-head{display:flex;align-items:center;gap:10px}
+  .tr-name{flex:1;min-width:0;font-weight:800;font-size:15px;color:var(--navy);display:flex;align-items:center;flex-wrap:wrap}
+  .tr-name-row{display:flex;align-items:flex-start;gap:10px}
+  .tnote{all:unset;cursor:pointer;flex:0 0 auto;font-size:12px;font-weight:700;color:var(--gold);border:1px solid var(--gold);border-radius:8px;padding:5px 12px;background:#fff}
+  .tnote:hover{background:var(--cream)}
+  .tnote.has{color:var(--teal);border-color:var(--teal)}
+  .tr-subj{color:var(--gold);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;margin-left:7px}
+  .miss-day{display:flex;align-items:baseline;gap:8px;font-weight:800;color:var(--navy);font-size:13px;margin:12px 0 6px}
+  .miss-day:first-child{margin-top:2px}
+  .miss-day span{color:var(--muted);font-weight:600;font-size:11.5px}
+  .tr-when{color:var(--muted);font-size:11.5px;font-weight:700;margin-bottom:3px}
+  .tr-note{font-size:13px;line-height:1.55;margin-top:1px}
+  .tr-note b{color:var(--navy)}
+  .tr-recap.prev{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);opacity:.9}
+  .tr-cols{display:flex;gap:12px;align-items:stretch;margin-top:9px;flex-wrap:wrap;min-width:0}
+  .tr-notes{flex:1 1 220px;min-width:0;max-width:100%;background:var(--cream);border:1px solid var(--line);border-radius:10px;padding:9px 12px;overflow-wrap:anywhere}
+  .tr-exams{flex:0 1 250px;min-width:0;max-width:100%;background:rgba(180,67,47,.06);border:1px solid rgba(180,67,47,.25);border-radius:10px;padding:9px 12px}
+  .tr-exh{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--owed);margin-bottom:5px}
+  .exchip{display:block;padding:5px 0;border-top:1px solid rgba(180,67,47,.15);color:inherit;text-decoration:none;cursor:pointer;border-radius:4px}
+  .exchip:hover{background:rgba(180,67,47,.06)}
+  .exchip:first-of-type{border-top:none;padding-top:0}
+  .exchip .ex-l{font-weight:700;color:var(--navy);font-size:12.5px}
+  .exchip .ex-m{font-weight:700;color:var(--owed);font-size:11px;margin-left:2px}
+  .exchip .ex-d{color:var(--muted);font-size:11px;display:block}
+  .exchip .ex-t{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--muted);font-size:11px;margin-top:2px;line-height:1.35}
+  .tr-empty{color:var(--muted);font-size:12.5px;font-style:italic;margin-top:4px}
+  .tr-notes,.tr-exams{overflow-wrap:anywhere}
+  @media (max-width:600px){
+    .teach-row{padding:12px}
+    .tr-cols{flex-direction:column;gap:9px}
+    .tr-notes{min-width:0;width:100%;flex:0 0 auto}
+    .tr-exams{width:100%}
+  }
+  .brk{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+  .brk:first-child{border-top:none}
+  .brk .bn{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .brk .bmeta{color:var(--muted);font-size:11.5px;font-weight:400;margin-top:1px}
+  .brk .bv{font-weight:700;white-space:nowrap;text-align:right}
+  .brk .bv small{display:block;color:var(--owed);font-weight:600;font-size:11px}
+  #fy-tiles .note{font-size:11px}
+  .mprog-card{padding:16px 18px;margin-bottom:16px}
+  .mprog-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+  .mprog-lbl{font-weight:700;font-size:14px;color:var(--navy)}
+  .mprog-pct{font-weight:800;font-size:17px;color:var(--teal)}
+  .mprog-track{height:12px;background:#ECE9E2;border-radius:7px;overflow:hidden;display:flex}
+  .mprog-fill{height:100%;background:var(--teal);transition:width .35s ease}
+  .mprog-owed{height:100%;background:var(--owed);transition:width .35s ease}
+  .mprog-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12.5px;color:var(--muted)}
+  .mprog-legend b{color:var(--ink);font-weight:700}
+  .mprog-legend .mdot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
+  .mdot.teal{background:var(--teal)} .mdot.red{background:var(--owed)} .mdot.grey{background:#C9C5BC}
+  .mprog-sub{margin-top:8px;color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<div id="view" data-page="insights">
+  <div id="fin-view">
+  <div class="seg" id="fin-seg" style="margin-bottom:14px">
+    <button id="fseg-month" class="on">Month</button>
+    <button id="fseg-year">Year</button>
+  </div>
+
+  <div id="fin-month">
+  <div class="dmonth">
+    <button class="btn gennav" id="dm-prev" title="Previous month">‹</button>
+    <span class="dm-lbl" id="dm-label">—</span>
+    <button class="btn gennav" id="dm-next" title="Next month">›</button>
+    <button class="btn" id="dm-today">This month</button>
+  </div>
+  <div class="kpi-grid">
+    <div class="card kpi owed"><div class="label">Total pending</div>
+      <div class="val" id="k-pending">—</div><div class="note" id="k-pending-n">to collect</div></div>
+    <div class="card kpi paid"><div class="label">Collected this month</div>
+      <div class="val" id="k-collected">—</div><div class="note" id="k-collected-n">&nbsp;</div></div>
+    <div class="card kpi accent"><div class="label">Projected this month</div>
+      <div class="val" id="k-projected">—</div><div class="note">booked this month, excl. cancelled</div></div>
+    <div class="card kpi"><div class="label">Lessons this week</div>
+      <div class="val" id="k-week">—</div><div class="note" id="k-week-n">Mon–Sun</div></div>
+  </div>
+
+  <div class="card panel mprog-card">
+    <div class="mprog-top"><span class="mprog-lbl" id="mprog-lbl">Collected this month</span><span class="mprog-pct" id="mprog-pct">—</span></div>
+    <div class="mprog-track"><div class="mprog-fill" id="mprog-fill" style="width:0%"></div><div class="mprog-owed" id="mprog-owed" style="width:0%"></div></div>
+    <div class="mprog-legend" id="mprog-legend">
+      <span><i class="mdot teal"></i>Collected <b id="mprog-c">—</b></span>
+      <span><i class="mdot red"></i>Owed <b id="mprog-o">—</b></span>
+      <span><i class="mdot grey"></i>Upcoming <b id="mprog-u">—</b></span>
+    </div>
+    <div class="mprog-sub" id="mprog-sub"></div>
+  </div>
+
+  <div class="card panel">
+    <h2>Income by month <span class="hint" id="inc-hint"></span></h2>
+    <div class="chart-wrap"><canvas id="incomeChart"></canvas></div>
+  </div>
+  </div>
+
+  <div id="fin-year" style="display:none">
+    <div class="dmonth">
+      <button class="btn gennav" id="fy-prev" title="Previous year">‹</button>
+      <span class="dm-lbl" id="fy-label" style="min-width:96px">—</span>
+      <button class="btn gennav" id="fy-next" title="Next year">›</button>
+      <button class="btn" id="fy-today">This year</button>
+    </div>
+    <div class="kpi-grid" id="fy-tiles"></div>
+    <div class="card panel">
+      <h2 id="fy-chart-h">Income across the year <span class="hint" id="fy-chart-hint"></span></h2>
+      <div class="chart-wrap"><canvas id="yearChart"></canvas></div>
+    </div>
+    <div class="grid2">
+      <div class="card panel">
+        <h2>Income by student</h2>
+        <div id="fy-students"><div class="muted" style="font-size:13.5px">—</div></div>
+      </div>
+      <div class="card panel">
+        <h2>Income by subject &amp; level</h2>
+        <div id="fy-subjects"><div class="muted" style="font-size:13.5px">—</div></div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="assets/js/config.js?v=180"></script>
+<script src="assets/js/supabase.js?v=180"></script>
+<script src="assets/js/app.js?v=180"></script>
+<script src="assets/js/dashboard.js?v=180"></script>
+</body>
+</html>
