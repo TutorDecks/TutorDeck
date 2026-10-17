@@ -47,7 +47,7 @@
     // its compensation (0 if none), so this sums correctly either way.
     var projected=month.reduce(function(t,l){return t+Number(l.amount);},0);
     var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
-    setText("k-projected",TL.sgd(projected));
+    setText("k-projected",TL.sgd(projected)); setText("mc-booked",TL.sgd(projected));
     setText("k-collected",TL.sgd(collected));
     // collection progress: collected (teal) + owed (red) + upcoming (grey remainder)
     var owed=month.filter(function(l){return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));}).reduce(function(t,l){return t+Number(l.amount);},0);
@@ -65,7 +65,7 @@
       ? TL.sgd(collected)+" collected of "+TL.sgd(projected)+" booked this month"
       : "No lessons booked this month yet.";
     var d1=new Date(selY,selM,1);
-    setText("k-collected-n",($("teach-view")?"in ":"")+d1.toLocaleString("en-SG",{month:"long"}));
+    setText("k-collected-n",d1.toLocaleString("en-SG",{month:"long"}));
     if($("dm-label"))$("dm-label").textContent=d1.toLocaleString("en-SG",{month:"long",year:"numeric"});
   }
   function stepDMonth(d){var dt=new Date(selY,selM+d,1);selY=dt.getFullYear();selM=dt.getMonth();renderMonthKpis();}

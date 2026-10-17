@@ -199,6 +199,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Home: one Money card + labelled Money / Teaching sections (v166)
+
+The four stat tiles and the separate "This month" bar repeated the same numbers, so they became one
+**Money** card: Collected (with "26% of $X booked") beside Owed to you (all-time, links to the Ledger), the
+month's collected / unpaid / upcoming bar underneath, and "See income ›" to Insights. Below it, a
+**Teaching** section (header shows lessons this week) holds Today, Needs notes, Tomorrow and Upcoming exams
+("N in the next 14 days" now sits in the exams card). Today no longer repeats the date.
+
 ### 2026-10-17 — No full stop after the business name on Home (v165)
 
 Avoids "Ltd.." on names ending in "Pte. Ltd." and reads less like a slogan.

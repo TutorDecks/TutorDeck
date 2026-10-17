@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Home · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=165">
+<link rel="stylesheet" href="assets/css/app.css?v=166">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#FFFFFF,#EEF6F4);border:1px solid var(--gold);
@@ -101,10 +101,32 @@
   .h-more{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--gold);text-decoration:none}
   .h-more:hover{text-decoration:underline}
   @media(max-width:980px){ .hstats{grid-template-columns:repeat(2,1fr);gap:10px} }
+  /* v166: Money / Teaching sections */
+  .h-sec{margin-bottom:26px}
+  .h-sec-h{display:flex;align-items:baseline;gap:10px;margin:0 0 10px}
+  .h-sec-t{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .h-sec-n{font-size:13px;color:var(--muted)}
+  .h-sec-h .h-more{margin-left:auto}
+  .money-card{padding:18px 20px 16px}
+  .mc-top{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px}
+  .mc-col{display:flex;flex-direction:column;gap:1px;text-decoration:none;color:inherit;border-radius:10px;margin:-6px;padding:6px}
+  .mc-col:hover{background:#F7F6F2}
+  .mc-col+.mc-col{border-left:1px solid var(--line);padding-left:20px;margin-left:0;border-radius:0 10px 10px 0}
+  .mc-l{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .mc-v{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1.15;color:var(--ink)}
+  .mc-v.paid{color:var(--accent)} .mc-v.owed{color:var(--owed)}
+  .mc-n{font-size:12.5px;color:var(--muted)}
+  .mc-n b{color:var(--ink)}
+  .money-card .mprog-legend{margin-top:10px}
+  #today-sub{display:none}   /* the date is already under the greeting */
   @media(max-width:880px){
     .home-grid{display:flex;flex-direction:column;align-items:stretch;gap:14px}
     .home-col{display:contents}
-    #today-sec{order:1} #yday-sec{order:2} #tmr-sec{order:3} #exam-sec{order:4} #month-sec{order:5}
+    #today-sec{order:1} #yday-sec{order:2} #tmr-sec{order:3} #exam-sec{order:4}
+    .h-sec{margin-bottom:20px}
+    .money-card{padding:16px}
+    .mc-v{font-size:24px}
+    .mc-col+.mc-col{padding-left:14px}
     .hs-v{font-size:21px}
   }
 </style>
@@ -113,13 +135,29 @@
 <div id="view">
   <div id="onboard"></div>
 
-  <div class="hstats">
-    <a class="hstat owed" href="ledger.html"><span class="hs-l">Owed to you</span><span class="hs-v" id="k-pending">—</span><span class="hs-n" id="k-pending-n">&nbsp;</span></a>
-    <a class="hstat paid" href="insights.html"><span class="hs-l">Collected</span><span class="hs-v" id="k-collected">—</span><span class="hs-n" id="k-collected-n">&nbsp;</span></a>
-    <a class="hstat" href="calendar.html"><span class="hs-l">This week</span><span class="hs-v" id="k-week">—</span><span class="hs-n">lessons</span></a>
-    <a class="hstat" href="exams.html"><span class="hs-l">Exams</span><span class="hs-v" id="k-exams">—</span><span class="hs-n">next 14 days</span></a>
-  </div>
+  <!-- MONEY: one card — collected vs owed, and the month's progress bar -->
+  <section class="h-sec">
+    <div class="h-sec-h"><h2 class="h-sec-t">Money</h2><span class="h-sec-n" id="k-collected-n"></span>
+      <a class="h-more" href="insights.html">See income ›</a></div>
+    <div class="card money-card">
+      <div class="mc-top">
+        <a class="mc-col" href="insights.html"><span class="mc-l">Collected</span><span class="mc-v paid" id="k-collected">—</span>
+          <span class="mc-n"><b id="mprog-pct">—</b> of <span id="mc-booked">—</span> booked</span></a>
+        <a class="mc-col" href="ledger.html"><span class="mc-l">Owed to you</span><span class="mc-v owed" id="k-pending">—</span>
+          <span class="mc-n" id="k-pending-n">&nbsp;</span></a>
+      </div>
+      <div class="mprog-track" aria-hidden="true"><div class="mprog-fill" id="mprog-fill" style="width:0%"></div><div class="mprog-owed" id="mprog-owed" style="width:0%"></div></div>
+      <div class="mprog-legend" id="mprog-legend">
+        <span><i class="mdot teal"></i>Collected</span>
+        <span><i class="mdot red"></i>Unpaid <b id="mprog-o">—</b></span>
+        <span><i class="mdot grey"></i>Upcoming <b id="mprog-u">—</b></span>
+      </div>
+    </div>
+  </section>
 
+  <!-- TEACHING -->
+  <section class="h-sec">
+    <div class="h-sec-h"><h2 class="h-sec-t">Teaching</h2><span class="h-sec-n"><span id="k-week">—</span> lessons this week</span></div>
   <div class="home-grid" id="teach-view">
     <div class="home-col">
       <div class="card panel teach-sec" id="today-sec">
@@ -141,20 +179,12 @@
       </div>
       <div class="card panel teach-sec" id="exam-sec">
         <h2>Upcoming exams <a class="h-more" href="exams.html">All</a></h2>
+        <div class="teach-sub"><span id="k-exams">—</span> in the next 14 days</div>
         <div id="teach-exam-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
-      </div>
-      <div class="card panel mprog-card" id="month-sec">
-        <div class="mprog-top"><span class="mprog-lbl" id="mprog-lbl">This month</span><span class="mprog-pct" id="mprog-pct">—</span></div>
-        <div class="mprog-track"><div class="mprog-fill" id="mprog-fill" style="width:0%"></div><div class="mprog-owed" id="mprog-owed" style="width:0%"></div></div>
-        <div class="mprog-legend" id="mprog-legend">
-          <span><i class="mdot teal"></i>Collected <b id="mprog-c">—</b></span>
-          <span><i class="mdot red"></i>Owed <b id="mprog-o">—</b></span>
-          <span><i class="mdot grey"></i>Upcoming <b id="mprog-u">—</b></span>
-        </div>
-        <div class="mprog-sub"><span id="mprog-sub"></span> · <a class="h-more" href="insights.html">See income</a></div>
       </div>
     </div>
   </div>
+  </section>
 
   <!-- quick lesson-note modal -->
   <div class="modal-backdrop" id="tn-modal">
@@ -175,9 +205,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=165"></script>
-<script src="assets/js/supabase.js?v=165"></script>
-<script src="assets/js/app.js?v=165"></script>
-<script src="assets/js/dashboard.js?v=165"></script>
+<script src="assets/js/config.js?v=166"></script>
+<script src="assets/js/supabase.js?v=166"></script>
+<script src="assets/js/app.js?v=166"></script>
+<script src="assets/js/dashboard.js?v=166"></script>
 </body>
 </html>
