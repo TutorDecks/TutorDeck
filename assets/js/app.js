@@ -30,7 +30,8 @@ window.TL = (function () {
                                                                   { id: "exams",    label: "Exams",  href: "exams.html" } ],
       also: ["student"] },
     { id: "money",    label: "Money",    ic: "money",    pages: [ { id: "ledger",   label: "Ledger",   href: "ledger.html" },
-                                                                  { id: "invoices", label: "Invoices", href: "invoices.html" } ] }
+                                                                  { id: "invoices", label: "Invoices", href: "invoices.html" },
+                                                                  { id: "insights", label: "Insights", href: "insights.html" } ] }
   ];
   // Secondary destinations: sidebar footer on desktop, "More" sheet on phones.
   var EXTRA = [
@@ -161,7 +162,10 @@ window.TL = (function () {
   }
 
   async function requireAuth(active, init) {
-    var meta = { dashboard: ["Dashboard", "Your week at a glance"],
+    var hr = new Date().getHours();
+    var meta = { dashboard: [hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening",
+                             new Date().toLocaleDateString("en-SG", { weekday: "long", day: "numeric", month: "long" })],
+                 insights: ["Insights", "Income and collections"],
                  planner: ["Weekly planner", "Mon–Sun schedule"],
                  calendar: ["Calendar", "Lessons across the week"],
                  ledger: ["Ledger", "Lessons, payments & projections"],

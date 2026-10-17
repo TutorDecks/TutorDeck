@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard · TutorDeck</title>
-<link rel="stylesheet" href="assets/css/app.css?v=147">
+<title>Home · TutorDeck</title>
+<link rel="stylesheet" href="assets/css/app.css?v=148">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#fffdf7,#fbf4e4);border:1px solid var(--gold);
@@ -61,7 +61,7 @@
   @media (max-width:600px){
     .teach-row{padding:12px}
     .tr-cols{flex-direction:column;gap:9px}
-    .tr-notes{min-width:0;width:100%}
+    .tr-notes{min-width:0;width:100%;flex:0 0 auto}
     .tr-exams{width:100%}
   }
   .brk{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
@@ -83,101 +83,75 @@
   .mprog-legend .mdot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
   .mdot.teal{background:var(--teal)} .mdot.red{background:var(--owed)} .mdot.grey{background:#BCB3A0}
   .mprog-sub{margin-top:8px;color:var(--muted);font-size:12.5px}
+
+  /* ---- Home (v148) ---- */
+  .hstats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .hstat{display:flex;flex-direction:column;gap:2px;padding:13px 15px;background:var(--paper);border:1px solid var(--line);
+    border-radius:12px;text-decoration:none;color:inherit;box-shadow:var(--shadow);transition:border-color .12s,transform .12s}
+  .hstat:hover{border-color:var(--gold)}
+  .hstat:active{transform:scale(.98)}
+  .hs-l{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .hs-v{font-family:var(--serif);font-size:23px;line-height:1.15;color:var(--navy)}
+  .hstat.owed .hs-v{color:var(--owed)} .hstat.paid .hs-v{color:var(--teal)}
+  .hs-n{font-size:12px;color:var(--muted)}
+  .home-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:16px;align-items:start}
+  .home-col{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .home-col .teach-sec{margin-bottom:0}
+  .h-more{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--gold);text-decoration:none}
+  .h-more:hover{text-decoration:underline}
+  @media(max-width:980px){ .hstats{grid-template-columns:repeat(2,1fr);gap:10px} }
+  @media(max-width:880px){
+    .home-grid{display:flex;flex-direction:column;align-items:stretch;gap:14px}
+    .home-col{display:contents}
+    #today-sec{order:1} #yday-sec{order:2} #tmr-sec{order:3} #exam-sec{order:4} #month-sec{order:5}
+    .hs-v{font-size:21px}
+  }
 </style>
 </head>
 <body>
 <div id="view">
   <div id="onboard"></div>
-  <div class="seg" id="dash-seg">
-    <button id="seg-fin" class="on">Finance</button>
-    <button id="seg-teach">Teaching</button>
+
+  <div class="hstats">
+    <a class="hstat owed" href="ledger.html"><span class="hs-l">Owed to you</span><span class="hs-v" id="k-pending">—</span><span class="hs-n" id="k-pending-n">&nbsp;</span></a>
+    <a class="hstat paid" href="insights.html"><span class="hs-l">Collected</span><span class="hs-v" id="k-collected">—</span><span class="hs-n" id="k-collected-n">&nbsp;</span></a>
+    <a class="hstat" href="calendar.html"><span class="hs-l">This week</span><span class="hs-v" id="k-week">—</span><span class="hs-n">lessons</span></a>
+    <a class="hstat" href="exams.html"><span class="hs-l">Exams</span><span class="hs-v" id="k-exams">—</span><span class="hs-n">next 14 days</span></a>
   </div>
 
-  <div id="fin-view">
-  <div class="seg" id="fin-seg" style="margin-bottom:14px">
-    <button id="fseg-month" class="on">Month</button>
-    <button id="fseg-year">Year</button>
-  </div>
-
-  <div id="fin-month">
-  <div class="dmonth">
-    <button class="btn gennav" id="dm-prev" title="Previous month">‹</button>
-    <span class="dm-lbl" id="dm-label">—</span>
-    <button class="btn gennav" id="dm-next" title="Next month">›</button>
-    <button class="btn" id="dm-today">This month</button>
-  </div>
-  <div class="kpi-grid">
-    <div class="card kpi owed"><div class="label">Total pending</div>
-      <div class="val" id="k-pending">—</div><div class="note" id="k-pending-n">to collect</div></div>
-    <div class="card kpi paid"><div class="label">Collected this month</div>
-      <div class="val" id="k-collected">—</div><div class="note" id="k-collected-n">&nbsp;</div></div>
-    <div class="card kpi accent"><div class="label">Projected this month</div>
-      <div class="val" id="k-projected">—</div><div class="note">booked this month, excl. cancelled</div></div>
-    <div class="card kpi"><div class="label">Lessons this week</div>
-      <div class="val" id="k-week">—</div><div class="note" id="k-week-n">Mon–Sun</div></div>
-  </div>
-
-  <div class="card panel mprog-card">
-    <div class="mprog-top"><span class="mprog-lbl" id="mprog-lbl">Collected this month</span><span class="mprog-pct" id="mprog-pct">—</span></div>
-    <div class="mprog-track"><div class="mprog-fill" id="mprog-fill" style="width:0%"></div><div class="mprog-owed" id="mprog-owed" style="width:0%"></div></div>
-    <div class="mprog-legend" id="mprog-legend">
-      <span><i class="mdot teal"></i>Collected <b id="mprog-c">—</b></span>
-      <span><i class="mdot red"></i>Owed <b id="mprog-o">—</b></span>
-      <span><i class="mdot grey"></i>Upcoming <b id="mprog-u">—</b></span>
-    </div>
-    <div class="mprog-sub" id="mprog-sub"></div>
-  </div>
-
-  <div class="card panel">
-    <h2>Income by month <span class="hint" id="inc-hint"></span></h2>
-    <div class="chart-wrap"><canvas id="incomeChart"></canvas></div>
-  </div>
-  </div>
-
-  <div id="fin-year" style="display:none">
-    <div class="dmonth">
-      <button class="btn gennav" id="fy-prev" title="Previous year">‹</button>
-      <span class="dm-lbl" id="fy-label" style="min-width:96px">—</span>
-      <button class="btn gennav" id="fy-next" title="Next year">›</button>
-      <button class="btn" id="fy-today">This year</button>
-    </div>
-    <div class="kpi-grid" id="fy-tiles"></div>
-    <div class="card panel">
-      <h2 id="fy-chart-h">Income across the year <span class="hint" id="fy-chart-hint"></span></h2>
-      <div class="chart-wrap"><canvas id="yearChart"></canvas></div>
-    </div>
-    <div class="grid2">
-      <div class="card panel">
-        <h2>Income by student</h2>
-        <div id="fy-students"><div class="muted" style="font-size:13.5px">—</div></div>
+  <div class="home-grid" id="teach-view">
+    <div class="home-col">
+      <div class="card panel teach-sec" id="today-sec">
+        <h2 id="today-h">Today</h2>
+        <div class="teach-sub" id="today-sub"></div>
+        <div id="today-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
       </div>
-      <div class="card panel">
-        <h2>Income by subject &amp; level</h2>
-        <div id="fy-subjects"><div class="muted" style="font-size:13.5px">—</div></div>
+      <div class="card panel teach-sec" id="tmr-sec">
+        <h2 id="tmr-h">Tomorrow</h2>
+        <div class="teach-sub" id="tmr-sub"></div>
+        <div id="tmr-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
       </div>
     </div>
-  </div>
-  </div>
-
-  <div id="teach-view" style="display:none">
-    <div class="card panel teach-sec" id="yday-sec" style="display:none">
-      <h2 id="yday-h">Needs notes <span class="hint" id="yday-hint"></span></h2>
-      <div class="teach-sub" id="yday-sub"></div>
-      <div id="yday-list"></div>
-    </div>
-    <div class="card panel teach-sec">
-      <h2 id="today-h">Today</h2>
-      <div class="teach-sub" id="today-sub"></div>
-      <div id="today-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
-    </div>
-    <div class="card panel teach-sec">
-      <h2 id="tmr-h">Tomorrow</h2>
-      <div class="teach-sub" id="tmr-sub"></div>
-      <div id="tmr-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
-    </div>
-    <div class="card panel teach-sec">
-      <h2>Upcoming exams</h2>
-      <div id="teach-exam-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+    <div class="home-col">
+      <div class="card panel teach-sec" id="yday-sec" style="display:none">
+        <h2 id="yday-h">Needs notes <span class="hint" id="yday-hint"></span></h2>
+        <div class="teach-sub" id="yday-sub"></div>
+        <div id="yday-list"></div>
+      </div>
+      <div class="card panel teach-sec" id="exam-sec">
+        <h2>Upcoming exams <a class="h-more" href="exams.html">All</a></h2>
+        <div id="teach-exam-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+      </div>
+      <div class="card panel mprog-card" id="month-sec">
+        <div class="mprog-top"><span class="mprog-lbl" id="mprog-lbl">This month</span><span class="mprog-pct" id="mprog-pct">—</span></div>
+        <div class="mprog-track"><div class="mprog-fill" id="mprog-fill" style="width:0%"></div><div class="mprog-owed" id="mprog-owed" style="width:0%"></div></div>
+        <div class="mprog-legend" id="mprog-legend">
+          <span><i class="mdot teal"></i>Collected <b id="mprog-c">—</b></span>
+          <span><i class="mdot red"></i>Owed <b id="mprog-o">—</b></span>
+          <span><i class="mdot grey"></i>Upcoming <b id="mprog-u">—</b></span>
+        </div>
+        <div class="mprog-sub"><span id="mprog-sub"></span> · <a class="h-more" href="insights.html">See income</a></div>
+      </div>
     </div>
   </div>
 
@@ -200,9 +174,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=147"></script>
-<script src="assets/js/supabase.js?v=147"></script>
-<script src="assets/js/app.js?v=147"></script>
-<script src="assets/js/dashboard.js?v=147"></script>
+<script src="assets/js/config.js?v=148"></script>
+<script src="assets/js/supabase.js?v=148"></script>
+<script src="assets/js/app.js?v=148"></script>
+<script src="assets/js/dashboard.js?v=148"></script>
 </body>
 </html>

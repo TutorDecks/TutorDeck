@@ -199,6 +199,19 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Home redesign; finance moves to Money → Insights (v148)
+
+The Dashboard's Finance | Teaching and Month | Year toggles are gone from Home.
+- **Home** (`app.html`): greeting + date, four small tap-through tiles (Owed to you → Ledger, Collected
+  this month → Insights, Lessons this week → Calendar, Exams in the next 14 days → Exams), then Today,
+  Needs notes, Tomorrow, Upcoming exams and a slim "This month" collection bar. Desktop is two columns
+  (Today/Tomorrow left; Needs notes/Exams/This month right); phones stack them in that priority order.
+- **Insights** (`insights.html`, new Money sub-tab): the old Finance view unchanged (month KPIs,
+  collection bar, income chart, Year view with by-student / by-subject breakdowns).
+- `dashboard.js` serves both pages: it reads the page id from `#view[data-page]` and skips any element a
+  page doesn't have (`setText`, guarded chart/teaching/toggle code).
+- KPI tiles are 2-per-row and smaller on phones everywhere.
+
 ### 2026-10-17 — New navigation: 5 grouped tabs with icons (v147)
 
 Nine equal nav items became four groups plus "More", so it's clearer where things live:
