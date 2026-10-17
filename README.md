@@ -199,6 +199,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Exams: list + detail sheet (v178)
+
+Each exam is one row: date block (day + month, year shown if not this year), student, type · subject ·
+topics, and on the right "in 5 days" (amber within 14 days) or the score (78/100 · 78%) / "Add result".
+Tap → sheet with date, topics, result, remarks; **Add result** (teal, past exams without a score),
+Edit exam, Student profile, Delete (red text). The per-row Edit/Delete links are gone.
+Calendar's exam chips still deep-link and highlight the row (`?highlight=`).
+
 ### 2026-10-18 — Records: one lesson sheet everywhere (v177)
 
 Tapping any Records row (phone **and** desktop) opens the lesson sheet: student + date · time and the
