@@ -32,9 +32,11 @@
 
   // ---- view modes ----
   // Desktop: week | month. Phone adds day (week strip + one-day timeline), 3day and list.
-  var PHONE_ONLY={day:1,"3day":1,list:1};
+  var PHONE_ONLY={day:1};
   function isPhone(){ return !!(window.matchMedia && window.matchMedia("(max-width:820px)").matches); }
-  function effMode(m){ m=m||mode; return (PHONE_ONLY[m] && !isPhone()) ? "week" : m; }
+  function effMode(m){ m=m||mode;
+    if(m==="3day"||m==="list") m=isPhone()?"day":"week";   // retired trial views
+    return (PHONE_ONLY[m] && !isPhone()) ? "week" : m; }
   function stepDays(m){ return m==="day"?1:(m==="3day"?3:7); }
 
   // ---- what span a given anchor+mode covers ----
@@ -880,6 +882,8 @@
     ensureData();
   }
   function goToday(){ anchor=new Date(); ensureData(); }
+  // FAB in Day view: start the new lesson on the day you're looking at.
+  function m2prefill(){ return effMode()==="day" ? { date: iso(anchor) } : undefined; }
 
   function initLegend(){
     document.querySelectorAll(".cal-legend .leg").forEach(function(btn){
@@ -916,6 +920,8 @@
       }, {passive:true});
     })();
     if($("cal-add")) $("cal-add").addEventListener("click", function(){ openAdd(); });
+    if($("cal-fab")) $("cal-fab").addEventListener("click", function(e){ e.stopPropagation(); openAdd(m2prefill()); });
+    window.addEventListener("td:tabagain", function(){ hidePopover(); goToday(); });
     if($("ca-student")) $("ca-student").addEventListener("change", applyStudentDefaults);
     if($("ca-cancel")) $("ca-cancel").addEventListener("click", closeAdd);
     if($("ca-save")) $("ca-save").addEventListener("click", saveAdd);

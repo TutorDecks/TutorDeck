@@ -199,6 +199,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Phone calendar: Day | Week | Month, thumb-friendly (v182)
+
+Trial views trimmed: phones get **Day** (default) | **Week** | **Month**; 3 days and List retired (a saved
+`tl_cal_mode` of either falls back to Day). Thumb zone: **Add lesson** is a floating teal + at bottom
+right (pre-fills the day you're viewing in Day view); the top Today/Add buttons are hidden on phones —
+**tap the Schedule tab again to jump to today** (app.js fires `td:tabagain` when the active tab is
+re-tapped; any page can listen). Swipe still moves day/week. Week keeps starting on Monday so the
+weekend stays together. Desktop unchanged.
+
 ### 2026-10-18 — Phone calendar: Day / 3 days / Week / List / Month to try (v181)
 
 Phones get five views (desktop unchanged: Week | Month). **Day** (new default on phones): Mon–Sun strip
