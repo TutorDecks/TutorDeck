@@ -199,6 +199,19 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Ledger declutter (v149)
+
+- The three big KPI cards became one slim summary strip: **Owed** · **Collected** · **Booked** for the
+  selected month (same ids, so `ledger.js` logic is unchanged).
+- One control row: Outstanding | Records + a compact month navigator. "This month" only appears when
+  you've moved off the current month; "All" is now an "All time" chip.
+- Records toolbar: **+ Add lesson** is the one primary button. Log this week / Log this month / custom
+  range live in a **Log lessons ▾** menu; Export CSV moved into **⋯**.
+- Desktop rows: actions ("Edit", Cancel, Delete) stay hidden until you hover the row. "Postpone / edit"
+  is now just "Edit" (the form still handles postponing).
+- Phones: Records filters fold behind a **Filter** button next to search; the Outstanding cards make
+  **Mark all paid** the solid primary button with Remind / Invoice as quiet text buttons.
+
 ### 2026-10-17 — Home redesign; finance moves to Money → Insights (v148)
 
 The Dashboard's Finance | Teaching and Month | Year toggles are gone from Home.

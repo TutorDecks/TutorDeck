@@ -343,7 +343,7 @@
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
         : '<button class="tact warn" data-cancel="'+l.id+'">Cancel</button>';
       return lead+'<tr data-lid="'+l.id+'"'+attrs+'><td data-label=""><input type="checkbox" class="lchk" data-rsel="'+l.id+'"'+(selectedRecords[l.id]?" checked":"")+'></td><td data-label="Date">'+recDate(l.lesson_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a></td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
-        '<td class="acts"><button class="tact" data-edit="'+l.id+'">Postpone / edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
+        '<td class="acts"><button class="tact" data-edit="'+l.id+'">Edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
     }).join("")
       // every row is newer than today (or filters hid it) — today belongs at the bottom
       +(todayInView&&!placed?divider:"");
@@ -1095,7 +1095,13 @@
 
   // One shared period (the header navigator) drives the KPIs, Outstanding, and Records.
   function periodKey(){ return period.mode==="all"?"all":(period.y+"-"+pad(period.m+1)); }
-  function updatePeriodUI(){ if($("p-label"))$("p-label").textContent=periodLabel(); if($("p-all"))$("p-all").classList.toggle("on",period.mode==="all"); }
+  function updatePeriodUI(){
+    if($("p-label"))$("p-label").textContent=periodLabel();
+    if($("p-all"))$("p-all").classList.toggle("on",period.mode==="all");
+    // "This month" only shows when you've moved away from the current month
+    var n=new Date(), cur=period.mode==="month"&&period.y===n.getFullYear()&&period.m===n.getMonth();
+    if($("p-today"))$("p-today").style.display=cur?"none":"";
+  }
   function persistPeriod(){ try{localStorage.setItem("tl_period",JSON.stringify(period));}catch(e){} }
   function refreshPeriod(){ persistPeriod(); updatePeriodUI(); renderPendingKpi(); renderMonthKpis(); renderOutstanding(lastUnpaid); renderRecords(); }
   // Pending KPI: All = all-time total; a specific month = that month's pending.
@@ -1105,8 +1111,8 @@
     var amt=sel.reduce(function(t,l){return t+Number(l.amount);},0);
     var lbl=$("k-pending-lbl"), note=$("k-pending-n");
     $("k-pending").textContent=TL.sgd(amt);
-    if(pk==="all"){ if(lbl)lbl.textContent="Total pending"; if(note)note.textContent=all.length+" unpaid lesson"+(all.length===1?"":"s"); }
-    else{ if(lbl)lbl.textContent="Pending"; if(note)note.textContent=periodLabel()+" · "+sel.length+" unpaid"; }
+    if(pk==="all"){ if(lbl)lbl.textContent="Owed (all time)"; if(note)note.textContent=all.length+" unpaid lesson"+(all.length===1?"":"s"); }
+    else{ if(lbl)lbl.textContent="Owed"; if(note)note.textContent=sel.length+" unpaid"; }
   }
   // Collected/Projected describe the picked month (current month while on All).
   function activeMonthRange(){
@@ -1122,8 +1128,8 @@
     // its compensation (0 if none), so a plain lesson-run vs. a compensated cancellation
     // both contribute correctly, and a no-compensation cancellation contributes $0.
     var projected=month.reduce(function(t,l){return t+Number(l.amount);},0);
-    $("k-collected").textContent=TL.sgd(collected); if($("k-collected-n"))$("k-collected-n").textContent=r.label;
-    $("k-projected").textContent=TL.sgd(projected);  if($("k-projected-n"))$("k-projected-n").textContent=r.label+" · excl. uncompensated cancellations";
+    $("k-collected").textContent=TL.sgd(collected); if($("k-collected-n"))$("k-collected-n").textContent=period.mode==="all"?r.label:"this month";
+    $("k-projected").textContent=TL.sgd(projected);  if($("k-projected-n"))$("k-projected-n").textContent=period.mode==="all"?r.label:"lessons this month";
   }
   function init(user){
     userId=user.id;
@@ -1166,7 +1172,16 @@
     on("inv-wa","click",shareInvoice);
     on("inv-save","click",saveInvoice);
     // period nav is the shared header control (p-prev/p-next/p-today/p-all), wired above
-    on("csv-btn","click",exportCSV);
+    on("csv-btn","click",function(){closeMenus();exportCSV();});
+    // dropdown menus (Log lessons, ⋯): toggle on tap, close on outside tap / Esc
+    function closeMenus(except){document.querySelectorAll(".dd.open").forEach(function(d){if(d!==except){d.classList.remove("open");var b=d.querySelector("[aria-expanded]");if(b)b.setAttribute("aria-expanded","false");}});}
+    ["log-dd","more-dd"].forEach(function(id){var d=$(id);if(!d)return;var b=d.querySelector("button");
+      b.addEventListener("click",function(e){e.stopPropagation();var open=!d.classList.contains("open");closeMenus(d);d.classList.toggle("open",open);b.setAttribute("aria-expanded",open?"true":"false");});
+      d.querySelector(".dd-menu").addEventListener("click",function(e){e.stopPropagation();});});
+    document.addEventListener("click",function(){closeMenus();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape")closeMenus();});
+    ["gen-custom-btn","gen-btn","gen-month-btn"].forEach(function(id){on(id,"click",function(){closeMenus();});});
+    on("rec-ftoggle","click",function(){var f=document.querySelector("#rec-view .filters");var open=!f.classList.contains("open");f.classList.toggle("open",open);$("rec-ftoggle").setAttribute("aria-expanded",open?"true":"false");});
     on("rec-search","input",renderRecords);
     ["rec-student","rec-subject","rec-level","rec-status"].forEach(function(id){on(id,"change",renderRecords);});
     on("rec-clear","click",clearRecFilters);
