@@ -114,9 +114,10 @@
   function initials(n){var w=String(n||"").split(/\s+/).filter(Boolean);return ((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();}
   function rowHtml(r,active){
     // One ⋯ menu per row; tapping anywhere else on the row opens the profile.
+    // Merge (de-dupe) is no longer in the menu (v160); openMerge/doMerge + #merge-modal are kept so it can be
+    // restored by adding back: '<button class="tact" data-merge="'+r.id+'">Merge with…</button>'
     var acts=active
       ? '<button class="tact" data-edit="'+r.id+'">Edit details</button>'+
-        '<button class="tact warn" data-merge="'+r.id+'">Merge with…</button>'+
         '<button class="tact" data-off="'+r.id+'">Discontinue</button><hr>'+
         '<button class="tact del" data-del="'+r.id+'">Remove</button>'
       : '<button class="tact" data-edit="'+r.id+'">Edit details</button>'+

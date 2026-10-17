@@ -119,7 +119,7 @@ each step feeds the next:
 
 - **Projected this month** = the sum of this month's ledger lessons (scheduled + done,
   paid + unpaid), excluding cancelled. Fill the month (step 4) to see the full figure.
-- **De-duplicating students:** use **Merge** (moves lessons/slots/exams onto the kept
+- **De-duplicating students:** (Merge is hidden from the roster menu since v160 — see that entry) use **Merge** (moves lessons/slots/exams onto the kept
   student), never **Remove** — Remove deletes the student *and* their lessons.
 - **Stopped lessons:** use **Discontinue** to hide a student from the slot/lesson
   pickers while keeping their history; Reactivate anytime.
@@ -198,6 +198,12 @@ db/
 ## Raphael's updates
 
 A running log of Raphael's changes, newest first.
+
+### 2026-10-17 — Merge removed from the roster menu (v160)
+
+The ⋯ menu is now Edit details / Discontinue (or Reactivate) / Remove. The merge code (`openMerge`, `doMerge`,
+`#merge-modal`) is left in place, unused; to bring it back, re-add the `data-merge` button in `rowHtml()`
+(students.js — there's a comment with the exact line).
 
 ### 2026-10-17 — Cleaner Students roster (v159)
 
