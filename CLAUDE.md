@@ -90,5 +90,9 @@ Preview and dev deployments also hit this live DB. So:
    As of 2026-10-17 none remain in the code (last one, the landing footer, removed in v145); check Supabase Auth → URL Configuration
    and email templates, which live outside the repo.
 3. Sync `dev` with `main` (done on 2026-10-17 in feature/sync-main-claude-md, v144).
-4. Later: separate dev Supabase project; custom SMTP for auth emails; Vercel Pro before
+4. Google OAuth app (Calendar sync) is published but unverified (100-user cap, warning screen).
+   Google Cloud → Branding links currently point to https://tutordeck.vercel.app (/privacy.html,
+   /terms.html). Switch them to tutordeck.com.sg once that domain is live (DNS returned NXDOMAIN
+   on 2026-10-18), then submit for verification.
+5. Later: separate dev Supabase project; custom SMTP for auth emails; Vercel Pro before
    charging customers (Hobby plan is non-commercial).
