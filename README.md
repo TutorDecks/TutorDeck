@@ -199,6 +199,11 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Not-invoiced rows outlined in amber (v172)
+
+Who owes you rows are now separate cards; rows not yet invoiced get a 1.5px amber outline and an amber
+*outlined* "Not invoiced" label, matching the sheet's amber-outlined **Send invoice** button.
+
 ### 2026-10-17 — "Not invoiced" on Who owes you (v171)
 
 Uses `invoices.sent_at` (needs db/migration_invoice_sent.sql; hidden until it's run). Ledger loads every sent
