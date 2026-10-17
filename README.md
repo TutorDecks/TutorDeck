@@ -199,6 +199,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Shorter Home on phones (v167)
+
+Phone-only (≤820px): Money card drops the bar legend; **Needs notes** collapses to one tappable line
+("Needs notes · 3 ▾", `#yd-toggle`); an empty **Tomorrow** shrinks to one slim line; Today's lessons are
+flat rows; Upcoming exams shows the next 3 (All → Exams). Desktop unchanged. Roughly 30% less scrolling.
+
 ### 2026-10-17 — Home: one Money card + labelled Money / Teaching sections (v166)
 
 The four stat tiles and the separate "This month" bar repeated the same numbers, so they became one

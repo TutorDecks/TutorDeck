@@ -175,7 +175,7 @@
       var sec=$("yday-sec"); if(!sec)return;
       if(!missing.length){ sec.style.display="none"; return; }
       sec.style.display="";
-      $("yday-hint").textContent=missing.length+" without notes";
+      $("yday-hint").textContent=window.innerWidth<=820?String(missing.length):missing.length+" without notes";
       $("yday-sub").textContent="Past "+DAYS_BACK+" days · "+
         from.toLocaleDateString("en-SG",{day:"numeric",month:"short"})+" – "+
         new Date(today.getTime()-86400000).toLocaleDateString("en-SG",{day:"numeric",month:"short"});
@@ -428,6 +428,8 @@
       setFinSub(fsub);
     }
 
+    var yt=$("yd-toggle");
+    if(yt&&!yt.dataset.w){yt.dataset.w="1";yt.addEventListener("click",function(){var o=$("yday-sec").classList.toggle("open");yt.setAttribute("aria-expanded",o?"true":"false");});}
     if(!tnWired){
       tnWired=true;
       if($("tn-cancel"))$("tn-cancel").addEventListener("click",closeNote);

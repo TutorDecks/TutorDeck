@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Home · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=166">
+<link rel="stylesheet" href="assets/css/app.css?v=167">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#FFFFFF,#EEF6F4);border:1px solid var(--gold);
@@ -119,6 +119,39 @@
   .mc-n b{color:var(--ink)}
   .money-card .mprog-legend{margin-top:10px}
   #today-sub{display:none}   /* the date is already under the greeting */
+  .yd-toggle{all:unset;display:flex;align-items:baseline;gap:8px;width:100%;cursor:default}
+  .yd-toggle h2{flex:1}
+  .yd-caret{display:none}
+
+  /* ---- phone: keep Home short (v167) ---- */
+  @media(max-width:820px){
+    .money-card .mprog-legend{display:none!important}
+    .money-card{padding:14px 16px}
+    .mc-top{margin-bottom:12px}
+    .mc-v{font-size:22px}
+    .h-sec-h{margin-bottom:8px}
+    .panel.teach-sec{padding:14px 16px}
+    .teach-sec h2{font-size:16px}
+    /* Needs notes collapses to one tappable line */
+    .yd-toggle{cursor:pointer}
+    .yd-caret{display:inline;color:var(--muted);font-size:14px;transition:transform .15s}
+    #yday-sec.open .yd-caret{transform:rotate(180deg)}
+    #yday-sec:not(.open) #yday-sub,#yday-sec:not(.open) #yday-list{display:none}
+    #yday-sec:not(.open) h2{margin-bottom:0}
+    /* flatter lesson rows */
+    .teach-row{border:none;padding:10px 0;margin:0;border-top:1px solid var(--line);border-radius:0;gap:11px}
+    .teach-row:first-child{border-top:none}
+    .tr-notes{padding:7px 10px;font-size:12.5px}
+    .tr-cols{margin-top:6px}
+    /* empty Tomorrow: one slim line */
+    #tmr-sec:has(.tr-empty){display:flex;align-items:baseline;gap:10px;padding:12px 16px}
+    #tmr-sec:has(.tr-empty) h2{margin:0;font-size:15px}
+    #tmr-sec:has(.tr-empty) .tr-empty{margin:0}
+    #tmr-sec:has(.tr-empty) .teach-sub{display:none}
+    /* exams: next 3 only */
+    #teach-exam-list .exam-row:nth-child(n+4){display:none}
+    #exam-sec .teach-sub{margin-bottom:2px}
+  }
   @media(max-width:880px){
     .home-grid{display:flex;flex-direction:column;align-items:stretch;gap:14px}
     .home-col{display:contents}
@@ -173,7 +206,8 @@
     </div>
     <div class="home-col">
       <div class="card panel teach-sec" id="yday-sec" style="display:none">
-        <h2 id="yday-h">Needs notes <span class="hint" id="yday-hint"></span></h2>
+        <button type="button" class="yd-toggle" id="yd-toggle" aria-expanded="false">
+          <h2 id="yday-h">Needs notes <span class="hint" id="yday-hint"></span></h2><span class="yd-caret" aria-hidden="true">▾</span></button>
         <div class="teach-sub" id="yday-sub"></div>
         <div id="yday-list"></div>
       </div>
@@ -205,9 +239,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=166"></script>
-<script src="assets/js/supabase.js?v=166"></script>
-<script src="assets/js/app.js?v=166"></script>
-<script src="assets/js/dashboard.js?v=166"></script>
+<script src="assets/js/config.js?v=167"></script>
+<script src="assets/js/supabase.js?v=167"></script>
+<script src="assets/js/app.js?v=167"></script>
+<script src="assets/js/dashboard.js?v=167"></script>
 </body>
 </html>
