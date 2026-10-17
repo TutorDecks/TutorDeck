@@ -199,6 +199,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Quieter "Exit parent view" pill (v158)
+
+The pill is now frosted white with grey text and a thin border (was solid navy), smaller, and sits
+bottom-right on desktop / centred above the tab bar on phones. Extra bottom padding in Parent view so it
+never covers the last row.
+
 ### 2026-10-17 — First-time tips; Parent view exit pill (v157)
 
 - New helper **`TL.coach(key, anchorEl, html)`** (app.js): a small dark tip under an element, shown ONCE
