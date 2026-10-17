@@ -199,6 +199,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Handwritten Home greeting (v162)
+
+The greeting line is now a teal handwritten script (Google Font **Sacramento**, the closest free match
+to the Mac's "hello"), over a bigger business name (64px desktop / 44px phone). Sacramento is only used
+here; it's loaded via a second `@import` at the top of app.css.
+
 ### 2026-10-17 — Apple-style Home headline (v161)
 
 Home's title is now two lines instead of "Good afternoon, Raphael Tuition": a small grey greeting
