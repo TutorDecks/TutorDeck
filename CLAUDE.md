@@ -56,6 +56,7 @@ Preview and dev deployments also hit this live DB. So:
 - Colour = meaning. Don't add new accent colours; neutral greys for everything else.
 - One primary action per screen. Lists show info; actions live in the item's detail sheet.
 - Use the CSS variables in assets/css/app.css, not hard-coded hex.
+- Teaching new features: use `TL.coach(key, el, html)` (one-time tip with "Got it"), not permanent banners.
 
 ## Working agreements
 - Only open the `dev` → `main` PR when the person you're working with explicitly says to ship.

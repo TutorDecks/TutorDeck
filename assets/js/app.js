@@ -226,6 +226,36 @@ window.TL = (function () {
     if (typeof init === "function") init(session.user);
   }
 
+  // ---- first-time tips ("coach marks") ----
+  // TL.coach(key, anchorEl, html): shows a small tip under anchorEl ONCE per browser; "Got it" dismisses it
+  // for good (localStorage "td_tip_<key>"). Use for new or non-obvious features instead of permanent banners.
+  function coach(key, anchor, html) {
+    var k = "td_tip_" + key;
+    try { if (localStorage.getItem(k)) return; } catch (e) { return; }
+    if (!anchor || !anchor.getBoundingClientRect || document.getElementById("td-tip-" + key)) return;
+    var tip = document.createElement("div");
+    tip.className = "td-tip"; tip.id = "td-tip-" + key; tip.setAttribute("role", "status");
+    tip.innerHTML = '<span class="td-tip-arrow" aria-hidden="true"></span><div class="td-tip-body">' + html +
+      '</div><button type="button" class="td-tip-ok">Got it</button>';
+    document.body.appendChild(tip);
+    function place() {
+      var r = anchor.getBoundingClientRect();
+      if (!r.width) { tip.style.display = "none"; return; }
+      tip.style.display = "";
+      var w = Math.min(300, window.innerWidth - 24);
+      tip.style.width = w + "px";
+      var left = Math.max(12, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 12));
+      tip.style.left = left + window.scrollX + "px";
+      tip.style.top = r.bottom + window.scrollY + 10 + "px";
+      tip.querySelector(".td-tip-arrow").style.left = (r.left + r.width / 2 - left - 7) + "px";
+    }
+    place(); window.addEventListener("resize", place);
+    tip.querySelector(".td-tip-ok").addEventListener("click", function () {
+      try { localStorage.setItem(k, "1"); } catch (e) {}
+      window.removeEventListener("resize", place); tip.remove();
+    });
+  }
+
   async function signOut() {
     try { await window.sb.auth.signOut(); } catch (e) {}
     location.replace("login.html");
@@ -316,7 +346,7 @@ window.TL = (function () {
     btn.addEventListener("click", run);
   }
 
-  return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell,
+  return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
            sgd: sgd, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,
            todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd };

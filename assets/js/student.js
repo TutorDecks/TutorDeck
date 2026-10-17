@@ -75,6 +75,7 @@
     if($("sp-av"))$("sp-av").textContent=((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();
     $("p-actions").innerHTML='<button class="btn" id="p-edit">Edit</button> <a class="btn" href="ledger.html">Ledger</a>';
     $("p-edit").addEventListener("click",openEdit);
+    TL.coach("parent-view",$("vm-client"),"<b>Parent view</b><br>Showing this page to a parent? Tap here to hide fees and editing. They'll see scores and lesson notes only.");
   }
   function openEdit(){
     if(!student)return;

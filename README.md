@@ -199,6 +199,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — First-time tips; Parent view exit pill (v157)
+
+- New helper **`TL.coach(key, anchorEl, html)`** (app.js): a small dark tip under an element, shown ONCE
+  per browser until the tutor taps **Got it** (remembered in localStorage as `td_tip_<key>`). Use it to
+  introduce new / non-obvious features instead of permanent banners.
+- First use: the student page's **Parent view** button explains itself once.
+- Parent view no longer shows the "fees and editing are hidden" banner (the parent saw it too). Instead a
+  neutral floating **Exit parent view** pill sits at the bottom of the screen (above the phone tab bar).
+
 ### 2026-10-17 — Parent view rebuilt around progress (v156)
 
 The Tutor | Parent toggle became one **Parent view** button (eye icon). In Parent view:
