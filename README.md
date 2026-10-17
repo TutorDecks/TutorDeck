@@ -199,6 +199,11 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Calendar opens on Week everywhere (v183)
+
+Week is the default on phones and desktop until you pick another view; your choice is remembered per
+device (`tl_cal_mode`). Retired 3 days / List choices fall back to Week.
+
 ### 2026-10-18 — Phone calendar: Day | Week | Month, thumb-friendly (v182)
 
 Trial views trimmed: phones get **Day** (default) | **Week** | **Month**; 3 days and List retired (a saved

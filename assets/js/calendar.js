@@ -35,7 +35,7 @@
   var PHONE_ONLY={day:1};
   function isPhone(){ return !!(window.matchMedia && window.matchMedia("(max-width:820px)").matches); }
   function effMode(m){ m=m||mode;
-    if(m==="3day"||m==="list") m=isPhone()?"day":"week";   // retired trial views
+    if(m==="3day"||m==="list") m="week";   // retired trial views
     return (PHONE_ONLY[m] && !isPhone()) ? "week" : m; }
   function stepDays(m){ return m==="day"?1:(m==="3day"?3:7); }
 
@@ -902,7 +902,7 @@
   function init(user){
     userId=user.id; anchor=new Date();
     try{ mode=localStorage.getItem("tl_cal_mode")||""; }catch(e){ mode=""; }
-    if(!mode) mode=isPhone()?"day":"week";
+    if(!mode) mode="week";   // default everywhere; the user's last choice is remembered (tl_cal_mode)
     try{ hidden=JSON.parse(localStorage.getItem("tl_cal_hidden")||"{}")||{}; }catch(e){ hidden={}; }
     $("cal-prev").addEventListener("click", function(){ shiftRange(-1); });
     $("cal-next").addEventListener("click", function(){ shiftRange(1); });
