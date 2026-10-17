@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Student · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=154">
+<link rel="stylesheet" href="assets/css/app.css?v=155">
 <style>
   /* borderless header meta strip */
   .phead{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline;margin:2px 2px 10px}
@@ -83,10 +83,16 @@
   .sp-av{width:52px;height:52px;border-radius:26px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;
     font-weight:800;font-size:18px;flex:none}
   .sp-meta{flex:1;min-width:220px}
-  .sp-meta .phead{margin:0;gap:4px 18px}
-  .sp-meta .phead .pi{flex-direction:row;gap:6px;align-items:baseline}
-  .sp-meta .phead .pi .k{font-size:11px}
-  .sp-meta .phead .pi .v{font-size:14px}
+  .sp-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  .lvl{font-size:12px;font-weight:800;color:var(--accent);background:var(--accent-soft);border-radius:20px;padding:3px 10px}
+  .lvl.off{color:#92400E;background:#FEF3E2}
+  .lvl.soft{color:var(--muted);background:#F1EFEA}
+  .sp-info{display:flex;flex-wrap:wrap;gap:6px 22px}
+  .ii{display:inline-flex;align-items:center;gap:7px;font-size:14px;color:var(--ink);text-decoration:none;min-width:0}
+  .ii svg{color:var(--muted);flex:none}
+  .ii b{font-weight:700}
+  a.ii:hover{color:var(--accent)} a.ii:hover svg{color:var(--accent)}
+  .sp-moreb{all:unset;cursor:pointer;display:none;font-size:13px;font-weight:700;color:var(--accent);margin-left:auto;padding:4px 2px}
   .sp-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .sp-acts .btn{padding:8px 13px;font-size:13.5px}
   .sp-vm{margin:0}
@@ -123,6 +129,13 @@
     .sp-card{padding:16px 16px 0}
     .sp-av{width:44px;height:44px;font-size:16px}
     .sp-meta{min-width:0;flex-basis:calc(100% - 60px)}
+    .sp-chips{margin-bottom:0;min-height:44px}
+    .sp-top{align-items:flex-start}
+    .sp-moreb{display:inline-block}
+    .sp-info{display:none;flex-direction:column;gap:9px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+    #p-head.open .sp-info{display:flex}
+    .ii{align-items:flex-start;font-size:14.5px}
+    .ii svg{margin-top:2px}
     .sp-acts{width:100%;flex-wrap:nowrap}
     .sp-acts .btn{padding:7px 11px}
     .sp-vm{margin-left:auto}
@@ -340,9 +353,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=154"></script>
-<script src="assets/js/supabase.js?v=154"></script>
-<script src="assets/js/app.js?v=154"></script>
-<script src="assets/js/student.js?v=154"></script>
+<script src="assets/js/config.js?v=155"></script>
+<script src="assets/js/supabase.js?v=155"></script>
+<script src="assets/js/app.js?v=155"></script>
+<script src="assets/js/student.js?v=155"></script>
 </body>
 </html>

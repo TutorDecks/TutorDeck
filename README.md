@@ -199,6 +199,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Cleaner student profile header; "More info" on phones (v155)
+
+The header's label wall (LEVEL / CONTACT / LOCATION / MESSAGES TO) became a level chip (plus
+Discontinued / "Until <date>" chips when relevant) and icon lines: phone (tap → WhatsApp chat via wa.me),
+location, "Messages to <name>", notes. Desktop shows the lines inline; phones hide them behind a
+**More info ▾** toggle so the card is just initials, level, buttons and totals.
+
 ### 2026-10-17 — Student profile redesign; named greeting on Home (v154)
 
 - **Student page** (`student.html`): a profile card (initials avatar, level/contact/location/messages-to,

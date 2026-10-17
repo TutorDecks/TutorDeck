@@ -45,16 +45,31 @@
   }
 
   function renderHead(){
-    var items=[];
-    if(!student.active)items.push({k:"Status",v:'<span class="kind-tag">discontinued</span>'});
-    if(student.level)items.push({k:"Level",v:esc(student.level)});
-    if(student.contact)items.push({k:"Contact",v:esc(student.contact)});
-    if(student.location)items.push({k:"Location",v:esc(student.location)});
-    if(student.recipient_name)items.push({k:"Messages to",v:esc(student.recipient_name)});
-    if(student.notes)items.push({k:"Notes",v:esc(student.notes)});
-    $("p-head").innerHTML='<div class="phead">'+items.map(function(i){
-      return '<div class="pi"><span class="k">'+i.k+'</span><span class="v">'+i.v+'</span></div>';
-    }).join("")+'</div>';
+    // Icon + value lines (no label wall). Phone opens WhatsApp. On phones the lines sit behind "More info".
+    var IC={
+      phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+      pin:'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+      msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+      note:'<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>'
+    };
+    function ic(n){return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';}
+    function wa(raw){var d=String(raw||"").replace(/\D/g,"").replace(/^0+/,"");if(d.length===8)d="65"+d;return d;}
+    var lines=[];
+    if(student.contact){var n=wa(student.contact);
+      lines.push(n?'<a class="ii" href="https://wa.me/'+n+'" target="_blank" rel="noopener">'+ic("phone")+'<span>'+esc(student.contact)+'</span></a>'
+                  :'<span class="ii">'+ic("phone")+'<span>'+esc(student.contact)+'</span></span>');}
+    if(student.location)lines.push('<span class="ii">'+ic("pin")+'<span>'+esc(student.location)+'</span></span>');
+    if(student.recipient_name)lines.push('<span class="ii">'+ic("msg")+'<span>Messages to <b>'+esc(student.recipient_name)+'</b></span></span>');
+    if(student.notes)lines.push('<span class="ii">'+ic("note")+'<span>'+esc(student.notes)+'</span></span>');
+    var chips=(student.level?'<span class="lvl">'+esc(student.level)+'</span>':'')+
+      (!student.active?'<span class="lvl off">Discontinued</span>':'')+
+      (student.end_date&&student.active?'<span class="lvl soft">Until '+prettyDate(student.end_date)+'</span>':'');
+    $("p-head").innerHTML='<div class="sp-chips">'+chips+
+      (lines.length?'<button type="button" class="sp-moreb" id="sp-moreb" aria-expanded="false">More info <span aria-hidden="true">▾</span></button>':'')+
+      '</div>'+(lines.length?'<div class="sp-info" id="sp-info">'+lines.join("")+'</div>':'');
+    var mb=$("sp-moreb");
+    if(mb)mb.addEventListener("click",function(){var o=$("p-head").classList.toggle("open");mb.setAttribute("aria-expanded",o?"true":"false");
+      mb.firstChild.textContent=o?"Less info ":"More info ";mb.lastChild.textContent=o?"▴":"▾";});
     var w=String(student.name||"").split(/\s+/).filter(Boolean);
     if($("sp-av"))$("sp-av").textContent=((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();
     $("p-actions").innerHTML='<button class="btn" id="p-edit">Edit</button> <a class="btn" href="ledger.html">Ledger</a>';
