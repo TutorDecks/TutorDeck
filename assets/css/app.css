@@ -1,4 +1,4 @@
-/* v183 */
+/* v184 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -573,4 +573,15 @@ a.btn{text-decoration:none}
 @media(max-width:820px){
   .topbar h1 .hi-eyebrow{font-size:15px}
   .topbar h1 .hi-name{font-size:32px}
+}
+
+/* ---- v184: floating add button on phones (pages mark their add button with data-fab) ---- */
+.td-fab{display:none}
+@media(max-width:820px){
+  [data-fab]{display:none!important}
+  .td-fab{all:unset;box-sizing:border-box;display:grid;place-items:center;position:fixed;right:18px;
+    bottom:calc(80px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:18px;cursor:pointer;z-index:55;
+    background:var(--accent);color:#fff;box-shadow:0 8px 22px rgba(15,118,110,.35),0 2px 6px rgba(19,35,63,.15)}
+  .td-fab:active{transform:scale(.95)}
+  body:has(.td-fab) .content{padding-bottom:90px}
 }

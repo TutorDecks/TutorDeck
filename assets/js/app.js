@@ -179,6 +179,17 @@ window.TL = (function () {
     more.addEventListener("click", function () { setSheet(!app.classList.contains("sheet-open")); });
     scrim.addEventListener("click", function () { setSheet(false); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") { setSheet(false); acctWrap.classList.remove("open"); } });
+    // Phones: a page's main "add" button (marked data-fab) becomes a floating + at bottom right,
+    // inside thumb reach. The original button stays in the DOM (hidden on phones) and does the work.
+    var fabSrc = document.querySelector("[data-fab]");
+    if (fabSrc && !document.getElementById("td-fab")) {
+      var fab = document.createElement("button");
+      fab.type = "button"; fab.id = "td-fab"; fab.className = "td-fab";
+      fab.setAttribute("aria-label", fabSrc.getAttribute("data-fab"));
+      fab.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+      fab.addEventListener("click", function (e) { e.stopPropagation(); fabSrc.click(); });
+      document.body.appendChild(fab);
+    }
     // Tapping the tab you're already on: scroll to the top and tell the page (Calendar jumps to today).
     document.querySelectorAll(".tabbar a.on").forEach(function (a) {
       a.addEventListener("click", function (e) {
