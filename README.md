@@ -199,6 +199,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Cleaner Students roster (v159)
+
+- Rows: initials avatar, name, level chip, parent, contact. The whole row opens the profile (desktop too),
+  so the "Profile" button is gone; Edit details / Merge with… / Discontinue (or Reactivate) / Remove moved
+  into one **⋯** menu per row.
+- **Active | Discontinued · N | All** toggle replaces the status dropdown (default Active; the hidden
+  `#s-status` select still drives `renderRoster()`). Level/Parent filters stay on desktop and fold behind a
+  **Filter** button on phones. Search also matches parent names in the placeholder copy.
+- Phones: a single white list with "level · parent" under each name.
+
 ### 2026-10-17 — Quieter "Exit parent view" pill (v158)
 
 The pill is now frosted white with grey text and a thin border (was solid navy), smaller, and sits
