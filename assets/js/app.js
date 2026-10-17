@@ -221,7 +221,9 @@ window.TL = (function () {
       brandName = bn || DEFAULT_BRAND;
     } catch (e) { brandName = DEFAULT_BRAND; }
     // Home greets the tutor by their business name ("Good afternoon, Raphael Tuition")
-    if (active === "dashboard" && brandName && brandName !== DEFAULT_BRAND) meta[0] = meta[0] + ", " + esc(brandName);
+    // Apple-style hero: small grey greeting over the business name in large, heavy type.
+    if (active === "dashboard" && brandName && brandName !== DEFAULT_BRAND)
+      meta[0] = '<span class="hi-eyebrow">' + meta[0] + '</span><span class="hi-name">' + esc(brandName) + '.</span>';
     mountShell(active, session.user.email, meta[0], meta[1]);
     if (typeof init === "function") init(session.user);
   }

@@ -199,6 +199,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Apple-style Home headline (v161)
+
+Home's title is now two lines instead of "Good afternoon, Raphael Tuition": a small grey greeting
+("Good afternoon") over the business name in large, heavy, tightly-tracked type with a full stop
+("Raphael Tuition."), then the date. Classes `.hi-eyebrow` / `.hi-name` in app.css; built in
+`requireAuth()` (app.js). Falls back to just the greeting if no business name is set.
+
 ### 2026-10-17 — Merge removed from the roster menu (v160)
 
 The ⋯ menu is now Edit details / Discontinue (or Reactivate) / Remove. The merge code (`openMerge`, `doMerge`,
