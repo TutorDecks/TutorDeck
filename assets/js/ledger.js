@@ -194,12 +194,12 @@
     outBlocks={};blocks.forEach(function(bk){outBlocks[bk.key]=bk;});
     function initials(n){var w=String(n||"").replace(/[^A-Za-z0-9 ]/g," ").split(/\s+/).filter(Boolean);return ((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();}
     $("outstanding").innerHTML='<div class="card owe-list">'+blocks.map(function(bk){
-      var d=daysSince(bk.oldest), cls=d>=14?"bad":(d>=7?"warn":"");
+      var d=daysSince(bk.oldest), cls=d>=30?"bad":"";
       var age=d<=0?"today":(d===1?"1 day":d+" days");
       return '<button type="button" class="owe-row'+(sentKnown&&!bk.sent?' need':'')+'" data-owe="'+esc(bk.key)+'">'+
         '<span class="owe-av'+(bk.hh?' hh':'')+'">'+(bk.hh?'⌂':esc(initials(bk.name)))+'</span>'+
         '<span class="owe-main"><span class="owe-name"><span class="nm">'+esc(bk.name)+'</span></span>'+
-        '<span class="owe-sub">'+(sentKnown&&!bk.sent?'<span class="inv-need">Not invoiced</span>':'')+'<span class="'+cls+'">'+'<span class="lc">'+esc(bk.sub)+' · </span><span class="lw">oldest </span>'+age+'</span>'+
+        '<span class="owe-sub">'+(sentKnown&&!bk.sent?'<span class="inv-need">Not invoiced</span><span class="inv-dot"> · </span>':'')+'<span class="'+cls+'">'+'<span class="lc">'+esc(bk.sub)+' · </span><span class="lw">oldest </span>'+age+'</span>'+
           (bk.sent?' · <span class="lw">invoice </span>sent '+fmtSent(bk.sent):'')+'</span></span>'+
         '<span class="owe-amt">'+TL.sgd(bk.sum)+'</span>'+
         '<svg class="owe-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>';

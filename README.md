@@ -199,6 +199,11 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Calmer not-invoiced rows (v173)
+
+One amber cue per row: the outline stays, "Not invoiced" becomes plain amber text (no pill), and the
+age ("9 days") is grey unless the oldest lesson is 30+ days old (then owed-red).
+
 ### 2026-10-17 — Not-invoiced rows outlined in amber (v172)
 
 Who owes you rows are now separate cards; rows not yet invoiced get a 1.5px amber outline and an amber
