@@ -199,6 +199,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Top navigation bar on desktop; sidebar removed (v151)
+
+Desktop now has a slim sticky bar across the top: brand · Home · Schedule · Students · Money, with
+Materials/Settings as icon buttons and an account avatar (email + Sign out) on the right. Page content
+is centred (max 1240px). Under 1000px the nav shows icons only; phones (≤820px) keep the bottom tab bar.
+The old `.sidebar` markup is no longer rendered (`mountShell()` in app.js builds `.topnav`).
+
 ### 2026-10-17 — New TutorDeck look: ink + teal, Manrope (v150)
 
 Picked from three mocked directions (canvas "TutorDeck visual directions", option B with C's font).

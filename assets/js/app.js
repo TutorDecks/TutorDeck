@@ -87,15 +87,16 @@ window.TL = (function () {
     var extras = EXTRA.filter(function (n) { return !n.ownerOnly || isOwner; });
     var onExtra = extras.some(function (n) { return n.id === active; });
 
-    // Desktop sidebar: the four groups, then Materials / Settings / Sign out at the bottom.
+    // Desktop top bar: brand · the four groups · Settings/Materials icons + account menu.
     var side = GROUPS.map(function (g) {
-      return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "active" : "") + '">' +
-             icon(g.ic) + '<span>' + g.label + '</span></a>';
+      return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "active" : "") + '"' +
+             (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 18) + '<span>' + g.label + '</span></a>';
     }).join("");
     var sideExtra = extras.map(function (n) {
-      return '<a href="' + n.href + '" class="' + (n.id === active ? "active" : "") + '">' +
-             icon(n.ic, 18) + '<span>' + n.label + '</span></a>';
+      return '<a href="' + n.href + '" class="tn-ic' + (n.id === active ? " active" : "") + '" title="' + n.label +
+             '" aria-label="' + n.label + '">' + icon(n.ic, 19) + '</a>';
     }).join("");
+    var initials = monogram(brandName);
 
     // Phone bottom bar: the four groups + More.
     var bar = GROUPS.map(function (g) {
@@ -129,15 +130,22 @@ window.TL = (function () {
     var app = document.createElement("div");
     app.className = "app";
     app.innerHTML = `
-      <aside class="sidebar">
-        <div class="brand">${mono()}</div>
-        <nav class="nav" aria-label="Main">${side}</nav>
-        <div class="side-foot">
-          <nav class="nav nav-extra">${sideExtra}</nav>
-          <div class="who">${esc(email || "")}</div>
-          <button id="tl-signout">${icon("signout", 16)}<span>Sign out</span></button>
+      <header class="topnav">
+        <div class="tn-in">
+          <a class="tn-brand" href="app.html"><span class="mono">${esc(initials)}</span><b>${esc(brandName)}</b></a>
+          <nav class="tn-links" aria-label="Main">${side}</nav>
+          <div class="tn-right">
+            ${sideExtra}
+            <div class="tn-acct">
+              <button type="button" id="tl-acct" class="tn-avatar" aria-haspopup="true" aria-expanded="false" aria-label="Account">${esc(initials)}</button>
+              <div class="tn-menu" id="tl-acct-menu">
+                <div class="tn-who">${esc(email || "")}</div>
+                <button id="tl-signout">${icon("signout", 16)}<span>Sign out</span></button>
+              </div>
+            </div>
+          </div>
         </div>
-      </aside>
+      </header>
       <div class="main">
         <div class="topbar">
           <div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div>
@@ -153,12 +161,17 @@ window.TL = (function () {
     document.body.appendChild(app);
     document.getElementById("tl-signout").addEventListener("click", signOut);
     document.getElementById("tl-signout-m").addEventListener("click", signOut);
+    // Desktop account menu
+    var acct = document.getElementById("tl-acct"), acctWrap = acct.parentNode;
+    acct.addEventListener("click", function (e) { e.stopPropagation(); var o = !acctWrap.classList.contains("open");
+      acctWrap.classList.toggle("open", o); acct.setAttribute("aria-expanded", o ? "true" : "false"); });
+    document.addEventListener("click", function (e) { if (!acctWrap.contains(e.target)) { acctWrap.classList.remove("open"); acct.setAttribute("aria-expanded", "false"); } });
     // Phone "More" sheet: opens from the bottom; scrim / Esc / a link closes it.
     var more = document.getElementById("tl-more"), scrim = document.getElementById("tl-scrim");
     function setSheet(open) { app.classList.toggle("sheet-open", open); more.setAttribute("aria-expanded", open ? "true" : "false"); }
     more.addEventListener("click", function () { setSheet(!app.classList.contains("sheet-open")); });
     scrim.addEventListener("click", function () { setSheet(false); });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape") setSheet(false); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") { setSheet(false); acctWrap.classList.remove("open"); } });
   }
 
   async function requireAuth(active, init) {
