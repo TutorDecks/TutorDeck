@@ -199,6 +199,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — "Since 8 Oct" instead of "oldest 9 days" (v175)
+
+Who owes you rows show the date of the oldest unpaid lesson ("since 8 Oct"; desktop: "2 lessons · unpaid
+since 8 Oct") instead of a day count. Invoiced rows lead with "Invoice sent 17 Oct". Turns owed-red at 30+
+days (and only then shows on phone for invoiced rows).
+
 ### 2026-10-17 — Cleaner gaps between Who owes you cards (v174)
 
 Row cards used the big two-layer page shadow, which stacked into a grey band between rows. They now use
