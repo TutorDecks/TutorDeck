@@ -115,7 +115,7 @@ window.TL = (function () {
 
     // Sub-tabs: the other pages in this group (hidden when the group has one page).
     var subtabs = "";
-    if (grp && grp.pages.length > 1) {
+    if (grp && grp.pages.length > 1 && grp.pages.some(function (p) { return p.id === active; })) {
       subtabs = '<nav class="subtabs" aria-label="' + grp.label + '">' + grp.pages.map(function (p) {
         return '<a href="' + p.href + '" class="' + (p.id === active ? "on" : "") + '"' +
                (p.id === active ? ' aria-current="page"' : "") + '>' + p.label + '</a>';
@@ -220,6 +220,8 @@ window.TL = (function () {
       var bn = pr.data && pr.data.business_name && pr.data.business_name.trim();
       brandName = bn || DEFAULT_BRAND;
     } catch (e) { brandName = DEFAULT_BRAND; }
+    // Home greets the tutor by their business name ("Good afternoon, Raphael Tuition")
+    if (active === "dashboard" && brandName && brandName !== DEFAULT_BRAND) meta[0] = meta[0] + ", " + esc(brandName);
     mountShell(active, session.user.email, meta[0], meta[1]);
     if (typeof init === "function") init(session.user);
   }

@@ -55,7 +55,9 @@
     $("p-head").innerHTML='<div class="phead">'+items.map(function(i){
       return '<div class="pi"><span class="k">'+i.k+'</span><span class="v">'+i.v+'</span></div>';
     }).join("")+'</div>';
-    $("p-actions").innerHTML='<button class="btn" id="p-edit">Edit details</button> <a class="btn btn-gold" href="ledger.html">Open ledger</a>';
+    var w=String(student.name||"").split(/\s+/).filter(Boolean);
+    if($("sp-av"))$("sp-av").textContent=((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();
+    $("p-actions").innerHTML='<button class="btn" id="p-edit">Edit</button> <a class="btn" href="ledger.html">Ledger</a>';
     $("p-edit").addEventListener("click",openEdit);
   }
   function openEdit(){
@@ -318,19 +320,21 @@
     var pts=rows.filter(function(e){return e.score!=null&&e.max_score>0&&e.exam_date;})
       .map(function(e){return {t:new Date(e.exam_date+"T00:00:00").getTime(),date:e.exam_date,pct:Math.round(e.score/e.max_score*100),subject:(e.subject||"General")};})
       .sort(function(a,b){return a.t-b.t;});
-    var card=$("p-progress-card");
-    if(pts.length<2){ card.style.display="none"; return; }
-    card.style.display="";
-    var W=360,H=190,padL=32,padR=12,padT=12,padB=26;
+    var card=$("p-progress-card"), none=$("p-progress-empty");
+    if(pts.length<2){ card.style.display="none"; if(none)none.style.display=""; return; }
+    card.style.display=""; if(none)none.style.display="none";
+    var narrow=window.innerWidth<600;   // phone: smaller canvas so text stays readable when scaled
+    var W=narrow?340:520,H=narrow?200:230,padL=34,padR=narrow?84:96,padT=14,padB=26;
     var x0=padL,x1=W-padR,y0=H-padB,y1=padT;
     var tmin=pts[0].t,tmax=pts[pts.length-1].t; if(tmax===tmin)tmax=tmin+1;
     function X(t){return x0+(t-tmin)/(tmax-tmin)*(x1-x0);}
     function Y(p){return y0-(p/100)*(y0-y1);}
-    var colors=["#0F766E","#0F766E","#13233F","#B4432F","#6C4F8C","#2E7D32"];
+    // One colour per subject, fixed order (validated for colour-blind separation; see README v154).
+    var colors=["#2a78d6","#eb6834","#6250d6","#e87ba4","#eda100","#1baf7a"];
     // group by subject
     var bySub={},order=[];
     pts.forEach(function(p){ if(!bySub[p.subject]){bySub[p.subject]=[];order.push(p.subject);} bySub[p.subject].push(p); });
-    var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:520px;display:block">';
+    var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block" role="img" aria-label="Exam scores over time by subject">';
     // y gridlines 0/50/100
     [0,50,100].forEach(function(g){var y=Y(g);svg+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#E2DED5"/>'+
       '<text x="'+(x0-6)+'" y="'+(y+3)+'" text-anchor="end" font-size="9" fill="#6F7480">'+g+'%</text>';});
@@ -343,7 +347,16 @@
         var d=ps.map(function(p,j){return (j?"L":"M")+X(p.t).toFixed(1)+" "+Y(p.pct).toFixed(1);}).join(" ");
         svg+='<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="2"/>';
       }
-      ps.forEach(function(p){svg+='<circle cx="'+X(p.t).toFixed(1)+'" cy="'+Y(p.pct).toFixed(1)+'" r="3.2" fill="'+col+'"><title>'+esc(sub)+" · "+prettyDate(p.date)+" · "+p.pct+'%</title></circle>';});
+      ps.forEach(function(p){svg+='<circle cx="'+X(p.t).toFixed(1)+'" cy="'+Y(p.pct).toFixed(1)+'" r="4" fill="'+col+'" stroke="#fff" stroke-width="1.5"><title>'+esc(sub)+" · "+prettyDate(p.date)+" · "+p.pct+'%</title></circle>';});
+    });
+    // direct labels at each line's end: subject + latest %, nudged apart so they never overlap
+    var ends=order.map(function(sub,i){var ps=bySub[sub],l=ps[ps.length-1];return {sub:sub,col:colors[i%colors.length],x:X(l.t),y:Y(l.pct),pct:l.pct};})
+      .sort(function(a,b){return a.y-b.y;});
+    for(var k=1;k<ends.length;k++){ if(ends[k].y-ends[k-1].y<13) ends[k].y=ends[k-1].y+13; }
+    ends.forEach(function(e){
+      svg+='<circle cx="'+(x1+8)+'" cy="'+(e.y-3.5).toFixed(1)+'" r="3.5" fill="'+e.col+'"/>'+
+           '<text x="'+(x1+15)+'" y="'+e.y.toFixed(1)+'" font-size="10.5" font-weight="700" fill="#13233F">'+esc(e.sub)+
+           ' <tspan font-weight="500" fill="#5E6676">'+e.pct+'%</tspan></text>';
     });
     svg+='</svg>';
     var legend='<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:12px">'+
@@ -438,10 +451,20 @@
     // Tutor / Client view — Client hides money + editing so the page can be shown to a parent.
     function setViewMode(client){
       var v=$("view")||document.body; v.classList.toggle("client",client);
+      if(client){var nb=document.querySelector('#sp-tabs [data-tab="notes"].on');if(nb)document.querySelector('#sp-tabs [data-tab="lessons"]').click();}
       var t=$("vm-tutor"),c=$("vm-client"); if(t)t.classList.toggle("on",!client); if(c)c.classList.toggle("on",client);
     }
     if($("vm-tutor"))$("vm-tutor").addEventListener("click",function(){setViewMode(false);});
     if($("vm-client"))$("vm-client").addEventListener("click",function(){setViewMode(true);});
+    // Tabs: Lessons · Notes · Progress · Schedule (remembered per browser)
+    function setTab(t){
+      document.querySelectorAll("#sp-tabs [data-tab]").forEach(function(b){b.classList.toggle("on",b.dataset.tab===t);});
+      document.querySelectorAll(".sp-pane").forEach(function(p){p.classList.toggle("on",p.dataset.pane===t);});
+      try{localStorage.setItem("tl_student_tab",t);}catch(e){}
+    }
+    document.querySelectorAll("#sp-tabs [data-tab]").forEach(function(b){b.addEventListener("click",function(){setTab(b.dataset.tab);});});
+    var st="lessons"; try{st=localStorage.getItem("tl_student_tab")||"lessons";}catch(e){}
+    setTab(st);
     load();
   }
   TL.requireAuth("student",init);

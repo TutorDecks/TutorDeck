@@ -199,6 +199,19 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-17 — Student profile redesign; named greeting on Home (v154)
+
+- **Student page** (`student.html`): a profile card (initials avatar, level/contact/location/messages-to,
+  Edit + Ledger, Tutor | Parent view) with the four totals in one strip, then tabs
+  **Lessons · Notes · Progress · Schedule** instead of one long scroll (last tab remembered per browser).
+  Parent view (was "Client view") hides money/editing as before and folds Notes into Lessons.
+- **Progress chart:** fixed a bug where the first two subjects were both teal. Subjects now get a fixed,
+  colour-blind-checked order (blue `#2a78d6`, orange `#eb6834`, violet `#6250d6`, pink `#e87ba4`,
+  yellow `#eda100`, aqua `#1baf7a`; validated with the dataviz palette checker) and each line ends in a
+  direct label with its latest %. Phones get a smaller canvas so labels stay readable.
+- Group sub-tabs (Roster | Exams) no longer show on the student page, where neither applies.
+- **Home** greets by business name: "Good afternoon, Raphael Tuition" (falls back to just the greeting).
+
 ### 2026-10-17 — TutorDeck logo (v153)
 
 New product mark: a small stack of cards in white on a teal rounded square (`assets/img/logo.svg`, also
