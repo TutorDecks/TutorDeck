@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=210">
+<link rel="stylesheet" href="assets/css/app.css?v=211">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -303,6 +303,14 @@
     .cal-pop-bd{position:fixed;inset:0;background:rgba(19,35,63,.35);z-index:95}
     .cal-pop-bd.on{display:block}
   }
+  /* v211: "N lessons not logged" bar — only shown when the period on screen has faded blocks */
+  .cal-logbar{display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:8px 8px 8px 14px;background:#fff;
+    border:1px solid var(--line);border-radius:12px;font-size:13.5px;color:var(--muted)}
+  .cal-logbar[hidden]{display:none}
+  .cal-logbar b{color:var(--ink);font-weight:700}
+  .cal-log-dot{flex:none;width:12px;height:12px;border-radius:4px;border:1.5px dashed #A8A29A}
+  .cal-log-txt{flex:1;min-width:0}
+  .cal-log-btn{flex:none;padding:7px 14px;font-size:13.5px;font-weight:700;color:var(--accent);border-color:var(--line)}
 </style>
 </head>
 <body>
@@ -322,6 +330,10 @@
       </div>
       <button class="btn btn-gold cal-addbtn" id="cal-add"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Add lesson</span></button>
     </div>
+  </div>
+  <div class="cal-logbar" id="cal-logbar" hidden>
+    <span class="cal-log-dot" aria-hidden="true"></span><span class="cal-log-txt" id="cal-log-txt"></span>
+    <button class="btn cal-log-btn" id="cal-log-btn" type="button">Log them</button>
   </div>
   <div class="card cal-card">
     <div class="cal" id="cal"><div style="padding:16px"><div class="sk-rows" aria-hidden="true"><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1 w2"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div></div></div>
@@ -392,9 +404,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=210"></script>
-<script src="assets/js/supabase.js?v=210"></script>
-<script src="assets/js/app.js?v=210"></script>
-<script src="assets/js/calendar.js?v=210"></script>
+<script src="assets/js/config.js?v=211"></script>
+<script src="assets/js/supabase.js?v=211"></script>
+<script src="assets/js/app.js?v=211"></script>
+<script src="assets/js/calendar.js?v=211"></script>
 </body>
 </html>

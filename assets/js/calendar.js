@@ -159,7 +159,7 @@
     });
     return { occ:occ, time:time };
   }
-  function buildBlocks(range){
+  function buildBlocks(range, all){
     var blocks=[], claimed=loggedOccurrences(), lessons=lessonsForRange(range);
     lessons.forEach(function(l){
       var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : (l.paid?"paid":"unpaid");
@@ -180,7 +180,7 @@
           studentId:s.student_id, slotId:s.id, rate:s.rate, split:s.split||1, startHM:hhmm(s.start_time), endHM:hhmm(s.end_time) });
       });
     }
-    return blocks.filter(function(b){ return !hidden[b.state]; });   // legend toggles
+    return all ? blocks : blocks.filter(function(b){ return !hidden[b.state]; });   // legend toggles (all=true ignores them)
   }
 
   // Within one day: cluster overlaps, give each a lane, and flag genuine double-bookings.
@@ -426,6 +426,7 @@
     });
     SHARED=null;
     if(grid) alignGutter();
+    updateLogBar();
     fitHeight();
     cal.querySelectorAll(".ds-d").forEach(function(btn){
       btn.addEventListener("click", function(e){ e.stopPropagation(); jumpTo(new Date(btn.dataset.day+"T00:00:00")); });
@@ -572,6 +573,54 @@
       amount:splitAmt(b.rate,b.startHM,b.endHM,b.split), status:statusFor(b.dateISO,b.endHM), paid:false };
     var res=await window.sb.from("lessons").insert(row);
     if(res.error){alert("Couldn't log: "+res.error.message);return;}
+    refreshAfterMutation();
+  }
+
+  // ---- "Log lessons": turn every faded (not logged) block in the period on screen into real lessons ----
+  // Week view logs that Mon–Sun, Month view that calendar month, Day view that day. Uses the same
+  // projection as the faded blocks (so what you see is what gets logged) and ignores the legend toggles.
+  function logTarget(){
+    var m=effMode(), a=new Date(anchor); a.setHours(0,0,0,0);
+    var today=new Date(); today.setHours(0,0,0,0);
+    if(m==="month"){
+      var s0=new Date(a.getFullYear(),a.getMonth(),1), e0=new Date(a.getFullYear(),a.getMonth()+1,0);
+      var cur=today.getFullYear()===a.getFullYear()&&today.getMonth()===a.getMonth();
+      return { start:s0, end:e0, when:cur?"this month":"in "+MONF[a.getMonth()], confirmWhen:MONF[a.getMonth()]+" "+a.getFullYear() };
+    }
+    if(m==="day"){
+      var lbl=a.toLocaleDateString("en-SG",{weekday:"short",day:"numeric",month:"short"});
+      return { start:a, end:a, when:iso(a)===iso(today)?"today":"on "+lbl, confirmWhen:lbl };
+    }
+    var ws=mondayOf(a), we=addDays(ws,6), rl=rangeLabel();
+    return { start:ws, end:we, when:iso(mondayOf(today))===iso(ws)?"this week":"for "+rl, confirmWhen:rl };
+  }
+  function unloggedIn(t){ return buildBlocks({ start:t.start, end:t.end }, true).filter(function(b){ return b.kind==="proj"; }); }
+  function updateLogBar(){
+    var bar=$("cal-logbar"); if(!bar) return;
+    var n=unloggedIn(logTarget()).length;
+    if(!n){ bar.hidden=true; return; }
+    $("cal-log-txt").innerHTML='<b>'+n+' lesson'+(n===1?'':'s')+' not logged</b> '+esc(logTarget().when);
+    bar.hidden=false;
+  }
+  async function logVisible(){
+    var t=logTarget(), btn=$("cal-log-btn");
+    // re-read these months fresh first, so lessons logged elsewhere (Ledger, another phone) aren't duplicated
+    var keys=monthsIn({ start:t.start, end:t.end });
+    keys.forEach(function(k){ delete lessonCache[k]; });
+    btn.disabled=true;
+    try{ await Promise.all(keys.map(fetchMonth)); } finally{ btn.disabled=false; }
+    var todo=unloggedIn(t);
+    if(!todo.length){ render(); return; }
+    var ok=await confirmBox("Log "+todo.length+" lesson"+(todo.length===1?"":"s")+" for "+t.confirmWhen+" from your weekly schedule? Lessons already logged are skipped.",
+      { title:"Log lessons", yes:"Log "+todo.length });
+    if(!ok) return;
+    var rows=todo.map(function(b){ return { tutor_id:userId, student_id:b.studentId, slot_id:b.slotId, lesson_date:b.dateISO, slot_date:b.dateISO,
+      start_time:b.startHM, end_time:b.endHM, subject:b.subject, level:b.level, rate:b.rate, split:b.split||1,
+      amount:splitAmt(b.rate,b.startHM,b.endHM,b.split), status:statusFor(b.dateISO,b.endHM), paid:false }; });
+    btn.disabled=true;
+    var res=await window.sb.from("lessons").insert(rows);
+    btn.disabled=false;
+    if(res.error){ alert("Couldn't log: "+res.error.message); return; }
     refreshAfterMutation();
   }
 
@@ -1042,6 +1091,7 @@
     $("cal-prev").addEventListener("click", function(){ go(-1); });
     $("cal-next").addEventListener("click", function(){ go(1); });
     $("cal-today").addEventListener("click", goToday);
+    if($("cal-log-btn")) $("cal-log-btn").addEventListener("click", logVisible);
     if($("gcal-btn")) $("gcal-btn").addEventListener("click", connectGcal);
     if($("gcal-cal")) $("gcal-cal").addEventListener("change", function(){ if(this.value) setGcalTarget(this.value); });
     initGcal();
