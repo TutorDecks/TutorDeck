@@ -98,7 +98,15 @@
     if(l.topics)   parts.push('<div class="tr-note"><b>Topics:</b> '+esc(l.topics)+'</div>');
     if(l.homework) parts.push('<div class="tr-note"><b>Homework:</b> '+esc(l.homework)+'</div>');
     if(l.remarks)  parts.push('<div class="tr-note"><b>Remarks:</b> '+esc(l.remarks)+'</div>');
-    return '<div class="tr-when">'+head+'</div>'+(parts.length?parts.join(""):'<div class="tr-empty">No notes recorded for that lesson.</div>');
+    return '<div class="tr-when">'+head+'</div>'+(parts.length?parts.join(""):'<div class="tr-empty">No notes from that lesson.</div>');
+  }
+  // This lesson's own note (once one is written, it replaces the "last lesson" recap on the row)
+  function ownNote(l, label){
+    var parts=[];
+    if(l.topics)   parts.push('<div class="tr-note"><b>Topics:</b> '+esc(l.topics)+'</div>');
+    if(l.homework) parts.push('<div class="tr-note"><b>Homework:</b> '+esc(l.homework)+'</div>');
+    if(l.remarks)  parts.push('<div class="tr-note"><b>Remarks:</b> '+esc(l.remarks)+'</div>');
+    return parts.length?'<div class="tr-when">'+label+'</div>'+parts.join(""):"";
   }
   function renderTeaching(lessons, nameById, exams){
     var doneByStu={};
@@ -156,7 +164,7 @@
           '<div class="tr-body">'+
           '<div class="tr-head"><div class="tr-name"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a>'+
           (l.subject?'<span class="tr-subj">'+esc(l.subject)+'</span>':'')+'</div>'+btn+'</div>'+
-          '<div class="tr-cols"><div class="tr-notes">'+summarizeOne(lastBeforeSubject(l.student_id,dISO,l.subject),l.subject)+'</div>'+examChips(l.student_id)+'</div>'+
+          '<div class="tr-cols"><div class="tr-notes">'+(ownNote(l,label+"\u2019s note")||summarizeOne(lastBeforeSubject(l.student_id,dISO,l.subject),l.subject))+'</div>'+examChips(l.student_id)+'</div>'+
           '</div></div>';
       }).join("");
       if(withNote)$(listId).querySelectorAll("[data-note-id]").forEach(function(b){b.addEventListener("click",function(){openNote(b.dataset.noteId);});});
