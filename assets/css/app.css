@@ -1,4 +1,4 @@
-/* v201 */
+/* v202 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -621,7 +621,6 @@ body:has(.modal-backdrop.on){overflow:hidden}   /* page behind an open form stay
 .modal-x{all:unset;box-sizing:border-box;position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:18px;
   display:grid;place-items:center;cursor:pointer;color:var(--muted);z-index:3}
 .modal-x:hover{background:#F1EFEA;color:var(--ink)}
-.td-form .modal h2{padding-right:40px}
 .td-form .modal-actions{position:sticky;bottom:-22px;background:var(--paper);z-index:2;margin:16px -24px -22px;padding:12px 24px 16px;border-top:1px solid var(--line)}
 .td-discard{position:fixed;inset:0;z-index:120;background:rgba(19,35,63,.35);display:grid;place-items:center;padding:20px}
 .td-discard-box{background:var(--paper);border-radius:16px;padding:20px;max-width:320px;width:100%;box-shadow:0 20px 50px rgba(19,35,63,.25)}

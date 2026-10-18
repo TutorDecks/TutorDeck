@@ -199,6 +199,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Forms: ✕ removed (v202)
+
+Save/Cancel are always visible at the bottom and phones can swipe the sheet down, so the ✕ was a third
+way to do the same thing. Ways out now: **Cancel** (closes), **swipe down** (phones) or **tap outside**,
+both of which ask "Discard changes?" if you've typed anything.
+
 ### 2026-10-18 — Fix: form ✕ / swipe / discard check did nothing on real phones (v201)
 
 `mountShell` rebuilds the page from `view.innerHTML`, which copies attributes and markup but drops
