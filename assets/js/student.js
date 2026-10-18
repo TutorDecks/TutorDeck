@@ -15,11 +15,11 @@
 
   async function load(){
     sid=qid();
-    if(!sid){$("p-head").innerHTML='<div class="card"><p>No student selected. <a href="students.html">Back to students</a>.</p></div>';return;}
+    if(!sid){$("p-head").innerHTML='<div class="card"><p>No student selected. <a href="students">Back to students</a>.</p></div>';return;}
     await TL.promotePastLessons();
 
     var sres=await window.sb.from("students").select("id,name,kind,level,contact,location,recipient_name,notes,active,pay_by_bank,end_date").eq("id",sid).single();
-    if(sres.error||!sres.data){$("p-head").innerHTML='<div class="card"><p>Couldn\'t load this student. <a href="students.html">Back to students</a>.</p></div>';return;}
+    if(sres.error||!sres.data){$("p-head").innerHTML='<div class="card"><p>Couldn\'t load this student. <a href="students">Back to students</a>.</p></div>';return;}
     student=sres.data;setTitle(student.name);
 
     var lres=await window.sb.from("lessons").select("id,slot_id,slot_date,lesson_date,start_time,end_time,subject,amount,paid,status,topics,homework,remarks,compensation").eq("student_id",sid);
@@ -73,7 +73,7 @@
       mb.firstChild.textContent=o?"Less info ":"More info ";mb.lastChild.textContent=o?"▴":"▾";});
     var w=String(student.name||"").split(/\s+/).filter(Boolean);
     if($("sp-av"))$("sp-av").textContent=((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();
-    $("p-actions").innerHTML='<button class="btn" id="p-edit">Edit</button> <a class="btn" href="ledger.html">Ledger</a>';
+    $("p-actions").innerHTML='<button class="btn" id="p-edit">Edit</button> <a class="btn" href="ledger">Ledger</a>';
     $("p-edit").addEventListener("click",openEdit);
     
   }
@@ -288,7 +288,7 @@
   }
 
   function renderSlots(slots){
-    var link='<a class="slink plink" href="planner.html">Manage on planner ›</a>';
+    var link='<a class="slink plink" href="planner">Manage on planner ›</a>';
     if(!slots.length){$("p-slots").innerHTML='<div class="slotwrap"><p class="muted" style="font-size:13.5px;margin:0 0 12px">No recurring slots yet.</p>'+link+'</div>';return;}
     slots.sort(function(a,b){return a.weekday-b.weekday||(a.start_time||"").localeCompare(b.start_time||"");});
     var rows=slots.map(function(s){

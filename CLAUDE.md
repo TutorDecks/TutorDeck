@@ -20,6 +20,9 @@ developers AND we both use the app live for our own tuition businesses.
 - GitHub repo: TutorDecks/TutorDeck (org "TutorDecks"; moved from tlengengtuition-oss/tuitiondashboard).
 - Hosted on Vercel (project "tutordeck"). Live: https://tutordeck.vercel.app
   Custom domain https://www.tutordeck.com.sg is being activated (DNS pending).
+- Clean URLs (v213): vercel.json sets `cleanUrls`, so pages live at /home, /calendar, /ledger … and old *.html
+  addresses redirect. The Dashboard file is `home.html` (was app.html; /app redirects to /home). Write internal links
+  without ".html" ("ledger", "student?id=…"). python http.server can't serve these locally; test on the Vercel preview.
 - GitHub Pages is no longer used. Old github.io URLs are dead — flag any hard-coded
   references to tlengengtuition-oss.github.io in the code and replace them.
 
@@ -99,8 +102,8 @@ Preview and dev deployments also hit this live DB. So:
    and email templates, which live outside the repo.
 3. Sync `dev` with `main` (done on 2026-10-17 in feature/sync-main-claude-md, v144).
 4. Google OAuth app (Calendar sync) is published but unverified (100-user cap, warning screen).
-   Google Cloud → Branding links currently point to https://tutordeck.vercel.app (/privacy.html,
-   /terms.html). Switch them to tutordeck.com.sg once that domain is live (DNS returned NXDOMAIN
+   Google Cloud → Branding links currently point to https://tutordeck.vercel.app (/privacy,
+   /terms). Switch them to tutordeck.com.sg once that domain is live (DNS returned NXDOMAIN
    on 2026-10-18), then submit for verification.
 5. Later: separate dev Supabase project; custom SMTP for auth emails; Vercel Pro before
    charging customers (Hobby plan is non-commercial).

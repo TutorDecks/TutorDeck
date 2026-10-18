@@ -199,6 +199,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-19 — Clean URLs; Dashboard is now /home (v213).** New `vercel.json` turns on Vercel `cleanUrls`
+  (`trailingSlash: false`): every page is served without `.html` (/home, /calendar, /ledger, /student?id=…, /login …),
+  and any old `*.html` address 308-redirects to the clean one, so bookmarks keep working. `app.html` was renamed to
+  `home.html`; `/app` and `/app.html` redirect to `/home`. All internal links, `location.replace`/`href` targets and the
+  nav config use the clean form ("home", "ledger", "login?mfa=1", "student?id=…"); the login footer's home link is "/".
+  Supabase auth redirects now use absolute paths on the current origin: Google sign-in → `/home`, password reset →
+  `/reset`, sign-up confirmation → `/confirmed`. The tab-bar "tap the tab you're on" check compares page names via
+  `pageKey()` (strips `.html`, "" → "index"), so it works for old and new URLs. Tab highlighting itself comes from each
+  page's `TL.requireAuth("<id>")`, not the URL, so it was unaffected.
+  **Local preview:** `python3 -m http.server` doesn't understand clean URLs, so links like "home" 404 locally. Test on the
+  Vercel preview, or run any static server with a "serve x.html for /x" rewrite.
+
 - **2026-10-19 — Calendar Month view: spill-over days (v212).** The days from the months either side (e.g. 26–31 Oct
   in November) are dimmed and show only logged lessons — their Not logged ones belong to that other month and its
   Log chip, so the chip count always matches the Not logged lessons on screen. Week/Day views unchanged.

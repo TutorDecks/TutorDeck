@@ -1,7 +1,7 @@
 // Dashboard — live KPIs, income-by-month chart, upcoming exam countdown.
 (function () {
   var $ = function (id) { return document.getElementById(id); };
-  // Shared by Home (app.html) and Money → Insights (insights.html); each page only has some of
+  // Shared by Home (home.html) and Money → Insights (insights.html); each page only has some of
   // these elements, so writes go through setText, which skips anything that isn't on the page.
   function setText(id, v){ var el=$(id); if(el) el.textContent=v; }
   function pad(n){return (n<10?"0":"")+n;}
@@ -85,7 +85,7 @@
       var mk=TL.examMarks(e.score,e.max_score);
       var extra=[]; if(e.topics)extra.push(esc(e.topics)); if(mk)extra.push(mk);
       var sub=esc(label)+(extra.length?" — "+extra.join(" · "):"");
-      return '<a class="exam-row" href="exams.html?highlight='+esc(String(e.id))+'"><div class="ex-main"><div class="ex-name">'+esc(nameById[e.student_id]||"—")+'</div><div class="ex-sub">'+sub+'</div></div>'+
+      return '<a class="exam-row" href="exams?highlight='+esc(String(e.id))+'"><div class="ex-main"><div class="ex-name">'+esc(nameById[e.student_id]||"—")+'</div><div class="ex-sub">'+sub+'</div></div>'+
         '<div class="days'+(soon?" soon":"")+'"><b>'+days+'</b><small>'+(days===1?"day":"days")+'</small></div></a>';
     }).join("");
   }
@@ -136,7 +136,7 @@
         var lbl=[e.assessment_type,e.subject].filter(Boolean).join(" ")||"Exam";
         var mk=TL.examMarks(e.score,e.max_score);
         var top=e.topics?'<span class="ex-t" title="'+esc(e.topics)+'">'+esc(e.topics)+'</span>':"";
-        return '<a class="exchip" href="exams.html?highlight='+esc(String(e.id))+'"><span class="ex-l">'+esc(lbl)+(mk?' <span class="ex-m">'+mk+'</span>':'')+'</span>'+
+        return '<a class="exchip" href="exams?highlight='+esc(String(e.id))+'"><span class="ex-l">'+esc(lbl)+(mk?' <span class="ex-m">'+mk+'</span>':'')+'</span>'+
           '<span class="ex-d">'+shortDate(e.exam_date)+' · '+(days<=0?"today":"in "+days+"d")+'</span>'+top+'</a>';
       }).join("");
       return '<div class="tr-exams"><div class="tr-exh">Upcoming exams</div>'+items+'</div>';
@@ -162,7 +162,7 @@
         }
         return '<div class="teach-row"><div class="tr-time">'+hm(l.start_time)+'</div>'+
           '<div class="tr-body">'+
-          '<div class="tr-head"><div class="tr-name"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a>'+
+          '<div class="tr-head"><div class="tr-name"><a class="snl" href="student?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a>'+
           (l.subject?'<span class="tr-subj">'+esc(l.subject)+'</span>':'')+'</div>'+btn+'</div>'+
           '<div class="tr-cols"><div class="tr-notes">'+(ownNote(l,label+"\u2019s note")||summarizeOne(lastBeforeSubject(l.student_id,dISO,l.subject),l.subject))+'</div>'+examChips(l.student_id)+'</div>'+
           '</div></div>';
@@ -197,7 +197,7 @@
                '<span>'+(ago===1?"yesterday":ago+" days ago")+'</span></div>';
         }
         return head+'<div class="teach-row"><div class="tr-time">'+hm(l.start_time)+'</div>'+
-          '<div class="tr-body"><div class="tr-head"><div class="tr-name"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a>'+
+          '<div class="tr-body"><div class="tr-head"><div class="tr-name"><a class="snl" href="student?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a>'+
           (l.subject?'<span class="tr-subj">'+esc(l.subject)+'</span>':'')+'</div>'+
           '<button class="tnote" data-note-id="'+l.id+'">Add note</button></div>'+
           '</div></div>';
@@ -318,7 +318,7 @@
     var sList=Object.keys(perStudent).map(function(id){var s=perStudent[id];return {id:id,name:nameByIdM[id]||"—",c:s.c,owe:s.owe,n:s.n};})
       .sort(function(a,b){return b.c-a.c||b.owe-a.owe;});
     $("fy-students").innerHTML=sList.length?sList.map(function(s){
-      return '<div class="brk"><span class="bn"><a class="snl" href="student.html?id='+s.id+'">'+esc(s.name)+'</a><div class="bmeta">'+s.n+' lesson'+(s.n===1?"":"s")+'</div></span>'+
+      return '<div class="brk"><span class="bn"><a class="snl" href="student?id='+s.id+'">'+esc(s.name)+'</a><div class="bmeta">'+s.n+' lesson'+(s.n===1?"":"s")+'</div></span>'+
         '<span class="bv">'+TL.sgd(s.c)+(s.owe>0?'<small>owed '+TL.sgd(s.owe)+'</small>':'')+'</span></div>';
     }).join(""):'<div class="muted" style="font-size:13.5px">No income recorded for this year.</div>';
 
@@ -454,9 +454,9 @@
   function renderOnboarding(students, slots, lessons){
     var box=$("onboard");if(!box)return;
     var steps=[
-      {done:students>0, t:"Add your students", d:"Create a profile for each student you teach.", href:"students.html", cta:"Add students"},
-      {done:slots>0,    t:"Set up the weekly schedule", d:"In the planner, add each student's recurring lesson slots.", href:"planner.html", cta:"Open planner"},
-      {done:lessons>0,  t:"Fill the ledger from your schedule", d:"On the ledger, tap \u201CLog this week\u201D or \u201CLog this month\u201D to create lessons from your slots.", href:"ledger.html", cta:"Open ledger"}
+      {done:students>0, t:"Add your students", d:"Create a profile for each student you teach.", href:"students", cta:"Add students"},
+      {done:slots>0,    t:"Set up the weekly schedule", d:"In the planner, add each student's recurring lesson slots.", href:"planner", cta:"Open planner"},
+      {done:lessons>0,  t:"Fill the ledger from your schedule", d:"On the ledger, tap \u201CLog this week\u201D or \u201CLog this month\u201D to create lessons from your slots.", href:"ledger", cta:"Open ledger"}
     ];
     if(steps.every(function(s){return s.done;})){box.style.display="none";box.innerHTML="";return;}
     var nextShown=false;

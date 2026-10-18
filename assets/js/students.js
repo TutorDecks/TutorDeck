@@ -126,7 +126,7 @@
     var sub=[r.level,r.recipient_name].filter(Boolean).map(esc).join(" · ");
     return '<tr class="'+(active?"":"inactive")+'" data-id="'+r.id+'">'+
       '<td class="name" data-label="Name"><div class="ro-name"><span class="ro-av" aria-hidden="true">'+esc(initials(r.name))+'</span>'+
-        '<span class="ro-nm"><a class="slink" href="student.html?id='+r.id+'">'+esc(r.name)+"</a>"+
+        '<span class="ro-nm"><a class="slink" href="student?id='+r.id+'">'+esc(r.name)+"</a>"+
         (sub?'<span class="ro-sub">'+sub+'</span>':'')+endLine(r)+'</span></div></td>'+
       '<td data-label="Parent">'+(r.recipient_name?esc(r.recipient_name):'<span class="muted">—</span>')+"</td>"+
       '<td data-label="Level">'+(r.level?'<span class="ro-lvl">'+esc(r.level)+'</span>':'<span class="muted">—</span>')+"</td>"+
@@ -137,7 +137,7 @@
   function wire(scope){
     function find(id){return students.filter(function(s){return s.id===id;})[0];}
     scope.querySelectorAll("[data-edit]").forEach(function(b){b.addEventListener("click",function(){openModal(true,find(b.dataset.edit));});});
-    scope.querySelectorAll("[data-view]").forEach(function(b){b.addEventListener("click",function(){location.href="student.html?id="+encodeURIComponent(b.dataset.view);});});
+    scope.querySelectorAll("[data-view]").forEach(function(b){b.addEventListener("click",function(){location.href="student?id="+encodeURIComponent(b.dataset.view);});});
     scope.querySelectorAll("[data-merge]").forEach(function(b){b.addEventListener("click",function(){openMerge(true,find(b.dataset.merge));});});
     scope.querySelectorAll("[data-off]").forEach(function(b){b.addEventListener("click",function(){setActive(b.dataset.off,false);});});
     scope.querySelectorAll("[data-on]").forEach(function(b){b.addEventListener("click",function(){setActive(b.dataset.on,true);});});
@@ -150,7 +150,7 @@
     scope.querySelectorAll("tr[data-id]").forEach(function(tr){
       tr.addEventListener("click",function(e){
         if(e.target.closest("a,button,input,label,.rm"))return;
-        location.href="student.html?id="+encodeURIComponent(tr.dataset.id);
+        location.href="student?id="+encodeURIComponent(tr.dataset.id);
       });
     });
   }

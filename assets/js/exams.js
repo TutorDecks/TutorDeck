@@ -90,7 +90,7 @@
     var needResult=!upcoming&&!sc;
     $("xs-acts").innerHTML=(needResult?'<button class="btn rd-primary" id="xs-result">Add result</button>':'')+
       '<button class="btn" id="xs-edit">Edit exam</button>'+
-      '<a class="btn" href="student.html?id='+encodeURIComponent(ex.student_id)+'">Student profile</a>'+
+      '<a class="btn" href="student?id='+encodeURIComponent(ex.student_id)+'">Student profile</a>'+
       '<button class="btn rd-del" id="xs-del">Delete exam</button>';
     function edit(){closeSheet();openModal(true,ex);}
     $("xs-edit").onclick=edit; if($("xs-result"))$("xs-result").onclick=function(){edit();setTimeout(function(){$("m-score").focus();},50);};
