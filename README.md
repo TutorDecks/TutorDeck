@@ -199,6 +199,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Forms don't wiggle sideways; student tabs per student (v198)
+
+- **Add/edit forms (Exams, Students, Planner, Calendar, Ledger):** on iPhone, Safari gives date/time
+  inputs a minimum width, which could make a two-column form row a few px wider than the screen, so
+  the form scrolled sideways. Fields now can't exceed the form (`min-width:0`, plain-appearance
+  date/time at 44px), forms only scroll vertically (`touch-action:pan-y`, `overflow-x:hidden`), and
+  the page behind an open form stays still.
+- **Student page tabs:** each student opens on **Lessons**. The tab is remembered per student for this
+  visit only (`sessionStorage td_stab_<id>`), so Notes on Keevan doesn't carry over to Caroline, but
+  going back to Keevan returns to Notes. Links can open a tab with `?tab=notes`. Replaces the global
+  `tl_student_tab`.
+
 ### 2026-10-18 — Client view is instant both ways (v197)
 
 No more reload when showing money again. While Client view is on, a MutationObserver swaps every

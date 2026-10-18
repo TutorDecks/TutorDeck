@@ -501,10 +501,14 @@
     function setTab(t){
       document.querySelectorAll("#sp-tabs [data-tab]").forEach(function(b){b.classList.toggle("on",b.dataset.tab===t);});
       document.querySelectorAll(".sp-pane").forEach(function(p){p.classList.toggle("on",p.dataset.pane===t);});
-      try{localStorage.setItem("tl_student_tab",t);}catch(e){}
+      try{sessionStorage.setItem("td_stab_"+(qid()||""),t);}catch(e){}
     }
     document.querySelectorAll("#sp-tabs [data-tab]").forEach(function(b){b.addEventListener("click",function(){setTab(b.dataset.tab);});});
-    var st="lessons"; try{st=localStorage.getItem("tl_student_tab")||"lessons";}catch(e){}
+    // Each student opens on Lessons, unless you were on another tab for *this* student earlier in this
+    // visit (e.g. Notes, went to Ledger, came back). A link can ask for a tab with ?tab=notes.
+    var st="lessons", qt=(location.search.match(/[?&]tab=(\w+)/)||[])[1];
+    if(qt && document.querySelector('#sp-tabs [data-tab="'+qt+'"]')) st=qt;
+    else { try{st=sessionStorage.getItem("td_stab_"+(qid()||""))||"lessons";}catch(e){} }
     setTab(st);
     load();
   }
