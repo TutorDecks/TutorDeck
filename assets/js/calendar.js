@@ -1001,7 +1001,7 @@
     function filters(){
       var key=document.querySelector(".cal-legend"); if(!key) return;
       function show(){ TL.coach("cal-filters", key,
-        "<b>Filter the calendar</b><br>Tap a colour to hide or show those lessons. Tap again to bring them back."); }
+        "<b>Filter the calendar</b><br>Tap a status to hide those lessons. Tap it again to bring them back."); }
       if(!("IntersectionObserver" in window)){ show(); return; }
       var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ io.disconnect(); show(); } }, { threshold:1 });
       io.observe(key);
@@ -1021,11 +1021,11 @@
   function initLegend(){
     document.querySelectorAll(".cal-legend .leg").forEach(function(btn){
       var cat=btn.dataset.cat;
-      btn.classList.toggle("off", !!hidden[cat]);
+      btn.classList.toggle("off", !!hidden[cat]); btn.setAttribute("aria-pressed", hidden[cat]?"false":"true");
       btn.addEventListener("click", function(e){
         e.stopPropagation();
         if(hidden[cat]) delete hidden[cat]; else hidden[cat]=true;
-        btn.classList.toggle("off", !!hidden[cat]);
+        btn.classList.toggle("off", !!hidden[cat]); btn.setAttribute("aria-pressed", hidden[cat]?"false":"true");
         try{ localStorage.setItem("tl_cal_hidden", JSON.stringify(hidden)); }catch(e2){}
         render();   // re-filter; no refetch needed
       });

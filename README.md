@@ -199,6 +199,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Calendar key: filters vs symbols (v193)
+
+Under the calendar, the status filters are now real pill buttons after a "Show" label (Paid · Unpaid ·
+Upcoming · Not logged · Cancelled; off = dashed, greyed, `aria-pressed`). The symbol explanations sit on
+their own quiet line: ✦ One-off · ↻ Postponed · ⚠ Clash (red outline). Tip text now says "Tap a status"
+instead of "Tap a colour".
+
 ### 2026-10-18 — Calendar tips point at what they explain (v192)
 
 Two one-time tips instead of one under the view switcher: on phones **"Swipe the calendar"** points at

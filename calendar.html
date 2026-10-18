@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=192">
+<link rel="stylesheet" href="assets/css/app.css?v=193">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -168,6 +168,18 @@
   .cal-gwrap .cal-vp{flex:1;min-width:0;border-left:1px solid var(--line)}
   .cal-gwrap .cal-day-h:first-child,.cal-gwrap .cal-ad-cell:first-child,.cal-gwrap .cal-col:first-child{border-left:none}
   .cal-gspace{border-bottom:1px solid transparent}
+  /* status filters = tappable pills; symbol key = a quiet line under them */
+  .cal-keys{flex-direction:column;align-items:flex-start;gap:10px}
+  .cal-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+  .leg-lbl{font-size:12px;font-weight:700;color:var(--muted);margin-right:2px}
+  .cal-legend .leg{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+    padding:6px 11px;border-radius:20px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;color:var(--ink);text-decoration:none}
+  .cal-legend .leg:hover{border-color:#D6D2C8;color:var(--ink)}
+  .cal-legend .leg.off{opacity:1;text-decoration:none;background:transparent;border-style:dashed;color:var(--muted)}
+  .cal-legend .leg.off .cal-sw{opacity:.35}
+  .cal-symkey{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--muted)}
+  .cal-symkey b{color:var(--ink);font-weight:800;margin-right:2px}
+  .cal-symkey b.sym-clash{color:var(--owed)}
   .cal-gwrap .cal-allday{height:28px;overflow:hidden}
   .cal-gwrap .cal-ad-cell{flex-direction:row;align-items:center;gap:2px;padding:2px 3px;overflow:hidden;min-width:0}
   .cal-gwrap .cal-ad-cell .cal-chip{flex:1;min-width:0;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -310,16 +322,15 @@
   </div>
   <div class="cal-foot">
     <div class="cal-keys">
-      <div class="cal-legend" title="Tap to show or hide">
-        <button class="leg" data-cat="paid"><i class="cal-sw sw-paid"></i>Paid</button>
-        <button class="leg" data-cat="unpaid"><i class="cal-sw sw-unpaid"></i>Unpaid</button>
-        <button class="leg" data-cat="sched"><i class="cal-sw sw-sched"></i>Upcoming</button>
-        <button class="leg" data-cat="proj"><i class="cal-sw sw-proj"></i>Not logged</button>
-        <button class="leg" data-cat="cancel"><i class="cal-sw sw-cancel"></i>Cancelled</button>
+      <div class="cal-legend" role="group" aria-label="Show or hide lessons by status">
+        <span class="leg-lbl">Show</span>
+        <button class="leg" data-cat="paid" aria-pressed="true"><i class="cal-sw sw-paid"></i>Paid</button>
+        <button class="leg" data-cat="unpaid" aria-pressed="true"><i class="cal-sw sw-unpaid"></i>Unpaid</button>
+        <button class="leg" data-cat="sched" aria-pressed="true"><i class="cal-sw sw-sched"></i>Upcoming</button>
+        <button class="leg" data-cat="proj" aria-pressed="true"><i class="cal-sw sw-proj"></i>Not logged</button>
+        <button class="leg" data-cat="cancel" aria-pressed="true"><i class="cal-sw sw-cancel"></i>Cancelled</button>
       </div>
-      <span class="leg-key"><i class="cal-sw sw-clash"></i>Clash</span>
-      <span class="leg-key"><b class="leg-sym">✦</b>One-off</span>
-      <span class="leg-key"><b class="leg-sym">↻</b>Postponed</span>
+      <div class="cal-symkey"><span><b>✦</b> One-off</span><span><b>↻</b> Postponed</span><span><b class="sym-clash">⚠</b> Clash (red outline)</span></div>
     </div>
     <div class="cal-gsync">
       <div class="gsync-row bare" id="gsync-row">
@@ -376,9 +387,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=192"></script>
-<script src="assets/js/supabase.js?v=192"></script>
-<script src="assets/js/app.js?v=192"></script>
-<script src="assets/js/calendar.js?v=192"></script>
+<script src="assets/js/config.js?v=193"></script>
+<script src="assets/js/supabase.js?v=193"></script>
+<script src="assets/js/app.js?v=193"></script>
+<script src="assets/js/calendar.js?v=193"></script>
 </body>
 </html>
