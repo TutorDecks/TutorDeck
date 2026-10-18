@@ -199,6 +199,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Desktop forms slide in from the right (v204)
+
+On desktop, every add/edit form (`.td-form`) is now a full-height right-hand panel (480px; the invoice
+preview 760px), like the detail panels: the page stays visible on the left, Save/Cancel are pinned to
+the panel's foot, click outside to close (still asks if you've typed). Phones keep the bottom sheet;
+small confirm dialogs stay centred.
+
 ### 2026-10-18 — One colour for every main button (v203)
 
 17 buttons still used the old navy `.btn-primary` (Save lesson, Save student, Save exam, Save notes,

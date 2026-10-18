@@ -1,4 +1,4 @@
-/* v203 */
+/* v204 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -649,3 +649,17 @@ body:has(.modal-backdrop.on){overflow:hidden}   /* page behind an open form stay
    destructive confirms stay red (.btn-danger). .btn-primary and .btn-gold are now the same button. ---- */
 .btn-primary,.btn-gold{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn-primary:hover,.btn-gold:hover{background:var(--accent-ink);border-color:var(--accent-ink);color:#fff}
+
+/* ---- v204: desktop forms slide in from the right (same as the detail panels); phones keep the bottom sheet ---- */
+@media(min-width:821px){
+  .td-form.modal-backdrop{padding:0;background:rgba(19,35,63,.38)}
+  .td-form.modal-backdrop.on{display:flex;justify-content:flex-end;align-items:stretch}
+  .td-form .modal{width:min(480px,100%);max-width:none;height:100%;max-height:none;border-radius:0;border-top:none;
+    box-shadow:-12px 0 40px rgba(19,35,63,.18);padding:28px 28px 0;overflow-y:auto;display:flex;flex-direction:column;
+    animation:td-panel-in .22s ease}
+  .td-form .modal.wide{width:min(760px,100%)}
+  .td-form .modal-actions{margin:auto -28px 0;padding:14px 28px 18px;bottom:0}   /* pinned to the panel's foot */
+  .td-form .modal h2{font-size:21px}
+}
+@keyframes td-panel-in{from{transform:translateX(28px);opacity:.7}to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.td-form .modal{animation:none}}
