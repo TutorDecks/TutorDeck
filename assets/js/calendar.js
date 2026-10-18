@@ -603,6 +603,21 @@
     $("cal-log-txt").textContent="Log "+n;
     btn.title=n+" lesson"+(n===1?"":"s")+" not logged "+t.when+" — tap to log";
     btn.setAttribute("aria-label", btn.title);
+    whenNoTip(function(){
+      if(btn.hidden || !(window.TL && TL.coach)) return;
+      TL.coach("cal-log", btn, "<b>Log lessons in one tap</b><br>The faded lessons come from your weekly schedule but aren\u2019t logged yet. "+
+        "This logs all of them for the week, month or day you\u2019re viewing."+
+        "<br>Rather not see them? Turn off <b>Not logged</b> in the filters below the calendar.");
+    });
+  }
+  // One tip at a time: if another tip is open, wait for its "Got it" before showing the next.
+  function whenNoTip(fn){
+    var open=document.querySelector(".td-tip");
+    if(!open){ fn(); return; }
+    var ok=open.querySelector(".td-tip-ok");
+    if(!ok) return;
+    if(!ok._tdQ){ ok._tdQ=[]; ok.addEventListener("click", function(){ var q=ok._tdQ; setTimeout(function(){ if(q.length) whenNoTip(q.shift()); /* rest chain via the next tip */ q.forEach(function(f){ whenNoTip(f); }); }, 150); }); }
+    if(ok._tdQ.indexOf(fn)<0) ok._tdQ.push(fn);
   }
   async function logVisible(){
     var t=logTarget(), btn=$("cal-log-btn");
@@ -1053,8 +1068,8 @@
     // Wait until the key is actually on screen, so the tip isn't shown where nobody can see it.
     function filters(){
       var key=document.querySelector(".cal-legend"); if(!key) return;
-      function show(){ TL.coach("cal-filters", key,
-        "<b>Filter the calendar</b><br>Tap a status to hide those lessons. Tap it again to bring them back."); }
+      function show(){ whenNoTip(function(){ TL.coach("cal-filters", key,
+        "<b>Filter the calendar</b><br>Tap a status to hide those lessons. Tap it again to bring them back."); }); }
       if(!("IntersectionObserver" in window)){ show(); return; }
       var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ io.disconnect(); show(); } }, { threshold:1 });
       io.observe(key);
