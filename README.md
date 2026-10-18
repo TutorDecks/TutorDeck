@@ -199,6 +199,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Client view is instant both ways (v197)
+
+No more reload when showing money again. While Client view is on, a MutationObserver swaps every
+dollar figure that reaches the screen (existing, re-rendered, or added later) for `$•••` before the
+browser paints, and keeps the real text in a Map; turning it off restores those text nodes in place.
+`TL.sgd()` always returns the real figure now; masking is purely on screen. Fires `td:clientview`
+({on}) for pages that want to react. Tested: hide/show on Home, student, Ledger, Calendar, including
+pages opened while hidden and figures rendered after hiding: 0 leaks, 0 reloads.
+
 ### 2026-10-18 — Client view tip points at the eye (v196)
 
 `TL.coach(key, el, html, {above:true})` can open a tip above its anchor (arrow underneath; uses

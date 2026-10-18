@@ -313,19 +313,46 @@ window.TL = (function () {
   try { CLIENT = localStorage.getItem("td_client") === "1"; } catch (e) {}
   function isClient() { return CLIENT; }
   var CV_ACTIVE = "";
+  // Masking works on what's on screen, both ways and instantly: while Client view is on, every dollar
+  // figure that appears (now or rendered later) is swapped for $••• before the browser paints, and the
+  // real text is remembered so turning it off just puts it back. No reloads.
+  var MONEY_RE = /-?\$\s?\d[\d,]*(\.\d+)?/g, ORIG = new Map(), MO = null;
+  function maskText(t) {
+    var v = t.nodeValue; MONEY_RE.lastIndex = 0;
+    if (!v || !MONEY_RE.test(v)) return;
+    MONEY_RE.lastIndex = 0; ORIG.set(t, v); t.nodeValue = v.replace(MONEY_RE, "$•••");
+  }
+  function maskTree(root) {
+    if (root.nodeType === 3) { maskText(root); return; }
+    if (root.nodeType !== 1 || /^(SCRIPT|STYLE|TEXTAREA)$/.test(root.nodeName)) return;
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n, list = [];
+    while ((n = w.nextNode())) list.push(n);
+    list.forEach(maskText);
+  }
+  function startMask() {
+    if (MO || !document.body) return;
+    maskTree(document.body);
+    MO = new MutationObserver(function (muts) {
+      muts.forEach(function (m) {
+        if (m.type === "characterData") maskText(m.target);
+        else m.addedNodes.forEach(maskTree);
+      });
+    });
+    MO.observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+  function stopMask() {
+    if (MO) { MO.disconnect(); MO = null; }
+    ORIG.forEach(function (v, t) { if (t.isConnected && t.nodeValue.indexOf("$•••") >= 0) t.nodeValue = v; });
+    ORIG.clear();
+  }
   function setClient(on) {
     try { if (on) localStorage.setItem("td_client", "1"); else localStorage.removeItem("td_client"); } catch (e) {}
-    if (!on) { location.reload(); return; }   // showing money again can take a moment; re-render cleanly
-    CLIENT = true;                            // hiding must be instant: mask what's on screen right now
-    applyClient(); maskOnScreen();
+    CLIENT = !!on;
+    if (CLIENT) startMask(); else stopMask();
+    applyClient();
+    window.dispatchEvent(new CustomEvent("td:clientview", { detail: { on: CLIENT } }));
   }
-  // Swap any dollar figure already on screen for $••• (anything rendered later goes through sgd()).
-  function maskOnScreen() {
-    var re = /-?\$\s?\d[\d,]*(\.\d+)?/g, w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null), n, hits = [];
-    while ((n = w.nextNode())) { if (re.test(n.nodeValue)) hits.push(n); re.lastIndex = 0; }
-    hits.forEach(function (t) { t.nodeValue = t.nodeValue.replace(re, "$•••"); });
-    document.querySelectorAll("input[type=number]").forEach(function (i) { if (/rate|amount|comp|fee/i.test(i.id)) i.style.webkitTextSecurity = "disc"; });
-  }
+  if (CLIENT) startMask();   // page opened with Client view already on: mask from the first paint
   function applyClient() {
     document.body.classList.toggle("client-view", CLIENT);
     var b = document.getElementById("td-cv");
@@ -336,6 +363,8 @@ window.TL = (function () {
       b.title = CLIENT ? "Client view is on: tap to show money" : "Client view: hide all money";
     }
     // Money pages have nothing to show in client view: say so instead of a page of $•••.
+    var oldBlk = document.getElementById("cv-block");
+    if (!CLIENT) { document.body.classList.remove("cv-money"); if (oldBlk) oldBlk.remove(); }
     if (CLIENT && ["ledger", "invoices", "insights"].indexOf(CV_ACTIVE) >= 0) {
       document.body.classList.add("cv-money");
       var c = document.getElementById("content");
@@ -350,8 +379,7 @@ window.TL = (function () {
   var EYE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
   var EYE_OFF = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.5 8 10 8a10 10 0 0 0 5.4-1.6"/><path d="M2 2l20 20"/></svg>';
 
-  function sgd(n) {
-    if (CLIENT) return "$•••";
+  function sgd(n) {   // always the real figure; Client view masks it on screen (see startMask)
     return "$" + (Number(n) || 0).toLocaleString("en-SG",
       { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
