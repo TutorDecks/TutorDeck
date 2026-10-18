@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=211">
+<link rel="stylesheet" href="assets/css/app.css?v=212">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -94,6 +94,7 @@
   .cal-mday:hover{background:#F7F6F2}
   .cal-mday.other{background:#faf8f2}
   .cal-mday.other .md-num{color:#c3bba6}
+  .cal-mday.other>*:not(.md-num){opacity:.5}   /* v212: spill-over days from the months either side are dimmed */
   .cal-mday.today{background:var(--cream)}
   .cal-mday .md-num{font-weight:700;font-size:12.5px;color:var(--navy);margin-bottom:2px}
   .cal-mday.today .md-num{display:inline-grid;place-items:center;width:21px;height:21px;border-radius:50%;
@@ -405,9 +406,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=211"></script>
-<script src="assets/js/supabase.js?v=211"></script>
-<script src="assets/js/app.js?v=211"></script>
-<script src="assets/js/calendar.js?v=211"></script>
+<script src="assets/js/config.js?v=212"></script>
+<script src="assets/js/supabase.js?v=212"></script>
+<script src="assets/js/app.js?v=212"></script>
+<script src="assets/js/calendar.js?v=212"></script>
 </body>
 </html>

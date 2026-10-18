@@ -320,7 +320,10 @@
     return '<span class="'+cls+'" data-ev="'+esc(String(b.id))+'">'+(b.clash?'⚠ ':'')+hhmm2(b.startMin)+' '+esc(b.name)+'</span>';
   }
   function renderMonth(range){
-    var blocks=buildBlocks(range);
+    // Spill-over days from the months either side show only logged lessons: their Not logged ones
+    // belong to that other month (and its Log chip), so the chip count matches what's on screen.
+    var mo=anchor.getMonth();
+    var blocks=buildBlocks(range).filter(function(b){ return !(b.kind==="proj" && new Date(b.dateISO+"T00:00:00").getMonth()!==mo); });
     var byDate={}; blocks.forEach(function(b){ (byDate[b.dateISO]=byDate[b.dateISO]||[]).push(b); });
     Object.keys(byDate).forEach(function(k){ laneAssign(byDate[k]); });   // sets clash per day
     lastBlocks=blocks;
