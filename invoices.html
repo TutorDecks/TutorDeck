@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Invoices · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=207">
+<link rel="stylesheet" href="assets/css/app.css?v=208">
 <style>
   /* ---- v169 Invoices: summary strip, simple filters, list + sheet ---- */
   .iv-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin-bottom:16px}
@@ -95,9 +95,9 @@
 <body>
 <div id="view">
   <div class="iv-sum">
-    <div class="ls-i paid"><span class="ls-l">Paid</span><span class="ls-v" id="iv-paid">—</span><span class="ls-n" id="iv-paid-n">&nbsp;</span></div>
-    <div class="ls-i owed"><span class="ls-l">Awaiting payment</span><span class="ls-v" id="iv-wait">—</span><span class="ls-n" id="iv-wait-n">&nbsp;</span></div>
-    <div class="ls-i warn"><span class="ls-l">Not sent yet</span><span class="ls-v" id="iv-unsent">—</span><span class="ls-n" id="iv-unsent-n">&nbsp;</span></div>
+    <div class="ls-i paid"><span class="ls-l">Paid</span><span class="ls-v" id="iv-paid" data-sk>—</span><span class="ls-n" id="iv-paid-n">&nbsp;</span></div>
+    <div class="ls-i owed"><span class="ls-l">Awaiting payment</span><span class="ls-v" id="iv-wait" data-sk>—</span><span class="ls-n" id="iv-wait-n">&nbsp;</span></div>
+    <div class="ls-i warn"><span class="ls-l">Not sent yet</span><span class="ls-v" id="iv-unsent" data-sk>—</span><span class="ls-n" id="iv-unsent-n">&nbsp;</span></div>
   </div>
 
   <div class="iv-bar">
@@ -124,9 +124,9 @@
     <label>Paid from <input type="date" id="f-from"></label>
     <label>to <input type="date" id="f-to"></label>
   </div>
-  <div class="sub iv-count" id="i-count">Loading invoices…</div>
+  <div class="sub iv-count" id="i-count" data-sk>Loading invoices…</div>
 
-  <div class="card iv-list" id="iv-list"></div>
+  <div class="card iv-list" id="iv-list"><div style="padding:14px 16px"><div class="sk-rows" aria-hidden="true"><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1 w2"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div></div></div>
   <div class="card empty" id="i-empty" style="display:none">
     <h3>No saved invoices yet</h3>
     <p>Generate an invoice from the Ledger and tap <b>Save to app</b> to keep a copy here.</p>
@@ -148,9 +148,9 @@
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=207"></script>
-<script src="assets/js/supabase.js?v=207"></script>
-<script src="assets/js/app.js?v=207"></script>
-<script src="assets/js/invoices.js?v=207"></script>
+<script src="assets/js/config.js?v=208"></script>
+<script src="assets/js/supabase.js?v=208"></script>
+<script src="assets/js/app.js?v=208"></script>
+<script src="assets/js/invoices.js?v=208"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Insights · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=207">
+<link rel="stylesheet" href="assets/css/app.css?v=208">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#FFFFFF,#EEF6F4);border:1px solid var(--gold);
@@ -97,28 +97,28 @@
   <div id="fin-month">
   <div class="dmonth">
     <button class="btn gennav" id="dm-prev" title="Previous month">‹</button>
-    <span class="dm-lbl" id="dm-label">—</span>
+    <span class="dm-lbl" id="dm-label" data-sk>—</span>
     <button class="btn gennav" id="dm-next" title="Next month">›</button>
     <button class="btn" id="dm-today">This month</button>
   </div>
   <div class="kpi-grid">
     <div class="card kpi owed"><div class="label">Total pending</div>
-      <div class="val" id="k-pending">—</div><div class="note" id="k-pending-n">to collect</div></div>
+      <div class="val" id="k-pending" data-sk>—</div><div class="note" id="k-pending-n">to collect</div></div>
     <div class="card kpi paid"><div class="label">Collected this month</div>
-      <div class="val" id="k-collected">—</div><div class="note" id="k-collected-n">&nbsp;</div></div>
+      <div class="val" id="k-collected" data-sk>—</div><div class="note" id="k-collected-n">&nbsp;</div></div>
     <div class="card kpi accent"><div class="label">Projected this month</div>
-      <div class="val" id="k-projected">—</div><div class="note">booked this month, excl. cancelled</div></div>
+      <div class="val" id="k-projected" data-sk>—</div><div class="note">booked this month, excl. cancelled</div></div>
     <div class="card kpi"><div class="label">Lessons this week</div>
-      <div class="val" id="k-week">—</div><div class="note" id="k-week-n">Mon–Sun</div></div>
+      <div class="val" id="k-week" data-sk>—</div><div class="note" id="k-week-n">Mon–Sun</div></div>
   </div>
 
   <div class="card panel mprog-card">
-    <div class="mprog-top"><span class="mprog-lbl" id="mprog-lbl">Collected this month</span><span class="mprog-pct" id="mprog-pct">—</span></div>
+    <div class="mprog-top"><span class="mprog-lbl" id="mprog-lbl">Collected this month</span><span class="mprog-pct" id="mprog-pct" data-sk>—</span></div>
     <div class="mprog-track"><div class="mprog-fill" id="mprog-fill" style="width:0%"></div><div class="mprog-owed" id="mprog-owed" style="width:0%"></div></div>
     <div class="mprog-legend" id="mprog-legend">
-      <span><i class="mdot teal"></i>Collected <b id="mprog-c">—</b></span>
-      <span><i class="mdot red"></i>Owed <b id="mprog-o">—</b></span>
-      <span><i class="mdot grey"></i>Upcoming <b id="mprog-u">—</b></span>
+      <span><i class="mdot teal"></i>Collected <b id="mprog-c" data-sk>—</b></span>
+      <span><i class="mdot red"></i>Owed <b id="mprog-o" data-sk>—</b></span>
+      <span><i class="mdot grey"></i>Upcoming <b id="mprog-u" data-sk>—</b></span>
     </div>
     <div class="mprog-sub" id="mprog-sub"></div>
   </div>
@@ -132,7 +132,7 @@
   <div id="fin-year" style="display:none">
     <div class="dmonth">
       <button class="btn gennav" id="fy-prev" title="Previous year">‹</button>
-      <span class="dm-lbl" id="fy-label" style="min-width:96px">—</span>
+      <span class="dm-lbl" id="fy-label" style="min-width:96px" data-sk>—</span>
       <button class="btn gennav" id="fy-next" title="Next year">›</button>
       <button class="btn" id="fy-today">This year</button>
     </div>
@@ -144,11 +144,11 @@
     <div class="grid2">
       <div class="card panel">
         <h2>Income by student</h2>
-        <div id="fy-students"><div class="muted" style="font-size:13.5px">—</div></div>
+        <div id="fy-students"><div class="muted" style="font-size:13.5px" data-sk>—</div></div>
       </div>
       <div class="card panel">
         <h2>Income by subject &amp; level</h2>
-        <div id="fy-subjects"><div class="muted" style="font-size:13.5px">—</div></div>
+        <div id="fy-subjects"><div class="muted" style="font-size:13.5px" data-sk>—</div></div>
       </div>
     </div>
   </div>
@@ -158,9 +158,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=207"></script>
-<script src="assets/js/supabase.js?v=207"></script>
-<script src="assets/js/app.js?v=207"></script>
-<script src="assets/js/dashboard.js?v=207"></script>
+<script src="assets/js/config.js?v=208"></script>
+<script src="assets/js/supabase.js?v=208"></script>
+<script src="assets/js/app.js?v=208"></script>
+<script src="assets/js/dashboard.js?v=208"></script>
 </body>
 </html>

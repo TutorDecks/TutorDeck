@@ -198,6 +198,7 @@
     $("s-count").textContent=anyFilter?(act.length+off.length)+" of "+students.length+" shown":(actAll.length?actAll.length+(actAll.length===1?" active student":" active students"):"");
 
     var table=$("s-table"),empty=$("s-empty"),body=$("s-body");
+    if($("s-sk"))$("s-sk").remove();
     if(!actAll.length){table.style.display="none";empty.style.display="block";}
     else if(!act.length){empty.style.display="none";table.style.display="table";body.innerHTML='<tr><td colspan="5" style="color:var(--muted);padding:14px 4px">'+(fStat==="off"?"Showing discontinued only.":"No active students match these filters.")+'</td></tr>';}
     else{empty.style.display="none";table.style.display="table";body.innerHTML=act.map(function(r){return rowHtml(r,true);}).join("");wire(body);}

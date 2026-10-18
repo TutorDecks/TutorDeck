@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Students · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=207">
+<link rel="stylesheet" href="assets/css/app.css?v=208">
 <style>
   a.slink{color:var(--navy);font-weight:700;text-decoration:none}
   a.slink:hover{text-decoration:underline}
@@ -76,7 +76,7 @@
       <button data-st="off">Discontinued<span class="seg-n" id="ro-off-n"></span></button>
       <button data-st="">All</button>
     </div>
-    <span class="hint" id="s-count">Loading your roster…</span>
+    <span class="hint" id="s-count" data-sk>Loading your roster…</span>
     <button class="btn btn-gold" id="add-btn" data-fab="Add student">+ Add student</button>
   </div>
   <div class="filters ro-filters">
@@ -96,6 +96,7 @@
       <h3>No students yet</h3>
       <p>Add your first student to start logging lessons against them.</p>
     </div>
+    <div id="s-sk" style="padding:14px 6px"><div class="sk-rows" aria-hidden="true"><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1 w2"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div></div>
     <div class="tscroll"><table class="tbl" id="s-table" style="display:none">
       <thead><tr>
         <th>Name</th><th>Parent</th><th>Level</th><th>Contact</th><th><span class="sr">Actions</span></th>
@@ -184,9 +185,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=207"></script>
-<script src="assets/js/supabase.js?v=207"></script>
-<script src="assets/js/app.js?v=207"></script>
-<script src="assets/js/students.js?v=207"></script>
+<script src="assets/js/config.js?v=208"></script>
+<script src="assets/js/supabase.js?v=208"></script>
+<script src="assets/js/app.js?v=208"></script>
+<script src="assets/js/students.js?v=208"></script>
 </body>
 </html>
