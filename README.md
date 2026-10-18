@@ -199,6 +199,9 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-18 — Students: no count on the Discontinued tab (v210).** The "Discontinued · N" number was the only count in
+  the Active | Discontinued | All bar; removed. The count still shows once you open Discontinued.
+
 - **2026-10-18 — Home "Today": the row shows today's note once written (v209).** Each Today/Tomorrow row used to
   show only the *previous* lesson's recap, so after adding a note it still read "No notes recorded for that lesson".
   Now a lesson's own note (Topics/Homework/Remarks) replaces the recap under "Today's note"; with no note yet, the
