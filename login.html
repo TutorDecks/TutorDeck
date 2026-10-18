@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sign in · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=212">
+<link rel="stylesheet" href="assets/css/app.css?v=213">
 <style>
   .oauth-div{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--muted);font-size:12.5px}
   .oauth-div::before,.oauth-div::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -67,7 +67,7 @@
       </div>
       <label id="consent-field" style="display:none;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--muted);margin:2px 0 14px;line-height:1.5;cursor:pointer">
         <input id="consent" type="checkbox" style="width:16px;height:16px;margin-top:1px;flex:0 0 auto;accent-color:var(--teal)">
-        <span>I agree to the <a href="terms.html" target="_blank">Terms of Service</a> and <a href="privacy.html" target="_blank">Privacy Policy</a>, and consent to my data being handled as described (PDPA).</span>
+        <span>I agree to the <a href="terms" target="_blank">Terms of Service</a> and <a href="privacy" target="_blank">Privacy Policy</a>, and consent to my data being handled as described (PDPA).</span>
       </label>
       <button class="btn btn-gold" id="go">Sign in</button>
       <div class="msg" id="msg"></div>
@@ -100,12 +100,12 @@
       <button class="link-btn" id="mfa-signout" type="button">Use a different account</button>
     </div>
   </div>
-  <div class="lg-foot"><a href="index.html">← TutorDeck home</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></div>
+  <div class="lg-foot"><a href="/">← TutorDeck home</a> · <a href="privacy">Privacy</a> · <a href="terms">Terms</a></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=212"></script>
-<script src="assets/js/supabase.js?v=212"></script>
+<script src="assets/js/config.js?v=213"></script>
+<script src="assets/js/supabase.js?v=213"></script>
 <script>
 (function () {
   var mode = "in";
@@ -151,7 +151,7 @@
     window.sb.auth.getSession().then(async function (r) {
       if (r.data && r.data.session) {
         if (await needsMfa()) { startChallenge(); return; }
-        location.replace("app.html");
+        location.replace("home");
       }
     });
   }
@@ -168,9 +168,9 @@
     try {
       var lf = await window.sb.auth.mfa.listFactors();
       var totp = (lf.data && lf.data.totp || []).filter(function(f){return f.status==="verified";})[0];
-      if (!totp) { location.replace("app.html"); return; }  // nothing to challenge
+      if (!totp) { location.replace("home"); return; }  // nothing to challenge
       challengeFactorId = totp.id;
-    } catch (e) { location.replace("app.html"); return; }
+    } catch (e) { location.replace("home"); return; }
     $("form-area").style.display = "none";
     $("created").style.display = "none";
     $("mfa-area").style.display = "block";
@@ -183,7 +183,7 @@
     try {
       var r = await window.sb.auth.mfa.challengeAndVerify({ factorId: challengeFactorId, code: code });
       if (r.error) throw r.error;
-      location.replace("app.html");
+      location.replace("home");
     } catch (e) {
       m.textContent = e.message || "That code didn't match. Try the current one.";
       m.className = "msg err";
@@ -211,21 +211,21 @@
         var up = await window.sb.auth.signUp(
           { email: email, password: pw, options: { data: { business_name: biz,
             consent_version: "v1", consent_accepted_at: new Date().toISOString() },
-            emailRedirectTo: new URL("confirmed.html", location.href).href } });
+            emailRedirectTo: new URL("/confirmed", location.origin).href } });
         if (up.error) throw up.error;
         if (up.data.session) {
           // Confirm-email off: we're logged in, so persist the business name onto the
           // profile the signup trigger just created (RLS needs this session). Non-fatal —
           // it can always be set later in Settings.
           if (biz) { try { await window.sb.from("profiles").update({ business_name: biz }).eq("id", up.data.user.id); } catch (e) {} }
-          location.replace("app.html"); return;
+          location.replace("home"); return;
         }
         showCreated(email, true);                                         // confirm on → success screen
       } else {
         var inn = await window.sb.auth.signInWithPassword({ email: email, password: pw });
         if (inn.error) throw inn.error;
         if (await needsMfa()) { startChallenge(); return; }
-        location.replace("app.html");
+        location.replace("home");
       }
     } catch (e) {
       show(e.message || "Something went wrong.", false);
@@ -243,7 +243,7 @@
     try {
       var r = await window.sb.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: new URL("app.html", location.href).href }
+        options: { redirectTo: new URL("/home", location.origin).href }
       });
       if (r.error) throw r.error;
       // on success the browser redirects to Google; nothing more to do here
@@ -261,7 +261,7 @@
     $("forgot").disabled = true;
     try {
       var r = await window.sb.auth.resetPasswordForEmail(email,
-        { redirectTo: new URL("reset.html", location.href).href });
+        { redirectTo: new URL("/reset", location.origin).href });
       if (r.error) throw r.error;
       show("Password reset link sent to " + email + ". Check your inbox (and spam).", true);
     } catch (e) {

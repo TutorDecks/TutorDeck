@@ -178,7 +178,7 @@
                :'<button class="btn btn-gold wide" data-paid>Mark as paid</button>')+
         (!isPaid&&hasSent&&!isSent(v)?'<button class="btn wide" data-sent>Mark as sent</button>':'')+
         '<button class="btn" data-print>Print / Save PDF</button>'+
-        '<a class="btn" href="ledger.html">Open Ledger</a>'+
+        '<a class="btn" href="ledger">Open Ledger</a>'+
       '</div>'+
       '<div class="ivs-box">'+
         '<div class="ivs-line"><span class="k">Status</span>'+(isPaid?'<span class="iv-st paid">Paid</span>':'<span class="iv-st wait">Awaiting payment</span>')+'</div>'+

@@ -23,20 +23,20 @@ window.TL = (function () {
            'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || "") + '</svg>';
   }
   var GROUPS = [
-    { id: "home",     label: "Home",     ic: "home",     pages: [ { id: "dashboard", label: "Dashboard", href: "app.html" } ] },
-    { id: "schedule", label: "Schedule", ic: "schedule", pages: [ { id: "calendar", label: "Calendar", href: "calendar.html" },
-                                                                  { id: "planner",  label: "Weekly planner", href: "planner.html" } ] },
-    { id: "students", label: "Students", ic: "students", pages: [ { id: "students", label: "Roster", href: "students.html" },
-                                                                  { id: "exams",    label: "Exams",  href: "exams.html" } ],
+    { id: "home",     label: "Home",     ic: "home",     pages: [ { id: "dashboard", label: "Dashboard", href: "home" } ] },
+    { id: "schedule", label: "Schedule", ic: "schedule", pages: [ { id: "calendar", label: "Calendar", href: "calendar" },
+                                                                  { id: "planner",  label: "Weekly planner", href: "planner" } ] },
+    { id: "students", label: "Students", ic: "students", pages: [ { id: "students", label: "Roster", href: "students" },
+                                                                  { id: "exams",    label: "Exams",  href: "exams" } ],
       also: ["student"] },
-    { id: "money",    label: "Money",    ic: "money",    pages: [ { id: "ledger",   label: "Ledger",   href: "ledger.html" },
-                                                                  { id: "invoices", label: "Invoices", href: "invoices.html" },
-                                                                  { id: "insights", label: "Insights", href: "insights.html" } ] }
+    { id: "money",    label: "Money",    ic: "money",    pages: [ { id: "ledger",   label: "Ledger",   href: "ledger" },
+                                                                  { id: "invoices", label: "Invoices", href: "invoices" },
+                                                                  { id: "insights", label: "Insights", href: "insights" } ] }
   ];
   // Secondary destinations: sidebar footer on desktop, "More" sheet on phones.
   var EXTRA = [
-    { id: "materials", label: "Materials", href: "materials.html", ic: "materials", ownerOnly: true },
-    { id: "settings",  label: "Settings",  href: "settings.html",  ic: "settings" }
+    { id: "materials", label: "Materials", href: "materials", ic: "materials", ownerOnly: true },
+    { id: "settings",  label: "Settings",  href: "settings",  ic: "settings" }
   ];
   function groupOf(active) {
     for (var i = 0; i < GROUPS.length; i++) {
@@ -139,7 +139,7 @@ window.TL = (function () {
     app.innerHTML = `
       <header class="topnav">
         <div class="tn-in">
-          <a class="tn-brand" href="app.html" aria-label="TutorDeck home">${LOGO}<b>TutorDeck</b></a>
+          <a class="tn-brand" href="home" aria-label="TutorDeck home">${LOGO}<b>TutorDeck</b></a>
           <nav class="tn-links" aria-label="Main">${side}</nav>
           <div class="tn-right">
             ${sideExtra}
@@ -209,13 +209,19 @@ window.TL = (function () {
     // Tapping the tab you're already on: scroll to the top and tell the page (Calendar jumps to today).
     document.querySelectorAll(".tabbar a.on").forEach(function (a) {
       a.addEventListener("click", function (e) {
-        var here = location.pathname.split("/").pop() || "index.html";
-        if (a.getAttribute("href") !== here) return;
+        if (pageKey(a.getAttribute("href")) !== pageKey(location.pathname)) return;
         e.preventDefault();
         window.scrollTo({ top: 0, behavior: "smooth" });
         window.dispatchEvent(new CustomEvent("td:tabagain"));
       });
     });
+  }
+
+  // Page name from a path or href, so old and clean URLs compare equal:
+  // "/calendar", "calendar.html", "/calendar.html?x=1" → "calendar"; "/" or "" → "index".
+  function pageKey(p) {
+    p = String(p || "").split(/[?#]/)[0].split("/").pop().replace(/\.html$/, "");
+    return p || "index";
   }
 
   // Loading placeholders: elements marked data-sk shimmer until the page first writes into them,
@@ -256,7 +262,7 @@ window.TL = (function () {
     }
     var res = await window.sb.auth.getSession();
     var session = res.data && res.data.session;
-    if (!session) { location.replace("login.html"); return; }
+    if (!session) { location.replace("login"); return; }
     isOwner = session.user.id === OWNER_ID;
     window.TL_IS_OWNER = isOwner; window.TL_OWNER_ID = OWNER_ID;
     // If two-factor is enabled but not yet satisfied this session (e.g. after a
@@ -264,7 +270,7 @@ window.TL = (function () {
     try {
       var aal = await window.sb.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aal.data && aal.data.currentLevel === "aal1" && aal.data.nextLevel === "aal2") {
-        location.replace("login.html?mfa=1"); return;
+        location.replace("login?mfa=1"); return;
       }
     } catch (e) { /* MFA unavailable — proceed as normal */ }
     // Brand the sidebar with this tutor's business name; fall back to the default.
@@ -401,7 +407,7 @@ window.TL = (function () {
 
   async function signOut() {
     try { await window.sb.auth.signOut(); } catch (e) {}
-    location.replace("login.html");
+    location.replace("login");
   }
 
   // ---- helpers ----

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Home · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=212">
+<link rel="stylesheet" href="assets/css/app.css?v=213">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#FFFFFF,#EEF6F4);border:1px solid var(--gold);
@@ -171,12 +171,12 @@
   <!-- MONEY: one card — collected vs owed, and the month's progress bar (hidden in Client view) -->
   <section class="h-sec sk-on" id="home-money">
     <div class="h-sec-h"><h2 class="h-sec-t">Money</h2><span class="h-sec-n" id="k-collected-n"></span>
-      <a class="h-more" href="insights.html">See income ›</a></div>
+      <a class="h-more" href="insights">See income ›</a></div>
     <div class="card money-card">
       <div class="mc-top">
-        <a class="mc-col" href="insights.html"><span class="mc-l">Collected</span><span class="mc-v paid" id="k-collected">—</span>
+        <a class="mc-col" href="insights"><span class="mc-l">Collected</span><span class="mc-v paid" id="k-collected">—</span>
           <span class="mc-n"><b id="mprog-pct">—</b> of <span id="mc-booked">—</span> booked</span></a>
-        <a class="mc-col" href="ledger.html"><span class="mc-l">Owed to you</span><span class="mc-v owed" id="k-pending">—</span>
+        <a class="mc-col" href="ledger"><span class="mc-l">Owed to you</span><span class="mc-v owed" id="k-pending">—</span>
           <span class="mc-n" id="k-pending-n">&nbsp;</span></a>
       </div>
       <div class="mprog-track" aria-hidden="true"><div class="mprog-fill" id="mprog-fill" style="width:0%"></div><div class="mprog-owed" id="mprog-owed" style="width:0%"></div></div>
@@ -212,7 +212,7 @@
         <div id="yday-list"></div>
       </div>
       <div class="card panel teach-sec" id="exam-sec">
-        <h2>Upcoming exams <a class="h-more" href="exams.html">All</a></h2>
+        <h2>Upcoming exams <a class="h-more" href="exams">All</a></h2>
         <div class="teach-sub"><span id="k-exams">—</span> in the next 14 days</div>
         <div id="teach-exam-list"><div class="sk-rows" aria-hidden="true"><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1 w2"></span><span class="sk sk-l2"></span></span></div></div><span class="sr-only">Loading</span></div>
       </div>
@@ -239,9 +239,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=212"></script>
-<script src="assets/js/supabase.js?v=212"></script>
-<script src="assets/js/app.js?v=212"></script>
-<script src="assets/js/dashboard.js?v=212"></script>
+<script src="assets/js/config.js?v=213"></script>
+<script src="assets/js/supabase.js?v=213"></script>
+<script src="assets/js/app.js?v=213"></script>
+<script src="assets/js/dashboard.js?v=213"></script>
 </body>
 </html>

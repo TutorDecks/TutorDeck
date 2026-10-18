@@ -160,7 +160,7 @@
           :(l.subject?esc(l.subject):'<span class="muted">lesson</span>');
         return '<div class="lrow"><input type="checkbox" class="lchk" data-lsel="'+l.id+'"'+(selectedLessons[l.id]?" checked":"")+'><span class="lwhen">'+prettyDate(l.lesson_date)+(d>=14?' <span class="agedot" title="'+d+' days unpaid">•</span>':"")+"</span><span>"+label+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
       var selBtn=selIds.length?'<button class="mark lite" data-invsel="'+id+'::'+selIds.join(",")+'">Invoice '+selIds.length+' selected</button><button class="mark" data-paysel="'+selIds.join(",")+'">Mark '+selIds.length+' selected paid</button>':"";
-      return '<div class="card group collapsed"><div class="group-head" data-grp="'+id+'"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select all lessons for this student"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'<span class="grp-caret" aria-hidden="true">›</span></span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite'+(sentKnown&&!sentFor(rows)?' need':'')+'" data-inv="'+id+'">'+(!sentKnown?'Invoice':(sentFor(rows)?'Resend invoice':'Send invoice'))+'</button>'+selBtn+'<button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
+      return '<div class="card group collapsed"><div class="group-head" data-grp="'+id+'"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select all lessons for this student"><span class="gname"><a class="snl" href="student?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'<span class="grp-caret" aria-hidden="true">›</span></span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite'+(sentKnown&&!sentFor(rows)?' need':'')+'" data-inv="'+id+'">'+(!sentKnown?'Invoice':(sentFor(rows)?'Resend invoice':'Send invoice'))+'</button>'+selBtn+'<button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
     }
     // group owing students by household
     var byHH={}; ids.forEach(function(id){var h=householdBy[id];if(h)(byHH[h]=byHH[h]||[]).push(id);});
@@ -403,7 +403,7 @@
       var cancelBtn=l.status==="cancelled"
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
         : '<button class="tact warn" data-cancel="'+l.id+'">Cancel</button>';
-      return lead+'<tr data-lid="'+l.id+'"'+attrs+'><td data-label=""><input type="checkbox" class="lchk" data-rsel="'+l.id+'"'+(selectedRecords[l.id]?" checked":"")+'></td><td data-label="Date">'+recDate(l.lesson_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a></td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
+      return lead+'<tr data-lid="'+l.id+'"'+attrs+'><td data-label=""><input type="checkbox" class="lchk" data-rsel="'+l.id+'"'+(selectedRecords[l.id]?" checked":"")+'></td><td data-label="Date">'+recDate(l.lesson_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a></td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
         '<td class="acts"><button class="tact" data-edit="'+l.id+'">Edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
     }).join("")
       // every row is newer than today (or filters hid it) — today belongs at the bottom
@@ -447,7 +447,7 @@
     $("rd-actions").innerHTML=(canPay?'<button class="btn rd-primary" id="rd-pay">Mark '+TL.sgd(l.amount)+' as paid</button>':'')+
       '<button class="btn" id="rd-edit">Edit or postpone</button>'+
       (canc?'<button class="btn" id="rd-restore">Restore lesson</button>':'<button class="btn" id="rd-cancel">Cancel lesson</button>')+
-      '<a class="btn" href="student.html?id='+encodeURIComponent(l.student_id)+'" style="grid-column:1/-1;text-decoration:none">Open student profile</a>'+
+      '<a class="btn" href="student?id='+encodeURIComponent(l.student_id)+'" style="grid-column:1/-1;text-decoration:none">Open student profile</a>'+
       '<button class="btn rd-del" id="rd-del">Delete lesson</button>';
     $("rd-edit").onclick=function(){closeRecDetail();openAdd(true,l);};
     $("rd-del").onclick=function(){closeRecDetail();deleteLesson(id);};
@@ -923,11 +923,11 @@
     }
     var byBank=!!payByBankById[studentId];
     if(byBank && !hasBank(profile)){
-      if(confirm("This student pays by bank transfer, but no bank details are saved yet. Open Settings to add them now?")) location.href="settings.html";
+      if(confirm("This student pays by bank transfer, but no bank details are saved yet. Open Settings to add them now?")) location.href="settings";
       return;
     }
     if(!byBank && !profile.paynow_id){
-      if(confirm("No PayNow details saved yet. Open Settings to add them now?")) location.href="settings.html";
+      if(confirm("No PayNow details saved yet. Open Settings to add them now?")) location.href="settings";
       return;
     }
     var lessons=(outGroups[studentId]||[]).slice()
@@ -968,10 +968,10 @@
     if(!profile){alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");return;}
     var byBank=anyBank(ids);
     if(byBank && !hasBank(profile)){
-      if(confirm("This household pays by bank transfer, but no bank details are saved yet. Open Settings to add them now?"))location.href="settings.html";
+      if(confirm("This household pays by bank transfer, but no bank details are saved yet. Open Settings to add them now?"))location.href="settings";
       return;
     }
-    if(!byBank && !profile.paynow_id){if(confirm("No PayNow details saved yet. Open Settings to add them now?"))location.href="settings.html";return;}
+    if(!byBank && !profile.paynow_id){if(confirm("No PayNow details saved yet. Open Settings to add them now?"))location.href="settings";return;}
     var all=[];
     ids.forEach(function(id){(outGroups[id]||[]).forEach(function(l){ if(!onlyIds||onlyIds.indexOf(String(l.id))>-1) all.push(Object.assign({_who:nameById[id]||"—"},l)); });});
     all.sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date)||String(a._who).localeCompare(String(b._who));});
