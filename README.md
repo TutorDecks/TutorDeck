@@ -199,6 +199,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Client view: one floating eye, instant hide (v195)
+
+The header button and "Exit client view" pill are replaced by one floating eye on every page (phones:
+bottom-left, clear of the + on the right; desktop: bottom-right). Tap = hide money **instantly, no
+reload**: `setClient(true)` sets the flag, applies the CSS (Home money card, calendar colours, student
+KPIs, money pages → "Money is hidden") and rewrites every `$123.45` already on screen to `$•••`;
+anything rendered later goes through `sgd()`. Tap again = show (reloads to re-render cleanly). The eye
+fills ink while on. One-time tip now points at the eye.
+
 ### 2026-10-18 — Client view: hide money everywhere (v194)
 
 T-Leng updates TutorDeck during class, where students can see the screen. **Client view** (eye button
