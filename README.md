@@ -199,6 +199,11 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — One-time Calendar tip (v191)
+
+`TL.coach("cal-filters", …)` under the view switcher, shown once per browser: on phones "swipe to change
+day/week + tap a colour in the key to hide/show those lessons"; on desktop just the colour-key filter.
+
 ### 2026-10-18 — Tapping an exam in the Calendar shows it first (v190)
 
 Exam chips open the same popover/bottom sheet as lessons: student, type · subject, date (and "in 5

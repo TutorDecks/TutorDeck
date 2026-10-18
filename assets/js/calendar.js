@@ -1065,6 +1065,10 @@
     document.addEventListener("click", hidePopover);
     window.addEventListener("resize", hidePopover);
     if(window.TL && TL.promotePastLessons) TL.promotePastLessons();
+    // One-time tip: the colour key doubles as a filter, and (on phones) the calendar swipes. Neither is obvious.
+    if(window.TL && TL.coach) TL.coach("cal-filters", $("cal-seg"),
+      isPhone() ? "<b>Two quick tips</b><br>Swipe the calendar left or right to change day or week. Tap a colour in the key below the calendar to hide or show those lessons."
+                : "<b>Tip</b><br>Tap a colour in the key below the calendar (Paid, Unpaid, Upcoming…) to hide or show those lessons.");
     ensureData();
   }
 
