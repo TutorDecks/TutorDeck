@@ -194,6 +194,7 @@ window.TL = (function () {
       setTimeout(function () { coach("client-view", document.getElementById("td-cv"),
         "<b>Client view</b><br>Student or parent nearby? Tap this eye to hide all money instantly. Tap it again to bring it back.", { above: true }); }, 700);
 
+    enhanceForms();
     // Phones: a page's main "add" button (marked data-fab) becomes a floating + at bottom right,
     // inside thumb reach. The original button stays in the DOM (hidden on phones) and does the work.
     var fabSrc = document.querySelector("[data-fab]");
@@ -263,6 +264,54 @@ window.TL = (function () {
     mountShell(active, session.user.email, meta[0], meta[1]);
     if (typeof init === "function") init(session.user);
   }
+
+  // ---- forms (every .modal-backdrop except small confirm dialogs) ----
+  // A ✕ in the corner, Save/Cancel pinned to the bottom (CSS), a bottom sheet on phones (CSS), and a
+  // tap outside never silently throws away what you've typed.
+  function formFields(m) { return Array.prototype.slice.call(m.querySelectorAll("input,select,textarea")); }
+  function formSnap(m) { return formFields(m).map(function (f) { return f.type === "checkbox" || f.type === "radio" ? f.checked : f.value; }).join("\u0001"); }
+  function formClose(bd) {   // use the form's own Cancel/Close button so each page's close logic runs
+    var btn = Array.prototype.slice.call(bd.querySelectorAll(".modal-actions .btn")).filter(function (b) { return /^(cancel|close)$/i.test(b.textContent.trim()); })[0];
+    if (btn) btn.click(); else bd.classList.remove("on");
+  }
+  function askDiscard(yes) {
+    var d = document.createElement("div");
+    d.className = "td-discard";
+    d.innerHTML = '<div class="td-discard-box" role="alertdialog" aria-label="Discard changes?"><b>Discard changes?</b>' +
+      '<p>What you\u2019ve typed in this form will be lost.</p><div class="td-discard-acts">' +
+      '<button type="button" class="btn" data-k>Keep editing</button><button type="button" class="btn td-discard-yes" data-d>Discard</button></div></div>';
+    document.body.appendChild(d);
+    d.addEventListener("click", function (e) {
+      if (e.target.hasAttribute("data-d")) { d.remove(); yes(); }
+      else if (e.target === d || e.target.hasAttribute("data-k")) d.remove();
+    });
+  }
+  function enhanceForms() {
+    document.querySelectorAll(".modal-backdrop").forEach(function (bd) {
+      if (bd.dataset.tdForm || /confirm/.test(bd.id)) return;
+      var m = bd.querySelector(".modal"); if (!m) return;
+      bd.dataset.tdForm = "1"; bd.classList.add("td-form");
+      var x = document.createElement("button");
+      x.type = "button"; x.className = "modal-x"; x.setAttribute("aria-label", "Close");
+      x.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+      x.addEventListener("click", function (e) { e.stopPropagation(); formClose(bd); });
+      m.insertBefore(x, m.firstChild);
+      // remember the form as it opened, to know later whether anything was typed
+      new MutationObserver(function () {
+        if (bd.classList.contains("on")) { if (!bd._open) { bd._open = true; setTimeout(function () { bd._snap = formSnap(m); m.scrollTop = 0; }, 0); } }
+        else bd._open = false;
+      }).observe(bd, { attributes: true, attributeFilter: ["class"] });
+      // a tap outside: close if nothing changed, otherwise ask first (runs before the page's own handler)
+      bd.addEventListener("click", function (e) {
+        if (e.target !== bd) return;
+        if (bd._snap != null && formSnap(m) !== bd._snap) {
+          e.stopImmediatePropagation(); e.preventDefault();
+          askDiscard(function () { formClose(bd); });
+        }
+      }, true);
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", enhanceForms); else enhanceForms();
 
   // ---- first-time tips ("coach marks") ----
   // TL.coach(key, anchorEl, html): shows a small tip under anchorEl ONCE per browser; "Got it" dismisses it

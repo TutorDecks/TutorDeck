@@ -199,6 +199,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Forms: ✕, pinned buttons, bottom sheet, no accidental discard (v199)
+
+Applied to every `.modal-backdrop` form in app.js (`enhanceForms()`), except small confirm dialogs:
+- A **✕** in the top-right corner (uses the form's own Cancel/Close button, so each page's close logic runs).
+- **Save / Cancel pinned** to the bottom of the form while you scroll (sticky `.modal-actions`).
+- **Phones:** the form is a bottom sheet (grab handle, rounded top, slides up), full width, up to the
+  top 44px, buttons full-height 46px.
+- **Tap outside:** closes if nothing changed; if you've typed anything it asks "Discard changes?"
+  (Keep editing / Discard) first. Snapshot taken when the form opens.
+
 ### 2026-10-18 — Forms don't wiggle sideways; student tabs per student (v198)
 
 - **Add/edit forms (Exams, Students, Planner, Calendar, Ledger):** on iPhone, Safari gives date/time
