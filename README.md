@@ -199,6 +199,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Calendar carousel: see the next day/week/month while you swipe (v186)
+
+The calendar renders three panes side by side, [previous | current | next], in a track inside a
+clipping viewport; dragging moves the track, so the neighbour you're swiping toward shows its real
+lessons. Past ~20% of the width (max 80px) it slides over and re-centres; otherwise it snaps back.
+Works in Day (timeline only; strip stays), Week and **Month (swipe now enabled)**; the arrows slide too.
+Neighbour months are fetched before painting (`ensureData` awaits `neighborMonths()`). Renderers draw
+into `calEl()` (a pane) instead of `#cal`; the current pane is painted last so popovers use its data.
+Reduce Motion: instant change.
+
 ### 2026-10-18 — Calendar slides when you move (v185)
 
 The view follows your finger on a sideways swipe (vertical scrolling untouched; `touch-action:pan-y`),

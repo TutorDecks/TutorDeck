@@ -125,6 +125,7 @@
     var jobs=[];
     if(!loadedStatic) jobs.push(loadStatic());
     monthsIn(visibleRange()).forEach(function(k){ jobs.push(fetchMonth(k)); });
+    neighborMonths().forEach(function(k){ jobs.push(fetchMonth(k)); });   // panes either side are real too
     await Promise.all(jobs);
     render();
     prefetchAdjacent();
@@ -236,7 +237,10 @@
       (sub?'<span class="ce-s">'+esc(sub)+'</span>':'')+
       (b.location?'<span class="ce-loc">◍ '+esc(b.location)+'</span>':'')+'</div>';
   }
-  function renderWeek(range){ renderGrid(range, [0,1,2,3,4,5,6].map(function(d){ return addDays(range.start,d); }), $("cal")); }
+  // Renderers paint into calEl(): normally #cal, but during render() each carousel pane in turn.
+  var HOST=null;
+  function calEl(){ return HOST || $("cal"); }
+  function renderWeek(range){ renderGrid(range, [0,1,2,3,4,5,6].map(function(d){ return addDays(range.start,d); }), calEl()); }
   // Time grid for any run of dates (1 = day, 3 = three days, 7 = week), Google-Calendar style.
   function renderGrid(range, dates, el, opts){
     opts=opts||{}; var HOUR_PX=opts.hourPx||HOUR_PX_BASE;
@@ -281,29 +285,29 @@
     wireEvents();
   }
 
-  // Phone day view: Mon–Sun strip (dots = lessons that day), then the chosen day's timeline.
-  function renderDay(range){
+  // Phone day view: a Mon–Sun strip (dots = lessons that day) that stays put, and the chosen day's
+  // timeline, which is what slides.
+  function dayStripHTML(range){
     var ws=range.start, blocks=buildBlocks(range), today=iso(new Date()), sel=iso(anchor);
     var count={}; blocks.forEach(function(b){ if(b.state!=="cancel") count[b.dateISO]=(count[b.dateISO]||0)+1; });
     var exD=examsByDate();
-    var strip='<div class="dstrip">'+[0,1,2,3,4,5,6].map(function(d){
+    return '<div class="dstrip">'+[0,1,2,3,4,5,6].map(function(d){
       var date=addDays(ws,d), k=iso(date), n=count[k]||0, dots="";
       for(var i=0;i<Math.min(n,3);i++) dots+='<i></i>';
       if((exD[k]||[]).length) dots+='<i class="ex"></i>';
       return '<button type="button" class="ds-d'+(k===sel?' on':'')+(k===today?' today':'')+'" data-day="'+k+'">'+
         '<span class="ds-w">'+DAY[d].charAt(0)+'</span><span class="ds-n">'+date.getDate()+'</span><span class="ds-dots">'+dots+'</span></button>';
     }).join("")+'</div>';
-    var d=new Date(anchor); d.setHours(0,0,0,0);
-    var nLess=count[sel]||0;
-    $("cal").innerHTML=strip+'<div class="dhead"><b>'+WDF[(d.getDay()+6)%7]+'</b> '+d.getDate()+' '+MON[d.getMonth()]+
-      '<span>'+(nLess?nLess+' lesson'+(nLess===1?'':'s'):'')+'</span></div><div id="cal-day"></div>';
-    // keep the hour range steady across the week so swiping between days doesn't jump
-    renderGrid(range, [d], $("cal-day"), { noHead:true, hourPx:68 });
-    $("cal").querySelectorAll(".ds-d").forEach(function(btn){
-      btn.addEventListener("click", function(e){ e.stopPropagation(); jumpTo(new Date(btn.dataset.day+"T00:00:00")); });
-    });
   }
-  function render3(range){ renderGrid(range, [0,1,2].map(function(i){ return addDays(range.start,i); }), $("cal"), { hourPx:56 }); }
+  function renderDay(range){
+    var d=new Date(anchor); d.setHours(0,0,0,0);
+    var n=buildBlocks({start:d,end:d}).filter(function(b){ return b.state!=="cancel"; }).length;
+    var host=calEl();
+    host.innerHTML='<div class="dhead"><b>'+WDF[(d.getDay()+6)%7]+'</b> '+d.getDate()+' '+MON[d.getMonth()]+
+      '<span>'+(n?n+' lesson'+(n===1?'':'s'):'')+'</span></div><div class="cal-dayg"></div>';
+    renderGrid(range, [d], host.querySelector(".cal-dayg"), { noHead:true, hourPx:68 });
+  }
+  function render3(range){ renderGrid(range, [0,1,2].map(function(i){ return addDays(range.start,i); }), calEl(), { hourPx:56 }); }
 
   // ---- month (day-cell grid) ----
   function chipHTML(b){
@@ -328,9 +332,9 @@
       cells+='<div class="cal-mday'+(inMonth?"":" other")+(isT?" today":"")+'" data-day="'+di+'">'+
         '<div class="md-num">'+d.getDate()+'</div>'+examHtml+shown+more+'</div>';
     }
-    $("cal").innerHTML='<div class="cal-mhead">'+head+'</div><div class="cal-month">'+cells+'</div>';
+    calEl().innerHTML='<div class="cal-mhead">'+head+'</div><div class="cal-month">'+cells+'</div>';
     // click a day (not a chip) → open that week
-    $("cal").querySelectorAll(".cal-mday").forEach(function(cell){
+    calEl().querySelectorAll(".cal-mday").forEach(function(cell){
       cell.addEventListener("click", function(){ anchor=new Date(cell.dataset.day+"T00:00:00"); setMode("week"); });
     });
     wireEvents();
@@ -368,7 +372,7 @@
       }).join("")+'</div>';
       html+='</section>';
     }
-    $("cal").innerHTML = any ? '<div class="ag">'+html+'</div>' :
+    calEl().innerHTML = any ? '<div class="ag">'+html+'</div>' :
       '<div class="cal-empty">No lessons this week. Add slots on the Planner, or tap + Add.</div>';
     wireEvents();
   }
@@ -380,19 +384,35 @@
     document.body.classList.toggle("cal-agenda", m==="list");
     document.body.classList.toggle("cal-dayview", m==="day");
     ["day","3day","week","list","month"].forEach(function(k){ var b=$("seg-"+k); if(b) b.classList.toggle("on", k===m); });
-    if(m==="month") renderMonth(visibleRange());
-    else if(m==="list") renderAgenda(visibleRange());
-    else if(m==="day") renderDay(visibleRange());
-    else if(m==="3day") render3(visibleRange());
-    else renderWeek(visibleRange());
+    var fn = m==="month"?renderMonth : m==="list"?renderAgenda : m==="day"?renderDay : m==="3day"?render3 : renderWeek;
+    var cal=$("cal");
+    cal.innerHTML=(m==="day"?'<div id="cal-stripbox">'+dayStripHTML(visibleRange())+'</div>':'')+
+      '<div class="cal-vp" id="cal-vp"><div class="cal-track" id="cal-track">'+
+      '<div class="cal-pane"></div><div class="cal-pane"></div><div class="cal-pane"></div></div></div>';
+    var panes=cal.querySelectorAll(".cal-pane"), save=anchor;
+    // neighbours first, the current view last (so popovers/clash data belong to what you see)
+    [[0,-1],[2,1],[1,0]].forEach(function(p){
+      var a=p[1]?stepAnchor(save,p[1]):save;
+      anchor=a; HOST=panes[p[0]];
+      try{ fn(rangeFor(a,m)); } finally{ HOST=null; anchor=save; }
+    });
+    fitHeight();
+    cal.querySelectorAll(".ds-d").forEach(function(btn){
+      btn.addEventListener("click", function(e){ e.stopPropagation(); jumpTo(new Date(btn.dataset.day+"T00:00:00")); });
+    });
   }
+  // The viewport takes the current pane's height so a short neighbour doesn't leave a gap.
+  function fitHeight(){ var vp=$("cal-vp"), p=vp&&vp.querySelectorAll(".cal-pane")[1]; if(p) vp.style.height=p.offsetHeight+"px"; }
+  // While moving, open the viewport to the tallest pane so the incoming one is never cut off.
+  function openHeight(){ var vp=$("cal-vp"); if(!vp) return; var h=0;
+    vp.querySelectorAll(".cal-pane").forEach(function(p){ h=Math.max(h,p.offsetHeight); }); vp.style.height=h+"px"; }
   if(phoneMQ.addEventListener) phoneMQ.addEventListener("change", function(){ if(loadedStatic) render(); });
 
   function wireEvents(){
-    $("cal").querySelectorAll("[data-ev]").forEach(function(node){
+    calEl().querySelectorAll("[data-ev]").forEach(function(node){
       node.addEventListener("click", function(e){ e.stopPropagation(); showPopover(node); });
     });
-    $("cal").querySelectorAll("[data-exam]").forEach(function(node){
+    calEl().querySelectorAll("[data-exam]").forEach(function(node){
       node.addEventListener("click", function(e){ e.stopPropagation(); location.href="exams.html?highlight="+encodeURIComponent(node.dataset.exam); });
     });
   }
@@ -875,49 +895,39 @@
     try{ localStorage.setItem("tl_cal_mode",m); }catch(e){}
     ensureData();
   }
-  function shiftRange(dir){
+  function stepAnchor(a, dir){
     var m=effMode();
-    if(m==="month") anchor=new Date(anchor.getFullYear(),anchor.getMonth()+dir,1);
-    else anchor=addDays(anchor,dir*stepDays(m));
-    return ensureData();
+    return m==="month" ? new Date(a.getFullYear(),a.getMonth()+dir,1) : addDays(a,dir*stepDays(m));
   }
+  function shiftRange(dir){ anchor=stepAnchor(anchor,dir); return ensureData(); }
 
   // ---- slide animation: the view follows your finger, then slides out and the new one in ----
   var reduceMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches:false };
   var sliding=false;
-  // Day view slides just the day's timeline (the week strip stays put); other views slide everything.
-  function slideEl(){ return (effMode()==="day" && $("cal-day")) || $("cal"); }
-  function setX(el, x, fade, ms, ease){
-    el.style.transition = ms ? ("transform "+ms+"ms "+ease+", opacity "+ms+"ms "+ease) : "none";
-    el.style.transform = x ? "translateX("+x+"px)" : "";
-    el.style.opacity = fade==null ? "" : String(fade);
+  // The track holds [previous | current | next]; it rests at -1/3 and moves with the finger.
+  function track(){ return $("cal-track"); }
+  function setTrack(px, pct, ms){
+    var t=track(); if(!t) return;
+    t.style.transition = ms ? "transform "+ms+"ms cubic-bezier(.2,.7,.2,1)" : "none";
+    t.style.transform = "translateX(calc("+(pct==null?-100/3:pct)+"% + "+(px||0)+"px))";
   }
-  function slideIn(dir){
-    var el=slideEl(); if(!el || reduceMotion.matches) return;
-    var w=el.offsetWidth||360;
-    setX(el, dir*w*0.3, 0, 0);
-    void el.offsetWidth;                       // commit the start position before animating
-    setX(el, 0, null, 200, "cubic-bezier(.2,.7,.2,1)");
-    setTimeout(function(){ el.style.transition=""; }, 220);
-  }
-  // Move by dir (+1 forward / -1 back) with the slide; fromX = where a drag left the view.
-  function go(dir, fromX){
+  // Move by dir (+1 forward / -1 back): slide the neighbour in, then re-centre on it.
+  function go(dir){
     if(sliding) return; hidePopover();
-    if(reduceMotion.matches){ shiftRange(dir); return; }
-    sliding=true;
-    var el=slideEl(), w=el.offsetWidth||360;
-    setX(el, -dir*w*0.35, 0, 140, "ease-in");
+    if(reduceMotion.matches || !track()){ shiftRange(dir); return; }
+    sliding=true; openHeight();
+    setTrack(0, dir>0 ? -200/3 : 0, 230);
     setTimeout(function(){
-      Promise.resolve(shiftRange(dir)).then(function(){ slideIn(dir); sliding=false; }, function(){ sliding=false; });
-    }, 140);
+      Promise.resolve(shiftRange(dir)).then(function(){ sliding=false; }, function(){ sliding=false; });
+    }, 240);
   }
   function jumpTo(date){
     var a=new Date(anchor); a.setHours(0,0,0,0); var b=new Date(date); b.setHours(0,0,0,0);
-    var dir=b>a?1:(b<a?-1:0);
-    anchor=date;
-    Promise.resolve(ensureData()).then(function(){ if(dir) slideIn(dir); });
+    var d=Math.round((b-a)/86400000), m=effMode();
+    if(m==="day" && Math.abs(d)===1){ go(d); return; }           // next/previous day: slide
+    anchor=date; ensureData();
   }
-  function goToday(){ hidePopover(); jumpTo(new Date()); }
+  function goToday(){ hidePopover(); anchor=new Date(); ensureData(); }
   // FAB in Day view: start the new lesson on the day you're looking at.
   function m2prefill(){ return effMode()==="day" ? { date: iso(anchor) } : undefined; }
 
@@ -951,7 +961,7 @@
     // The view tracks the finger once the gesture is clearly sideways; vertical scrolling is left alone.
     (function(){ var x0=null,y0=null,dx=0,axis=null, host=$("cal");
       host.addEventListener("touchstart", function(e){
-        if(sliding || effMode()==="month" || e.touches.length>1) { x0=null; return; }
+        if(sliding || e.touches.length>1) { x0=null; return; }
         if(e.target.closest(".dstrip")) { x0=null; return; }      // the day strip has its own taps
         var t=e.touches[0]; x0=t.clientX; y0=t.clientY; dx=0; axis=null;
       }, {passive:true});
@@ -961,15 +971,16 @@
         if(!axis){ if(Math.abs(mx)<10 && Math.abs(my)<10) return; axis = Math.abs(mx)>Math.abs(my)*1.2 ? "x" : "y"; }
         if(axis!=="x") return;
         e.preventDefault();                          // we own this gesture now
+        if(dx===0) openHeight();
         dx=mx;
-        if(!reduceMotion.matches){ var el=slideEl(), w=el.offsetWidth||360; setX(el, dx, 1-Math.min(Math.abs(dx)/w,1)*0.4, 0); }
+        if(!reduceMotion.matches) setTrack(dx);
       }, {passive:false});
       function end(){
         if(x0===null) return; var was=axis; x0=null; axis=null;
         if(was!=="x") return;
-        var el=slideEl();
-        if(Math.abs(dx)>60) go(dx<0?1:-1, dx);
-        else if(el) setX(el, 0, null, 180, "ease-out");   // not far enough: snap back
+        var w=($("cal-vp")||{}).offsetWidth||360;
+        if(Math.abs(dx)>Math.min(80,w*0.2)) go(dx<0?1:-1);
+        else { setTrack(0, null, 180); setTimeout(fitHeight, 190); }   // not far enough: snap back
       }
       host.addEventListener("touchend", end, {passive:true});
       host.addEventListener("touchcancel", end, {passive:true});
