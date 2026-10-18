@@ -199,6 +199,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Calendar hour range only grows (v189)
+
+The shared hour range now also counts every lesson already loaded (not just the three swipeable
+weeks), and it only ever widens while the page is open (`stickyBd`). So postponed or one-off lessons
+outside your Planner hours can't make the grid shrink and grow as you swipe; at most it widens once.
+
 ### 2026-10-18 — Calendar grid never jumps while swiping (v188)
 
 - Hours come from **your teaching hours**: every active weekly Planner slot, widened only if a lesson in

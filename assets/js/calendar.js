@@ -238,7 +238,7 @@
       (b.location?'<span class="ce-loc">◍ '+esc(b.location)+'</span>':'')+'</div>';
   }
   // Renderers paint into calEl(): normally #cal, but during render() each carousel pane in turn.
-  var HOST=null, SHARED=null;
+  var HOST=null, SHARED=null, stickyBd=null;
   function calEl(){ return HOST || $("cal"); }
   function renderWeek(range){ renderGrid(range, [0,1,2,3,4,5,6].map(function(d){ return addDays(range.start,d); }), calEl()); }
   // Time grid for any run of dates (1 = day, 3 = three days, 7 = week), Google-Calendar style.
@@ -406,7 +406,13 @@
       // falls outside them, so swiping never rescales the grid.
       var hp=m==="day"?68:(m==="3day"?56:HOUR_PX_BASE);
       var base=slots.map(function(sl){ return { startMin:toMin(sl.start_time), endMin:toMin(sl.end_time) }; });
-      var bd=bounds(base.concat(buildBlocks(span)));
+      // Also count every lesson already loaded (this month and its neighbours), and only ever widen
+      // while the page is open — so landing on a new week never rescales the grid.
+      var loaded=[]; Object.keys(lessonCache).forEach(function(k){ (lessonCache[k]||[]).forEach(function(l){
+        if(l.status!=="cancelled" && l.start_time && l.end_time) loaded.push({ startMin:toMin(l.start_time), endMin:toMin(l.end_time) }); }); });
+      var bd=bounds(base.concat(loaded, buildBlocks(span)));
+      if(stickyBd) bd={ start:Math.min(bd.start,stickyBd.start), end:Math.max(bd.end,stickyBd.end) };
+      stickyBd=bd;
       SHARED={ noGutter:true, bd:bd, hourPx:hp, forceAllday:true, slimAllday:true };
       var gut="";
       for(var h=0; h<(bd.end-bd.start)/60; h++) gut+='<div class="cal-hr" style="height:'+hp+'px"><span>'+hourLabel(bd.start+h*60)+'</span></div>';
