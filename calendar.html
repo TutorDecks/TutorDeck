@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=184">
+<link rel="stylesheet" href="assets/css/app.css?v=194">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -157,6 +157,41 @@
   .cal-right .seg button{padding:8px 16px}
   .cal-addbtn{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 16px;border-radius:10px}
   .cal-card{border-radius:16px}
+  #cal{touch-action:pan-y}
+  /* carousel: [previous | current | next] side by side; the track moves, the card clips */
+  .cal-vp{overflow:hidden;position:relative;transition:height .2s ease}
+  .cal-track{display:flex;width:300%;align-items:flex-start;transform:translateX(-33.3333%);will-change:transform}
+  .cal-pane{flex:0 0 33.3333%;width:33.3333%;min-width:0}
+  /* grid views: hour labels fixed on the left, only the day columns slide */
+  .cal-gwrap{display:flex;align-items:flex-start}
+  .cal-gfix{flex:0 0 54px;position:relative;z-index:1;background:var(--paper)}
+  .cal-gwrap .cal-vp{flex:1;min-width:0;border-left:1px solid var(--line)}
+  .cal-gwrap .cal-day-h:first-child,.cal-gwrap .cal-ad-cell:first-child,.cal-gwrap .cal-col:first-child{border-left:none}
+  .cal-gspace{border-bottom:1px solid transparent}
+  /* status filters = tappable pills; symbol key = a quiet line under them */
+  .cal-keys{flex-direction:column;align-items:flex-start;gap:10px}
+  .cal-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+  .leg-lbl{font-size:12px;font-weight:700;color:var(--muted);margin-right:2px}
+  .cal-legend .leg{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+    padding:6px 11px;border-radius:20px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;color:var(--ink);text-decoration:none}
+  .cal-legend .leg:hover{border-color:#D6D2C8;color:var(--ink)}
+  .cal-legend .leg.off{opacity:1;text-decoration:none;background:transparent;border-style:dashed;color:var(--muted)}
+  .cal-legend .leg.off .cal-sw{opacity:.35}
+  .cal-symkey{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--muted)}
+  .cal-symkey b{color:var(--ink);font-weight:800;margin-right:2px}
+  .cal-symkey b.sym-clash{color:var(--owed)}
+  /* Client view: no paid/unpaid colours or filters — every lesson looks like an ordinary booking */
+  .client-view .is-paid,.client-view .is-unpaid{background:rgba(19,35,63,.10);border-color:rgba(19,35,63,.4);color:var(--navy)}
+  .client-view .cal-chip.is-paid,.client-view .cal-chip.is-unpaid{background:rgba(19,35,63,.08);border-color:var(--navy);color:var(--navy)}
+  .client-view .cal-legend [data-cat="paid"],.client-view .cal-legend [data-cat="unpaid"]{display:none}
+  .client-view .ag-row.is-paid .ag-bar,.client-view .ag-row.is-unpaid .ag-bar{background:var(--navy)}
+  .client-view .ag-row.is-paid .ag-tag,.client-view .ag-row.is-unpaid .ag-tag{display:none}
+  .cal-gwrap .cal-allday{height:28px;overflow:hidden}
+  .cal-gwrap .cal-ad-cell{flex-direction:row;align-items:center;gap:2px;padding:2px 3px;overflow:hidden;min-width:0}
+  .cal-gwrap .cal-ad-cell .cal-chip{flex:1;min-width:0;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ad-more{flex:none;font-size:10px;font-weight:800;color:var(--owed)}
+  /* every day number gets the same box as "today", so weeks with and without today line up */
+  .cal-gwrap .cal-day-h b{display:grid;place-items:center;width:26px;height:26px;margin:2px auto 0;line-height:1}
   .cal-day-h b{font-family:var(--sans);font-weight:800}
   .cal-day-h.today{background:var(--accent-soft)}
   .cal-col.today{background:rgba(15,118,110,.035)}
@@ -235,6 +270,7 @@
     .cal-fab:active{transform:scale(.95)}
     #view{padding-bottom:70px}
     .cal-gutter,.cal-gutter-h{flex-basis:44px}
+    .cal-gfix{flex-basis:44px}
     .cal-hr span{font-size:10px;right:5px}
     .cols-7 .cal-ev{padding:2px 3px}
     .cols-7 .cal-ev .ce-n{overflow-wrap:normal;word-break:normal;font-size:10px;line-height:1.15}
@@ -292,16 +328,14 @@
   </div>
   <div class="cal-foot">
     <div class="cal-keys">
-      <div class="cal-legend" title="Tap to show or hide">
-        <button class="leg" data-cat="paid"><i class="cal-sw sw-paid"></i>Paid</button>
-        <button class="leg" data-cat="unpaid"><i class="cal-sw sw-unpaid"></i>Unpaid</button>
-        <button class="leg" data-cat="sched"><i class="cal-sw sw-sched"></i>Upcoming</button>
-        <button class="leg" data-cat="proj"><i class="cal-sw sw-proj"></i>Not logged</button>
-        <button class="leg" data-cat="cancel"><i class="cal-sw sw-cancel"></i>Cancelled</button>
+      <div class="cal-legend" role="group" aria-label="Show or hide lessons by status">
+        <button class="leg" data-cat="paid" aria-pressed="true"><i class="cal-sw sw-paid"></i>Paid</button>
+        <button class="leg" data-cat="unpaid" aria-pressed="true"><i class="cal-sw sw-unpaid"></i>Unpaid</button>
+        <button class="leg" data-cat="sched" aria-pressed="true"><i class="cal-sw sw-sched"></i>Upcoming</button>
+        <button class="leg" data-cat="proj" aria-pressed="true"><i class="cal-sw sw-proj"></i>Not logged</button>
+        <button class="leg" data-cat="cancel" aria-pressed="true"><i class="cal-sw sw-cancel"></i>Cancelled</button>
       </div>
-      <span class="leg-key"><i class="cal-sw sw-clash"></i>Clash</span>
-      <span class="leg-key"><b class="leg-sym">✦</b>One-off</span>
-      <span class="leg-key"><b class="leg-sym">↻</b>Postponed</span>
+      <div class="cal-symkey"><span><b>✦</b> One-off</span><span><b>↻</b> Postponed</span><span><b class="sym-clash">⚠</b> Clash (red outline)</span></div>
     </div>
     <div class="cal-gsync">
       <div class="gsync-row bare" id="gsync-row">
@@ -358,9 +392,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=184"></script>
-<script src="assets/js/supabase.js?v=184"></script>
-<script src="assets/js/app.js?v=184"></script>
-<script src="assets/js/calendar.js?v=184"></script>
+<script src="assets/js/config.js?v=194"></script>
+<script src="assets/js/supabase.js?v=194"></script>
+<script src="assets/js/app.js?v=194"></script>
+<script src="assets/js/calendar.js?v=194"></script>
 </body>
 </html>

@@ -75,7 +75,7 @@
     if($("sp-av"))$("sp-av").textContent=((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();
     $("p-actions").innerHTML='<button class="btn" id="p-edit">Edit</button> <a class="btn" href="ledger.html">Ledger</a>';
     $("p-edit").addEventListener("click",openEdit);
-    TL.coach("parent-view",$("vm-client"),"<b>Parent view</b><br>Showing this page to a parent? Tap here to hide fees and editing. They'll see scores and lesson notes only.");
+    
   }
   function openEdit(){
     if(!student)return;
@@ -493,8 +493,10 @@
       window.scrollTo(0,0);
       var t=$("vm-tutor"),c=$("vm-client"); if(t)t.classList.toggle("on",!client); if(c)c.classList.toggle("on",client);
     }
-    if($("vm-tutor"))$("vm-tutor").addEventListener("click",function(){setViewMode(false);});
-    if($("vm-client"))$("vm-client").addEventListener("click",function(){setViewMode(true);});
+    // The app-wide Client view switch drives this page too (it used to be a page-only "Parent view").
+    if($("vm-tutor"))$("vm-tutor").addEventListener("click",function(){TL.setClient(false);});
+    if($("vm-client"))$("vm-client").addEventListener("click",function(){TL.setClient(true);});
+    // Client view only hides money here (see student.html); notes and editing stay usable mid-lesson.
     // Tabs: Lessons · Notes · Progress · Schedule (remembered per browser)
     function setTab(t){
       document.querySelectorAll("#sp-tabs [data-tab]").forEach(function(b){b.classList.toggle("on",b.dataset.tab===t);});
