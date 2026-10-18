@@ -199,6 +199,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — No spinner while signing in (v207)
+
+The boot screen (shown for a moment while sign-in is checked, before the page mounts) still painted
+the pre-redesign navy sidebar strip with a spinning circle. It now paints the outline of the real
+layout: the white top bar (desktop) or white tab bar (phone) and a grey shimmering title placeholder,
+then the page's own skeletons take over. Removed three stale `body:has(#view)` overrides.
+
 ### 2026-10-18 — Home: skeleton placeholders instead of "Loading…" (v206)
 
 Home now shows its shape immediately: grey shimmering bars for the money figures and the week count,
