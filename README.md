@@ -206,8 +206,8 @@ Applied to every `.modal-backdrop` form in app.js (`enhanceForms()`), except sma
 - **Save / Cancel pinned** to the bottom of the form while you scroll (sticky `.modal-actions`).
 - **Phones:** the form is a bottom sheet (grab handle, rounded top, slides up), full width, up to the
   top 44px, buttons full-height 46px.
-- **Tap outside:** closes if nothing changed; if you've typed anything it asks "Discard changes?"
-  (Keep editing / Discard) first. Snapshot taken when the form opens.
+- **Tap outside or ✕:** closes if nothing changed; if you've typed anything it asks "Discard changes?"
+  (Keep editing / Discard) first. **Cancel** always closes straight away. Snapshot taken when the form opens.
 
 ### 2026-10-18 — Forms don't wiggle sideways; student tabs per student (v198)
 

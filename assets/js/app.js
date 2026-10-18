@@ -294,7 +294,13 @@ window.TL = (function () {
       var x = document.createElement("button");
       x.type = "button"; x.className = "modal-x"; x.setAttribute("aria-label", "Close");
       x.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
-      x.addEventListener("click", function (e) { e.stopPropagation(); formClose(bd); });
+      // ✕ is small and near where your thumb reaches for the top fields, so it asks if you've typed anything.
+      // (Cancel is a big, labelled button: it closes straight away.)
+      x.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (bd._snap != null && formSnap(m) !== bd._snap) askDiscard(function () { formClose(bd); });
+        else formClose(bd);
+      });
       m.insertBefore(x, m.firstChild);
       // remember the form as it opened, to know later whether anything was typed
       new MutationObserver(function () {
