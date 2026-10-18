@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=186">
+<link rel="stylesheet" href="assets/css/app.css?v=187">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -162,6 +162,12 @@
   .cal-vp{overflow:hidden;position:relative;transition:height .2s ease}
   .cal-track{display:flex;width:300%;align-items:flex-start;transform:translateX(-33.3333%);will-change:transform}
   .cal-pane{flex:0 0 33.3333%;width:33.3333%;min-width:0}
+  /* grid views: hour labels fixed on the left, only the day columns slide */
+  .cal-gwrap{display:flex;align-items:flex-start}
+  .cal-gfix{flex:0 0 54px;position:relative;z-index:1;background:var(--paper)}
+  .cal-gwrap .cal-vp{flex:1;min-width:0;border-left:1px solid var(--line)}
+  .cal-gwrap .cal-day-h:first-child,.cal-gwrap .cal-ad-cell:first-child,.cal-gwrap .cal-col:first-child{border-left:none}
+  .cal-gspace{border-bottom:1px solid transparent}
   .cal-day-h b{font-family:var(--sans);font-weight:800}
   .cal-day-h.today{background:var(--accent-soft)}
   .cal-col.today{background:rgba(15,118,110,.035)}
@@ -240,6 +246,7 @@
     .cal-fab:active{transform:scale(.95)}
     #view{padding-bottom:70px}
     .cal-gutter,.cal-gutter-h{flex-basis:44px}
+    .cal-gfix{flex-basis:44px}
     .cal-hr span{font-size:10px;right:5px}
     .cols-7 .cal-ev{padding:2px 3px}
     .cols-7 .cal-ev .ce-n{overflow-wrap:normal;word-break:normal;font-size:10px;line-height:1.15}
@@ -363,9 +370,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=186"></script>
-<script src="assets/js/supabase.js?v=186"></script>
-<script src="assets/js/app.js?v=186"></script>
-<script src="assets/js/calendar.js?v=186"></script>
+<script src="assets/js/config.js?v=187"></script>
+<script src="assets/js/supabase.js?v=187"></script>
+<script src="assets/js/app.js?v=187"></script>
+<script src="assets/js/calendar.js?v=187"></script>
 </body>
 </html>

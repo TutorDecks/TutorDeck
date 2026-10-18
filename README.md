@@ -199,6 +199,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Hour labels stay put; only the days slide (v187)
+
+Day and Week views draw the hour column once, outside the carousel (`.cal-gfix`), and the three panes
+render without their own gutter (`renderGrid` opts `noGutter`, shared `bd` hour range, `forceAllday`
+so exam rows line up; `alignGutter()` sizes the spacer to the pane headers). The shared range covers
+the three days (Day) or three weeks (Week) you can swipe between. Month unchanged.
+
 ### 2026-10-18 — Calendar carousel: see the next day/week/month while you swipe (v186)
 
 The calendar renders three panes side by side, [previous | current | next], in a track inside a

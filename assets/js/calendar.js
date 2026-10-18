@@ -238,19 +238,20 @@
       (b.location?'<span class="ce-loc">◍ '+esc(b.location)+'</span>':'')+'</div>';
   }
   // Renderers paint into calEl(): normally #cal, but during render() each carousel pane in turn.
-  var HOST=null;
+  var HOST=null, SHARED=null;
   function calEl(){ return HOST || $("cal"); }
   function renderWeek(range){ renderGrid(range, [0,1,2,3,4,5,6].map(function(d){ return addDays(range.start,d); }), calEl()); }
   // Time grid for any run of dates (1 = day, 3 = three days, 7 = week), Google-Calendar style.
   function renderGrid(range, dates, el, opts){
-    opts=opts||{}; var HOUR_PX=opts.hourPx||HOUR_PX_BASE;
+    opts=Object.assign({}, opts||{}, SHARED||{}); var HOUR_PX=opts.hourPx||HOUR_PX_BASE;
+    var G=!opts.noGutter;   // in the carousel the hour labels live outside, fixed
     var blocks=buildBlocks(range), keys=dates.map(iso);
     var byCol=dates.map(function(){ return []; });
     blocks.forEach(function(b){ var i=keys.indexOf(b.dateISO); if(i>=0) byCol[i].push(b); });
     byCol.forEach(laneAssign);
     lastBlocks=blocks;
     var shown=[].concat.apply([],byCol);
-    var bd=bounds(opts.boundsFrom||shown), hours=(bd.end-bd.start)/60, gridH=hours*HOUR_PX, today=iso(new Date());
+    var bd=opts.bd||bounds(opts.boundsFrom||shown), hours=(bd.end-bd.start)/60, gridH=hours*HOUR_PX, today=iso(new Date());
     var headCells="";
     dates.forEach(function(date){
       var isT=iso(date)===today;
@@ -275,12 +276,13 @@
       cols+='<div class="cal-col'+(isTc?" today":"")+'">'+evs+'</div>';
     });
     var gridBg="background-image:repeating-linear-gradient(var(--line) 0 1px,transparent 1px "+HOUR_PX+"px)";
-    el.innerHTML=(opts.noHead?'':'<div class="cal-head"><div class="cal-gutter-h"></div>'+headCells+'</div>')+
-      (hasEx?('<div class="cal-allday"><div class="cal-gutter-h"></div>'+adCells+'</div>'):'')+
-      '<div class="cal-body"><div class="cal-gutter">'+gutter+'</div>'+
+    var gh=G?'<div class="cal-gutter-h"></div>':'';
+    el.innerHTML=(opts.noHead?'':'<div class="cal-head">'+gh+headCells+'</div>')+
+      ((hasEx||opts.forceAllday)?('<div class="cal-allday">'+gh+adCells+'</div>'):'')+
+      '<div class="cal-body">'+(G?'<div class="cal-gutter">'+gutter+'</div>':'')+
       '<div class="cal-cols cols-'+dates.length+'" style="height:'+gridH+'px;'+gridBg+'">'+cols+'</div></div>';
-    if(!shown.length && opts.noHead){ el.innerHTML='<div class="cal-empty">Nothing on '+WDF[(dates[0].getDay()+6)%7]+'. Swipe or tap another day.</div>'; wireEvents(); return; }
-    if(!shown.length)
+    if(!shown.length && opts.noHead && G){ el.innerHTML='<div class="cal-empty">Nothing on '+WDF[(dates[0].getDay()+6)%7]+'. Swipe or tap another day.</div>'; wireEvents(); return; }
+    if(!shown.length && G)
       el.innerHTML+='<div class="cal-empty">'+(dates.length===1?'No lessons on '+WDF[(dates[0].getDay()+6)%7]+'.':'No lessons or recurring slots in these days. Add slots on the Planner, or tap +.')+'</div>';
     wireEvents();
   }
@@ -385,21 +387,47 @@
     document.body.classList.toggle("cal-dayview", m==="day");
     ["day","3day","week","list","month"].forEach(function(k){ var b=$("seg-"+k); if(b) b.classList.toggle("on", k===m); });
     var fn = m==="month"?renderMonth : m==="list"?renderAgenda : m==="day"?renderDay : m==="3day"?render3 : renderWeek;
-    var cal=$("cal");
-    cal.innerHTML=(m==="day"?'<div id="cal-stripbox">'+dayStripHTML(visibleRange())+'</div>':'')+
-      '<div class="cal-vp" id="cal-vp"><div class="cal-track" id="cal-track">'+
+    var cal=$("cal"), grid=(m==="week"||m==="day"||m==="3day");
+    var vp='<div class="cal-vp" id="cal-vp"><div class="cal-track" id="cal-track">'+
       '<div class="cal-pane"></div><div class="cal-pane"></div><div class="cal-pane"></div></div></div>';
+    cal.innerHTML=(m==="day"?'<div id="cal-stripbox">'+dayStripHTML(visibleRange())+'</div>':'')+
+      (grid?'<div class="cal-gwrap"><div class="cal-gfix" id="cal-gfix"></div>'+vp+'</div>':vp);
     var panes=cal.querySelectorAll(".cal-pane"), save=anchor;
+    SHARED=null;
+    if(grid){
+      // One hour range for all three panes, so their rows line up with the fixed hour labels.
+      var d0=new Date(save); d0.setHours(0,0,0,0);
+      var span = m==="day" ? { start:addDays(d0,-1), end:addDays(d0,1) }     // just the three days you can swipe between
+                           : { start:rangeFor(stepAnchor(save,-1),m).start, end:rangeFor(stepAnchor(save,1),m).end };
+      var hp=m==="day"?68:(m==="3day"?56:HOUR_PX_BASE), bd=bounds(buildBlocks(span));
+      var exD=examsByDate(), anyEx=false;
+      for(var dd=new Date(span.start); iso(dd)<=iso(span.end); dd=addDays(dd,1)) if((exD[iso(dd)]||[]).length) anyEx=true;
+      SHARED={ noGutter:true, bd:bd, hourPx:hp, forceAllday:anyEx };
+      var gut="";
+      for(var h=0; h<(bd.end-bd.start)/60; h++) gut+='<div class="cal-hr" style="height:'+hp+'px"><span>'+hourLabel(bd.start+h*60)+'</span></div>';
+      $("cal-gfix").innerHTML='<div class="cal-gspace"></div>'+gut;
+    }
     // neighbours first, the current view last (so popovers/clash data belong to what you see)
     [[0,-1],[2,1],[1,0]].forEach(function(p){
       var a=p[1]?stepAnchor(save,p[1]):save;
       anchor=a; HOST=panes[p[0]];
       try{ fn(rangeFor(a,m)); } finally{ HOST=null; anchor=save; }
     });
+    SHARED=null;
+    if(grid) alignGutter();
     fitHeight();
     cal.querySelectorAll(".ds-d").forEach(function(btn){
       btn.addEventListener("click", function(e){ e.stopPropagation(); jumpTo(new Date(btn.dataset.day+"T00:00:00")); });
     });
+  }
+  // Line the fixed hour labels up with the panes: equal exam rows, then a spacer as tall as the headers.
+  function alignGutter(){
+    var vp=$("cal-vp"), g=$("cal-gfix"); if(!vp||!g) return;
+    var ad=vp.querySelectorAll(".cal-allday"), mh=0;
+    ad.forEach(function(x){ x.style.minHeight=""; mh=Math.max(mh,x.offsetHeight); });
+    ad.forEach(function(x){ x.style.minHeight=mh+"px"; });
+    var cur=vp.querySelectorAll(".cal-pane")[1], body=cur&&cur.querySelector(".cal-body");
+    if(body) g.querySelector(".cal-gspace").style.height=(body.getBoundingClientRect().top-cur.getBoundingClientRect().top)+"px";
   }
   // The viewport takes the current pane's height so a short neighbour doesn't leave a gap.
   function fitHeight(){ var vp=$("cal-vp"), p=vp&&vp.querySelectorAll(".cal-pane")[1]; if(p) vp.style.height=p.offsetHeight+"px"; }
