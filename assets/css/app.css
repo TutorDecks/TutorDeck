@@ -1,4 +1,4 @@
-/* v197 */
+/* v198 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -605,3 +605,13 @@ a.btn{text-decoration:none}
   .cv-fab{left:18px;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:46px;height:46px;border-radius:23px}
 }
 .td-tip.above .td-tip-arrow{top:auto;bottom:-6px}
+
+/* ---- v198: add/edit forms never scroll sideways on phones (iOS gives date/time inputs a min width) ---- */
+.modal-backdrop{overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y}
+.modal{overflow-x:hidden;max-width:min(460px,100%);box-sizing:border-box}
+.modal .row2>*,.modal .field{min-width:0}
+.field input,.field select,.field textarea{min-width:0;max-width:100%;box-sizing:border-box}
+.field input[type=date],.field input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-height:44px;text-align:left}
+.field input[type=date]::-webkit-date-and-time-value,.field input[type=time]::-webkit-date-and-time-value{text-align:left}
+body:has(.modal-backdrop.on){overflow:hidden}   /* page behind an open form stays still */
+@media(max-width:520px){ .modal-backdrop{padding:12px} .modal{padding:20px 18px 18px} }
