@@ -1,4 +1,4 @@
-/* v207 */
+/* v208 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -678,6 +678,14 @@ body:has(.modal-backdrop.on){overflow:hidden}   /* page behind an open form stay
 .sk-on .mprog-track{opacity:.5}
 .sk-on .mc-v{max-width:180px}
 .sk-on .mc-n{max-width:210px}
+/* v208: any "Loading…" line or "—" figure marked data-sk is a grey shimmer bar until the page writes
+   real content into it (app.js drops the attribute on the first write). */
+[data-sk]{color:transparent!important;width:fit-content;max-width:100%;min-width:3.2em;border-radius:7px;user-select:none;
+  background:linear-gradient(90deg,#EFECE6 25%,#F7F5F1 37%,#EFECE6 63%);background-size:400% 100%;animation:td-sk 1.4s ease infinite}
+span[data-sk],b[data-sk]{display:inline-block;line-height:1.15}
+.week>.sk-rows{grid-column:1/-1;max-width:640px}
+[data-sk] *{visibility:hidden}
+@media(prefers-reduced-motion:reduce){[data-sk]{animation:none}}
 .sk-on .mprog-legend{visibility:hidden}
 .sk-on #exam-sec .teach-sub{color:transparent!important;display:inline-block;min-width:160px;border-radius:7px;
   background:linear-gradient(90deg,#EFECE6 25%,#F7F5F1 37%,#EFECE6 63%);background-size:400% 100%;animation:td-sk 1.4s ease infinite}
