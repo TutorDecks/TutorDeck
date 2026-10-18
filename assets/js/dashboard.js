@@ -341,7 +341,12 @@
     if(year)renderYear();   // render while visible so the chart sizes correctly
   }
 
+  // Skeleton placeholders show the page's shape while data loads; real content replaces them in place.
+  function doneLoading(){ document.querySelectorAll(".sk-on").forEach(function(e){ e.classList.remove("sk-on"); }); }
   async function load(){
+    try { await loadInner(); } finally { doneLoading(); }
+  }
+  async function loadInner(){
     await TL.promotePastLessons();
     var st=await window.sb.from("students").select("id,name");
     var nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
