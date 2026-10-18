@@ -199,6 +199,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Swipe a form down to close it (v200)
+
+- **Phones:** drag the form sheet down to close it (it follows your finger and the page fades in; a
+  short drag springs back). Only starts when the form is scrolled to the top and the drag is clearly
+  downward, and not from inside a field. If you've typed anything it asks "Discard changes?" first.
+- **✕** is bigger (44px) and responds to the touch itself (`touchend`), since Raphael's iPhone didn't
+  react to it. Also: the previous ✕ change shipped without a cache-bust bump; this is v200.
+
 ### 2026-10-18 — Forms: ✕, pinned buttons, bottom sheet, no accidental discard (v199)
 
 Applied to every `.modal-backdrop` form in app.js (`enhanceForms()`), except small confirm dialogs:

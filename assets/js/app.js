@@ -296,11 +296,49 @@ window.TL = (function () {
       x.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
       // ✕ is small and near where your thumb reaches for the top fields, so it asks if you've typed anything.
       // (Cancel is a big, labelled button: it closes straight away.)
-      x.addEventListener("click", function (e) {
-        e.stopPropagation();
+      function tryClose() {
         if (bd._snap != null && formSnap(m) !== bd._snap) askDiscard(function () { formClose(bd); });
         else formClose(bd);
-      });
+      }
+      // respond to the touch itself (iOS can swallow clicks on small icons inside a scrolling sheet)
+      var xTouched = false;
+      x.addEventListener("touchend", function (e) { e.preventDefault(); e.stopPropagation(); xTouched = true; tryClose(); setTimeout(function () { xTouched = false; }, 400); });
+      x.addEventListener("click", function (e) { e.stopPropagation(); if (!xTouched) tryClose(); });
+
+      // Phones: drag the sheet down to close it (like iOS sheets). Starts only when the form is
+      // scrolled to the top and the drag is clearly downward; a short drag springs back.
+      var y0 = null, x0 = 0, dy = 0, dragging = false;
+      m.addEventListener("touchstart", function (e) {
+        if (!window.matchMedia("(max-width:820px)").matches || e.touches.length > 1) { y0 = null; return; }
+        if (e.target.closest("input,select,textarea,.modal-x")) { y0 = null; return; }
+        y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; dragging = false;
+      }, { passive: true });
+      m.addEventListener("touchmove", function (e) {
+        if (y0 === null) return;
+        var t = e.touches[0], my = t.clientY - y0, mx = t.clientX - x0;
+        if (!dragging) {
+          if (my > 8 && my > Math.abs(mx) && m.scrollTop <= 0) { dragging = true; m.style.transition = "none"; }
+          else if (Math.abs(my) > 8 || Math.abs(mx) > 8) { y0 = null; return; }
+          else return;
+        }
+        e.preventDefault();
+        dy = Math.max(0, my);
+        m.style.transform = "translateY(" + dy + "px)";
+        bd.style.background = "rgba(19,24,40," + (0.5 * Math.max(0.2, 1 - dy / 400)) + ")";
+      }, { passive: false });
+      function endDrag() {
+        if (y0 === null) return; var was = dragging; y0 = null; dragging = false;
+        if (!was) return;
+        var close = dy > Math.min(140, m.offsetHeight * 0.25);
+        m.style.transition = "transform .2s ease"; bd.style.background = "";
+        if (!close) { m.style.transform = ""; return; }
+        var dirty = bd._snap != null && formSnap(m) !== bd._snap;
+        if (dirty) { m.style.transform = ""; askDiscard(function () { formClose(bd); }); return; }
+        m.style.transform = "translateY(100%)";
+        setTimeout(function () { formClose(bd); m.style.transform = ""; m.style.transition = ""; }, 190);
+      }
+      m.addEventListener("touchend", endDrag, { passive: true });
+      m.addEventListener("touchcancel", endDrag, { passive: true });
       m.insertBefore(x, m.firstChild);
       // remember the form as it opened, to know later whether anything was typed
       new MutationObserver(function () {
