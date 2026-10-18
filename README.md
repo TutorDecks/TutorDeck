@@ -199,6 +199,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Calendar tips point at what they explain (v192)
+
+Two one-time tips instead of one under the view switcher: on phones **"Swipe the calendar"** points at
+the calendar's day header first; after "Got it", **"Filter the calendar"** points at the colour key — but
+only once the key is scrolled into view (IntersectionObserver), so it's never shown off-screen. Desktop
+gets just the filter tip. Keys `td_tip_cal-swipe`, `td_tip_cal-filters`.
+
 ### 2026-10-18 — One-time Calendar tip (v191)
 
 `TL.coach("cal-filters", …)` under the view switcher, shown once per browser: on phones "swipe to change

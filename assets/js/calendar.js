@@ -993,6 +993,27 @@
     if(m==="day" && Math.abs(d)===1){ go(d); return; }           // next/previous day: slide
     anchor=date; ensureData();
   }
+  // One-time tips, each pointing at what it explains, one at a time:
+  // phones first get "swipe" on the calendar itself, then "tap a colour" on the key below it.
+  function showTips(){
+    if(!(window.TL && TL.coach)) return;
+    // Wait until the key is actually on screen, so the tip isn't shown where nobody can see it.
+    function filters(){
+      var key=document.querySelector(".cal-legend"); if(!key) return;
+      function show(){ TL.coach("cal-filters", key,
+        "<b>Filter the calendar</b><br>Tap a colour to hide or show those lessons. Tap again to bring them back."); }
+      if(!("IntersectionObserver" in window)){ show(); return; }
+      var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ io.disconnect(); show(); } }, { threshold:1 });
+      io.observe(key);
+    }
+    var seen=true; try{ seen=!!localStorage.getItem("td_tip_cal-swipe"); }catch(e){}
+    if(!isPhone() || seen){ filters(); return; }
+    var cur=document.querySelector("#cal-vp .cal-pane:nth-child(2)");
+    var anchor=(cur && (cur.querySelector(".cal-head")||cur.querySelector(".dhead")||cur.querySelector(".cal-mhead"))) || $("cal");
+    TL.coach("cal-swipe", anchor, "<b>Swipe the calendar</b><br>Swipe left or right to go to the next or previous "+(effMode()==="month"?"month":effMode()==="day"?"day":"week")+".");
+    var ok=document.querySelector("#td-tip-cal-swipe .td-tip-ok");
+    if(ok) ok.addEventListener("click", function(){ setTimeout(filters, 150); });
+  }
   function goToday(){ hidePopover(); anchor=new Date(); ensureData(); }
   // FAB in Day view: start the new lesson on the day you're looking at.
   function m2prefill(){ return effMode()==="day" ? { date: iso(anchor) } : undefined; }
@@ -1065,11 +1086,8 @@
     document.addEventListener("click", hidePopover);
     window.addEventListener("resize", hidePopover);
     if(window.TL && TL.promotePastLessons) TL.promotePastLessons();
-    // One-time tip: the colour key doubles as a filter, and (on phones) the calendar swipes. Neither is obvious.
-    if(window.TL && TL.coach) TL.coach("cal-filters", $("cal-seg"),
-      isPhone() ? "<b>Two quick tips</b><br>Swipe the calendar left or right to change day or week. Tap a colour in the key below the calendar to hide or show those lessons."
-                : "<b>Tip</b><br>Tap a colour in the key below the calendar (Paid, Unpaid, Upcoming…) to hide or show those lessons.");
-    ensureData();
+
+    Promise.resolve(ensureData()).then(showTips);
   }
 
   if (window.__CAL_TEST__) {
