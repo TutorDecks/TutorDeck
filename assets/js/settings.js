@@ -152,7 +152,7 @@
 
       try{ await window.sb.auth.signOut(); }catch(e){}
       alert("Your account and all data have been permanently deleted.");
-      location.replace("login.html");
+      location.replace("login");
     }catch(e){
       // Fallback if the Edge Function isn't deployed: wipe the data rows directly.
       try{
@@ -162,7 +162,7 @@
         await window.sb.from("profiles").delete().eq("id",userId);
         await window.sb.auth.signOut();
         alert("Your data has been deleted and you've been signed out.\n\n(Note: the account login record couldn't be removed automatically — deploy the delete-account function for full removal.)");
-        location.replace("login.html");
+        location.replace("login");
       }catch(e2){
         m.textContent="Couldn't complete deletion: "+(e2.message||e2); m.className="msg err";
         $("delete-btn").disabled=false;

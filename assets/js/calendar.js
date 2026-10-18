@@ -502,7 +502,7 @@
       (b.adhoc?' <span class="cp-tag" style="background:rgba(19,35,63,.10);color:var(--navy)">✦ One-off</span>':'')+
       (b.postponed?' <span class="cp-tag" style="background:rgba(180,83,9,.18);color:#92400E">Postponed</span>':'')+
       actionButtons(b)+
-      (cv?'':'<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Open Ledger":"Edit in Ledger")+' →</a>');
+      (cv?'':'<a class="cp-act" href="ledger">'+(b.kind==="proj"?"Open Ledger":"Edit in Ledger")+' →</a>');
     pop.style.display="block";
     var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
     positionPopover(node);
@@ -534,8 +534,8 @@
       (ex.topics?'<div class="cp-row">Topics <b>'+esc(ex.topics)+'</b></div>':'')+
       (ex.remarks?'<div class="cp-row">'+esc(ex.remarks)+'</div>':'')+
       tag+
-      '<div class="cp-btns"><a class="cp-btn primary" style="text-decoration:none" href="exams.html?highlight='+encodeURIComponent(ex.id)+'">'+(days<0&&!hasScore?'Add result in Exams':'Open in Exams')+'</a>'+
-      '<a class="cp-btn" style="text-decoration:none" href="student.html?id='+encodeURIComponent(ex.student_id)+'">Student profile</a></div>';
+      '<div class="cp-btns"><a class="cp-btn primary" style="text-decoration:none" href="exams?highlight='+encodeURIComponent(ex.id)+'">'+(days<0&&!hasScore?'Add result in Exams':'Open in Exams')+'</a>'+
+      '<a class="cp-btn" style="text-decoration:none" href="student?id='+encodeURIComponent(ex.student_id)+'">Student profile</a></div>';
     pop.style.display="block";
     var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
     positionPopover(node);
