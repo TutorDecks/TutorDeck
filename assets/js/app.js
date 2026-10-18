@@ -266,8 +266,8 @@ window.TL = (function () {
   }
 
   // ---- forms (every .modal-backdrop except small confirm dialogs) ----
-  // A ✕ in the corner, Save/Cancel pinned to the bottom (CSS), a bottom sheet on phones (CSS), and a
-  // tap outside never silently throws away what you've typed.
+  // Save/Cancel pinned to the bottom (CSS), a bottom sheet you can swipe down on phones, and a tap
+  // outside or a swipe never silently throws away what you've typed. (The ✕ was retired in v202.)
   function formFields(m) { return Array.prototype.slice.call(m.querySelectorAll("input,select,textarea")); }
   function formSnap(m) { return formFields(m).map(function (f) { return f.type === "checkbox" || f.type === "radio" ? f.checked : f.value; }).join("\u0001"); }
   function formClose(bd) {   // use the form's own Cancel/Close button so each page's close logic runs
@@ -288,20 +288,46 @@ window.TL = (function () {
   }
   function enhanceForms() {
     document.querySelectorAll(".modal-backdrop").forEach(function (bd) {
-      if (bd.dataset.tdForm || /confirm/.test(bd.id)) return;
+      // A JS property, not an attribute: mountShell rebuilds the page from HTML text, which copies
+      // attributes but drops every listener, so a copied form must be set up again.
+      if (bd._tdForm || /confirm/.test(bd.id)) return;
       var m = bd.querySelector(".modal"); if (!m) return;
-      bd.dataset.tdForm = "1"; bd.classList.add("td-form");
-      var x = document.createElement("button");
-      x.type = "button"; x.className = "modal-x"; x.setAttribute("aria-label", "Close");
-      x.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
-      // ✕ is small and near where your thumb reaches for the top fields, so it asks if you've typed anything.
-      // (Cancel is a big, labelled button: it closes straight away.)
-      x.addEventListener("click", function (e) {
-        e.stopPropagation();
-        if (bd._snap != null && formSnap(m) !== bd._snap) askDiscard(function () { formClose(bd); });
-        else formClose(bd);
-      });
-      m.insertBefore(x, m.firstChild);
+      bd._tdForm = true; bd.classList.add("td-form");
+      m.querySelectorAll(":scope > .modal-x").forEach(function (old) { old.remove(); });   // retired ✕ (v202)
+      // Phones: drag the sheet down to close it (like iOS sheets). Starts only when the form is
+      // scrolled to the top and the drag is clearly downward; a short drag springs back.
+      var y0 = null, x0 = 0, dy = 0, dragging = false;
+      m.addEventListener("touchstart", function (e) {
+        if (!window.matchMedia("(max-width:820px)").matches || e.touches.length > 1) { y0 = null; return; }
+        if (e.target.closest("input,select,textarea")) { y0 = null; return; }
+        y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; dragging = false;
+      }, { passive: true });
+      m.addEventListener("touchmove", function (e) {
+        if (y0 === null) return;
+        var t = e.touches[0], my = t.clientY - y0, mx = t.clientX - x0;
+        if (!dragging) {
+          if (my > 8 && my > Math.abs(mx) && m.scrollTop <= 0) { dragging = true; m.style.transition = "none"; }
+          else if (Math.abs(my) > 8 || Math.abs(mx) > 8) { y0 = null; return; }
+          else return;
+        }
+        e.preventDefault();
+        dy = Math.max(0, my);
+        m.style.transform = "translateY(" + dy + "px)";
+        bd.style.background = "rgba(19,24,40," + (0.5 * Math.max(0.2, 1 - dy / 400)) + ")";
+      }, { passive: false });
+      function endDrag() {
+        if (y0 === null) return; var was = dragging; y0 = null; dragging = false;
+        if (!was) return;
+        var close = dy > Math.min(140, m.offsetHeight * 0.25);
+        m.style.transition = "transform .2s ease"; bd.style.background = "";
+        if (!close) { m.style.transform = ""; return; }
+        var dirty = bd._snap != null && formSnap(m) !== bd._snap;
+        if (dirty) { m.style.transform = ""; askDiscard(function () { formClose(bd); }); return; }
+        m.style.transform = "translateY(100%)";
+        setTimeout(function () { formClose(bd); m.style.transform = ""; m.style.transition = ""; }, 190);
+      }
+      m.addEventListener("touchend", endDrag, { passive: true });
+      m.addEventListener("touchcancel", endDrag, { passive: true });
       // remember the form as it opened, to know later whether anything was typed
       new MutationObserver(function () {
         if (bd.classList.contains("on")) { if (!bd._open) { bd._open = true; setTimeout(function () { bd._snap = formSnap(m); m.scrollTop = 0; }, 0); } }
