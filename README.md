@@ -199,6 +199,11 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-18 — Home "Today": the row shows today's note once written (v209).** Each Today/Tomorrow row used to
+  show only the *previous* lesson's recap, so after adding a note it still read "No notes recorded for that lesson".
+  Now a lesson's own note (Topics/Homework/Remarks) replaces the recap under "Today's note"; with no note yet, the
+  last-lesson recap shows as before (empty wording now "No notes from that lesson.").
+
 - **2026-10-18 — No more "Loading…" flashes anywhere (v208).** Every page now shows grey shimmer placeholders while
   its data loads: Schedule (planner + calendar), Students, Exams, Ledger, Invoices, Insights and the student profile.
   Loading lines and "—" figures are marked `data-sk` in the HTML; `skWatch()` in app.js drops the marker the moment the
