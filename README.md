@@ -199,6 +199,10 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-19 — Calendar Month view: spill-over days (v212).** The days from the months either side (e.g. 26–31 Oct
+  in November) are dimmed and show only logged lessons — their Not logged ones belong to that other month and its
+  Log chip, so the chip count always matches the Not logged lessons on screen. Week/Day views unchanged.
+
 - **2026-10-19 — Calendar: "Log N" chip (v211).** When the period on screen has faded "not logged" blocks, a small
   dashed chip ("Log 7") sits next to the date (after Today on desktop). It logs exactly what you see: Week view = that
   Mon–Sun, Month view = that calendar month, Day view = that day. Hidden when there's nothing to log or when "Not logged"
