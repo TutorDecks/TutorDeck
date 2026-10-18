@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Home · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=204">
+<link rel="stylesheet" href="assets/css/app.css?v=206">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#FFFFFF,#EEF6F4);border:1px solid var(--gold);
@@ -169,7 +169,7 @@
   <div id="onboard"></div>
 
   <!-- MONEY: one card — collected vs owed, and the month's progress bar (hidden in Client view) -->
-  <section class="h-sec" id="home-money">
+  <section class="h-sec sk-on" id="home-money">
     <div class="h-sec-h"><h2 class="h-sec-t">Money</h2><span class="h-sec-n" id="k-collected-n"></span>
       <a class="h-more" href="insights.html">See income ›</a></div>
     <div class="card money-card">
@@ -189,19 +189,19 @@
   </section>
 
   <!-- TEACHING -->
-  <section class="h-sec">
+  <section class="h-sec sk-on">
     <div class="h-sec-h"><h2 class="h-sec-t">Teaching</h2><span class="h-sec-n"><span id="k-week">—</span> lessons this week</span></div>
   <div class="home-grid" id="teach-view">
     <div class="home-col">
       <div class="card panel teach-sec" id="today-sec">
         <h2 id="today-h">Today</h2>
         <div class="teach-sub" id="today-sub"></div>
-        <div id="today-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+        <div id="today-list"><div class="sk-rows" aria-hidden="true"><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1 w2"></span><span class="sk sk-l2"></span></span></div></div><span class="sr-only">Loading</span></div>
       </div>
       <div class="card panel teach-sec" id="tmr-sec">
         <h2 id="tmr-h">Tomorrow</h2>
         <div class="teach-sub" id="tmr-sub"></div>
-        <div id="tmr-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+        <div id="tmr-list"><div class="sk-rows" aria-hidden="true"><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1 w2"></span><span class="sk sk-l2"></span></span></div></div><span class="sr-only">Loading</span></div>
       </div>
     </div>
     <div class="home-col">
@@ -214,7 +214,7 @@
       <div class="card panel teach-sec" id="exam-sec">
         <h2>Upcoming exams <a class="h-more" href="exams.html">All</a></h2>
         <div class="teach-sub"><span id="k-exams">—</span> in the next 14 days</div>
-        <div id="teach-exam-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+        <div id="teach-exam-list"><div class="sk-rows" aria-hidden="true"><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1 w2"></span><span class="sk sk-l2"></span></span></div></div><span class="sr-only">Loading</span></div>
       </div>
     </div>
   </div>
@@ -239,9 +239,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=204"></script>
-<script src="assets/js/supabase.js?v=204"></script>
-<script src="assets/js/app.js?v=204"></script>
-<script src="assets/js/dashboard.js?v=204"></script>
+<script src="assets/js/config.js?v=206"></script>
+<script src="assets/js/supabase.js?v=206"></script>
+<script src="assets/js/app.js?v=206"></script>
+<script src="assets/js/dashboard.js?v=206"></script>
 </body>
 </html>

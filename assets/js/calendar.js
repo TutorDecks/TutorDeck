@@ -795,7 +795,9 @@
         }
       });
       updateGcalUI();
-      if(gcalConnected()) gTokenClient.requestAccessToken({prompt:""});   // silent re-auth + sync on load
+      // No request on page load: Google can only ask in a popup, so a load-time request either gets
+      // blocked or (after a double-click on Schedule) pops a sign-in window nobody asked for.
+      // Syncing happens when you press Sync.
     });
   }
   function connectGcal(){

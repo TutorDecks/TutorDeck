@@ -199,6 +199,21 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Home: skeleton placeholders instead of "Loading…" (v206)
+
+Home now shows its shape immediately: grey shimmering bars for the money figures and the week count,
+and placeholder rows in Today / Tomorrow / Upcoming exams, which the real content replaces in place
+(no jumping). Sections carry `.sk-on` in app.html; `dashboard.js` removes it when `load()` finishes
+(in a `finally`, so an error never leaves the page stuck loading). Shared `.sk`, `.sk-rows` CSS in
+app.css for other pages to reuse. Respects Reduce Motion (no shimmer).
+
+### 2026-10-18 — No surprise Google sign-in on the Calendar (v205)
+
+The Calendar page used to request a Google token on load when Calendar sync had been connected
+(`requestAccessToken({prompt:""})`). Google's token client can only open a popup, so this was normally
+blocked silently, but after a double-click on Schedule the second click counted as a user gesture and
+the Google sign-in window appeared. Removed: the token is only requested when you press Connect / Sync now.
+
 ### 2026-10-18 — Desktop forms slide in from the right (v204)
 
 On desktop, every add/edit form (`.td-form`) is now a full-height right-hand panel (480px; the invoice
