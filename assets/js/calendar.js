@@ -605,7 +605,7 @@
     btn.setAttribute("aria-label", btn.title);
     whenNoTip(function(){
       if(btn.hidden || !(window.TL && TL.coach)) return;
-      TL.coach("cal-log", btn, "<b>Log lessons</b><br>Logs every faded lesson on screen in one tap.");
+      TL.coach("cal-log", btn, "<b>Log lessons</b><br>Logs every <b>Not logged</b> lesson on screen in one tap.");
     });
   }
   // One tip at a time: if another tip is open, wait for its "Got it" before showing the next.
@@ -1067,7 +1067,7 @@
     function filters(){
       var key=document.querySelector(".cal-legend"); if(!key) return;
       function show(){ whenNoTip(function(){ TL.coach("cal-filters", key,
-        "<b>Filters</b><br>Tap a status to hide it. <b>Not logged</b> hides the faded lessons."); }); }
+        "<b>Filters</b><br>Tap a status to hide those lessons, e.g. <b>Not logged</b>."); }); }
       if(!("IntersectionObserver" in window)){ show(); return; }
       var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ io.disconnect(); show(); } }, { threshold:1 });
       io.observe(key);

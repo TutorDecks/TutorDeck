@@ -206,7 +206,7 @@ A running log of Raphael's changes, newest first.
   months fresh before inserting so nothing is duplicated, and asks to confirm ("Log 7 lessons for 9–15 Nov…?").
   Ledger's "Log lessons" menu keeps the custom-range options.
   First time the chip appears, a short one-time tip points at it; the Filters tip that follows now says
-  "Not logged hides the faded lessons".
+  "Tap a status to hide those lessons, e.g. Not logged". Tips say "Not logged", matching the legend.
   Calendar tips now queue (whenNoTip) so only one shows at a time.
 - **2026-10-18 — Students: no count on the Discontinued tab (v210).** The "Discontinued · N" number was the only count in
   the Active | Discontinued | All bar; removed. The count still shows once you open Discontinued.
