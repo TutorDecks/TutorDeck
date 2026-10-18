@@ -199,6 +199,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Tapping an exam in the Calendar shows it first (v190)
+
+Exam chips open the same popover/bottom sheet as lessons: student, type · subject, date (and "in 5
+days" amber within 14 days, or "4 days ago"), topics, remarks, result (78/100 · 78%) or "No result yet",
+with **Open in Exams** (or **Add result in Exams**) and **Student profile**. Calendar now loads exam
+topics/score/remarks too.
+
 ### 2026-10-18 — Calendar hour range only grows (v189)
 
 The shared hour range now also counts every lesson already loaded (not just the three swipeable

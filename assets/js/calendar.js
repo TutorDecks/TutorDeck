@@ -75,7 +75,7 @@
     var r=await Promise.all([
       window.sb.from("students").select("id,name,location,contact,active,level,end_date"),
       window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true),
-      window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject")
+      window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,score,max_score,remarks")
     ]);
     students=r[0].error?[]:(r[0].data||[]);
     nameById={}; locById={}; hhById={}; endById={};
@@ -452,7 +452,7 @@
       node.addEventListener("click", function(e){ e.stopPropagation(); showPopover(node); });
     });
     calEl().querySelectorAll("[data-exam]").forEach(function(node){
-      node.addEventListener("click", function(e){ e.stopPropagation(); location.href="exams.html?highlight="+encodeURIComponent(node.dataset.exam); });
+      node.addEventListener("click", function(e){ e.stopPropagation(); showExamPopover(node); });
     });
   }
 
@@ -509,6 +509,33 @@
     var postponeBtn=$("cp-postpone"); if(postponeBtn) postponeBtn.addEventListener("click", function(){ showPostponeForm(b); });
     var revertBtn=$("cp-revert"); if(revertBtn) revertBtn.addEventListener("click", function(){ doRevert(b); });
     var logBtn=$("cp-log"); if(logBtn) logBtn.addEventListener("click", function(){ doLogProjected(b); });
+  }
+  // Exam details first (like lessons); Exams page and student profile are one tap away.
+  function showExamPopover(node){
+    var ex=exams.filter(function(x){ return String(x.id)===String(node.dataset.exam); })[0]; if(!ex) return;
+    popNode=node;
+    var pop=$("cal-pop"), dt=new Date(ex.exam_date+"T00:00:00");
+    var now=new Date(); now.setHours(0,0,0,0);
+    var days=Math.round((dt-now)/86400000);
+    var when=days===0?"Today":(days===1?"Tomorrow":(days>1?"In "+days+" days":(days===-1?"Yesterday":Math.abs(days)+" days ago")));
+    var title=[ex.assessment_type,ex.subject].filter(Boolean).join(" · ")||"Exam";
+    var hasScore=ex.score!=null&&ex.max_score;
+    var tag=days>=0
+      ? '<span class="cp-tag" style="background:'+(days<=14?'rgba(180,83,9,.12);color:var(--warn)':'#F1EFEA;color:var(--muted)')+'">'+when+'</span>'
+      : (hasScore?'<span class="cp-tag" style="background:var(--accent-soft);color:var(--accent)">'+esc(ex.score+"/"+ex.max_score)+' · '+Math.round(ex.score/ex.max_score*100)+'%</span>'
+                 :'<span class="cp-tag" style="background:#F1EFEA;color:var(--muted)">No result yet</span>');
+    pop.innerHTML='<span class="cp-x" id="cp-x">×</span><h4>'+esc(nameById[ex.student_id]||"—")+'</h4>'+
+      '<div class="cp-row"><b>'+esc(title)+'</b></div>'+
+      '<div class="cp-row">'+DAY[(dt.getDay()+6)%7]+' '+dt.getDate()+' '+MON[dt.getMonth()]+' '+dt.getFullYear()+(days<0?' · '+when:'')+'</div>'+
+      (ex.topics?'<div class="cp-row">Topics <b>'+esc(ex.topics)+'</b></div>':'')+
+      (ex.remarks?'<div class="cp-row">'+esc(ex.remarks)+'</div>':'')+
+      tag+
+      '<div class="cp-btns"><a class="cp-btn primary" style="text-decoration:none" href="exams.html?highlight='+encodeURIComponent(ex.id)+'">'+(days<0&&!hasScore?'Add result in Exams':'Open in Exams')+'</a>'+
+      '<a class="cp-btn" style="text-decoration:none" href="student.html?id='+encodeURIComponent(ex.student_id)+'">Student profile</a></div>';
+    pop.style.display="block";
+    var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
+    positionPopover(node);
+    $("cp-x").addEventListener("click", hidePopover);
   }
   function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.remove("on"); popNode=null; }
   // After any write, the visible range (and whichever month a lesson may have moved
