@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Home · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=193">
+<link rel="stylesheet" href="assets/css/app.css?v=194">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#FFFFFF,#EEF6F4);border:1px solid var(--gold);
@@ -168,8 +168,8 @@
 <div id="view">
   <div id="onboard"></div>
 
-  <!-- MONEY: one card — collected vs owed, and the month's progress bar -->
-  <section class="h-sec">
+  <!-- MONEY: one card — collected vs owed, and the month's progress bar (hidden in Client view) -->
+  <section class="h-sec" id="home-money">
     <div class="h-sec-h"><h2 class="h-sec-t">Money</h2><span class="h-sec-n" id="k-collected-n"></span>
       <a class="h-more" href="insights.html">See income ›</a></div>
     <div class="card money-card">
@@ -239,9 +239,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=193"></script>
-<script src="assets/js/supabase.js?v=193"></script>
-<script src="assets/js/app.js?v=193"></script>
-<script src="assets/js/dashboard.js?v=193"></script>
+<script src="assets/js/config.js?v=194"></script>
+<script src="assets/js/supabase.js?v=194"></script>
+<script src="assets/js/app.js?v=194"></script>
+<script src="assets/js/dashboard.js?v=194"></script>
 </body>
 </html>

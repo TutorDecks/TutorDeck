@@ -487,18 +487,18 @@
       proj:["Not logged yet","rgba(15,118,110,.12)","#0B5D57"]}[b.state];
     var dt=new Date(b.dateISO+"T00:00:00");
     var when=DAY[(dt.getDay()+6)%7]+" "+dt.getDate()+" "+MON[dt.getMonth()]+" · "+hhmm2(b.startMin)+"–"+hhmm2(b.endMin);
-    var sub=[b.subject,b.level].filter(Boolean).join(" · ");
+    var sub=[b.subject,b.level].filter(Boolean).join(" · "), cv=!!(window.TL&&TL.isClient&&TL.isClient());
     pop.innerHTML='<span class="cp-x" id="cp-x">×</span><h4>'+esc(b.name)+'</h4>'+
       '<div class="cp-row">'+esc(when)+'</div>'+
       (sub?'<div class="cp-row"><b>'+esc(sub)+'</b></div>':'')+
       (b.location?'<div class="cp-row">◍ <b>'+esc(b.location)+'</b></div>':'')+
-      (b.kind==="lesson"&&b.amount!=null?'<div class="cp-row">'+(b.state==="cancel"?"Compensation":"Amount")+' <b>'+TL.sgd(b.amount)+'</b></div>':'')+
+      (b.kind==="lesson"&&b.amount!=null&&!cv?'<div class="cp-row">'+(b.state==="cancel"?"Compensation":"Amount")+' <b>'+TL.sgd(b.amount)+'</b></div>':'')+
       (b.clash?'<div class="cp-row" style="color:var(--owed);font-weight:700">⚠ Overlaps another lesson</div>':'')+
-      '<span class="cp-tag" style="background:'+label[1]+';color:'+label[2]+'">'+label[0]+'</span>'+
+      (cv&&(b.state==="paid"||b.state==="unpaid")?'':'<span class="cp-tag" style="background:'+label[1]+';color:'+label[2]+'">'+label[0]+'</span>')+
       (b.adhoc?' <span class="cp-tag" style="background:rgba(19,35,63,.10);color:var(--navy)">✦ One-off</span>':'')+
       (b.postponed?' <span class="cp-tag" style="background:rgba(180,83,9,.18);color:#92400E">Postponed</span>':'')+
       actionButtons(b)+
-      '<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Open Ledger":"Edit in Ledger")+' →</a>';
+      (cv?'':'<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Open Ledger":"Edit in Ledger")+' →</a>');
     pop.style.display="block";
     var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
     positionPopover(node);
@@ -519,8 +519,8 @@
     var days=Math.round((dt-now)/86400000);
     var when=days===0?"Today":(days===1?"Tomorrow":(days>1?"In "+days+" days":(days===-1?"Yesterday":Math.abs(days)+" days ago")));
     var title=[ex.assessment_type,ex.subject].filter(Boolean).join(" · ")||"Exam";
-    var hasScore=ex.score!=null&&ex.max_score;
-    var tag=days>=0
+    var hasScore=ex.score!=null&&ex.max_score, cv=!!(window.TL&&TL.isClient&&TL.isClient());
+    var tag=(cv&&days<0)?'':days>=0
       ? '<span class="cp-tag" style="background:'+(days<=14?'rgba(180,83,9,.12);color:var(--warn)':'#F1EFEA;color:var(--muted)')+'">'+when+'</span>'
       : (hasScore?'<span class="cp-tag" style="background:var(--accent-soft);color:var(--accent)">'+esc(ex.score+"/"+ex.max_score)+' · '+Math.round(ex.score/ex.max_score*100)+'%</span>'
                  :'<span class="cp-tag" style="background:#F1EFEA;color:var(--muted)">No result yet</span>');

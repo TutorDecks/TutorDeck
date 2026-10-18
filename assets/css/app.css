@@ -1,4 +1,4 @@
-/* v193 */
+/* v194 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -585,3 +585,28 @@ a.btn{text-decoration:none}
   .td-fab:active{transform:scale(.95)}
   body:has(.td-fab) .content{padding-bottom:90px}
 }
+
+/* ---- v194: Client view (hide money everywhere) ---- */
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.cv-btn{all:unset;box-sizing:border-box;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:7px;
+  height:38px;padding:0 13px;border-radius:19px;border:1px solid var(--line);background:#fff;color:var(--muted);font-size:13px;font-weight:700;margin-top:4px}
+.cv-btn:hover{color:var(--ink);border-color:#D6D2C8}
+.client-view .cv-btn{background:var(--ink);border-color:var(--ink);color:#fff}
+.cv-exit{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:66;display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  background:rgba(19,35,63,.92);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;border:none;font:inherit;
+  font-weight:700;font-size:13px;padding:9px 15px;border-radius:999px;box-shadow:0 6px 18px rgba(19,35,63,.25)}
+.client-view .content{padding-bottom:90px}
+.cv-money #content > :not(#cv-block){display:none!important}
+.cv-block{max-width:420px;margin:30px auto;text-align:center;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.cv-block .cv-ic{width:52px;height:52px;border-radius:26px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.cv-block .cv-ic svg{width:24px;height:24px}
+.cv-block b{font-size:17px;color:var(--ink)}
+.cv-block p{margin:0 0 10px;color:var(--muted);font-size:14px;line-height:1.5}
+.client-view #home-money{display:none}
+@media(max-width:820px){
+  .cv-btn span{display:none}
+  .cv-btn{width:40px;height:40px;padding:0;justify-content:center;border-radius:20px;margin-top:2px}
+  .cv-exit{bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+  .client-view .td-fab{bottom:calc(132px + env(safe-area-inset-bottom,0px))}
+}
+.client-view .badge.paid,.client-view .badge.owed{display:none}

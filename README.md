@@ -199,6 +199,20 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Client view: hide money everywhere (v194)
+
+T-Leng updates TutorDeck during class, where students can see the screen. **Client view** (eye button
+in every page header; replaces the student page's Parent view) hides money app-wide, per device
+(`localStorage td_client`), until you tap it again or "Exit client view" (floating pill).
+- `TL.sgd()` returns `$•••`, so every amount in the app is masked.
+- Home: the Money card is hidden; Teaching stays.
+- Calendar: paid/unpaid look like ordinary bookings (no colours, no Paid/Unpaid filters); the lesson
+  popover drops the amount, status tag and "Edit in Ledger"; past exam scores are hidden.
+- Ledger / Invoices / Insights: replaced by a "Money is hidden" card with Exit client view.
+- Student page: fee KPIs swap for the progress stats (attendance, latest scores, next exam); Paid/Unpaid
+  badges hidden. Notes and editing still work, so you can update during the lesson.
+- One-time tip on the eye button (Home). `TL.isClient()` / `TL.setClient(on)` for other pages.
+
 ### 2026-10-18 — Calendar key: filters vs symbols (v193)
 
 Under the calendar, the status filters are now real pill buttons (Paid · Unpaid ·
