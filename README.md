@@ -199,6 +199,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — One colour for every main button (v203)
+
+17 buttons still used the old navy `.btn-primary` (Save lesson, Save student, Save exam, Save notes,
+Mark paid, Log lessons, Upload, Confirm…) while newer ones used teal `.btn-gold`. Both classes now render
+the same teal (house style: teal is the only accent); destructive confirms keep `.btn-danger` red.
+
 ### 2026-10-18 — Forms: ✕ removed (v202)
 
 Save/Cancel are always visible at the bottom and phones can swipe the sheet down, so the ✕ was a third
