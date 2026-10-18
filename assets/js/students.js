@@ -186,8 +186,6 @@
     }
     var anyFilter=!!(q||fLvl||fPar);
     document.querySelectorAll("#ro-seg [data-st]").forEach(function(b){b.classList.toggle("on",b.dataset.st===fStat);});
-    var offN=students.filter(function(s){return !isActive(s);}).length;
-    if($("ro-off-n"))$("ro-off-n").textContent=offN?" · "+offN:"";
     ["s-level","s-parent"].forEach(function(id){var el=$(id);if(el)el.classList.toggle("on",!!el.value);});
     if($("s-clear"))$("s-clear").style.display=anyFilter?"":"none";
 
