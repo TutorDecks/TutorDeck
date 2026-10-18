@@ -261,7 +261,10 @@
     dates.forEach(function(date){
       var dayExams=examsByDt[iso(date)]||[];
       if(dayExams.length) hasEx=true;
-      adCells+='<div class="cal-ad-cell">'+dayExams.map(examChipHTML).join("")+'</div>';
+      // Carousel: a fixed slim row — first exam + "+N" — so weeks with and without exams line up.
+      adCells+='<div class="cal-ad-cell">'+(opts.slimAllday
+        ? (dayExams.length?examChipHTML(dayExams[0])+(dayExams.length>1?'<span class="ad-more">+'+(dayExams.length-1)+'</span>':''):'')
+        : dayExams.map(examChipHTML).join(""))+'</div>';
     });
     var gutter="";
     for(var h=0; h<hours; h++)
@@ -399,10 +402,12 @@
       var d0=new Date(save); d0.setHours(0,0,0,0);
       var span = m==="day" ? { start:addDays(d0,-1), end:addDays(d0,1) }     // just the three days you can swipe between
                            : { start:rangeFor(stepAnchor(save,-1),m).start, end:rangeFor(stepAnchor(save,1),m).end };
-      var hp=m==="day"?68:(m==="3day"?56:HOUR_PX_BASE), bd=bounds(buildBlocks(span));
-      var exD=examsByDate(), anyEx=false;
-      for(var dd=new Date(span.start); iso(dd)<=iso(span.end); dd=addDays(dd,1)) if((exD[iso(dd)]||[]).length) anyEx=true;
-      SHARED={ noGutter:true, bd:bd, hourPx:hp, forceAllday:anyEx };
+      // Hours = your teaching hours (every weekly Planner slot), widened only if a lesson nearby
+      // falls outside them, so swiping never rescales the grid.
+      var hp=m==="day"?68:(m==="3day"?56:HOUR_PX_BASE);
+      var base=slots.map(function(sl){ return { startMin:toMin(sl.start_time), endMin:toMin(sl.end_time) }; });
+      var bd=bounds(base.concat(buildBlocks(span)));
+      SHARED={ noGutter:true, bd:bd, hourPx:hp, forceAllday:true, slimAllday:true };
       var gut="";
       for(var h=0; h<(bd.end-bd.start)/60; h++) gut+='<div class="cal-hr" style="height:'+hp+'px"><span>'+hourLabel(bd.start+h*60)+'</span></div>';
       $("cal-gfix").innerHTML='<div class="cal-gspace"></div>'+gut;

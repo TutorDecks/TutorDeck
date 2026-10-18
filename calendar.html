@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=187">
+<link rel="stylesheet" href="assets/css/app.css?v=188">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -168,6 +168,12 @@
   .cal-gwrap .cal-vp{flex:1;min-width:0;border-left:1px solid var(--line)}
   .cal-gwrap .cal-day-h:first-child,.cal-gwrap .cal-ad-cell:first-child,.cal-gwrap .cal-col:first-child{border-left:none}
   .cal-gspace{border-bottom:1px solid transparent}
+  .cal-gwrap .cal-allday{height:28px;overflow:hidden}
+  .cal-gwrap .cal-ad-cell{flex-direction:row;align-items:center;gap:2px;padding:2px 3px;overflow:hidden;min-width:0}
+  .cal-gwrap .cal-ad-cell .cal-chip{flex:1;min-width:0;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ad-more{flex:none;font-size:10px;font-weight:800;color:var(--owed)}
+  /* every day number gets the same box as "today", so weeks with and without today line up */
+  .cal-gwrap .cal-day-h b{display:grid;place-items:center;width:26px;height:26px;margin:2px auto 0;line-height:1}
   .cal-day-h b{font-family:var(--sans);font-weight:800}
   .cal-day-h.today{background:var(--accent-soft)}
   .cal-col.today{background:rgba(15,118,110,.035)}
@@ -370,9 +376,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=187"></script>
-<script src="assets/js/supabase.js?v=187"></script>
-<script src="assets/js/app.js?v=187"></script>
-<script src="assets/js/calendar.js?v=187"></script>
+<script src="assets/js/config.js?v=188"></script>
+<script src="assets/js/supabase.js?v=188"></script>
+<script src="assets/js/app.js?v=188"></script>
+<script src="assets/js/calendar.js?v=188"></script>
 </body>
 </html>

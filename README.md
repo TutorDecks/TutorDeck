@@ -199,6 +199,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Calendar grid never jumps while swiping (v188)
+
+- Hours come from **your teaching hours**: every active weekly Planner slot, widened only if a lesson in
+  the three swipeable days/weeks falls outside. The grid keeps its scale week to week.
+- The exam row is **always there at a fixed 28px**: first exam + "+N" per day (tap still opens Exams),
+  so weeks with and without exams line up.
+- Every day number sits in the same 26px box as "today", so the week containing today isn't taller.
+
 ### 2026-10-18 — Hour labels stay put; only the days slide (v187)
 
 Day and Week views draw the hour column once, outside the carousel (`.cal-gfix`), and the three panes
