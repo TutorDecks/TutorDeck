@@ -288,9 +288,12 @@ window.TL = (function () {
   }
   function enhanceForms() {
     document.querySelectorAll(".modal-backdrop").forEach(function (bd) {
-      if (bd.dataset.tdForm || /confirm/.test(bd.id)) return;
+      // A JS property, not an attribute: mountShell rebuilds the page from HTML text, which copies
+      // attributes and the ✕ markup but drops every listener, so a copied form must be set up again.
+      if (bd._tdForm || /confirm/.test(bd.id)) return;
       var m = bd.querySelector(".modal"); if (!m) return;
-      bd.dataset.tdForm = "1"; bd.classList.add("td-form");
+      bd._tdForm = true; bd.classList.add("td-form");
+      m.querySelectorAll(":scope > .modal-x").forEach(function (old) { old.remove(); });
       var x = document.createElement("button");
       x.type = "button"; x.className = "modal-x"; x.setAttribute("aria-label", "Close");
       x.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
