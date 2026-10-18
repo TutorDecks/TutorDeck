@@ -596,11 +596,13 @@
   }
   function unloggedIn(t){ return buildBlocks({ start:t.start, end:t.end }, true).filter(function(b){ return b.kind==="proj"; }); }
   function updateLogBar(){
-    var bar=$("cal-logbar"); if(!bar) return;
-    var n=unloggedIn(logTarget()).length;
-    if(!n){ bar.hidden=true; return; }
-    $("cal-log-txt").innerHTML='<b>'+n+' lesson'+(n===1?'':'s')+' not logged</b> '+esc(logTarget().when);
-    bar.hidden=false;
+    var btn=$("cal-log-btn"); if(!btn) return;
+    var t=logTarget(), n=hidden.proj ? 0 : unloggedIn(t).length;   // hidden while "Not logged" is filtered out
+    btn.hidden=!n;
+    if(!n) return;
+    $("cal-log-txt").textContent="Log "+n;
+    btn.title=n+" lesson"+(n===1?"":"s")+" not logged "+t.when+" — tap to log";
+    btn.setAttribute("aria-label", btn.title);
   }
   async function logVisible(){
     var t=logTarget(), btn=$("cal-log-btn");

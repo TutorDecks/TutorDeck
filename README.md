@@ -199,13 +199,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
-- **2026-10-19 — Calendar: "Log lessons" bar (v211).** When the period on screen has faded "not logged" blocks, a slim
-  bar above the calendar says "N lessons not logged this week / in November / today" with a **Log them** button. It logs
-  exactly what you see: Week view = that Mon–Sun, Month view = that calendar month, Day view = that day. Uses the
-  Calendar's own projection (slot_id|slot_date claims, end dates, active slots), ignores the legend toggles, re-reads the
+- **2026-10-19 — Calendar: "Log N" chip (v211).** When the period on screen has faded "not logged" blocks, a small
+  dashed chip ("Log 7") sits next to the date (after Today on desktop). It logs exactly what you see: Week view = that
+  Mon–Sun, Month view = that calendar month, Day view = that day. Hidden when there's nothing to log or when "Not logged"
+  is filtered out. Uses the Calendar's own projection (slot_id|slot_date claims, end dates, active slots), re-reads the
   months fresh before inserting so nothing is duplicated, and asks to confirm ("Log 7 lessons for 9–15 Nov…?").
-  Same name as Ledger's "Log lessons" menu, which keeps the custom-range options.
-
+  Ledger's "Log lessons" menu keeps the custom-range options.
 - **2026-10-18 — Students: no count on the Discontinued tab (v210).** The "Discontinued · N" number was the only count in
   the Active | Discontinued | All bar; removed. The count still shows once you open Discontinued.
 
