@@ -199,6 +199,29 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Forms: ✕ removed (v202)
+
+Save/Cancel are always visible at the bottom and phones can swipe the sheet down, so the ✕ was a third
+way to do the same thing. Ways out now: **Cancel** (closes), **swipe down** (phones) or **tap outside**,
+both of which ask "Discard changes?" if you've typed anything.
+
+### 2026-10-18 — Fix: form ✕ / swipe / discard check did nothing on real phones (v201)
+
+`mountShell` rebuilds the page from `view.innerHTML`, which copies attributes and markup but drops
+event listeners. On a real device sign-in takes a moment, so `enhanceForms()` ran first, marked forms
+with `data-td-form`, then the copy kept the ✕ and the marker but lost its listeners, and the second
+`enhanceForms()` skipped them. Now the "set up" marker is a JS property (not copied) and any copied ✕ is
+replaced. Reproduced with a 400ms sign-in delay in the test mock; ✕, swipe-down and discard check all
+pass with slow and instant sign-in. (Lesson: test with a slow `getSession`, not just the instant mock.)
+
+### 2026-10-18 — Swipe a form down to close it (v200)
+
+- **Phones:** drag the form sheet down to close it (it follows your finger and the page fades in; a
+  short drag springs back). Only starts when the form is scrolled to the top and the drag is clearly
+  downward, and not from inside a field. If you've typed anything it asks "Discard changes?" first.
+- **✕** is bigger (44px) and responds to the touch itself (`touchend`), since Raphael's iPhone didn't
+  react to it. Also: the previous ✕ change shipped without a cache-bust bump; this is v200.
+
 ### 2026-10-18 — Forms: ✕, pinned buttons, bottom sheet, no accidental discard (v199)
 
 Applied to every `.modal-backdrop` form in app.js (`enhanceForms()`), except small confirm dialogs:
