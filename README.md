@@ -205,7 +205,8 @@ A running log of Raphael's changes, newest first.
   is filtered out. Uses the Calendar's own projection (slot_id|slot_date claims, end dates, active slots), re-reads the
   months fresh before inserting so nothing is duplicated, and asks to confirm ("Log 7 lessons for 9–15 Nov…?").
   Ledger's "Log lessons" menu keeps the custom-range options.
-  First time the chip appears, a one-time tip points at it (what it does + hide it via the Not logged filter).
+  First time the chip appears, a short one-time tip points at it; the Filters tip that follows now says
+  "Not logged hides the faded lessons".
   Calendar tips now queue (whenNoTip) so only one shows at a time.
 - **2026-10-18 — Students: no count on the Discontinued tab (v210).** The "Discontinued · N" number was the only count in
   the Active | Discontinued | All bar; removed. The count still shows once you open Discontinued.
