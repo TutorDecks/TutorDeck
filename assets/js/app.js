@@ -218,6 +218,22 @@ window.TL = (function () {
     });
   }
 
+  // Loading placeholders: elements marked data-sk shimmer until the page first writes into them,
+  // so no page ever flashes "Loading…" or "—". Safety net: cleared after 15s whatever happens.
+  function skWatch() {
+    if (!document.querySelector("[data-sk]") || !window.MutationObserver) return;
+    var mo = new MutationObserver(function (recs) {
+      recs.forEach(function (r) {
+        var t = r.target.nodeType === 3 ? r.target.parentNode : r.target;
+        var h = t && t.closest && t.closest("[data-sk]");
+        if (h) h.removeAttribute("data-sk");
+      });
+      if (!document.querySelector("[data-sk]")) mo.disconnect();
+    });
+    mo.observe(document.body, { childList: true, subtree: true, characterData: true });
+    setTimeout(function () { mo.disconnect(); document.querySelectorAll("[data-sk]").forEach(function (e) { e.removeAttribute("data-sk"); }); }, 15000);
+  }
+
   async function requireAuth(active, init) {
     var hr = new Date().getHours();
     var meta = { dashboard: [hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening",
@@ -262,6 +278,7 @@ window.TL = (function () {
     if (active === "dashboard" && brandName && brandName !== DEFAULT_BRAND)
       meta[0] = '<span class="hi-eyebrow">' + meta[0] + '</span><span class="hi-name">' + esc(brandName) + '</span>';
     mountShell(active, session.user.email, meta[0], meta[1]);
+    skWatch();
     if (typeof init === "function") init(session.user);
   }
 

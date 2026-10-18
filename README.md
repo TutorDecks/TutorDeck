@@ -199,6 +199,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-18 — No more "Loading…" flashes anywhere (v208).** Every page now shows grey shimmer placeholders while
+  its data loads: Schedule (planner + calendar), Students, Exams, Ledger, Invoices, Insights and the student profile.
+  Loading lines and "—" figures are marked `data-sk` in the HTML; `skWatch()` in app.js drops the marker the moment the
+  page writes real content into them (15s safety net). List areas get skeleton rows that the page's own render replaces.
+  Known separate issue: materials.html (owner-only) markup and materials.js are out of sync and the page errors on load.
+
 ### 2026-10-18 — No spinner while signing in (v207)
 
 The boot screen (shown for a moment while sign-in is checked, before the page mounts) still painted

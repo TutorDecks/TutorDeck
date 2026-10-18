@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Planner · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=207">
+<link rel="stylesheet" href="assets/css/app.css?v=208">
 <style>
   /* make the lesson time the visual anchor of each slot */
   .slot{padding-top:9px}
@@ -64,11 +64,11 @@
 <body>
 <div id="view">
   <div class="toolbar">
-    <div class="sub week-tot" id="p-total">Loading your schedule…</div>
+    <div class="sub week-tot" id="p-total" data-sk>Loading your schedule…</div>
     <button class="btn btn-gold pl-add" id="add-btn" data-fab="Add slot"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add slot</button>
   </div>
 
-  <div class="week" id="week"></div>
+  <div class="week" id="week"><div class="sk-rows" aria-hidden="true"><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1 w2"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div></div>
 
   <div class="modal-backdrop" id="modal">
     <div class="modal card">
@@ -131,9 +131,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=207"></script>
-<script src="assets/js/supabase.js?v=207"></script>
-<script src="assets/js/app.js?v=207"></script>
-<script src="assets/js/planner.js?v=207"></script>
+<script src="assets/js/config.js?v=208"></script>
+<script src="assets/js/supabase.js?v=208"></script>
+<script src="assets/js/app.js?v=208"></script>
+<script src="assets/js/planner.js?v=208"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=207">
+<link rel="stylesheet" href="assets/css/app.css?v=208">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -255,9 +255,9 @@
 <div id="view">
   <!-- slim summary strip for the selected period (ids kept for ledger.js) -->
   <div class="led-sum">
-    <div class="ls-i owed"><span class="ls-l" id="k-pending-lbl">Owed</span><span class="ls-v" id="k-pending">—</span><span class="ls-n" id="k-pending-n">&nbsp;</span></div>
-    <div class="ls-i paid"><span class="ls-l">Collected</span><span class="ls-v" id="k-collected">—</span><span class="ls-n" id="k-collected-n">&nbsp;</span></div>
-    <div class="ls-i"><span class="ls-l">Booked</span><span class="ls-v" id="k-projected">—</span><span class="ls-n" id="k-projected-n">&nbsp;</span></div>
+    <div class="ls-i owed"><span class="ls-l" id="k-pending-lbl">Owed</span><span class="ls-v" id="k-pending" data-sk>—</span><span class="ls-n" id="k-pending-n">&nbsp;</span></div>
+    <div class="ls-i paid"><span class="ls-l">Collected</span><span class="ls-v" id="k-collected" data-sk>—</span><span class="ls-n" id="k-collected-n">&nbsp;</span></div>
+    <div class="ls-i"><span class="ls-l">Booked</span><span class="ls-v" id="k-projected" data-sk>—</span><span class="ls-n" id="k-projected-n">&nbsp;</span></div>
   </div>
 
   <!-- one control row: view toggle + period -->
@@ -277,7 +277,7 @@
 
   <div id="out-view">
   <div class="section-title">Who owes you <span class="hint" id="out-hint"></span></div>
-  <div id="outstanding"></div>
+  <div id="outstanding"><div class="card" style="padding:14px 16px"><div class="sk-rows" aria-hidden="true"><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1 w2"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-time"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div></div></div>
   </div>
 
   <!-- tap a row in Outstanding → this sheet (bottom sheet on phones, side panel on desktop) -->
@@ -460,10 +460,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=207"></script>
-<script src="assets/js/supabase.js?v=207"></script>
-<script src="assets/js/app.js?v=207"></script>
-<script src="assets/js/paynow.js?v=207"></script>
-<script src="assets/js/ledger.js?v=207"></script>
+<script src="assets/js/config.js?v=208"></script>
+<script src="assets/js/supabase.js?v=208"></script>
+<script src="assets/js/app.js?v=208"></script>
+<script src="assets/js/paynow.js?v=208"></script>
+<script src="assets/js/ledger.js?v=208"></script>
 </body>
 </html>
