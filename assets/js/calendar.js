@@ -300,7 +300,7 @@
     // keep the hour range steady across the week so swiping between days doesn't jump
     renderGrid(range, [d], $("cal-day"), { noHead:true, hourPx:68 });
     $("cal").querySelectorAll(".ds-d").forEach(function(btn){
-      btn.addEventListener("click", function(e){ e.stopPropagation(); anchor=new Date(btn.dataset.day+"T00:00:00"); render(); });
+      btn.addEventListener("click", function(e){ e.stopPropagation(); jumpTo(new Date(btn.dataset.day+"T00:00:00")); });
     });
   }
   function render3(range){ renderGrid(range, [0,1,2].map(function(i){ return addDays(range.start,i); }), $("cal"), { hourPx:56 }); }
@@ -879,9 +879,45 @@
     var m=effMode();
     if(m==="month") anchor=new Date(anchor.getFullYear(),anchor.getMonth()+dir,1);
     else anchor=addDays(anchor,dir*stepDays(m));
-    ensureData();
+    return ensureData();
   }
-  function goToday(){ anchor=new Date(); ensureData(); }
+
+  // ---- slide animation: the view follows your finger, then slides out and the new one in ----
+  var reduceMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches:false };
+  var sliding=false;
+  // Day view slides just the day's timeline (the week strip stays put); other views slide everything.
+  function slideEl(){ return (effMode()==="day" && $("cal-day")) || $("cal"); }
+  function setX(el, x, fade, ms, ease){
+    el.style.transition = ms ? ("transform "+ms+"ms "+ease+", opacity "+ms+"ms "+ease) : "none";
+    el.style.transform = x ? "translateX("+x+"px)" : "";
+    el.style.opacity = fade==null ? "" : String(fade);
+  }
+  function slideIn(dir){
+    var el=slideEl(); if(!el || reduceMotion.matches) return;
+    var w=el.offsetWidth||360;
+    setX(el, dir*w*0.3, 0, 0);
+    void el.offsetWidth;                       // commit the start position before animating
+    setX(el, 0, null, 200, "cubic-bezier(.2,.7,.2,1)");
+    setTimeout(function(){ el.style.transition=""; }, 220);
+  }
+  // Move by dir (+1 forward / -1 back) with the slide; fromX = where a drag left the view.
+  function go(dir, fromX){
+    if(sliding) return; hidePopover();
+    if(reduceMotion.matches){ shiftRange(dir); return; }
+    sliding=true;
+    var el=slideEl(), w=el.offsetWidth||360;
+    setX(el, -dir*w*0.35, 0, 140, "ease-in");
+    setTimeout(function(){
+      Promise.resolve(shiftRange(dir)).then(function(){ slideIn(dir); sliding=false; }, function(){ sliding=false; });
+    }, 140);
+  }
+  function jumpTo(date){
+    var a=new Date(anchor); a.setHours(0,0,0,0); var b=new Date(date); b.setHours(0,0,0,0);
+    var dir=b>a?1:(b<a?-1:0);
+    anchor=date;
+    Promise.resolve(ensureData()).then(function(){ if(dir) slideIn(dir); });
+  }
+  function goToday(){ hidePopover(); jumpTo(new Date()); }
   // FAB in Day view: start the new lesson on the day you're looking at.
   function m2prefill(){ return effMode()==="day" ? { date: iso(anchor) } : undefined; }
 
@@ -904,20 +940,39 @@
     try{ mode=localStorage.getItem("tl_cal_mode")||""; }catch(e){ mode=""; }
     if(!mode) mode="week";   // default everywhere; the user's last choice is remembered (tl_cal_mode)
     try{ hidden=JSON.parse(localStorage.getItem("tl_cal_hidden")||"{}")||{}; }catch(e){ hidden={}; }
-    $("cal-prev").addEventListener("click", function(){ shiftRange(-1); });
-    $("cal-next").addEventListener("click", function(){ shiftRange(1); });
+    $("cal-prev").addEventListener("click", function(){ go(-1); });
+    $("cal-next").addEventListener("click", function(){ go(1); });
     $("cal-today").addEventListener("click", goToday);
     if($("gcal-btn")) $("gcal-btn").addEventListener("click", connectGcal);
     if($("gcal-cal")) $("gcal-cal").addEventListener("change", function(){ if(this.value) setGcalTarget(this.value); });
     initGcal();
     ["day","3day","week","list","month"].forEach(function(k){ var b=$("seg-"+k); if(b) b.addEventListener("click", function(){ setMode(k); }); });
     // phone: swipe left/right on the calendar to move a day / 3 days / week
-    (function(){ var x0=null,y0=null, el=$("cal");
-      el.addEventListener("touchstart", function(e){ var t=e.touches[0]; x0=t.clientX; y0=t.clientY; }, {passive:true});
-      el.addEventListener("touchend", function(e){
-        if(x0===null) return; var t=e.changedTouches[0], dx=t.clientX-x0, dy=t.clientY-y0; x0=null;
-        if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5 && effMode()!=="month"){ hidePopover(); shiftRange(dx<0?1:-1); }
+    // The view tracks the finger once the gesture is clearly sideways; vertical scrolling is left alone.
+    (function(){ var x0=null,y0=null,dx=0,axis=null, host=$("cal");
+      host.addEventListener("touchstart", function(e){
+        if(sliding || effMode()==="month" || e.touches.length>1) { x0=null; return; }
+        if(e.target.closest(".dstrip")) { x0=null; return; }      // the day strip has its own taps
+        var t=e.touches[0]; x0=t.clientX; y0=t.clientY; dx=0; axis=null;
       }, {passive:true});
+      host.addEventListener("touchmove", function(e){
+        if(x0===null) return;
+        var t=e.touches[0], mx=t.clientX-x0, my=t.clientY-y0;
+        if(!axis){ if(Math.abs(mx)<10 && Math.abs(my)<10) return; axis = Math.abs(mx)>Math.abs(my)*1.2 ? "x" : "y"; }
+        if(axis!=="x") return;
+        e.preventDefault();                          // we own this gesture now
+        dx=mx;
+        if(!reduceMotion.matches){ var el=slideEl(), w=el.offsetWidth||360; setX(el, dx, 1-Math.min(Math.abs(dx)/w,1)*0.4, 0); }
+      }, {passive:false});
+      function end(){
+        if(x0===null) return; var was=axis; x0=null; axis=null;
+        if(was!=="x") return;
+        var el=slideEl();
+        if(Math.abs(dx)>60) go(dx<0?1:-1, dx);
+        else if(el) setX(el, 0, null, 180, "ease-out");   // not far enough: snap back
+      }
+      host.addEventListener("touchend", end, {passive:true});
+      host.addEventListener("touchcancel", end, {passive:true});
     })();
     if($("cal-add")) $("cal-add").addEventListener("click", function(){ openAdd(); });
     if($("cal-fab")) $("cal-fab").addEventListener("click", function(e){ e.stopPropagation(); openAdd(m2prefill()); });

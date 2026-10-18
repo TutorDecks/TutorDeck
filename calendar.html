@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=184">
+<link rel="stylesheet" href="assets/css/app.css?v=185">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -157,6 +157,8 @@
   .cal-right .seg button{padding:8px 16px}
   .cal-addbtn{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 16px;border-radius:10px}
   .cal-card{border-radius:16px}
+  #cal{touch-action:pan-y}
+  #cal,#cal-day{will-change:transform}
   .cal-day-h b{font-family:var(--sans);font-weight:800}
   .cal-day-h.today{background:var(--accent-soft)}
   .cal-col.today{background:rgba(15,118,110,.035)}
@@ -358,9 +360,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=184"></script>
-<script src="assets/js/supabase.js?v=184"></script>
-<script src="assets/js/app.js?v=184"></script>
-<script src="assets/js/calendar.js?v=184"></script>
+<script src="assets/js/config.js?v=185"></script>
+<script src="assets/js/supabase.js?v=185"></script>
+<script src="assets/js/app.js?v=185"></script>
+<script src="assets/js/calendar.js?v=185"></script>
 </body>
 </html>

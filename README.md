@@ -199,6 +199,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Calendar slides when you move (v185)
+
+The view follows your finger on a sideways swipe (vertical scrolling untouched; `touch-action:pan-y`),
+then slides out and the next day/week slides in (~0.2s). A short drag snaps back. The ‹ › arrows, the
+day-strip taps and "today" use the same slide. In Day view only the timeline moves; the strip stays.
+Phones set to Reduce Motion get the old instant swap. Month view doesn't swipe.
+
 ### 2026-10-18 — Floating + on Students, Planner and Exams (v184)
 
 On phones, a page's main add button (marked `data-fab="…"`) becomes the same floating teal + as the
