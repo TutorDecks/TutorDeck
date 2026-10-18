@@ -1,4 +1,4 @@
-/* v206 */
+/* v207 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -23,27 +23,24 @@ body{font-family:var(--sans);color:var(--ink);background:var(--bg);line-height:1
 h1,h2,h3{font-family:var(--sans);font-weight:800;letter-spacing:-.02em;margin:0}
 a{color:inherit}
 
-/* ---------- boot: loading looks like the shell, not a flash ----------
-   Shell pages render <div id="view"> until mountShell() swaps in .app. While it's
-   present we hide the raw markup and paint a skeleton that MATCHES the mounted
-   layout — a steady navy sidebar strip on the left and a spinner in the content
-   area — so the sidebar looks constant and only the content reads as loading. It
-   clears the instant the shell mounts (#view is replaced). Scoped with :has(#view)
-   so the auth/landing pages are untouched. */
+/* ---------- boot: while sign-in is checked, paint the outline of the real layout (v207) ----------
+   Shell pages render <div id="view"> until mountShell() swaps in .app. Until then: the white top nav
+   (desktop) or white tab bar (phone), plus a grey title placeholder where the page heading goes. No
+   spinner: the page's own skeletons take over the moment the shell mounts. Scoped with :has(#view) so
+   the auth/landing pages are untouched. */
 html{background:var(--bg)}
 #view{visibility:hidden}
-body:has(#view)::before{content:"";position:fixed;inset:0;z-index:9998;
-  background:linear-gradient(90deg,var(--navy) 0 236px,var(--bg) 236px)}
-body:has(#view)::after{content:"";position:fixed;top:50%;left:calc(236px + (100% - 236px)/2);
-  margin:-15px 0 0 -15px;width:30px;height:30px;border:3px solid var(--line);
-  border-top-color:var(--gold);border-radius:50%;animation:tl-spin .7s linear infinite;z-index:9999}
-@keyframes tl-spin{to{transform:rotate(360deg)}}
+body:has(#view)::before{content:"";position:fixed;left:0;right:0;top:0;height:60px;z-index:9998;
+  background:#fff;border-bottom:1px solid var(--line)}
+body:has(#view)::after{content:"";position:fixed;z-index:9999;left:max(24px,calc((100% - 1200px)/2 + 24px));top:96px;
+  width:220px;height:30px;border-radius:8px;
+  background:linear-gradient(90deg,#EFECE6 25%,#F7F5F1 37%,#EFECE6 63%);background-size:400% 100%;animation:td-sk 1.4s ease infinite}
 @media(max-width:820px){
-  /* mobile nav is a bottom bar — navy strip along the bottom + centred spinner above it */
-  body:has(#view)::before{background:linear-gradient(to top,var(--navy) 64px,var(--bg) 64px)}
-  body:has(#view)::after{left:50%}
+  body:has(#view)::before{top:auto;bottom:0;height:64px;border-bottom:none;border-top:1px solid var(--line)}
+  body:has(#view)::after{left:18px;top:28px;width:180px}
 }
 @media(prefers-reduced-motion:reduce){body:has(#view)::after{animation:none}}
+@keyframes td-sk{from{background-position:100% 50%}to{background-position:0 50%}}
 
 /* ---------- app frame ---------- */
 .app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
@@ -487,7 +484,6 @@ a.snl:hover{color:var(--gold);text-decoration:underline}
 .subtabs a.on::after{background:var(--accent)}
 .btn-primary{background:var(--ink);border-color:var(--ink);color:#fff}
 @media(max-width:820px){
-  body:has(#view)::before{background:linear-gradient(to top,#fff 64px,var(--bg) 64px)}
   .tabbar{background:#fff;border-top:1px solid var(--line);box-shadow:0 -4px 18px rgba(19,35,63,.06)}
   .tabbar a,.tabbar button{color:#8B8F98}
   .tabbar a.on,.tabbar button.on{color:var(--accent)}
@@ -536,8 +532,6 @@ a.snl:hover{color:var(--gold);text-decoration:underline}
 .subtabs{padding:0 24px}
 .note-banner{margin-left:24px;margin-right:24px}
 /* loading skeleton: white top strip instead of the old navy sidebar */
-body:has(#view)::before{background:linear-gradient(180deg,#fff 0 60px,var(--line) 60px 61px,var(--bg) 61px)}
-body:has(#view)::after{left:50%}
 @media(max-width:1000px){ .tn-links a span{display:none} .tn-links a{padding:0 11px} .tn-in{gap:16px} }
 @media(max-width:820px){
   .topnav{display:none}
@@ -545,7 +539,6 @@ body:has(#view)::after{left:50%}
   .content{padding:12px 18px 40px}
   .subtabs{padding:0 14px}
   .note-banner{margin-left:18px;margin-right:18px}
-  body:has(#view)::before{background:linear-gradient(to top,#fff 64px,var(--bg) 64px)}
 }
 .modal-backdrop{z-index:90}
 /* v153: TutorDeck mark */
