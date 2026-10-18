@@ -75,7 +75,7 @@
     var r=await Promise.all([
       window.sb.from("students").select("id,name,location,contact,active,level,end_date"),
       window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true),
-      window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject")
+      window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,score,max_score,remarks")
     ]);
     students=r[0].error?[]:(r[0].data||[]);
     nameById={}; locById={}; hhById={}; endById={};
@@ -125,6 +125,7 @@
     var jobs=[];
     if(!loadedStatic) jobs.push(loadStatic());
     monthsIn(visibleRange()).forEach(function(k){ jobs.push(fetchMonth(k)); });
+    neighborMonths().forEach(function(k){ jobs.push(fetchMonth(k)); });   // panes either side are real too
     await Promise.all(jobs);
     render();
     prefetchAdjacent();
@@ -236,17 +237,21 @@
       (sub?'<span class="ce-s">'+esc(sub)+'</span>':'')+
       (b.location?'<span class="ce-loc">◍ '+esc(b.location)+'</span>':'')+'</div>';
   }
-  function renderWeek(range){ renderGrid(range, [0,1,2,3,4,5,6].map(function(d){ return addDays(range.start,d); }), $("cal")); }
+  // Renderers paint into calEl(): normally #cal, but during render() each carousel pane in turn.
+  var HOST=null, SHARED=null, stickyBd=null;
+  function calEl(){ return HOST || $("cal"); }
+  function renderWeek(range){ renderGrid(range, [0,1,2,3,4,5,6].map(function(d){ return addDays(range.start,d); }), calEl()); }
   // Time grid for any run of dates (1 = day, 3 = three days, 7 = week), Google-Calendar style.
   function renderGrid(range, dates, el, opts){
-    opts=opts||{}; var HOUR_PX=opts.hourPx||HOUR_PX_BASE;
+    opts=Object.assign({}, opts||{}, SHARED||{}); var HOUR_PX=opts.hourPx||HOUR_PX_BASE;
+    var G=!opts.noGutter;   // in the carousel the hour labels live outside, fixed
     var blocks=buildBlocks(range), keys=dates.map(iso);
     var byCol=dates.map(function(){ return []; });
     blocks.forEach(function(b){ var i=keys.indexOf(b.dateISO); if(i>=0) byCol[i].push(b); });
     byCol.forEach(laneAssign);
     lastBlocks=blocks;
     var shown=[].concat.apply([],byCol);
-    var bd=bounds(opts.boundsFrom||shown), hours=(bd.end-bd.start)/60, gridH=hours*HOUR_PX, today=iso(new Date());
+    var bd=opts.bd||bounds(opts.boundsFrom||shown), hours=(bd.end-bd.start)/60, gridH=hours*HOUR_PX, today=iso(new Date());
     var headCells="";
     dates.forEach(function(date){
       var isT=iso(date)===today;
@@ -256,7 +261,10 @@
     dates.forEach(function(date){
       var dayExams=examsByDt[iso(date)]||[];
       if(dayExams.length) hasEx=true;
-      adCells+='<div class="cal-ad-cell">'+dayExams.map(examChipHTML).join("")+'</div>';
+      // Carousel: a fixed slim row — first exam + "+N" — so weeks with and without exams line up.
+      adCells+='<div class="cal-ad-cell">'+(opts.slimAllday
+        ? (dayExams.length?examChipHTML(dayExams[0])+(dayExams.length>1?'<span class="ad-more">+'+(dayExams.length-1)+'</span>':''):'')
+        : dayExams.map(examChipHTML).join(""))+'</div>';
     });
     var gutter="";
     for(var h=0; h<hours; h++)
@@ -271,39 +279,40 @@
       cols+='<div class="cal-col'+(isTc?" today":"")+'">'+evs+'</div>';
     });
     var gridBg="background-image:repeating-linear-gradient(var(--line) 0 1px,transparent 1px "+HOUR_PX+"px)";
-    el.innerHTML=(opts.noHead?'':'<div class="cal-head"><div class="cal-gutter-h"></div>'+headCells+'</div>')+
-      (hasEx?('<div class="cal-allday"><div class="cal-gutter-h"></div>'+adCells+'</div>'):'')+
-      '<div class="cal-body"><div class="cal-gutter">'+gutter+'</div>'+
+    var gh=G?'<div class="cal-gutter-h"></div>':'';
+    el.innerHTML=(opts.noHead?'':'<div class="cal-head">'+gh+headCells+'</div>')+
+      ((hasEx||opts.forceAllday)?('<div class="cal-allday">'+gh+adCells+'</div>'):'')+
+      '<div class="cal-body">'+(G?'<div class="cal-gutter">'+gutter+'</div>':'')+
       '<div class="cal-cols cols-'+dates.length+'" style="height:'+gridH+'px;'+gridBg+'">'+cols+'</div></div>';
-    if(!shown.length && opts.noHead){ el.innerHTML='<div class="cal-empty">Nothing on '+WDF[(dates[0].getDay()+6)%7]+'. Swipe or tap another day.</div>'; wireEvents(); return; }
-    if(!shown.length)
+    if(!shown.length && opts.noHead && G){ el.innerHTML='<div class="cal-empty">Nothing on '+WDF[(dates[0].getDay()+6)%7]+'. Swipe or tap another day.</div>'; wireEvents(); return; }
+    if(!shown.length && G)
       el.innerHTML+='<div class="cal-empty">'+(dates.length===1?'No lessons on '+WDF[(dates[0].getDay()+6)%7]+'.':'No lessons or recurring slots in these days. Add slots on the Planner, or tap +.')+'</div>';
     wireEvents();
   }
 
-  // Phone day view: Mon–Sun strip (dots = lessons that day), then the chosen day's timeline.
-  function renderDay(range){
+  // Phone day view: a Mon–Sun strip (dots = lessons that day) that stays put, and the chosen day's
+  // timeline, which is what slides.
+  function dayStripHTML(range){
     var ws=range.start, blocks=buildBlocks(range), today=iso(new Date()), sel=iso(anchor);
     var count={}; blocks.forEach(function(b){ if(b.state!=="cancel") count[b.dateISO]=(count[b.dateISO]||0)+1; });
     var exD=examsByDate();
-    var strip='<div class="dstrip">'+[0,1,2,3,4,5,6].map(function(d){
+    return '<div class="dstrip">'+[0,1,2,3,4,5,6].map(function(d){
       var date=addDays(ws,d), k=iso(date), n=count[k]||0, dots="";
       for(var i=0;i<Math.min(n,3);i++) dots+='<i></i>';
       if((exD[k]||[]).length) dots+='<i class="ex"></i>';
       return '<button type="button" class="ds-d'+(k===sel?' on':'')+(k===today?' today':'')+'" data-day="'+k+'">'+
         '<span class="ds-w">'+DAY[d].charAt(0)+'</span><span class="ds-n">'+date.getDate()+'</span><span class="ds-dots">'+dots+'</span></button>';
     }).join("")+'</div>';
-    var d=new Date(anchor); d.setHours(0,0,0,0);
-    var nLess=count[sel]||0;
-    $("cal").innerHTML=strip+'<div class="dhead"><b>'+WDF[(d.getDay()+6)%7]+'</b> '+d.getDate()+' '+MON[d.getMonth()]+
-      '<span>'+(nLess?nLess+' lesson'+(nLess===1?'':'s'):'')+'</span></div><div id="cal-day"></div>';
-    // keep the hour range steady across the week so swiping between days doesn't jump
-    renderGrid(range, [d], $("cal-day"), { noHead:true, hourPx:68 });
-    $("cal").querySelectorAll(".ds-d").forEach(function(btn){
-      btn.addEventListener("click", function(e){ e.stopPropagation(); anchor=new Date(btn.dataset.day+"T00:00:00"); render(); });
-    });
   }
-  function render3(range){ renderGrid(range, [0,1,2].map(function(i){ return addDays(range.start,i); }), $("cal"), { hourPx:56 }); }
+  function renderDay(range){
+    var d=new Date(anchor); d.setHours(0,0,0,0);
+    var n=buildBlocks({start:d,end:d}).filter(function(b){ return b.state!=="cancel"; }).length;
+    var host=calEl();
+    host.innerHTML='<div class="dhead"><b>'+WDF[(d.getDay()+6)%7]+'</b> '+d.getDate()+' '+MON[d.getMonth()]+
+      '<span>'+(n?n+' lesson'+(n===1?'':'s'):'')+'</span></div><div class="cal-dayg"></div>';
+    renderGrid(range, [d], host.querySelector(".cal-dayg"), { noHead:true, hourPx:68 });
+  }
+  function render3(range){ renderGrid(range, [0,1,2].map(function(i){ return addDays(range.start,i); }), calEl(), { hourPx:56 }); }
 
   // ---- month (day-cell grid) ----
   function chipHTML(b){
@@ -328,9 +337,9 @@
       cells+='<div class="cal-mday'+(inMonth?"":" other")+(isT?" today":"")+'" data-day="'+di+'">'+
         '<div class="md-num">'+d.getDate()+'</div>'+examHtml+shown+more+'</div>';
     }
-    $("cal").innerHTML='<div class="cal-mhead">'+head+'</div><div class="cal-month">'+cells+'</div>';
+    calEl().innerHTML='<div class="cal-mhead">'+head+'</div><div class="cal-month">'+cells+'</div>';
     // click a day (not a chip) → open that week
-    $("cal").querySelectorAll(".cal-mday").forEach(function(cell){
+    calEl().querySelectorAll(".cal-mday").forEach(function(cell){
       cell.addEventListener("click", function(){ anchor=new Date(cell.dataset.day+"T00:00:00"); setMode("week"); });
     });
     wireEvents();
@@ -368,7 +377,7 @@
       }).join("")+'</div>';
       html+='</section>';
     }
-    $("cal").innerHTML = any ? '<div class="ag">'+html+'</div>' :
+    calEl().innerHTML = any ? '<div class="ag">'+html+'</div>' :
       '<div class="cal-empty">No lessons this week. Add slots on the Planner, or tap + Add.</div>';
     wireEvents();
   }
@@ -380,20 +389,70 @@
     document.body.classList.toggle("cal-agenda", m==="list");
     document.body.classList.toggle("cal-dayview", m==="day");
     ["day","3day","week","list","month"].forEach(function(k){ var b=$("seg-"+k); if(b) b.classList.toggle("on", k===m); });
-    if(m==="month") renderMonth(visibleRange());
-    else if(m==="list") renderAgenda(visibleRange());
-    else if(m==="day") renderDay(visibleRange());
-    else if(m==="3day") render3(visibleRange());
-    else renderWeek(visibleRange());
+    var fn = m==="month"?renderMonth : m==="list"?renderAgenda : m==="day"?renderDay : m==="3day"?render3 : renderWeek;
+    var cal=$("cal"), grid=(m==="week"||m==="day"||m==="3day");
+    var vp='<div class="cal-vp" id="cal-vp"><div class="cal-track" id="cal-track">'+
+      '<div class="cal-pane"></div><div class="cal-pane"></div><div class="cal-pane"></div></div></div>';
+    cal.innerHTML=(m==="day"?'<div id="cal-stripbox">'+dayStripHTML(visibleRange())+'</div>':'')+
+      (grid?'<div class="cal-gwrap"><div class="cal-gfix" id="cal-gfix"></div>'+vp+'</div>':vp);
+    var panes=cal.querySelectorAll(".cal-pane"), save=anchor;
+    SHARED=null;
+    if(grid){
+      // One hour range for all three panes, so their rows line up with the fixed hour labels.
+      var d0=new Date(save); d0.setHours(0,0,0,0);
+      var span = m==="day" ? { start:addDays(d0,-1), end:addDays(d0,1) }     // just the three days you can swipe between
+                           : { start:rangeFor(stepAnchor(save,-1),m).start, end:rangeFor(stepAnchor(save,1),m).end };
+      // Hours = your teaching hours (every weekly Planner slot), widened only if a lesson nearby
+      // falls outside them, so swiping never rescales the grid.
+      var hp=m==="day"?68:(m==="3day"?56:HOUR_PX_BASE);
+      var base=slots.map(function(sl){ return { startMin:toMin(sl.start_time), endMin:toMin(sl.end_time) }; });
+      // Also count every lesson already loaded (this month and its neighbours), and only ever widen
+      // while the page is open — so landing on a new week never rescales the grid.
+      var loaded=[]; Object.keys(lessonCache).forEach(function(k){ (lessonCache[k]||[]).forEach(function(l){
+        if(l.status!=="cancelled" && l.start_time && l.end_time) loaded.push({ startMin:toMin(l.start_time), endMin:toMin(l.end_time) }); }); });
+      var bd=bounds(base.concat(loaded, buildBlocks(span)));
+      if(stickyBd) bd={ start:Math.min(bd.start,stickyBd.start), end:Math.max(bd.end,stickyBd.end) };
+      stickyBd=bd;
+      SHARED={ noGutter:true, bd:bd, hourPx:hp, forceAllday:true, slimAllday:true };
+      var gut="";
+      for(var h=0; h<(bd.end-bd.start)/60; h++) gut+='<div class="cal-hr" style="height:'+hp+'px"><span>'+hourLabel(bd.start+h*60)+'</span></div>';
+      $("cal-gfix").innerHTML='<div class="cal-gspace"></div>'+gut;
+    }
+    // neighbours first, the current view last (so popovers/clash data belong to what you see)
+    [[0,-1],[2,1],[1,0]].forEach(function(p){
+      var a=p[1]?stepAnchor(save,p[1]):save;
+      anchor=a; HOST=panes[p[0]];
+      try{ fn(rangeFor(a,m)); } finally{ HOST=null; anchor=save; }
+    });
+    SHARED=null;
+    if(grid) alignGutter();
+    fitHeight();
+    cal.querySelectorAll(".ds-d").forEach(function(btn){
+      btn.addEventListener("click", function(e){ e.stopPropagation(); jumpTo(new Date(btn.dataset.day+"T00:00:00")); });
+    });
   }
+  // Line the fixed hour labels up with the panes: equal exam rows, then a spacer as tall as the headers.
+  function alignGutter(){
+    var vp=$("cal-vp"), g=$("cal-gfix"); if(!vp||!g) return;
+    var ad=vp.querySelectorAll(".cal-allday"), mh=0;
+    ad.forEach(function(x){ x.style.minHeight=""; mh=Math.max(mh,x.offsetHeight); });
+    ad.forEach(function(x){ x.style.minHeight=mh+"px"; });
+    var cur=vp.querySelectorAll(".cal-pane")[1], body=cur&&cur.querySelector(".cal-body");
+    if(body) g.querySelector(".cal-gspace").style.height=(body.getBoundingClientRect().top-cur.getBoundingClientRect().top)+"px";
+  }
+  // The viewport takes the current pane's height so a short neighbour doesn't leave a gap.
+  function fitHeight(){ var vp=$("cal-vp"), p=vp&&vp.querySelectorAll(".cal-pane")[1]; if(p) vp.style.height=p.offsetHeight+"px"; }
+  // While moving, open the viewport to the tallest pane so the incoming one is never cut off.
+  function openHeight(){ var vp=$("cal-vp"); if(!vp) return; var h=0;
+    vp.querySelectorAll(".cal-pane").forEach(function(p){ h=Math.max(h,p.offsetHeight); }); vp.style.height=h+"px"; }
   if(phoneMQ.addEventListener) phoneMQ.addEventListener("change", function(){ if(loadedStatic) render(); });
 
   function wireEvents(){
-    $("cal").querySelectorAll("[data-ev]").forEach(function(node){
+    calEl().querySelectorAll("[data-ev]").forEach(function(node){
       node.addEventListener("click", function(e){ e.stopPropagation(); showPopover(node); });
     });
-    $("cal").querySelectorAll("[data-exam]").forEach(function(node){
-      node.addEventListener("click", function(e){ e.stopPropagation(); location.href="exams.html?highlight="+encodeURIComponent(node.dataset.exam); });
+    calEl().querySelectorAll("[data-exam]").forEach(function(node){
+      node.addEventListener("click", function(e){ e.stopPropagation(); showExamPopover(node); });
     });
   }
 
@@ -428,18 +487,18 @@
       proj:["Not logged yet","rgba(15,118,110,.12)","#0B5D57"]}[b.state];
     var dt=new Date(b.dateISO+"T00:00:00");
     var when=DAY[(dt.getDay()+6)%7]+" "+dt.getDate()+" "+MON[dt.getMonth()]+" · "+hhmm2(b.startMin)+"–"+hhmm2(b.endMin);
-    var sub=[b.subject,b.level].filter(Boolean).join(" · ");
+    var sub=[b.subject,b.level].filter(Boolean).join(" · "), cv=!!(window.TL&&TL.isClient&&TL.isClient());
     pop.innerHTML='<span class="cp-x" id="cp-x">×</span><h4>'+esc(b.name)+'</h4>'+
       '<div class="cp-row">'+esc(when)+'</div>'+
       (sub?'<div class="cp-row"><b>'+esc(sub)+'</b></div>':'')+
       (b.location?'<div class="cp-row">◍ <b>'+esc(b.location)+'</b></div>':'')+
-      (b.kind==="lesson"&&b.amount!=null?'<div class="cp-row">'+(b.state==="cancel"?"Compensation":"Amount")+' <b>'+TL.sgd(b.amount)+'</b></div>':'')+
+      (b.kind==="lesson"&&b.amount!=null&&!cv?'<div class="cp-row">'+(b.state==="cancel"?"Compensation":"Amount")+' <b>'+TL.sgd(b.amount)+'</b></div>':'')+
       (b.clash?'<div class="cp-row" style="color:var(--owed);font-weight:700">⚠ Overlaps another lesson</div>':'')+
-      '<span class="cp-tag" style="background:'+label[1]+';color:'+label[2]+'">'+label[0]+'</span>'+
+      (cv&&(b.state==="paid"||b.state==="unpaid")?'':'<span class="cp-tag" style="background:'+label[1]+';color:'+label[2]+'">'+label[0]+'</span>')+
       (b.adhoc?' <span class="cp-tag" style="background:rgba(19,35,63,.10);color:var(--navy)">✦ One-off</span>':'')+
       (b.postponed?' <span class="cp-tag" style="background:rgba(180,83,9,.18);color:#92400E">Postponed</span>':'')+
       actionButtons(b)+
-      '<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Open Ledger":"Edit in Ledger")+' →</a>';
+      (cv?'':'<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Open Ledger":"Edit in Ledger")+' →</a>');
     pop.style.display="block";
     var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
     positionPopover(node);
@@ -450,6 +509,33 @@
     var postponeBtn=$("cp-postpone"); if(postponeBtn) postponeBtn.addEventListener("click", function(){ showPostponeForm(b); });
     var revertBtn=$("cp-revert"); if(revertBtn) revertBtn.addEventListener("click", function(){ doRevert(b); });
     var logBtn=$("cp-log"); if(logBtn) logBtn.addEventListener("click", function(){ doLogProjected(b); });
+  }
+  // Exam details first (like lessons); Exams page and student profile are one tap away.
+  function showExamPopover(node){
+    var ex=exams.filter(function(x){ return String(x.id)===String(node.dataset.exam); })[0]; if(!ex) return;
+    popNode=node;
+    var pop=$("cal-pop"), dt=new Date(ex.exam_date+"T00:00:00");
+    var now=new Date(); now.setHours(0,0,0,0);
+    var days=Math.round((dt-now)/86400000);
+    var when=days===0?"Today":(days===1?"Tomorrow":(days>1?"In "+days+" days":(days===-1?"Yesterday":Math.abs(days)+" days ago")));
+    var title=[ex.assessment_type,ex.subject].filter(Boolean).join(" · ")||"Exam";
+    var hasScore=ex.score!=null&&ex.max_score, cv=!!(window.TL&&TL.isClient&&TL.isClient());
+    var tag=(cv&&days<0)?'':days>=0
+      ? '<span class="cp-tag" style="background:'+(days<=14?'rgba(180,83,9,.12);color:var(--warn)':'#F1EFEA;color:var(--muted)')+'">'+when+'</span>'
+      : (hasScore?'<span class="cp-tag" style="background:var(--accent-soft);color:var(--accent)">'+esc(ex.score+"/"+ex.max_score)+' · '+Math.round(ex.score/ex.max_score*100)+'%</span>'
+                 :'<span class="cp-tag" style="background:#F1EFEA;color:var(--muted)">No result yet</span>');
+    pop.innerHTML='<span class="cp-x" id="cp-x">×</span><h4>'+esc(nameById[ex.student_id]||"—")+'</h4>'+
+      '<div class="cp-row"><b>'+esc(title)+'</b></div>'+
+      '<div class="cp-row">'+DAY[(dt.getDay()+6)%7]+' '+dt.getDate()+' '+MON[dt.getMonth()]+' '+dt.getFullYear()+(days<0?' · '+when:'')+'</div>'+
+      (ex.topics?'<div class="cp-row">Topics <b>'+esc(ex.topics)+'</b></div>':'')+
+      (ex.remarks?'<div class="cp-row">'+esc(ex.remarks)+'</div>':'')+
+      tag+
+      '<div class="cp-btns"><a class="cp-btn primary" style="text-decoration:none" href="exams.html?highlight='+encodeURIComponent(ex.id)+'">'+(days<0&&!hasScore?'Add result in Exams':'Open in Exams')+'</a>'+
+      '<a class="cp-btn" style="text-decoration:none" href="student.html?id='+encodeURIComponent(ex.student_id)+'">Student profile</a></div>';
+    pop.style.display="block";
+    var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
+    positionPopover(node);
+    $("cp-x").addEventListener("click", hidePopover);
   }
   function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.remove("on"); popNode=null; }
   // After any write, the visible range (and whichever month a lesson may have moved
@@ -875,24 +961,71 @@
     try{ localStorage.setItem("tl_cal_mode",m); }catch(e){}
     ensureData();
   }
-  function shiftRange(dir){
+  function stepAnchor(a, dir){
     var m=effMode();
-    if(m==="month") anchor=new Date(anchor.getFullYear(),anchor.getMonth()+dir,1);
-    else anchor=addDays(anchor,dir*stepDays(m));
-    ensureData();
+    return m==="month" ? new Date(a.getFullYear(),a.getMonth()+dir,1) : addDays(a,dir*stepDays(m));
   }
-  function goToday(){ anchor=new Date(); ensureData(); }
+  function shiftRange(dir){ anchor=stepAnchor(anchor,dir); return ensureData(); }
+
+  // ---- slide animation: the view follows your finger, then slides out and the new one in ----
+  var reduceMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches:false };
+  var sliding=false;
+  // The track holds [previous | current | next]; it rests at -1/3 and moves with the finger.
+  function track(){ return $("cal-track"); }
+  function setTrack(px, pct, ms){
+    var t=track(); if(!t) return;
+    t.style.transition = ms ? "transform "+ms+"ms cubic-bezier(.2,.7,.2,1)" : "none";
+    t.style.transform = "translateX(calc("+(pct==null?-100/3:pct)+"% + "+(px||0)+"px))";
+  }
+  // Move by dir (+1 forward / -1 back): slide the neighbour in, then re-centre on it.
+  function go(dir){
+    if(sliding) return; hidePopover();
+    if(reduceMotion.matches || !track()){ shiftRange(dir); return; }
+    sliding=true; openHeight();
+    setTrack(0, dir>0 ? -200/3 : 0, 230);
+    setTimeout(function(){
+      Promise.resolve(shiftRange(dir)).then(function(){ sliding=false; }, function(){ sliding=false; });
+    }, 240);
+  }
+  function jumpTo(date){
+    var a=new Date(anchor); a.setHours(0,0,0,0); var b=new Date(date); b.setHours(0,0,0,0);
+    var d=Math.round((b-a)/86400000), m=effMode();
+    if(m==="day" && Math.abs(d)===1){ go(d); return; }           // next/previous day: slide
+    anchor=date; ensureData();
+  }
+  // One-time tips, each pointing at what it explains, one at a time:
+  // phones first get "swipe" on the calendar itself, then "tap a colour" on the key below it.
+  function showTips(){
+    if(!(window.TL && TL.coach)) return;
+    // Wait until the key is actually on screen, so the tip isn't shown where nobody can see it.
+    function filters(){
+      var key=document.querySelector(".cal-legend"); if(!key) return;
+      function show(){ TL.coach("cal-filters", key,
+        "<b>Filter the calendar</b><br>Tap a status to hide those lessons. Tap it again to bring them back."); }
+      if(!("IntersectionObserver" in window)){ show(); return; }
+      var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ io.disconnect(); show(); } }, { threshold:1 });
+      io.observe(key);
+    }
+    var seen=true; try{ seen=!!localStorage.getItem("td_tip_cal-swipe"); }catch(e){}
+    if(!isPhone() || seen){ filters(); return; }
+    var cur=document.querySelector("#cal-vp .cal-pane:nth-child(2)");
+    var anchor=(cur && (cur.querySelector(".cal-head")||cur.querySelector(".dhead")||cur.querySelector(".cal-mhead"))) || $("cal");
+    TL.coach("cal-swipe", anchor, "<b>Swipe the calendar</b><br>Swipe left or right to go to the next or previous "+(effMode()==="month"?"month":effMode()==="day"?"day":"week")+".");
+    var ok=document.querySelector("#td-tip-cal-swipe .td-tip-ok");
+    if(ok) ok.addEventListener("click", function(){ setTimeout(filters, 150); });
+  }
+  function goToday(){ hidePopover(); anchor=new Date(); ensureData(); }
   // FAB in Day view: start the new lesson on the day you're looking at.
   function m2prefill(){ return effMode()==="day" ? { date: iso(anchor) } : undefined; }
 
   function initLegend(){
     document.querySelectorAll(".cal-legend .leg").forEach(function(btn){
       var cat=btn.dataset.cat;
-      btn.classList.toggle("off", !!hidden[cat]);
+      btn.classList.toggle("off", !!hidden[cat]); btn.setAttribute("aria-pressed", hidden[cat]?"false":"true");
       btn.addEventListener("click", function(e){
         e.stopPropagation();
         if(hidden[cat]) delete hidden[cat]; else hidden[cat]=true;
-        btn.classList.toggle("off", !!hidden[cat]);
+        btn.classList.toggle("off", !!hidden[cat]); btn.setAttribute("aria-pressed", hidden[cat]?"false":"true");
         try{ localStorage.setItem("tl_cal_hidden", JSON.stringify(hidden)); }catch(e2){}
         render();   // re-filter; no refetch needed
       });
@@ -904,20 +1037,40 @@
     try{ mode=localStorage.getItem("tl_cal_mode")||""; }catch(e){ mode=""; }
     if(!mode) mode="week";   // default everywhere; the user's last choice is remembered (tl_cal_mode)
     try{ hidden=JSON.parse(localStorage.getItem("tl_cal_hidden")||"{}")||{}; }catch(e){ hidden={}; }
-    $("cal-prev").addEventListener("click", function(){ shiftRange(-1); });
-    $("cal-next").addEventListener("click", function(){ shiftRange(1); });
+    $("cal-prev").addEventListener("click", function(){ go(-1); });
+    $("cal-next").addEventListener("click", function(){ go(1); });
     $("cal-today").addEventListener("click", goToday);
     if($("gcal-btn")) $("gcal-btn").addEventListener("click", connectGcal);
     if($("gcal-cal")) $("gcal-cal").addEventListener("change", function(){ if(this.value) setGcalTarget(this.value); });
     initGcal();
     ["day","3day","week","list","month"].forEach(function(k){ var b=$("seg-"+k); if(b) b.addEventListener("click", function(){ setMode(k); }); });
     // phone: swipe left/right on the calendar to move a day / 3 days / week
-    (function(){ var x0=null,y0=null, el=$("cal");
-      el.addEventListener("touchstart", function(e){ var t=e.touches[0]; x0=t.clientX; y0=t.clientY; }, {passive:true});
-      el.addEventListener("touchend", function(e){
-        if(x0===null) return; var t=e.changedTouches[0], dx=t.clientX-x0, dy=t.clientY-y0; x0=null;
-        if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5 && effMode()!=="month"){ hidePopover(); shiftRange(dx<0?1:-1); }
+    // The view tracks the finger once the gesture is clearly sideways; vertical scrolling is left alone.
+    (function(){ var x0=null,y0=null,dx=0,axis=null, host=$("cal");
+      host.addEventListener("touchstart", function(e){
+        if(sliding || e.touches.length>1) { x0=null; return; }
+        if(e.target.closest(".dstrip")) { x0=null; return; }      // the day strip has its own taps
+        var t=e.touches[0]; x0=t.clientX; y0=t.clientY; dx=0; axis=null;
       }, {passive:true});
+      host.addEventListener("touchmove", function(e){
+        if(x0===null) return;
+        var t=e.touches[0], mx=t.clientX-x0, my=t.clientY-y0;
+        if(!axis){ if(Math.abs(mx)<10 && Math.abs(my)<10) return; axis = Math.abs(mx)>Math.abs(my)*1.2 ? "x" : "y"; }
+        if(axis!=="x") return;
+        e.preventDefault();                          // we own this gesture now
+        if(dx===0) openHeight();
+        dx=mx;
+        if(!reduceMotion.matches) setTrack(dx);
+      }, {passive:false});
+      function end(){
+        if(x0===null) return; var was=axis; x0=null; axis=null;
+        if(was!=="x") return;
+        var w=($("cal-vp")||{}).offsetWidth||360;
+        if(Math.abs(dx)>Math.min(80,w*0.2)) go(dx<0?1:-1);
+        else { setTrack(0, null, 180); setTimeout(fitHeight, 190); }   // not far enough: snap back
+      }
+      host.addEventListener("touchend", end, {passive:true});
+      host.addEventListener("touchcancel", end, {passive:true});
     })();
     if($("cal-add")) $("cal-add").addEventListener("click", function(){ openAdd(); });
     if($("cal-fab")) $("cal-fab").addEventListener("click", function(e){ e.stopPropagation(); openAdd(m2prefill()); });
@@ -933,7 +1086,8 @@
     document.addEventListener("click", hidePopover);
     window.addEventListener("resize", hidePopover);
     if(window.TL && TL.promotePastLessons) TL.promotePastLessons();
-    ensureData();
+
+    Promise.resolve(ensureData()).then(showTips);
   }
 
   if (window.__CAL_TEST__) {

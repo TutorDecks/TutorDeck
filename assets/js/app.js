@@ -156,6 +156,7 @@ window.TL = (function () {
       <div class="main">
         <div class="topbar">
           <div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div>
+          <button type="button" class="cv-btn" id="td-cv" aria-pressed="false" title="Client view: hide all money while a student or parent can see your screen">${EYE}<span>Client view</span></button>
         </div>
         ${subtabs}
         ${configBanner()}
@@ -179,6 +180,33 @@ window.TL = (function () {
     more.addEventListener("click", function () { setSheet(!app.classList.contains("sheet-open")); });
     scrim.addEventListener("click", function () { setSheet(false); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") { setSheet(false); acctWrap.classList.remove("open"); } });
+    // Client view: switch in the page header; while on, a pill at the bottom says so and turns it off.
+    document.body.classList.toggle("client-view", CLIENT);
+    var cvb = document.getElementById("td-cv");
+    if (cvb) { cvb.setAttribute("aria-pressed", CLIENT ? "true" : "false"); cvb.addEventListener("click", function () { setClient(!CLIENT); }); }
+    if (cvb && !CLIENT && active === "dashboard")
+      setTimeout(function () { coach("client-view", cvb, "<b>Client view</b><br>Student or parent can see your screen? Tap the eye to hide all money. Tap it again to bring it back."); }, 600);
+    if (CLIENT && !document.getElementById("td-cv-exit")) {
+      var ex = document.createElement("button");
+      ex.type = "button"; ex.id = "td-cv-exit"; ex.className = "cv-exit";
+      ex.innerHTML = EYE_OFF + "Exit client view";
+      ex.addEventListener("click", function () { setClient(false); });
+      document.body.appendChild(ex);
+    }
+    // Money pages have nothing to show in client view: say so instead of a page of $•••.
+    if (CLIENT && ["ledger", "invoices", "insights"].indexOf(active) >= 0) {
+      document.body.classList.add("cv-money");
+      var c = document.getElementById("content");
+      if (c && !document.getElementById("cv-block")) {
+        var blk = document.createElement("div");
+        blk.id = "cv-block"; blk.className = "card cv-block";
+        blk.innerHTML = '<div class="cv-ic">' + EYE_OFF + '</div><b>Money is hidden</b><p>Client view is on, so payments and invoices stay private while someone can see your screen.</p>' +
+          '<button type="button" class="btn btn-gold" id="cv-block-off">Exit client view</button>';
+        c.insertBefore(blk, c.firstChild);
+        blk.querySelector("#cv-block-off").addEventListener("click", function () { setClient(false); });
+      }
+    }
+
     // Phones: a page's main "add" button (marked data-fab) becomes a floating + at bottom right,
     // inside thumb reach. The original button stays in the DOM (hidden on phones) and does the work.
     var fabSrc = document.querySelector("[data-fab]");
@@ -285,7 +313,20 @@ window.TL = (function () {
   }
 
   // ---- helpers ----
+  // ---- Client view: one switch (per device) that hides money everywhere, for when a student or
+  // parent can see your screen. Every amount goes through sgd(), so masking it here covers the app.
+  var CLIENT = false;
+  try { CLIENT = localStorage.getItem("td_client") === "1"; } catch (e) {}
+  function isClient() { return CLIENT; }
+  function setClient(on) {
+    try { if (on) localStorage.setItem("td_client", "1"); else localStorage.removeItem("td_client"); } catch (e) {}
+    location.reload();   // simplest way to re-render every figure masked / unmasked
+  }
+  var EYE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var EYE_OFF = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.5 8 10 8a10 10 0 0 0 5.4-1.6"/><path d="M2 2l20 20"/></svg>';
+
   function sgd(n) {
+    if (CLIENT) return "$•••";
     return "$" + (Number(n) || 0).toLocaleString("en-SG",
       { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
@@ -370,7 +411,7 @@ window.TL = (function () {
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
-           sgd: sgd, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
+           sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,
            todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd };
 })();

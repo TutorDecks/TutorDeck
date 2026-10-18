@@ -199,6 +199,84 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Client view: hide money everywhere (v194)
+
+T-Leng updates TutorDeck during class, where students can see the screen. **Client view** (eye button
+in every page header; replaces the student page's Parent view) hides money app-wide, per device
+(`localStorage td_client`), until you tap it again or "Exit client view" (floating pill).
+- `TL.sgd()` returns `$•••`, so every amount in the app is masked.
+- Home: the Money card is hidden; Teaching stays.
+- Calendar: paid/unpaid look like ordinary bookings (no colours, no Paid/Unpaid filters); the lesson
+  popover drops the amount, status tag and "Edit in Ledger"; past exam scores are hidden.
+- Ledger / Invoices / Insights: replaced by a "Money is hidden" card with Exit client view.
+- Student page: fee KPIs swap for the progress stats (attendance, latest scores, next exam); Paid/Unpaid
+  badges hidden. Notes and editing still work, so you can update during the lesson.
+- One-time tip on the eye button (Home). `TL.isClient()` / `TL.setClient(on)` for other pages.
+
+### 2026-10-18 — Calendar key: filters vs symbols (v193)
+
+Under the calendar, the status filters are now real pill buttons (Paid · Unpaid ·
+Upcoming · Not logged · Cancelled; off = dashed, greyed, `aria-pressed`). The symbol explanations sit on
+their own quiet line: ✦ One-off · ↻ Postponed · ⚠ Clash (red outline). Tip text now says "Tap a status"
+instead of "Tap a colour".
+
+### 2026-10-18 — Calendar tips point at what they explain (v192)
+
+Two one-time tips instead of one under the view switcher: on phones **"Swipe the calendar"** points at
+the calendar's day header first; after "Got it", **"Filter the calendar"** points at the colour key — but
+only once the key is scrolled into view (IntersectionObserver), so it's never shown off-screen. Desktop
+gets just the filter tip. Keys `td_tip_cal-swipe`, `td_tip_cal-filters`.
+
+### 2026-10-18 — One-time Calendar tip (v191)
+
+`TL.coach("cal-filters", …)` under the view switcher, shown once per browser: on phones "swipe to change
+day/week + tap a colour in the key to hide/show those lessons"; on desktop just the colour-key filter.
+
+### 2026-10-18 — Tapping an exam in the Calendar shows it first (v190)
+
+Exam chips open the same popover/bottom sheet as lessons: student, type · subject, date (and "in 5
+days" amber within 14 days, or "4 days ago"), topics, remarks, result (78/100 · 78%) or "No result yet",
+with **Open in Exams** (or **Add result in Exams**) and **Student profile**. Calendar now loads exam
+topics/score/remarks too.
+
+### 2026-10-18 — Calendar hour range only grows (v189)
+
+The shared hour range now also counts every lesson already loaded (not just the three swipeable
+weeks), and it only ever widens while the page is open (`stickyBd`). So postponed or one-off lessons
+outside your Planner hours can't make the grid shrink and grow as you swipe; at most it widens once.
+
+### 2026-10-18 — Calendar grid never jumps while swiping (v188)
+
+- Hours come from **your teaching hours**: every active weekly Planner slot, widened only if a lesson in
+  the three swipeable days/weeks falls outside. The grid keeps its scale week to week.
+- The exam row is **always there at a fixed 28px**: first exam + "+N" per day (tap still opens Exams),
+  so weeks with and without exams line up.
+- Every day number sits in the same 26px box as "today", so the week containing today isn't taller.
+
+### 2026-10-18 — Hour labels stay put; only the days slide (v187)
+
+Day and Week views draw the hour column once, outside the carousel (`.cal-gfix`), and the three panes
+render without their own gutter (`renderGrid` opts `noGutter`, shared `bd` hour range, `forceAllday`
+so exam rows line up; `alignGutter()` sizes the spacer to the pane headers). The shared range covers
+the three days (Day) or three weeks (Week) you can swipe between. Month unchanged.
+
+### 2026-10-18 — Calendar carousel: see the next day/week/month while you swipe (v186)
+
+The calendar renders three panes side by side, [previous | current | next], in a track inside a
+clipping viewport; dragging moves the track, so the neighbour you're swiping toward shows its real
+lessons. Past ~20% of the width (max 80px) it slides over and re-centres; otherwise it snaps back.
+Works in Day (timeline only; strip stays), Week and **Month (swipe now enabled)**; the arrows slide too.
+Neighbour months are fetched before painting (`ensureData` awaits `neighborMonths()`). Renderers draw
+into `calEl()` (a pane) instead of `#cal`; the current pane is painted last so popovers use its data.
+Reduce Motion: instant change.
+
+### 2026-10-18 — Calendar slides when you move (v185)
+
+The view follows your finger on a sideways swipe (vertical scrolling untouched; `touch-action:pan-y`),
+then slides out and the next day/week slides in (~0.2s). A short drag snaps back. The ‹ › arrows, the
+day-strip taps and "today" use the same slide. In Day view only the timeline moves; the strip stays.
+Phones set to Reduce Motion get the old instant swap. Month view doesn't swipe.
+
 ### 2026-10-18 — Floating + on Students, Planner and Exams (v184)
 
 On phones, a page's main add button (marked `data-fab="…"`) becomes the same floating teal + as the
