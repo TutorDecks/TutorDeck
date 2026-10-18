@@ -188,9 +188,11 @@ window.TL = (function () {
       cvb.addEventListener("click", function (e) { e.stopPropagation(); setClient(!CLIENT); });
     }
     applyClient();
-    if (!CLIENT && active === "dashboard")
+    // First-time tip on whichever page a new user opens first (not over the Calendar's own first tip).
+    var calTipsPending = false; try { calTipsPending = active === "calendar" && !localStorage.getItem("td_tip_cal-filters"); } catch (e) {}
+    if (!CLIENT && !calTipsPending)
       setTimeout(function () { coach("client-view", document.getElementById("td-cv"),
-        "<b>Client view</b><br>Someone can see your screen? Tap the eye to hide all money instantly. Tap it again to bring it back."); }, 600);
+        "<b>Client view</b><br>Student or parent nearby? Tap this eye to hide all money instantly. Tap it again to bring it back.", { above: true }); }, 700);
 
     // Phones: a page's main "add" button (marked data-fab) becomes a floating + at bottom right,
     // inside thumb reach. The original button stays in the DOM (hidden on phones) and does the work.
@@ -265,7 +267,9 @@ window.TL = (function () {
   // ---- first-time tips ("coach marks") ----
   // TL.coach(key, anchorEl, html): shows a small tip under anchorEl ONCE per browser; "Got it" dismisses it
   // for good (localStorage "td_tip_<key>"). Use for new or non-obvious features instead of permanent banners.
-  function coach(key, anchor, html) {
+  // opts.above: open above the anchor (for buttons pinned to the bottom of the screen).
+  function coach(key, anchor, html, opts) {
+    opts = opts || {};
     var k = "td_tip_" + key;
     try { if (localStorage.getItem(k)) return; } catch (e) { return; }
     if (!anchor || !anchor.getBoundingClientRect || document.getElementById("td-tip-" + key)) return;
@@ -281,8 +285,13 @@ window.TL = (function () {
       var w = Math.min(300, window.innerWidth - 24);
       tip.style.width = w + "px";
       var left = Math.max(12, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 12));
-      tip.style.left = left + window.scrollX + "px";
-      tip.style.top = r.bottom + window.scrollY + 10 + "px";
+      var fixed = getComputedStyle(anchor).position === "fixed";
+      tip.style.position = fixed ? "fixed" : "absolute";
+      var sx = fixed ? 0 : window.scrollX, sy = fixed ? 0 : window.scrollY;
+      tip.style.left = left + sx + "px";
+      tip.classList.toggle("above", !!opts.above);
+      if (opts.above) { tip.style.top = ""; tip.style.bottom = (fixed ? window.innerHeight - r.top : document.documentElement.clientHeight - r.top - sy) + 10 + "px"; }
+      else { tip.style.bottom = ""; tip.style.top = r.bottom + sy + 10 + "px"; }
       tip.querySelector(".td-tip-arrow").style.left = (r.left + r.width / 2 - left - 7) + "px";
     }
     place(); window.addEventListener("resize", place);

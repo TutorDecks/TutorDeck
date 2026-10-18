@@ -199,6 +199,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-18 — Client view tip points at the eye (v196)
+
+`TL.coach(key, el, html, {above:true})` can open a tip above its anchor (arrow underneath; uses
+`position:fixed` when the anchor is fixed). The Client view tip now opens above the floating eye on the
+first page a new user visits (on the Calendar it waits until the Calendar's own tips are done).
+
 ### 2026-10-18 — Client view: one floating eye, instant hide (v195)
 
 The header button and "Exit client view" pill are replaced by one floating eye on every page, bottom-left on

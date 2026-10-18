@@ -1,4 +1,4 @@
-/* v195 */
+/* v196 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -604,3 +604,4 @@ a.btn{text-decoration:none}
   /* bottom-left, so it never gets mixed up with the + at bottom-right */
   .cv-fab{left:18px;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:46px;height:46px;border-radius:23px}
 }
+.td-tip.above .td-tip-arrow{top:auto;bottom:-6px}
