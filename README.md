@@ -276,6 +276,8 @@ A running log of Raphael's changes, newest first.
   - Payment, cancel and note forms: clearer labels and hints ("Cancellation fee", "Payment screenshot").
   Save with something missing: the first empty required field (`data-req`) is outlined red, scrolled to and
   focused (the red message was often off-screen on phones). Otherwise field ids and saving are unchanged.
+  The Ledger's Add/Edit lesson form no longer has a "Postponed" tick box: postponing is done on the Calendar (tap a
+  lesson → Postpone, which moves it and can be reverted). Editing in the Ledger keeps a lesson's ↻ flag unchanged.
 
 - **2026-10-20 — Invoices show PayNow and bank transfer (v216).** Every invoice now lists all the payment options the
   tutor has set up: the PayNow QR (if a PayNow number is saved) and, below it, "Or bank transfer" with the bank details

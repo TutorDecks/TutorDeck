@@ -721,12 +721,12 @@
       $("m-date").value=lesson.lesson_date;
       $("m-subject").value=lesson.subject||"";$("m-level").value=lesson.level||"";
       $("m-start").value=hm(lesson.start_time);$("m-end").value=hm(lesson.end_time);
-      $("m-rate").value=lesson.rate;$("m-split").value=lesson.split||1;$("m-paid").checked=!!lesson.paid;$("m-postponed").checked=!!lesson.postponed;
+      $("m-rate").value=lesson.rate;$("m-split").value=lesson.split||1;$("m-paid").checked=!!lesson.paid;
       recalcCost();
     }else{
       editLessonId=null;
       $("m-title").textContent="Add lesson";$("m-save").textContent="Save lesson";
-      $("m-date").value=todayISO();$("m-paid").checked=false;$("m-postponed").checked=false;
+      $("m-date").value=todayISO();$("m-paid").checked=false;
       ["m-subject","m-level","m-start","m-end","m-rate","m-cost"].forEach(function(id){$(id).value="";});
       $("m-split").value="1";
       prefillFromSlot();
@@ -744,7 +744,10 @@
     // always un-cancels, so any compensation from a prior cancellation no longer applies.
     var fields={student_id:sid,lesson_date:date,start_time:start,end_time:end,
       subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,split:split,amount:splitAmt(rate,start,end,split),
-      status:statusFor(date,end),paid:paid,paid_date:paid?date:null,postponed:$("m-postponed").checked,compensation:null};
+      status:statusFor(date,end),paid:paid,paid_date:paid?date:null,compensation:null};
+    // Postponing lives on the Calendar (tap a lesson → Postpone). Editing here keeps a lesson's ↻ as it was;
+    // a brand-new lesson starts not postponed.
+    if(!editLessonId) fields.postponed=false;
     $("m-save").disabled=true;
     var res=editLessonId
       ? await window.sb.from("lessons").update(fields).eq("id",editLessonId)   // editing never changes one_off
