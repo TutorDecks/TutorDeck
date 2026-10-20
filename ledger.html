@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=214">
+<link rel="stylesheet" href="assets/css/app.css?v=217">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -346,24 +346,28 @@
   <div class="modal-backdrop" id="modal">
     <div class="modal card">
       <h2 id="m-title">Add lesson</h2>
-      <div class="field"><label for="m-student">Student</label><select id="m-student"></select></div>
+      <div class="field"><label for="m-student">Student</label><select id="m-student" data-req></select></div>
+      <div class="field"><label for="m-date">Date</label><input id="m-date" data-req type="date"></div>
       <div class="row2">
-        <div class="field"><label for="m-date" style="display:flex;justify-content:space-between;align-items:center">Date <span style="font-weight:normal;font-size:12.5px;display:inline-flex;align-items:center;gap:5px;color:var(--muted);cursor:pointer"><input id="m-postponed" type="checkbox" style="width:15px;height:15px;accent-color:var(--gold)"> Postponed</span></label><input id="m-date" type="date"></div>
-        <div class="field"><label for="m-subject">Subject</label><input id="m-subject" list="dl-subject" type="text" placeholder="optional"><datalist id="dl-subject"></datalist></div>
-        <div class="field"><label for="m-level">Level</label><input id="m-level" type="text" placeholder="optional"></div>
+        <div class="field"><label for="m-start">Start</label><input id="m-start" data-req type="time"></div>
+        <div class="field"><label for="m-end">End</label><input id="m-end" data-req type="time"></div>
       </div>
       <div class="row2">
-        <div class="field"><label for="m-start">Start</label><input id="m-start" type="time"></div>
-        <div class="field"><label for="m-end">End</label><input id="m-end" type="time"></div>
+        <div class="field"><label for="m-rate">Rate per hour (S$)</label><input id="m-rate" data-req type="number" min="0" step="0.5" placeholder="e.g. 50"></div>
+        <div class="field"><label for="m-cost">Lesson fee</label><input id="m-cost" type="text" disabled></div>
       </div>
-      <div class="row2">
-        <div class="field"><label for="m-rate">Rate <span class="muted">(/hr)</span></label><input id="m-rate" type="number" min="0" step="0.5"></div>
-        <div class="field"><label for="m-split">Split between</label><input id="m-split" type="number" min="1" step="1" value="1"></div>
-      </div>
-      <div class="field"><label for="m-cost">Cost <span class="muted">(per student)</span></label><input id="m-cost" type="text" disabled></div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:2px 0 12px">
+      <div class="field"><label for="m-subject">Subject <span class="opt">Optional</span></label><input id="m-subject" list="dl-subject" type="text" placeholder="e.g. A-Math"><datalist id="dl-subject"></datalist></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:2px 0 6px">
         <input type="checkbox" id="m-paid"> Already paid
       </label>
+      <details class="more-fields">
+        <summary>More details <small>Level, group lessons</small></summary>
+        <div class="more-body">
+          <div class="field"><label for="m-level">Level <span class="opt">Optional</span></label><input id="m-level" type="text" placeholder="e.g. Sec 3" data-autofill></div>
+          <div class="field"><label for="m-split">Split between <span class="opt">Optional</span></label><input id="m-split" type="number" min="1" step="1" value="1">
+            <span class="fhint">For group lessons: the fee is shared by this many students. Leave at 1 for one-to-one.</span></div>
+        </div>
+      </details>
       <div class="msg" id="m-msg"></div>
       <div class="modal-actions">
         <button class="btn" id="m-cancel">Cancel</button>
@@ -377,8 +381,8 @@
     <div class="modal card">
       <h2>Record payment</h2>
       <p class="muted" id="pay-sub" style="font-size:13.5px;margin-bottom:14px"></p>
-      <div class="field"><label for="pay-date">Payment date <span class="muted">(match your transaction)</span></label><input id="pay-date" type="date"></div>
-      <div class="field"><label for="pay-shot" id="pay-shot-lbl">Transaction screenshot <span class="muted">(optional)</span></label><input id="pay-shot" type="file" accept="image/*"></div>
+      <div class="field"><label for="pay-date">Payment date</label><input id="pay-date" type="date"><span class="fhint">The date on the PayNow or bank transaction.</span></div>
+      <div class="field"><label for="pay-shot" id="pay-shot-lbl">Payment screenshot <span class="opt">Optional</span></label><input id="pay-shot" type="file" accept="image/*"><span class="fhint">Kept with the invoice as proof of payment.</span></div>
       <div class="postal-msg ok" id="pay-proof" style="display:none;margin:-8px 0 12px"></div>
       <div class="msg" id="pay-msg"></div>
       <div class="modal-actions">
@@ -393,7 +397,7 @@
     <div class="modal card">
       <h2>Cancel lesson</h2>
       <p class="muted" style="font-size:13.5px;margin-bottom:14px">Won't count toward income unless you add a compensation amount below.</p>
-      <div class="field"><label for="cancel-amt">Compensation <span class="muted">(optional)</span></label><input id="cancel-amt" type="number" min="0" step="0.01" placeholder="0.00"></div>
+      <div class="field"><label for="cancel-amt">Cancellation fee (S$) <span class="opt">Optional</span></label><input id="cancel-amt" type="number" min="0" step="0.01" placeholder="0.00"><span class="fhint">E.g. for a late cancellation. Only this amount counts as income.</span></div>
       <div class="msg" id="cancel-msg"></div>
       <div class="modal-actions">
         <button class="btn" id="cancel-back">Keep lesson</button>
@@ -460,10 +464,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=214"></script>
-<script src="assets/js/supabase.js?v=214"></script>
-<script src="assets/js/app.js?v=214"></script>
-<script src="assets/js/paynow.js?v=214"></script>
-<script src="assets/js/ledger.js?v=214"></script>
+<script src="assets/js/config.js?v=217"></script>
+<script src="assets/js/supabase.js?v=217"></script>
+<script src="assets/js/app.js?v=217"></script>
+<script src="assets/js/paynow.js?v=217"></script>
+<script src="assets/js/ledger.js?v=217"></script>
 </body>
 </html>

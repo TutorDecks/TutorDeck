@@ -2,7 +2,7 @@
 (function () {
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
   var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, levelById = {}, endById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
-  // Bank-transfer payment method (overseas clients, no PayNow).
+  // Payment options on invoices: PayNow QR (if set up) and bank transfer (if bank details are filled in), or both.
   function hasBank(p){ return !!(p && p.bank_account_no); }
   function bankObj(p){ return { name:(p.bank_account_name||p.business_name||""), bank:(p.bank_name||""), acct:(p.bank_account_no||""), swift:(p.bank_swift||"") }; }
   var $ = function (id) { return document.getElementById(id); };
@@ -280,6 +280,7 @@
   var DEFAULT_REMINDER="Hi {name}! Friendly reminder from {business}: you have an outstanding balance of {amount} for {count} tuition lesson(s). PayNow to {paynow}. Thank you!";
   var DEFAULT_INVOICE="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. PayNow to {paynow}. Thank you!";
   var DEFAULT_INVOICE_BANK="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. Bank-transfer details are on the invoice. Thank you!";
+  var DEFAULT_INVOICE_BOTH="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. PayNow to {paynow}, or bank transfer (details on the invoice). Thank you!";
   function fillTemplate(tpl,vars){return String(tpl).replace(/\{(\w+)\}/g,function(_,k){return vars[k]!=null?String(vars[k]):"";});}
   var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
   function monthsLabel(rows){
@@ -578,10 +579,9 @@
     var sorted=rows.slice().sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
     if(!single)sorted=sorted.map(function(l){return Object.assign({_who:nameById[l.student_id]||"—"},l);});
     var dstr=pdate.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"});
-    var byBank=anyBank(stuIds);
     var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,dateStr:dstr,paidStr:dstr,
       student:billTo,lessons:sorted,total:total,combined:!single,paid:true,
-      payTo:byBank?bankObj(profile).name:(profile.paynow_id?PayNow.normalize(profile.paynow_type,profile.paynow_id):"")};
+      payTo:profile.paynow_id?PayNow.normalize(profile.paynow_type,profile.paynow_id):(hasBank(profile)?bankObj(profile).name:"")};
     var html=invoiceHTML(data,"");   // paid receipt — no QR needed
     var ins=await window.sb.from("invoices").insert({
       tutor_id:userId,student_id:single?stuIds[0]:null,invoice_no:invoiceNo,
@@ -663,14 +663,14 @@
     // If a covering invoice already has a screenshot, say so — no need to re-upload.
     var note=$("pay-proof"), lbl=$("pay-shot-lbl");
     if(note){ note.style.display="none"; note.textContent=""; }
-    if(lbl) lbl.innerHTML='Transaction screenshot <span class="muted">(optional)</span>';
+    if(lbl) lbl.innerHTML='Payment screenshot <span class="opt">Optional</span>';
     $("pay-save").disabled=false;
     $("pay-modal").classList.add("on");
     try{
       var proof=await existingProofFor(myIds);
       if(proof && payIds===myIds && $("pay-modal").classList.contains("on")){
         if(note){ note.textContent="✓ A screenshot is already attached to this invoice — leave this blank to keep it, or choose a file to replace it."; note.style.display="block"; }
-        if(lbl) lbl.innerHTML='Transaction screenshot <span class="muted">(optional — replaces the attached one)</span>';
+        if(lbl) lbl.innerHTML='Payment screenshot <span class="opt">Optional · replaces the one attached</span>';
       }
     }catch(e){ /* non-blocking: the field still works without the hint */ }
   }
@@ -721,12 +721,12 @@
       $("m-date").value=lesson.lesson_date;
       $("m-subject").value=lesson.subject||"";$("m-level").value=lesson.level||"";
       $("m-start").value=hm(lesson.start_time);$("m-end").value=hm(lesson.end_time);
-      $("m-rate").value=lesson.rate;$("m-split").value=lesson.split||1;$("m-paid").checked=!!lesson.paid;$("m-postponed").checked=!!lesson.postponed;
+      $("m-rate").value=lesson.rate;$("m-split").value=lesson.split||1;$("m-paid").checked=!!lesson.paid;
       recalcCost();
     }else{
       editLessonId=null;
       $("m-title").textContent="Add lesson";$("m-save").textContent="Save lesson";
-      $("m-date").value=todayISO();$("m-paid").checked=false;$("m-postponed").checked=false;
+      $("m-date").value=todayISO();$("m-paid").checked=false;
       ["m-subject","m-level","m-start","m-end","m-rate","m-cost"].forEach(function(id){$(id).value="";});
       $("m-split").value="1";
       prefillFromSlot();
@@ -744,7 +744,10 @@
     // always un-cancels, so any compensation from a prior cancellation no longer applies.
     var fields={student_id:sid,lesson_date:date,start_time:start,end_time:end,
       subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,split:split,amount:splitAmt(rate,start,end,split),
-      status:statusFor(date,end),paid:paid,paid_date:paid?date:null,postponed:$("m-postponed").checked,compensation:null};
+      status:statusFor(date,end),paid:paid,paid_date:paid?date:null,compensation:null};
+    // Postponing lives on the Calendar (tap a lesson → Postpone). Editing here keeps a lesson's ↻ as it was;
+    // a brand-new lesson starts not postponed.
+    if(!editLessonId) fields.postponed=false;
     $("m-save").disabled=true;
     var res=editLessonId
       ? await window.sb.from("lessons").update(fields).eq("id",editLessonId)   // editing never changes one_off
@@ -867,18 +870,19 @@
         ? '<div class="inv-pay"><div><div class="pn-h"><span class="pn-dot"></span>Paid</div>'+
           '<div class="pn-sub">Received with thanks'+(d.paidStr?" on <b>"+esc(d.paidStr)+"</b>":"")+'.<br>'+
           (d.payTo?'Paid to <b>'+esc(d.payTo)+'</b><br>':'')+'Ref: <b>'+esc(d.invoiceNo)+'</b></div></div></div>'
-        : d.bank
-        ? '<div class="inv-pay"><div><div class="pn-h"><span class="pn-dot"></span>Bank transfer</div>'+
-          '<div class="pn-sub">'+
-          'Account name: <b>'+esc(d.bank.name)+'</b><br>'+
-          (d.bank.bank?'Bank: <b>'+esc(d.bank.bank)+'</b><br>':'')+
-          'Account no: <b>'+esc(d.bank.acct)+'</b><br>'+
-          (d.bank.swift?'SWIFT/BIC: <b>'+esc(d.bank.swift)+'</b><br>':'')+
-          'Ref: <b>'+esc(d.invoiceNo)+'</b></div></div></div>'
-        : '<div class="inv-pay"><img src="'+qrUrl+'" alt="PayNow QR">'+
-          '<div><div class="pn-h"><span class="pn-dot"></span>PayNow</div>'+
-          '<div class="pn-sub">Scan with any Singapore banking app to pay.<br>'+
-          'Pays to <b>'+esc(d.payTo)+'</b><br>Ref: <b>'+esc(d.invoiceNo)+'</b></div></div></div>')+
+        : (qrUrl
+          ? '<div class="inv-pay"><img src="'+qrUrl+'" alt="PayNow QR">'+
+            '<div><div class="pn-h"><span class="pn-dot"></span>PayNow</div>'+
+            '<div class="pn-sub">Scan with any Singapore banking app to pay.<br>'+
+            'Pays to <b>'+esc(d.payTo)+'</b><br>Ref: <b>'+esc(d.invoiceNo)+'</b></div></div></div>' : '')+
+          (d.bank
+          ? '<div class="inv-pay inv-bank"><div><div class="pn-h"><span class="pn-dot bk"></span>'+(qrUrl?'Or bank transfer':'Bank transfer')+'</div>'+
+            '<div class="pn-sub">'+
+            'Account name: <b>'+esc(d.bank.name)+'</b><br>'+
+            (d.bank.bank?'Bank: <b>'+esc(d.bank.bank)+'</b><br>':'')+
+            'Account no: <b>'+esc(d.bank.acct)+'</b><br>'+
+            (d.bank.swift?'SWIFT/BIC: <b>'+esc(d.bank.swift)+'</b><br>':'')+
+            'Ref: <b>'+esc(d.invoiceNo)+'</b></div></div></div>' : ''))+
       '</div>';
   }
 
@@ -913,23 +917,19 @@
     $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
     $("inv-backdrop").classList.add("on");
   }
-  // If any billed student pays by bank, the invoice shows bank details (no PayNow QR).
-  function anyBank(ids){ return ids.some(function(id){return payByBankById[id];}); }
+  // Which payment options this tutor has set up. Every invoice shows all of them.
+  function payOpts(){ return { pn:!!(profile&&profile.paynow_id), bk:hasBank(profile) }; }
+  function needPaySetup(){
+    if(confirm("No payment details saved yet. Add your PayNow number (and, if you like, bank details) in Settings now?")) location.href="settings";
+  }
 
   async function openInvoice(studentId, onlyIds){
     if(!profile){
       alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");
       return;
     }
-    var byBank=!!payByBankById[studentId];
-    if(byBank && !hasBank(profile)){
-      if(confirm("This student pays by bank transfer, but no bank details are saved yet. Open Settings to add them now?")) location.href="settings";
-      return;
-    }
-    if(!byBank && !profile.paynow_id){
-      if(confirm("No PayNow details saved yet. Open Settings to add them now?")) location.href="settings";
-      return;
-    }
+    var po=payOpts();
+    if(!po.pn && !po.bk){ needPaySetup(); return; }
     var lessons=(outGroups[studentId]||[]).slice()
       .filter(function(l){ return !onlyIds || onlyIds.indexOf(String(l.id))>-1; })   // invoice only the picked lessons, if any
       .sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
@@ -944,11 +944,8 @@
       dateStr:now.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"}),
       student:student,lessons:lessons,total:total};
     var meta={studentId:studentId,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(lessons),lessonIds:lessons.map(function(l){return l.id;})};
-    if(byBank){
-      data.bank=bankObj(profile); data.payTo=data.bank.name;
-      presentInvoice(data,"",meta);
-      return;
-    }
+    if(po.bk) data.bank=bankObj(profile);
+    if(!po.pn){ data.payTo=data.bank.name; presentInvoice(data,"",meta); return; }   // bank only
     try{ await loadQR(); }
     catch(e){
       alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again.");
@@ -966,12 +963,8 @@
 
   async function openInvoiceMany(ids, onlyIds){
     if(!profile){alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");return;}
-    var byBank=anyBank(ids);
-    if(byBank && !hasBank(profile)){
-      if(confirm("This household pays by bank transfer, but no bank details are saved yet. Open Settings to add them now?"))location.href="settings";
-      return;
-    }
-    if(!byBank && !profile.paynow_id){if(confirm("No PayNow details saved yet. Open Settings to add them now?"))location.href="settings";return;}
+    var po=payOpts();
+    if(!po.pn && !po.bk){ needPaySetup(); return; }
     var all=[];
     ids.forEach(function(id){(outGroups[id]||[]).forEach(function(l){ if(!onlyIds||onlyIds.indexOf(String(l.id))>-1) all.push(Object.assign({_who:nameById[id]||"—"},l)); });});
     all.sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date)||String(a._who).localeCompare(String(b._who));});
@@ -989,11 +982,8 @@
     var meta={studentId:null,students:ids,name:billTo,
       recipient:(ids.map(function(id){return recipientById[id];}).filter(Boolean)[0]||""),   // parent name for {name}
       invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(all),lessonIds:all.map(function(l){return l.id;})};
-    if(byBank){
-      data.bank=bankObj(profile); data.payTo=data.bank.name;
-      presentInvoice(data,"",meta);
-      return;
-    }
+    if(po.bk) data.bank=bankObj(profile);
+    if(!po.pn){ data.payTo=data.bank.name; presentInvoice(data,"",meta); return; }   // bank only
     try{ await loadQR(); }
     catch(e){ alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again."); return; }
     data.payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
@@ -1042,13 +1032,13 @@
   }
   function invoiceMsg(m){
     var isCombined=!m.studentId;
-    var byBank=isCombined?anyBank(m.students||[]):!!payByBankById[m.studentId];
+    var po=payOpts();
     var vars={name:isCombined?(m.recipient||m.name||""):(recipientById[m.studentId]||nameById[m.studentId]||""),
       student:isCombined?(m.name||""):(nameById[m.studentId]||""),business:(profile&&profile.business_name)||"your tutor",
-      amount:TL.sgd(m.total),count:"",invoice:m.invoiceNo,paynow:byBank?"":((profile&&profile.paynow_id)||""),
+      amount:TL.sgd(m.total),count:"",invoice:m.invoiceNo,paynow:(profile&&profile.paynow_id)||"",
       month:m.month||"",date:prettyDate(m.issuedDate),year:(m.issuedDate||"").slice(0,4)};
-    // Bank clients can't use PayNow — the default message points them to the on-invoice bank details.
-    var tpl=(profile&&profile.invoice_message)||(byBank?DEFAULT_INVOICE_BANK:DEFAULT_INVOICE);
+    // Default message matches what's on the invoice: PayNow, bank transfer, or both.
+    var tpl=(profile&&profile.invoice_message)||(po.pn&&po.bk?DEFAULT_INVOICE_BOTH:(po.bk?DEFAULT_INVOICE_BANK:DEFAULT_INVOICE));
     return fillTemplate(tpl,vars);
   }
   // Two WhatsApp flows, picked by OS:
