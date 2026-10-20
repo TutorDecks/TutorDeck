@@ -388,8 +388,8 @@ Applied to every `.modal-backdrop` form in app.js (`enhanceForms()`), except sma
   date/time at 44px), forms only scroll vertically (`touch-action:pan-y`, `overflow-x:hidden`), and
   the page behind an open form stays still.
 - **Student page tabs:** each student opens on **Lessons**. The tab is remembered per student for this
-  visit only (`sessionStorage td_stab_<id>`), so Notes on Keevan doesn't carry over to Caroline, but
-  going back to Keevan returns to Notes. Links can open a tab with `?tab=notes`. Replaces the global
+  visit only (`sessionStorage td_stab_<id>`), so Notes on Student A doesn't carry over to Student B, but
+  going back to Student A returns to Notes. Links can open a tab with `?tab=notes`. Replaces the global
   `tl_student_tab`.
 
 ### 2026-10-18 — Client view is instant both ways (v197)
