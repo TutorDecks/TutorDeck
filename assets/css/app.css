@@ -1,4 +1,4 @@
-/* v216 */
+/* v217 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -691,3 +691,16 @@ span[data-sk],b[data-sk]{display:inline-block;line-height:1.15}
   background:linear-gradient(90deg,#EFECE6 25%,#F7F5F1 37%,#EFECE6 63%);background-size:400% 100%;animation:td-sk 1.4s ease infinite}
 .inv-pay.inv-bank{margin-top:10px}
 .inv-pay .pn-dot.bk{background:var(--accent)}
+
+/* ---- v217: simple forms — "Optional" tags, one-line hints, rarely-used fields under "More details" ---- */
+.field label .opt{font-weight:500;font-size:12px;color:var(--muted);margin-left:6px}
+.fhint{display:block;font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.45}
+details.more-fields{border-top:1px solid var(--line);margin:6px 0 10px}
+details.more-fields>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:12px 0;
+  font-size:14px;font-weight:700;color:var(--accent)}
+details.more-fields>summary::-webkit-details-marker{display:none}
+details.more-fields>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:rotate(-45deg);transition:transform .15s;margin:0 3px 0 1px}
+details.more-fields[open]>summary::before{transform:rotate(45deg)}
+details.more-fields>summary small{font-weight:500;font-size:12.5px;color:var(--muted)}
+details.more-fields>.more-body{padding-top:2px}

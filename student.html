@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Student · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=216">
+<link rel="stylesheet" href="assets/css/app.css?v=217">
 <style>
   /* borderless header meta strip */
   .phead{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline;margin:2px 2px 10px}
@@ -272,23 +272,48 @@
   <div class="modal-backdrop" id="e-modal">
     <div class="modal card">
       <h2>Edit student</h2>
-      <div class="field"><label for="e-name">Name</label><input id="e-name" type="text"></div>
-      <div class="field"><label for="e-level">Level</label><input id="e-level" type="text" placeholder="e.g. Sec 3 G3"></div>
-      <div class="field"><label for="e-contact">Contact <span class="muted">(for reminders)</span></label><input id="e-contact" type="text" placeholder="e.g. +65 8123 4567"></div>
-      <div class="field"><label for="e-location">Location <span class="muted">(shown on the calendar — type a postal code and tap search to expand it)</span></label>
-        <div class="loc-wrap">
-          <input id="e-location" type="text" placeholder="e.g. Home, or a 6-digit postal code">
-          <button type="button" class="loc-find" id="e-postal-btn" title="Expand postal code to address" aria-label="Expand postal code to address"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.4" y1="15.4" x2="21" y2="21"/></svg></button>
-        </div>
-        <span class="postal-msg" id="e-postal-msg"></span>
-      </div>
-      <div class="field"><label for="e-recipient">Message recipient <span class="muted">(e.g. parent's name)</span></label><input id="e-recipient" type="text" placeholder="leave blank to address the student"></div>
       <div class="field">
-        <label for="e-enddate">Lessons run until <span class="muted">(optional — e.g. after O-Levels; leave blank if ongoing)</span></label>
-        <input id="e-enddate" type="date">
-        <div class="muted" style="font-size:12px;margin-top:3px">After this date they move to Discontinued automatically — no more lessons are generated and they drop off the Planner. Clear it to bring them back.</div>
+        <label for="e-name">Name</label>
+        <input id="e-name" type="text" placeholder="">
       </div>
-      <div class="field"><label for="e-notes">Notes</label><input id="e-notes" type="text" placeholder="optional"></div>
+      <div class="field">
+        <label for="e-level">Level <span class="opt">Optional</span></label>
+        <input id="e-level" type="text" placeholder="e.g. Sec 3 G3">
+        <span class="fhint">Shown on invoices.</span>
+      </div>
+      <div class="field">
+        <label for="e-contact">WhatsApp number <span class="opt">Optional</span></label>
+        <input id="e-contact" type="tel" placeholder="e.g. +65 8123 4567">
+        <span class="fhint">The parent's or student's number, for reminders and invoices.</span>
+      </div>
+      <details class="more-fields">
+        <summary>More details <small>Optional</small></summary>
+        <div class="more-body">
+          <div class="field">
+            <label for="e-recipient">Name in messages <span class="opt">Optional</span></label>
+            <input id="e-recipient" type="text" placeholder="e.g. Mrs Tan">
+            <span class="fhint">Who your WhatsApp messages greet. Leave blank to use the student's name.</span>
+          </div>
+          <div class="field">
+            <label for="e-location">Location <span class="opt">Optional</span></label>
+            <div class="loc-wrap">
+              <input id="e-location" type="text" placeholder="e.g. Home, or a 6-digit postal code">
+              <button type="button" class="loc-find" id="e-postal-btn" title="Fill in the address from a postal code" aria-label="Fill in the address from a postal code"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.4" y1="15.4" x2="21" y2="21"/></svg></button>
+            </div>
+            <span class="postal-msg" id="e-postal-msg"></span>
+            <span class="fhint">Shown on your calendar. Type a postal code and tap the magnifier to fill in the address.</span>
+          </div>
+          <div class="field">
+            <label for="e-enddate">Lessons run until <span class="opt">Optional</span></label>
+            <input id="e-enddate" type="date">
+            <span class="fhint">For a fixed end, like after O-Levels. After this date no new lessons are made and the student moves to Discontinued. Clear it to bring them back.</span>
+          </div>
+          <div class="field">
+            <label for="e-notes">Notes <span class="opt">Optional</span></label>
+            <input id="e-notes" type="text" placeholder="e.g. prefers worked examples">
+          </div>
+        </div>
+      </details>
       <div class="msg" id="e-msg"></div>
       <div class="modal-actions">
         <button class="btn" id="e-cancel">Cancel</button>
@@ -311,8 +336,9 @@
           <label style="display:flex;align-items:center;gap:8px;padding:10px 0;font-weight:normal"><input id="l-paid" type="checkbox"> Paid</label></div>
       </div>
       <div class="field" id="l-cancel-box" style="display:none">
-        <label for="l-cancel-comp">Compensation <span class="muted">(optional — won't count toward income otherwise)</span></label>
+        <label for="l-cancel-comp">Cancellation fee (S$) <span class="opt">Optional</span></label>
         <input id="l-cancel-comp" type="number" min="0" step="0.01" placeholder="0.00">
+        <span class="fhint">E.g. for a late cancellation. Only this amount counts as income.</span>
         <button type="button" class="tact" id="l-cancel-abort" style="margin-top:6px">Never mind</button>
       </div>
       <div class="msg" id="l-msg"></div>
@@ -332,8 +358,8 @@
       <h2 id="x-title">Add exam</h2>
       <div class="row2">
         <div class="field"><label for="x-date">Exam date</label><input id="x-date" type="date"></div>
-        <div class="field"><label for="x-type">Type</label>
-          <input id="x-type" list="x-typelist" type="text" placeholder="e.g. WA1, PSLE">
+        <div class="field"><label for="x-type">Type <span class="opt">Optional</span></label>
+          <input id="x-type" list="x-typelist" type="text" placeholder="e.g. WA1, Prelim">
           <datalist id="x-typelist">
             <option value="WA1"><option value="WA2"><option value="WA3"><option value="SA1"><option value="SA2">
             <option value="CA1"><option value="CA2"><option value="Mid-Year"><option value="End-Year">
@@ -342,16 +368,23 @@
           </datalist>
         </div>
       </div>
-      <div class="field"><label for="x-subject">Subject</label><input id="x-subject" type="text" placeholder="e.g. A-Math"></div>
-      <div class="field"><label for="x-score">Marks <span class="muted">(leave score blank if not sat yet)</span></label>
-        <div style="display:flex;align-items:center;gap:8px">
-          <input id="x-score" type="number" min="0" step="0.5" placeholder="score" style="flex:1;min-width:0">
-          <span class="muted" style="font-weight:800">/</span>
-          <input id="x-maxscore" type="number" min="1" step="0.5" placeholder="out of" style="flex:1;min-width:0">
+      <div class="field"><label for="x-subject">Subject <span class="opt">Optional</span></label><input id="x-subject" type="text" placeholder="e.g. A-Math"></div>
+      <div class="field"><label for="x-topics">Topics tested <span class="opt">Optional</span></label><input id="x-topics" type="text" placeholder="e.g. Quadratics, Indices">
+        <span class="fhint">Shown on Home before their lessons, so you know what to revise.</span></div>
+      <details class="more-fields">
+        <summary>Results <small>Add after the exam</small></summary>
+        <div class="more-body">
+          <div class="field"><label for="x-score">Marks <span class="opt">Optional</span></label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input id="x-score" type="number" min="0" step="0.5" placeholder="Score" style="flex:1;min-width:0">
+              <span class="muted" style="font-weight:800">/</span>
+              <input id="x-maxscore" type="number" min="1" step="0.5" placeholder="Out of" style="flex:1;min-width:0">
+            </div>
+            <span class="fhint">Results build the progress chart on the student's profile.</span>
+          </div>
+          <div class="field"><label for="x-remarks">Remarks <span class="opt">Optional</span></label><input id="x-remarks" type="text" placeholder="e.g. careless in Paper 2"></div>
         </div>
-      </div>
-      <div class="field"><label for="x-topics">Topics</label><input id="x-topics" type="text" placeholder="e.g. Quadratics"></div>
-      <div class="field"><label for="x-remarks">Remarks</label><input id="x-remarks" type="text" placeholder="optional"></div>
+      </details>
       <div class="msg" id="x-msg"></div>
       <div class="modal-actions" style="justify-content:space-between">
         <button class="btn" id="x-del" style="color:var(--owed)">Delete</button>
@@ -367,6 +400,7 @@
   <div class="modal-backdrop" id="n-modal">
     <div class="modal card">
       <h2 id="n-title">Lesson notes</h2>
+      <p class="fhint" style="margin:-4px 0 14px">All optional. They show up before this student's next lesson, so you know where you left off.</p>
       <div class="field"><label for="n-topics">Topics covered</label><textarea id="n-topics" rows="2" placeholder="What was taught"></textarea></div>
       <div class="field"><label for="n-homework">Homework given</label><textarea id="n-homework" rows="2" placeholder="Assigned work"></textarea></div>
       <div class="field"><label for="n-remarks">Remarks / plan for next lesson</label><textarea id="n-remarks" rows="2" placeholder="Notes, what to cover next"></textarea></div>
@@ -380,9 +414,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=216"></script>
-<script src="assets/js/supabase.js?v=216"></script>
-<script src="assets/js/app.js?v=216"></script>
-<script src="assets/js/student.js?v=216"></script>
+<script src="assets/js/config.js?v=217"></script>
+<script src="assets/js/supabase.js?v=217"></script>
+<script src="assets/js/app.js?v=217"></script>
+<script src="assets/js/student.js?v=217"></script>
 </body>
 </html>

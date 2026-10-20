@@ -293,6 +293,16 @@ window.TL = (function () {
   // outside or a swipe never silently throws away what you've typed. (The ✕ was retired in v202.)
   function formFields(m) { return Array.prototype.slice.call(m.querySelectorAll("input,select,textarea")); }
   function formSnap(m) { return formFields(m).map(function (f) { return f.type === "checkbox" || f.type === "radio" ? f.checked : f.value; }).join("\u0001"); }
+  // "More details" folds: open when something inside is already filled in (editing), closed otherwise.
+  function openFilledMore(m) {
+    m.querySelectorAll("details.more-fields").forEach(function (d) {
+      d.open = Array.prototype.some.call(d.querySelectorAll("input,select,textarea"), function (f) {
+        if (f.type === "checkbox" || f.type === "radio") return f.checked !== f.defaultChecked;
+        if (f.tagName === "SELECT" || f.disabled || f.hasAttribute("data-autofill")) return false;   // auto-filled (e.g. level) doesn't count
+        return f.value.trim() !== "" && f.value !== f.defaultValue;
+      });
+    });
+  }
   function formClose(bd) {   // use the form's own Cancel/Close button so each page's close logic runs
     var btn = Array.prototype.slice.call(bd.querySelectorAll(".modal-actions .btn")).filter(function (b) { return /^(cancel|close)$/i.test(b.textContent.trim()); })[0];
     if (btn) btn.click(); else bd.classList.remove("on");
@@ -353,7 +363,7 @@ window.TL = (function () {
       m.addEventListener("touchcancel", endDrag, { passive: true });
       // remember the form as it opened, to know later whether anything was typed
       new MutationObserver(function () {
-        if (bd.classList.contains("on")) { if (!bd._open) { bd._open = true; setTimeout(function () { bd._snap = formSnap(m); m.scrollTop = 0; }, 0); } }
+        if (bd.classList.contains("on")) { if (!bd._open) { bd._open = true; setTimeout(function () { openFilledMore(m); bd._snap = formSnap(m); m.scrollTop = 0; }, 0); } }
         else bd._open = false;
       }).observe(bd, { attributes: true, attributeFilter: ["class"] });
       // a tap outside: close if nothing changed, otherwise ask first (runs before the page's own handler)

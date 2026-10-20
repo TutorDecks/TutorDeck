@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=216">
+<link rel="stylesheet" href="assets/css/app.css?v=217">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -369,20 +369,22 @@
     <div class="modal card">
       <h2>Add lesson</h2>
       <div class="field"><label for="ca-student">Student</label><select id="ca-student"></select></div>
-      <div class="row2">
-        <div class="field"><label for="ca-date">Date</label><input id="ca-date" type="date"></div>
-        <div class="field"><label for="ca-subject">Subject</label><input id="ca-subject" type="text" placeholder="optional"></div>
-      </div>
+      <div class="field"><label for="ca-date">Date</label><input id="ca-date" type="date"></div>
       <div class="row2">
         <div class="field"><label for="ca-start">Start</label><input id="ca-start" type="time"></div>
         <div class="field"><label for="ca-end">End</label><input id="ca-end" type="time"></div>
       </div>
-      <div class="row2">
-        <div class="field"><label for="ca-rate">Rate <span class="muted">(/hr)</span></label><input id="ca-rate" type="number" min="0" step="0.5"></div>
-        <div class="field"><label for="ca-split">Split between</label><input id="ca-split" type="number" min="1" step="1" value="1"></div>
-      </div>
-      <div class="field"><label for="ca-level">Level <span class="muted">(optional)</span></label><input id="ca-level" type="text" placeholder="optional"></div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:2px 0 12px"><input type="checkbox" id="ca-paid"> Already paid</label>
+      <div class="field"><label for="ca-rate">Rate per hour (S$)</label><input id="ca-rate" type="number" min="0" step="0.5" placeholder="e.g. 50"></div>
+      <div class="field"><label for="ca-subject">Subject <span class="opt">Optional</span></label><input id="ca-subject" type="text" placeholder="e.g. A-Math"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:2px 0 6px"><input type="checkbox" id="ca-paid"> Already paid</label>
+      <details class="more-fields">
+        <summary>More details <small>Level, group lessons</small></summary>
+        <div class="more-body">
+          <div class="field"><label for="ca-level">Level <span class="opt">Optional</span></label><input id="ca-level" type="text" placeholder="e.g. Sec 3" data-autofill></div>
+          <div class="field"><label for="ca-split">Split between <span class="opt">Optional</span></label><input id="ca-split" type="number" min="1" step="1" value="1">
+            <span class="fhint">For group lessons: the fee is shared by this many students. Leave at 1 for one-to-one.</span></div>
+        </div>
+      </details>
       <div class="msg" id="ca-msg"></div>
       <div class="modal-actions">
         <button class="btn" id="ca-cancel">Cancel</button>
@@ -406,9 +408,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=216"></script>
-<script src="assets/js/supabase.js?v=216"></script>
-<script src="assets/js/app.js?v=216"></script>
-<script src="assets/js/calendar.js?v=216"></script>
+<script src="assets/js/config.js?v=217"></script>
+<script src="assets/js/supabase.js?v=217"></script>
+<script src="assets/js/app.js?v=217"></script>
+<script src="assets/js/calendar.js?v=217"></script>
 </body>
 </html>

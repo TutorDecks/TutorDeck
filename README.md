@@ -261,6 +261,21 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-20 — Simpler, clearer forms (v217).** One pattern across every form: required fields have plain labels;
+  anything you can skip carries a quiet grey **Optional** tag; long explanations moved out of labels into one short
+  grey line under the field (`.fhint`); rarely-used fields sit under a **More details** fold (`details.more-fields`)
+  that opens by itself when editing something already filled in (`openFilledMore` in app.js; auto-filled fields marked
+  `data-autofill`, like level, don't count).
+  - Student (add + edit): Name · Level · WhatsApp number, then More details: Name in messages, Location, Lessons run
+    until, Notes.
+  - Weekly slot: Student · Day · Start/End · Rate per hour · Subject; More details: Level, Split between.
+  - Add lesson (Ledger + Calendar): Student · Date · Start/End · Rate · Lesson fee · Subject · Already paid; More
+    details: Level, Split between.
+  - Exam (Exams page + student profile): Student · Exam date · Type · Subject · Topics tested; "Results" fold: Marks,
+    Remarks.
+  - Payment, cancel and note forms: clearer labels and hints ("Cancellation fee", "Payment screenshot").
+  Labels/markup only; field ids and saving are unchanged.
+
 - **2026-10-20 — Invoices show PayNow and bank transfer (v216).** Every invoice now lists all the payment options the
   tutor has set up: the PayNow QR (if a PayNow number is saved) and, below it, "Or bank transfer" with the bank details
   (if they're filled in in Settings), or just one of them. The per-student "Pays by bank transfer (overseas / no PayNow)"

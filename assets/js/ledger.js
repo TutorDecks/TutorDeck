@@ -663,14 +663,14 @@
     // If a covering invoice already has a screenshot, say so — no need to re-upload.
     var note=$("pay-proof"), lbl=$("pay-shot-lbl");
     if(note){ note.style.display="none"; note.textContent=""; }
-    if(lbl) lbl.innerHTML='Transaction screenshot <span class="muted">(optional)</span>';
+    if(lbl) lbl.innerHTML='Payment screenshot <span class="opt">Optional</span>';
     $("pay-save").disabled=false;
     $("pay-modal").classList.add("on");
     try{
       var proof=await existingProofFor(myIds);
       if(proof && payIds===myIds && $("pay-modal").classList.contains("on")){
         if(note){ note.textContent="✓ A screenshot is already attached to this invoice — leave this blank to keep it, or choose a file to replace it."; note.style.display="block"; }
-        if(lbl) lbl.innerHTML='Transaction screenshot <span class="muted">(optional — replaces the attached one)</span>';
+        if(lbl) lbl.innerHTML='Payment screenshot <span class="opt">Optional · replaces the one attached</span>';
       }
     }catch(e){ /* non-blocking: the field still works without the hint */ }
   }
