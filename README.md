@@ -261,6 +261,13 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-20 — Invoices show PayNow and bank transfer (v216).** Every invoice now lists all the payment options the
+  tutor has set up: the PayNow QR (if a PayNow number is saved) and, below it, "Or bank transfer" with the bank details
+  (if they're filled in in Settings), or just one of them. The per-student "Pays by bank transfer (overseas / no PayNow)"
+  tick box is gone from the student forms, and Settings → "Bank transfer (optional)" now says "fill these in to also show
+  your bank details on every invoice; leave blank for PayNow only". The default WhatsApp invoice message matches
+  (PayNow / bank / both). The `students.pay_by_bank` column is no longer used (left in place; no DB change needed).
+
 - **2026-10-20 — Nightly encrypted database backup (GitHub Actions).** New `.github/workflows/db-backup.yml` runs at
   02:00 SGT (and on demand). It installs a `pg_dump` that matches the server's Postgres version, dumps the `public` and
   `auth` schemas (custom format, `--no-owner --no-privileges`) via the Session pooler, checks that the dump isn't
