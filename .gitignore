@@ -1,0 +1,4 @@
+# Database backups must never be committed (real student data)
+*.dump
+*.dump.gpg
+*.sql.gz

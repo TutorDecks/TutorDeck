@@ -1,0 +1,102 @@
+# Nightly encrypted backup of the live Supabase database.
+#
+# - Dumps the public + auth schemas (structure and data) with pg_dump, custom format.
+# - Encrypts the dump with AES-256 (gpg, symmetric) using the BACKUP_PASSPHRASE secret.
+# - Uploads ONLY the encrypted .dump.gpg as a workflow artifact, kept 30 days.
+#   The plain dump never leaves the runner and is never committed.
+# - The repo is PUBLIC: anyone signed in to GitHub can download artifacts and read run logs,
+#   so nothing about the data is printed and the artifact is useless without the passphrase.
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL     Session pooler URI (IPv4) with the DB password filled in
+#   BACKUP_PASSPHRASE   long random phrase, kept in a password manager
+#
+# Restore steps: README → "Backups".
+
+name: DB backup
+
+on:
+  schedule:
+    - cron: "0 18 * * *"   # 18:00 UTC = 02:00 Singapore
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Check secrets are set
+        run: |
+          [ -n "$DB_URL" ]     || { echo "::error::SUPABASE_DB_URL secret is missing"; exit 1; }
+          [ -n "$PASSPHRASE" ] || { echo "::error::BACKUP_PASSPHRASE secret is missing"; exit 1; }
+          case "$DB_URL" in
+            *pooler.supabase.com*) ;;
+            *) echo "::error::SUPABASE_DB_URL must be the Session pooler URI (…pooler.supabase.com:5432). GitHub runners have no IPv6 for the direct connection."; exit 1 ;;
+          esac
+
+      - name: Install a PostgreSQL client matching the server version
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq curl ca-certificates gnupg postgresql-common >/dev/null
+          # PGDG repo has every major version of the client
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+          # Ask the server its major version with whatever psql the runner already has
+          sudo apt-get install -y -qq postgresql-client >/dev/null
+          MAJOR=$(psql "$DB_URL" -tAX -c "select current_setting('server_version_num')::int / 10000")
+          echo "Server major version: $MAJOR"
+          sudo apt-get install -y -qq "postgresql-client-$MAJOR" >/dev/null
+          echo "PGBIN=/usr/lib/postgresql/$MAJOR/bin" >> "$GITHUB_ENV"
+          "/usr/lib/postgresql/$MAJOR/bin/pg_dump" --version
+
+      - name: Dump public + auth schemas
+        run: |
+          set -euo pipefail
+          FILE="tutordeck-$(date -u +%F).dump"
+          echo "FILE=$FILE" >> "$GITHUB_ENV"
+          "$PGBIN/pg_dump" "$DB_URL" -Fc --no-owner --no-privileges \
+            --schema=public --schema=auth -f "$FILE"
+
+      - name: Sanity-check the dump (fail loudly if empty or too small)
+        run: |
+          set -euo pipefail
+          SIZE=$(stat -c %s "$FILE")
+          echo "Dump size: $SIZE bytes"
+          # A real dump of this database is well above this; tiny means something went wrong.
+          [ "$SIZE" -ge 20000 ] || { echo "::error::Dump is only $SIZE bytes — suspiciously small"; exit 1; }
+          # Table names only (no data) — confirm the core tables and their data are in there.
+          LIST=$("$PGBIN/pg_restore" --list "$FILE")
+          for t in students lessons recurring_slots invoices; do
+            echo "$LIST" | grep -q "TABLE DATA public $t " || { echo "::error::No data section for public.$t"; exit 1; }
+          done
+          echo "$LIST" | grep -q "TABLE DATA auth users " || { echo "::error::No data section for auth.users"; exit 1; }
+          echo "Dump looks complete."
+
+      - name: Encrypt (AES-256) and delete the plain dump
+        run: |
+          set -euo pipefail
+          # passphrase goes in on stdin, never on the command line or in the log
+          printf '%s' "$PASSPHRASE" | gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 -o "$FILE.gpg" "$FILE"
+          shred -u "$FILE"
+          [ -s "$FILE.gpg" ] || { echo "::error::Encrypted file is empty"; exit 1; }
+          echo "Encrypted: $(stat -c %s "$FILE.gpg") bytes"
+
+      - name: Upload encrypted backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILE }}.gpg
+          path: ${{ env.FILE }}.gpg
+          retention-days: 30
+          compression-level: 0        # already encrypted, won't compress
+          if-no-files-found: error

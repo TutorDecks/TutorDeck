@@ -195,9 +195,79 @@ db/
   their own isolated data.
 
 ---
+## Backups
+
+**What:** the whole live database, meaning every table in the `public` schema (students, lessons, slots, invoices,
+exams, profiles …) plus the `auth` schema (user accounts and sign-in identities). Both the structure and the data.
+
+**How often / where:** every night at 02:00 Singapore time (18:00 UTC), by the GitHub Actions workflow
+`.github/workflows/db-backup.yml`. Each run uploads one file, `tutordeck-YYYY-MM-DD.dump.gpg`, as a workflow
+**artifact**, kept for **30 days** (so there are always about 30 nightly copies). Find them under
+**Actions → DB backup → a run → Artifacts**.
+
+**Safety:**
+- The dump is encrypted with AES-256 (`gpg --symmetric`) using the `BACKUP_PASSPHRASE` secret *before* it is uploaded.
+  The plain dump only ever exists on the throwaway GitHub runner and is shredded there.
+- Dumps are **never committed**: `.gitignore` blocks `*.dump` and `*.dump.gpg`.
+- **This repo is public.** Anyone signed in to GitHub can download artifacts and read run logs. So the workflow prints
+  nothing about the data (only file sizes and table names), and the artifact is useless without the passphrase.
+  **Lose the passphrase = lose the backups.** Keep it in a password manager.
+- A run fails (and GitHub emails the repo admins) if the secrets are missing, the URL isn't the Session pooler, the
+  dump is under 20 KB, or the `students`, `lessons`, `recurring_slots`, `invoices` or `auth.users` data is missing.
+
+**Not included (known gap, for later):** files in Supabase **Storage**, meaning payment-proof screenshots (`receipts`
+bucket) and teaching materials. The database only stores their paths. Backing up Storage needs a separate job.
+
+**Run it by hand:** GitHub → **Actions** tab → **DB backup** (left list) → **Run workflow** → **Run workflow**.
+(The workflow has to be on `main` before the button, or the nightly schedule, appears.)
+
+Note: GitHub pauses scheduled workflows in a repo with no commits for 60 days. Any push re-enables it, or press
+"Enable workflow" on the Actions tab.
+
+### How to restore
+
+Never restore over the live project. Restore into a **fresh, empty Supabase project**, check it, and only then
+decide what to do (point the app at it, or copy specific rows back).
+
+1. **Download:** Actions → DB backup → pick the run → Artifacts → download. You get a zip; unzip it to get
+   `tutordeck-YYYY-MM-DD.dump.gpg`.
+2. **Decrypt** (asks for the passphrase):
+   ```bash
+   gpg --decrypt -o tutordeck.dump tutordeck-YYYY-MM-DD.dump.gpg
+   ```
+3. **Get a client of the same major version or newer** than the one in the backup run's log ("pg_dump (PostgreSQL) N…").
+   On a Mac: `brew install postgresql@N`. Check with `pg_restore --version`.
+4. **Create a fresh Supabase project.** Copy its **Session pooler** URI (Connect button) into a shell variable:
+   ```bash
+   NEW='postgresql://postgres.<new-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres'
+   ```
+5. **Restore your tables, then the user accounts:**
+   ```bash
+   # tables, functions, RLS policies and rows in public
+   # ("schema public already exists" is expected and harmless)
+   pg_restore --no-owner --no-privileges --schema=public -d "$NEW" tutordeck.dump
+
+   # user accounts: data only, because the new project already has its own auth tables
+   pg_restore --no-owner --no-privileges --data-only --schema=auth \
+     --table=users --table=identities -d "$NEW" tutordeck.dump
+   ```
+6. **Check:** in the new project's Table editor, count `students` / `lessons`, and look in Authentication → Users.
+   Storage files (payment screenshots, materials) are not in the backup; see the gap above.
+
+The encrypt → decrypt → restore steps were tested end-to-end on a local test database (2026-10-20). Do one real practice
+restore into a throwaway Supabase project once the first backup exists, so we know it works against Supabase too.
+
 ## Raphael's updates
 
 A running log of Raphael's changes, newest first.
+
+- **2026-10-20 — Nightly encrypted database backup (GitHub Actions).** New `.github/workflows/db-backup.yml` runs at
+  02:00 SGT (and on demand). It installs a `pg_dump` that matches the server's Postgres version, dumps the `public` and
+  `auth` schemas (custom format, `--no-owner --no-privileges`) via the Session pooler, checks that the dump isn't
+  empty or missing core tables, encrypts it with AES-256 (`BACKUP_PASSPHRASE`) and keeps only the `.dump.gpg` as a
+  30-day artifact. `.gitignore` now blocks `*.dump` / `*.dump.gpg`. Needs the `SUPABASE_DB_URL` and `BACKUP_PASSPHRASE`
+  repo secrets. Storage files aren't included yet. See **Backups** above for restore steps. No app code changes, so no
+  version bump.
 
 - **2026-10-20 — Reset-password and Email-confirmed pages match sign-in (v214).** /reset and /confirmed still had the
   pre-redesign look (navy "TD" box, navy buttons, beige ground). They now use the sign-in page's dark ground with the
