@@ -1,11 +1,115 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-SG">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TutorDeck — the dashboard for private tutors</title>
+<title>TutorDeck — Tuition management app for private tutors in Singapore</title>
+<meta name="description" content="Tuition management app for private tutors in Singapore. Track students, lessons and payments in one place — PayNow QR invoices and WhatsApp reminders in two taps.">
+<link rel="canonical" href="https://www.tutordeck.com.sg/">
+<meta name="robots" content="index,follow">
+<meta name="theme-color" content="#13233F">
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<meta name="description" content="Track your students, schedule and payments in one place. PayNow invoices and WhatsApp reminders in two taps. Built by tutors, for tutors.">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TutorDeck">
+<meta property="og:locale" content="en_SG">
+<meta property="og:url" content="https://www.tutordeck.com.sg/">
+<meta property="og:title" content="TutorDeck — Run your tuition, not your spreadsheets">
+<meta property="og:description" content="Students, schedule and payments in one place for private tutors in Singapore. PayNow invoices and WhatsApp reminders in two taps.">
+<meta property="og:image" content="https://www.tutordeck.com.sg/assets/img/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="TutorDeck — the dashboard for private tutors">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="TutorDeck — Run your tuition, not your spreadsheets">
+<meta name="twitter:description" content="Students, schedule and payments in one place for private tutors in Singapore.">
+<meta name="twitter:image" content="https://www.tutordeck.com.sg/assets/img/og-image.png">
+<script type="application/ld+json">
+[
+ {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "TutorDeck",
+  "legalName": "TutorDeck Pte. Ltd.",
+  "url": "https://www.tutordeck.com.sg/",
+  "logo": "https://www.tutordeck.com.sg/assets/img/logo.svg",
+  "email": "tutordeckadmin@gmail.com",
+  "address": {
+   "@type": "PostalAddress",
+   "addressCountry": "SG"
+  }
+ },
+ {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "TutorDeck",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web, iOS, Android",
+  "url": "https://www.tutordeck.com.sg/",
+  "description": "Tuition management app for private tutors in Singapore. Track students, lessons and payments in one place — PayNow QR invoices and WhatsApp reminders in two taps.",
+  "offers": {
+   "@type": "Offer",
+   "price": "0",
+   "priceCurrency": "SGD"
+  },
+  "areaServed": "SG"
+ },
+ {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+   {
+    "@type": "Question",
+    "name": "What is TutorDeck?",
+    "acceptedAnswer": {
+     "@type": "Answer",
+     "text": "TutorDeck is a tuition management app for private tutors in Singapore. It keeps your students, weekly schedule, lessons, payments and invoices in one place, so you can stop juggling spreadsheets and WhatsApp chats."
+    }
+   },
+   {
+    "@type": "Question",
+    "name": "Can I send PayNow invoices to parents?",
+    "acceptedAnswer": {
+     "@type": "Answer",
+     "text": "Yes. TutorDeck creates an invoice with a PayNow QR code for the exact amount owed, and you can send it on WhatsApp in two taps. Siblings or paired students can be billed together on one invoice."
+    }
+   },
+   {
+    "@type": "Question",
+    "name": "Does it send WhatsApp payment reminders?",
+    "acceptedAnswer": {
+     "@type": "Answer",
+     "text": "Yes. One tap opens WhatsApp with a ready-to-send reminder to the parent, showing the outstanding amount and your PayNow details. You can edit the message template to match how you write."
+    }
+   },
+   {
+    "@type": "Question",
+    "name": "How does it track who owes me money?",
+    "acceptedAnswer": {
+     "@type": "Answer",
+     "text": "Every lesson you teach is logged against the student. TutorDeck shows outstanding balances by student, flags how long each one has been unpaid, and marks lessons paid when parents settle up."
+    }
+   },
+   {
+    "@type": "Question",
+    "name": "Is TutorDeck free?",
+    "acceptedAnswer": {
+     "@type": "Answer",
+     "text": "Yes, TutorDeck is currently free while it is in early access. If paid plans are introduced, you will be told the fees before you are charged anything."
+    }
+   },
+   {
+    "@type": "Question",
+    "name": "Where is my students' data stored?",
+    "acceptedAnswer": {
+     "@type": "Answer",
+     "text": "Your data is stored on secure servers in Singapore and handled in line with Singapore's Personal Data Protection Act (PDPA). Each tutor can only see their own students."
+    }
+   }
+  ]
+ }
+]
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -100,6 +204,17 @@
   .fade{opacity:0;transform:translateY(14px);animation:up .7s ease forwards}
   .fade.d1{animation-delay:.06s}.fade.d2{animation-delay:.12s}.fade.d3{animation-delay:.18s}
   @keyframes up{to{opacity:1;transform:none}}
+  /* ---------- FAQ ---------- */
+  .faq{padding-top:0}
+  .faq-list{display:flex;flex-direction:column;gap:10px;max-width:760px}
+  .faq-item{background:#fff;border:1px solid var(--line);border-radius:14px;padding:0 20px}
+  .faq-item summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 0}
+  .faq-item summary::-webkit-details-marker{display:none}
+  .faq-item summary::after{content:"+";font-weight:800;font-size:22px;line-height:1;color:var(--accent);flex:0 0 auto;transition:transform .2s}
+  .faq-item[open] summary::after{transform:rotate(45deg)}
+  .faq-item summary:focus-visible{outline:3px solid rgba(15,118,110,.35);outline-offset:4px;border-radius:6px}
+  .faq-item h3{margin:0;font-size:16.5px;font-weight:800;color:var(--ink);letter-spacing:-.01em}
+  .faq-item p{margin:0 0 18px;color:var(--muted);font-size:14.5px;line-height:1.6}
   @media (prefers-reduced-motion:reduce){.fade{animation:none;opacity:1;transform:none}html{scroll-behavior:auto}}
 
   @media(max-width:820px){
@@ -173,6 +288,39 @@
         <p>A recurring planner turns your timetable into logged lessons for the week or month automatically.</p></div>
       <div class="feat fade d3"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></div><h3>See how you're doing</h3>
         <p>Monthly and yearly income — collected vs outstanding, by student and subject — without a single formula.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section faq" id="faq">
+  <div class="wrap">
+    <span class="kicker">FAQ</span>
+    <h2>Questions tutors ask</h2>
+    <div class="faq-list">
+      <details class="faq-item" open>
+        <summary><h3>What is TutorDeck?</h3></summary>
+        <p>TutorDeck is a tuition management app for private tutors in Singapore. It keeps your students, weekly schedule, lessons, payments and invoices in one place, so you can stop juggling spreadsheets and WhatsApp chats.</p>
+      </details>
+      <details class="faq-item">
+        <summary><h3>Can I send PayNow invoices to parents?</h3></summary>
+        <p>Yes. TutorDeck creates an invoice with a PayNow QR code for the exact amount owed, and you can send it on WhatsApp in two taps. Siblings or paired students can be billed together on one invoice.</p>
+      </details>
+      <details class="faq-item">
+        <summary><h3>Does it send WhatsApp payment reminders?</h3></summary>
+        <p>Yes. One tap opens WhatsApp with a ready-to-send reminder to the parent, showing the outstanding amount and your PayNow details. You can edit the message template to match how you write.</p>
+      </details>
+      <details class="faq-item">
+        <summary><h3>How does it track who owes me money?</h3></summary>
+        <p>Every lesson you teach is logged against the student. TutorDeck shows outstanding balances by student, flags how long each one has been unpaid, and marks lessons paid when parents settle up.</p>
+      </details>
+      <details class="faq-item">
+        <summary><h3>Is TutorDeck free?</h3></summary>
+        <p>Yes, TutorDeck is currently free while it is in early access. If paid plans are introduced, you will be told the fees before you are charged anything.</p>
+      </details>
+      <details class="faq-item">
+        <summary><h3>Where is my students' data stored?</h3></summary>
+        <p>Your data is stored on secure servers in Singapore and handled in line with Singapore's Personal Data Protection Act (PDPA). Each tutor can only see their own students.</p>
+      </details>
     </div>
   </div>
 </section>
