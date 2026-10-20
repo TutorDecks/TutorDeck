@@ -75,7 +75,7 @@
       <h2 id="m-title">Add weekly slot</h2>
       <div class="field">
         <label for="m-student">Student</label>
-        <select id="m-student"></select>
+        <select id="m-student" data-req></select>
       </div>
       <div class="field">
         <label for="m-day">Day</label>
@@ -92,16 +92,16 @@
       <div class="row2">
         <div class="field">
           <label for="m-start">Start</label>
-          <input id="m-start" type="time">
+          <input id="m-start" data-req type="time">
         </div>
         <div class="field">
           <label for="m-end">End</label>
-          <input id="m-end" type="time">
+          <input id="m-end" data-req type="time">
         </div>
       </div>
       <div class="field">
         <label for="m-rate">Rate per hour (S$)</label>
-        <input id="m-rate" type="number" min="0" step="0.5" placeholder="e.g. 50">
+        <input id="m-rate" data-req type="number" min="0" step="0.5" placeholder="e.g. 50">
       </div>
       <div class="field">
         <label for="m-subject">Subject <span class="opt">Optional</span></label>

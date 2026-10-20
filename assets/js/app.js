@@ -361,9 +361,26 @@ window.TL = (function () {
       }
       m.addEventListener("touchend", endDrag, { passive: true });
       m.addEventListener("touchcancel", endDrag, { passive: true });
+      // Save pressed with something missing: the page shows a red .msg — make it impossible to miss.
+      // Outline the first empty required field ([data-req]) in red, scroll to it and focus it;
+      // otherwise (e.g. end before start) scroll the message itself into view.
+      m.querySelectorAll(".msg").forEach(function (msgEl) {
+        new MutationObserver(function () {
+          if (!msgEl.classList.contains("err") || !msgEl.textContent.trim()) return;
+          var miss = Array.prototype.filter.call(m.querySelectorAll("[data-req]"), function (f) { return !String(f.value || "").trim(); })[0];
+          if (miss) {
+            miss.classList.add("invalid");
+            var d = miss.closest("details"); if (d) d.open = true;
+            miss.scrollIntoView({ block: "center", behavior: "smooth" });
+            try { miss.focus({ preventScroll: true }); } catch (e) {}
+          } else msgEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }).observe(msgEl, { attributes: true, attributeFilter: ["class"], childList: true });
+      });
+      m.addEventListener("input", function (e) { if (e.target.classList) e.target.classList.remove("invalid"); });
+      m.addEventListener("change", function (e) { if (e.target.classList) e.target.classList.remove("invalid"); });
       // remember the form as it opened, to know later whether anything was typed
       new MutationObserver(function () {
-        if (bd.classList.contains("on")) { if (!bd._open) { bd._open = true; setTimeout(function () { openFilledMore(m); bd._snap = formSnap(m); m.scrollTop = 0; }, 0); } }
+        if (bd.classList.contains("on")) { if (!bd._open) { bd._open = true; setTimeout(function () { m.querySelectorAll(".invalid").forEach(function (x) { x.classList.remove("invalid"); }); openFilledMore(m); bd._snap = formSnap(m); m.scrollTop = 0; }, 0); } }
         else bd._open = false;
       }).observe(bd, { attributes: true, attributeFilter: ["class"] });
       // a tap outside: close if nothing changed, otherwise ask first (runs before the page's own handler)

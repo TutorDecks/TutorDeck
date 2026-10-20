@@ -704,3 +704,4 @@ details.more-fields>summary::before{content:"";width:7px;height:7px;border-right
 details.more-fields[open]>summary::before{transform:rotate(45deg)}
 details.more-fields>summary small{font-weight:500;font-size:12.5px;color:var(--muted)}
 details.more-fields>.more-body{padding-top:2px}
+.field .invalid,.field input.invalid,.field select.invalid{border-color:var(--owed)!important;box-shadow:0 0 0 3px rgba(180,67,47,.15)!important}

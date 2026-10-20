@@ -368,13 +368,13 @@
   <div class="modal-backdrop" id="add-modal">
     <div class="modal card">
       <h2>Add lesson</h2>
-      <div class="field"><label for="ca-student">Student</label><select id="ca-student"></select></div>
-      <div class="field"><label for="ca-date">Date</label><input id="ca-date" type="date"></div>
+      <div class="field"><label for="ca-student">Student</label><select id="ca-student" data-req></select></div>
+      <div class="field"><label for="ca-date">Date</label><input id="ca-date" data-req type="date"></div>
       <div class="row2">
-        <div class="field"><label for="ca-start">Start</label><input id="ca-start" type="time"></div>
-        <div class="field"><label for="ca-end">End</label><input id="ca-end" type="time"></div>
+        <div class="field"><label for="ca-start">Start</label><input id="ca-start" data-req type="time"></div>
+        <div class="field"><label for="ca-end">End</label><input id="ca-end" data-req type="time"></div>
       </div>
-      <div class="field"><label for="ca-rate">Rate per hour (S$)</label><input id="ca-rate" type="number" min="0" step="0.5" placeholder="e.g. 50"></div>
+      <div class="field"><label for="ca-rate">Rate per hour (S$)</label><input id="ca-rate" data-req type="number" min="0" step="0.5" placeholder="e.g. 50"></div>
       <div class="field"><label for="ca-subject">Subject <span class="opt">Optional</span></label><input id="ca-subject" type="text" placeholder="e.g. A-Math"></div>
       <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:2px 0 6px"><input type="checkbox" id="ca-paid"> Already paid</label>
       <details class="more-fields">

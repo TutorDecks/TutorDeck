@@ -274,7 +274,8 @@ A running log of Raphael's changes, newest first.
   - Exam (Exams page + student profile): Student · Exam date · Type · Subject · Topics tested; "Results" fold: Marks,
     Remarks.
   - Payment, cancel and note forms: clearer labels and hints ("Cancellation fee", "Payment screenshot").
-  Labels/markup only; field ids and saving are unchanged.
+  Save with something missing: the first empty required field (`data-req`) is outlined red, scrolled to and
+  focused (the red message was often off-screen on phones). Otherwise field ids and saving are unchanged.
 
 - **2026-10-20 — Invoices show PayNow and bank transfer (v216).** Every invoice now lists all the payment options the
   tutor has set up: the PayNow QR (if a PayNow number is saved) and, below it, "Or bank transfer" with the bank details
