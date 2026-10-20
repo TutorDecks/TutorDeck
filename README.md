@@ -199,6 +199,10 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-20 — Reset-password and Email-confirmed pages match sign-in (v214).** /reset and /confirmed still had the
+  pre-redesign look (navy "TD" box, navy buttons, beige ground). They now use the sign-in page's dark ground with the
+  teal glow, the real logo, centred headings and teal buttons. Styling only; no logic changes.
+
 - **2026-10-19 — Clean URLs; Dashboard is now /home (v213).** New `vercel.json` turns on Vercel `cleanUrls`
   (`trailingSlash: false`): every page is served without `.html` (/home, /calendar, /ledger, /student?id=…, /login …),
   and any old `*.html` address 308-redirects to the clean one, so bookmarks keep working. `app.html` was renamed to
