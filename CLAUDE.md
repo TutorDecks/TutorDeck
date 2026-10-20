@@ -43,6 +43,8 @@ Preview and dev deployments also hit this live DB. So:
   needs it is merged to main, or pages will error with "column does not exist". Because
   previews hit the same DB, run it before the code lands on `dev` too.
 - A separate dev Supabase project is planned but not set up yet.
+- Nightly encrypted DB backups run via GitHub Actions (.github/workflows/db-backup.yml, 30-day artifacts).
+  The repo is PUBLIC: never commit dumps, never print data in workflow logs. Restore steps: README → Backups.
 
 ## Conventions
 - Bump the cache-buster (`?v=N`) in every page when CSS/JS changes: `bash bump-version.sh <N>`.
