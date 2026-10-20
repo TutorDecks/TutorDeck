@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Exams · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=214">
+<link rel="stylesheet" href="assets/css/app.css?v=217">
 <style>
   /* ---- v178 redesign: list rows + detail sheet ---- */
   .owe-sheet{position:fixed;inset:0;z-index:70;background:rgba(19,35,63,.38);display:flex;justify-content:flex-end;
@@ -93,11 +93,11 @@
   <div class="modal-backdrop" id="modal">
     <div class="modal card">
       <h2 id="m-title">Add exam</h2>
-      <div class="field"><label for="m-student">Student</label><select id="m-student"></select></div>
+      <div class="field"><label for="m-student">Student</label><select id="m-student" data-req></select></div>
       <div class="row2">
-        <div class="field"><label for="m-date">Exam date</label><input id="m-date" type="date"></div>
-        <div class="field"><label for="m-type">Type</label>
-          <input id="m-type" list="type-list" type="text" placeholder="e.g. WA1, PSLE">
+        <div class="field"><label for="m-date">Exam date</label><input id="m-date" data-req type="date"></div>
+        <div class="field"><label for="m-type">Type <span class="opt">Optional</span></label>
+          <input id="m-type" list="type-list" type="text" placeholder="e.g. WA1, Prelim">
           <datalist id="type-list">
             <option value="WA1"><option value="WA2"><option value="WA3">
             <option value="SA1"><option value="SA2"><option value="CA1"><option value="CA2">
@@ -107,16 +107,23 @@
           </datalist>
         </div>
       </div>
-      <div class="field"><label for="m-subject">Subject</label><input id="m-subject" type="text" placeholder="e.g. A-Math"></div>
-      <div class="field"><label for="m-score">Marks <span class="muted">(leave score blank if not sat yet)</span></label>
-          <div style="display:flex;align-items:center;gap:8px">
-            <input id="m-score" type="number" min="0" step="0.5" placeholder="score" style="flex:1;min-width:0">
-            <span class="muted" style="font-weight:800">/</span>
-            <input id="m-maxscore" type="number" min="1" step="0.5" placeholder="out of" style="flex:1;min-width:0">
+      <div class="field"><label for="m-subject">Subject <span class="opt">Optional</span></label><input id="m-subject" type="text" placeholder="e.g. A-Math"></div>
+      <div class="field"><label for="m-topics">Topics tested <span class="opt">Optional</span></label><input id="m-topics" type="text" placeholder="e.g. Quadratics, Indices">
+        <span class="fhint">Shown on Home before their lessons, so you know what to revise.</span></div>
+      <details class="more-fields">
+        <summary>Results <small>Add after the exam</small></summary>
+        <div class="more-body">
+          <div class="field"><label for="m-score">Marks <span class="opt">Optional</span></label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input id="m-score" type="number" min="0" step="0.5" placeholder="Score" style="flex:1;min-width:0">
+              <span class="muted" style="font-weight:800">/</span>
+              <input id="m-maxscore" type="number" min="1" step="0.5" placeholder="Out of" style="flex:1;min-width:0">
+            </div>
+            <span class="fhint">Results build the progress chart on the student's profile.</span>
           </div>
+          <div class="field"><label for="m-remarks">Remarks <span class="opt">Optional</span></label><input id="m-remarks" type="text" placeholder="e.g. careless in Paper 2"></div>
         </div>
-      <div class="field"><label for="m-topics">Topics</label><input id="m-topics" type="text" placeholder="e.g. Quadratics, Indices"></div>
-      <div class="field"><label for="m-remarks">Remarks</label><input id="m-remarks" type="text" placeholder="optional"></div>
+      </details>
       <div class="msg" id="m-msg"></div>
       <div class="modal-actions">
         <button class="btn" id="m-cancel">Cancel</button>
@@ -127,9 +134,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=214"></script>
-<script src="assets/js/supabase.js?v=214"></script>
-<script src="assets/js/app.js?v=214"></script>
-<script src="assets/js/exams.js?v=214"></script>
+<script src="assets/js/config.js?v=217"></script>
+<script src="assets/js/supabase.js?v=217"></script>
+<script src="assets/js/app.js?v=217"></script>
+<script src="assets/js/exams.js?v=217"></script>
 </body>
 </html>

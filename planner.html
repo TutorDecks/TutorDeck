@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Planner · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=214">
+<link rel="stylesheet" href="assets/css/app.css?v=217">
 <style>
   /* make the lesson time the visual anchor of each slot */
   .slot{padding-top:9px}
@@ -75,7 +75,7 @@
       <h2 id="m-title">Add weekly slot</h2>
       <div class="field">
         <label for="m-student">Student</label>
-        <select id="m-student"></select>
+        <select id="m-student" data-req></select>
       </div>
       <div class="field">
         <label for="m-day">Day</label>
@@ -91,35 +91,37 @@
       </div>
       <div class="row2">
         <div class="field">
-          <label for="m-subject">Subject</label>
-          <input id="m-subject" list="dl-subject" type="text" placeholder="e.g. Math"><datalist id="dl-subject"></datalist>
-        </div>
-        <div class="field">
-          <label for="m-level">Level</label>
-          <input id="m-level" type="text" placeholder="e.g. P6, Sec 3, JC1">
-        </div>
-      </div>
-      <div class="row2">
-        <div class="field">
           <label for="m-start">Start</label>
-          <input id="m-start" type="time">
+          <input id="m-start" data-req type="time">
         </div>
         <div class="field">
           <label for="m-end">End</label>
-          <input id="m-end" type="time">
+          <input id="m-end" data-req type="time">
         </div>
       </div>
-      <div class="row2">
-        <div class="field">
-          <label for="m-rate">Rate <span class="muted">(per hour, SGD)</span></label>
-          <input id="m-rate" type="number" min="0" step="0.5" placeholder="50">
-        </div>
-        <div class="field">
-          <label for="m-split">Split between <span class="muted">(students)</span></label>
-          <input id="m-split" type="number" min="1" step="1" value="1">
-        </div>
+      <div class="field">
+        <label for="m-rate">Rate per hour (S$)</label>
+        <input id="m-rate" data-req type="number" min="0" step="0.5" placeholder="e.g. 50">
       </div>
-      <p class="muted" id="m-splithint" style="font-size:12.5px;margin:-4px 0 8px"></p>
+      <div class="field">
+        <label for="m-subject">Subject <span class="opt">Optional</span></label>
+        <input id="m-subject" list="dl-subject" type="text" placeholder="e.g. A-Math"><datalist id="dl-subject"></datalist>
+      </div>
+      <details class="more-fields">
+        <summary>More details <small>Level, group lessons</small></summary>
+        <div class="more-body">
+          <div class="field">
+            <label for="m-level">Level <span class="opt">Optional</span></label>
+            <input id="m-level" type="text" placeholder="e.g. P6, Sec 3, JC1" data-autofill>
+          </div>
+          <div class="field">
+            <label for="m-split">Split between <span class="opt">Optional</span></label>
+            <input id="m-split" type="number" min="1" step="1" value="1">
+            <span class="fhint">For group lessons: the hourly rate is shared by this many students. Leave at 1 for one-to-one.</span>
+          </div>
+          <p class="muted" id="m-splithint" style="font-size:12.5px;margin:-4px 0 8px"></p>
+        </div>
+      </details>
       <div class="msg" id="m-msg"></div>
       <div class="modal-actions">
         <button class="btn pl-remove" id="m-remove" style="display:none">Remove slot</button>
@@ -131,9 +133,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=214"></script>
-<script src="assets/js/supabase.js?v=214"></script>
-<script src="assets/js/app.js?v=214"></script>
-<script src="assets/js/planner.js?v=214"></script>
+<script src="assets/js/config.js?v=217"></script>
+<script src="assets/js/supabase.js?v=217"></script>
+<script src="assets/js/app.js?v=217"></script>
+<script src="assets/js/planner.js?v=217"></script>
 </body>
 </html>
