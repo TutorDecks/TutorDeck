@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Reset password · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=213">
+<link rel="stylesheet" href="assets/css/app.css?v=214">
 <style>
   .rs-wrap{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}
   .rs-card{max-width:420px;width:100%;background:#fff;border:1px solid var(--line);border-radius:16px;
@@ -17,20 +17,29 @@
   .rs-h{font-family:var(--serif,Georgia);color:var(--navy);font-size:21px;margin:0 0 6px}
   .rs-p{color:var(--muted);font-size:14px;line-height:1.5;margin:0 0 18px}
   .rs-card .field{margin-bottom:14px}
-  .rs-btn{width:100%;background:var(--navy);color:#fff;border:none;font-weight:700;
+  .rs-btn{width:100%;height:46px;font-family:inherit;background:var(--accent);color:#fff;border:none;font-weight:700;
     padding:12px;border-radius:11px;font-size:14.5px;cursor:pointer}
   .rs-btn:hover{opacity:.93}
   .rs-btn:disabled{opacity:.5;cursor:default}
-  .rs-link{display:inline-block;margin-top:16px;color:var(--teal);font-weight:700;text-decoration:none;font-size:13.5px}
+  .rs-link{display:inline-block;margin-top:16px;color:var(--accent);font-weight:700;text-decoration:none;font-size:13.5px}
   .rs-link:hover{text-decoration:underline}
   .ok-check{width:60px;height:60px;border-radius:50%;background:rgba(15,118,110,.12);color:var(--teal);
     display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 16px}
+  /* v214: same look as the sign-in page (dark ground, teal glow, logo, teal button) */
+  .rs-wrap{background:var(--ink);background-image:radial-gradient(circle at 85% 0%,rgba(15,118,110,.35),transparent 45%)}
+  .rs-card{border:none;border-radius:20px;padding:30px 28px 26px;box-shadow:0 30px 70px -20px rgba(0,0,0,.55)}
+  .rs-brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin:0 0 18px}
+  .rs-brand img{display:block;border-radius:10px}
+  .rs-brand b{font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+  .rs-h{text-align:center;color:var(--ink);font-weight:800;letter-spacing:-.01em}
+  .rs-p{text-align:center}
+  @media(max-width:520px){ .rs-wrap{padding:16px} .rs-card{padding:26px 20px 22px} }
 </style>
 </head>
 <body>
 <div class="rs-wrap">
   <div class="rs-card">
-    <div class="rs-brand"><span class="mono">TD</span><b>TutorDeck</b></div>
+    <div class="rs-brand"><img src="assets/img/logo.svg" alt="" width="40" height="40"><b>TutorDeck</b></div>
 
     <!-- set-new-password form -->
     <div id="rs-form">
@@ -66,8 +75,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=213"></script>
-<script src="assets/js/supabase.js?v=213"></script>
+<script src="assets/js/config.js?v=214"></script>
+<script src="assets/js/supabase.js?v=214"></script>
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };

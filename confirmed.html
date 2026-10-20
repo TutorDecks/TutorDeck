@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Email confirmed · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=213">
+<link rel="stylesheet" href="assets/css/app.css?v=214">
 <style>
   .cf-wrap{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}
   .cf-card{max-width:440px;width:100%;background:#fff;border:1px solid var(--line);border-radius:16px;
@@ -19,18 +19,27 @@
   .cf-tick svg{width:34px;height:34px}
   .cf-h{font-family:var(--serif,Georgia);color:var(--navy);font-size:22px;margin:0 0 8px}
   .cf-p{color:var(--muted);font-size:14.5px;line-height:1.5;margin:0 0 22px}
-  .cf-btn{display:inline-block;background:var(--navy);color:#fff;text-decoration:none;font-weight:700;
+  .cf-btn{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;
     padding:12px 22px;border-radius:11px;font-size:14.5px}
   .cf-btn:hover{opacity:.93}
   .cf-sub{margin-top:16px;font-size:13px}
-  .cf-sub a{color:var(--teal);font-weight:700;text-decoration:none}
+  .cf-sub a{color:var(--accent);font-weight:700;text-decoration:none}
   .cf-sub a:hover{text-decoration:underline}
+  /* v214: same look as the sign-in page (dark ground, teal glow, logo, teal button) */
+  .cf-wrap{background:var(--ink);background-image:radial-gradient(circle at 85% 0%,rgba(15,118,110,.35),transparent 45%)}
+  .cf-card{border:none;border-radius:20px;padding:30px 28px 26px;box-shadow:0 30px 70px -20px rgba(0,0,0,.55)}
+  .cf-brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin:0 0 18px}
+  .cf-brand img{display:block;border-radius:10px}
+  .cf-brand b{font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+  .cf-h{text-align:center;color:var(--ink);font-weight:800;letter-spacing:-.01em}
+  .cf-p{text-align:center}
+  @media(max-width:520px){ .cf-wrap{padding:16px} .cf-card{padding:26px 20px 22px} }
 </style>
 </head>
 <body>
 <div class="cf-wrap">
   <div class="cf-card">
-    <div class="cf-brand"><span class="mono">TD</span><b>TutorDeck</b></div>
+    <div class="cf-brand"><img src="assets/img/logo.svg" alt="" width="40" height="40"><b>TutorDeck</b></div>
     <div class="cf-tick">
       <svg viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
     </div>
@@ -42,8 +51,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=213"></script>
-<script src="assets/js/supabase.js?v=213"></script>
+<script src="assets/js/config.js?v=214"></script>
+<script src="assets/js/supabase.js?v=214"></script>
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };
