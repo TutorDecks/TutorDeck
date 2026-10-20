@@ -37,10 +37,19 @@
     $("m-save").disabled=true;
     var res=editingId
       ? await window.sb.from("students").update(fields).eq("id",editingId)
-      : await window.sb.from("students").insert(Object.assign({tutor_id:userId},fields));
+      : await window.sb.from("students").insert(Object.assign({tutor_id:userId},fields)).select("id").single();
     $("m-save").disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
+    var wasNew=!editingId;
     openModal(false);load();
+    if(wasNew && TL.guide && TL.guide.on){
+      var hint=document.querySelector("#modal .tg-inform"); if(hint) hint.remove();
+      var nid=res.data&&res.data.id;
+      TL.guide.card({step:2, done:"\u2713 "+esc(name)+" added",
+        title:"Set "+esc(name)+"\u2019s weekly lesson time",
+        text:"Pick the day, time and hourly rate. TutorDeck repeats it every week.",
+        href:"planner?guide=1"+(nid?"&student="+encodeURIComponent(nid):""), cta:"Set lesson time"});
+    }
   }
 
   // ---------- merge ----------
@@ -216,6 +225,16 @@
     students=res.data||[];
     fillStuFilters();
     renderRoster();
+    guideStart();
+  }
+  // First-run guide, step 1: open the Add-student form straight away (once per visit).
+  var guided=false;
+  function guideStart(){
+    if(guided||!(TL.guide&&TL.guide.on))return; guided=true;
+    TL.guide.card({step:1, title:"Add your first student",
+      text:"Just a name is enough to start. You can fill in the rest any time."});
+    openModal(true,null);
+    TL.guide.formHint($("m-title"), "Step 1 of 3 \u00b7 Just a name is enough to start. Fill in the rest any time.");
   }
 
   function init(user){
