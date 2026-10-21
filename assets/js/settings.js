@@ -50,6 +50,7 @@
     $("save").disabled = false;
     if (res.error) { msg.textContent = res.error.message; msg.className = "msg err"; return; }
     msg.textContent = "Saved ✓"; msg.className = "msg ok";
+    TL.store.set("td_brand", (biz || "").trim() || "TutorDeck");   // the top bar shows the new name on the next page straight away
   }
 
   // ---- Two-factor (TOTP) ----
@@ -150,7 +151,7 @@
       var res=await window.sb.functions.invoke("delete-account");
       if(res.error) throw res.error;
 
-      try{ await window.sb.auth.signOut(); }catch(e){}
+      try{ TL.store.clear(""); }catch(e){} try{ await window.sb.auth.signOut(); }catch(e){}
       alert("Your account and all data have been permanently deleted.");
       location.replace("login");
     }catch(e){
@@ -160,6 +161,7 @@
         await window.sb.from("invoices").delete().eq("tutor_id",userId);
         await window.sb.from("students").delete().eq("tutor_id",userId);  // cascades lessons, slots, exams
         await window.sb.from("profiles").delete().eq("id",userId);
+        try{ TL.store.clear(""); }catch(e){}
         await window.sb.auth.signOut();
         alert("Your data has been deleted and you've been signed out.\n\n(Note: the account login record couldn't be removed automatically — deploy the delete-account function for full removal.)");
         location.replace("login");

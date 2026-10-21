@@ -52,6 +52,8 @@ Preview and dev deployments also hit this live DB. So:
 - Add an entry to the "Raphael's updates" log in README.md for each change (newest first).
 - Keep mobile layouts working (app is heavily used on phones; breakpoint 820px).
 - Shared helpers live on `window.TL` in assets/js/app.js; pages call `TL.requireAuth("navId", init)`.
+- Saved per-user state goes through `TL.store.get/set/remove` (keys `td:<uid>:<key>`), never raw localStorage —
+  several tutors can share a browser. Only device-wide settings (Client view `td_client`) use localStorage directly.
 - No Node here. Syntax-check JS with JavaScriptCore by wrapping the file in `new Function`:
   `/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc -e "new Function(readFile('assets/js/ledger.js')); print('ok')"`
 
