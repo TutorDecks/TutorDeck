@@ -261,6 +261,11 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-21 — Calendar in Client view keeps unpaid lessons visible (v222).** Client view hides the Paid/Unpaid
+  switches, so a saved "Unpaid off" (or "Paid off") filter made those lessons vanish with no way back. Those two filters are
+  now ignored while Client view is on, the calendar re-draws when you toggle Client view, and the key shows a short note
+  ("Client view is on, so paid and unpaid look the same…") so the missing colours aren't a mystery.
+
 - **2026-10-21 — Calendar: see every exam on a busy day (v221).** In the week view's slim exam row, a day with
   two or more exams used to show the first exam squeezed beside a "+N" you couldn't tap. Now a day with several exams
   shows one tappable chip — "◷ 3 exams" on desktop, "◷ 3" on phone — that opens a list of every exam that day (student,

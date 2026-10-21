@@ -194,7 +194,9 @@
           studentId:s.student_id, slotId:s.id, rate:s.rate, split:s.split||1, startHM:hhmm(s.start_time), endHM:hhmm(s.end_time) });
       });
     }
-    return all ? blocks : blocks.filter(function(b){ return !hidden[b.state]; });   // legend toggles (all=true ignores them)
+    // Client view hides the Paid/Unpaid switches, so ignore those two filters there (otherwise lessons vanish with no way back).
+    var cv=document.body.classList.contains("client-view");
+    return all ? blocks : blocks.filter(function(b){ return !hidden[b.state] || (cv && (b.state==="paid"||b.state==="unpaid")); });   // legend toggles (all=true ignores them)
   }
 
   // Within one day: cluster overlaps, give each a lane, and flag genuine double-bookings.
@@ -1193,6 +1195,7 @@
     try{ mode=TL.store.get("tl_cal_mode")||""; }catch(e){ mode=""; }
     if(!mode) mode="week";   // default everywhere; the user's last choice is remembered (tl_cal_mode)
     try{ hidden=JSON.parse(TL.store.get("tl_cal_hidden")||"{}")||{}; }catch(e){ hidden={}; }
+    window.addEventListener("td:clientview", function(){ render(); });   // Paid/Unpaid filters only apply outside Client view
     $("cal-prev").addEventListener("click", function(){ go(-1); });
     $("cal-next").addEventListener("click", function(){ go(1); });
     $("cal-today").addEventListener("click", goToday);
