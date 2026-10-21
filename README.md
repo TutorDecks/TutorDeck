@@ -261,6 +261,12 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-21 — Calendar: see every exam on a busy day (v221).** In the week view's slim exam row, a day with
+  two or more exams used to show the first exam squeezed beside a "+N" you couldn't tap. Now a day with several exams
+  shows one tappable chip — "◷ 3 exams" on desktop, "◷ 3" on phone — that opens a list of every exam that day (student,
+  type · subject, sorted by name); tap one for its usual details popover. Days with a single exam are unchanged, and
+  the month view already listed every exam.
+
 - **2026-10-21 — In-app dialogs replace every browser pop-up (v220).**
   - **One shared helper** in app.js: `TL.confirm({title, message, confirmText, cancelText, danger})` → `Promise<boolean>`,
     `TL.alert(text | {title, message})` → `Promise`, `TL.prompt({title, message, placeholder, match})` → `Promise<string|null>`.
