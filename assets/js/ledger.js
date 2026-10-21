@@ -11,23 +11,11 @@
   function pad(n){return (n<10?"0":"")+n;}
   function iso(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
   function todayISO(){return iso(new Date());}
-  // In-app confirm dialog → Promise<boolean>; dims the page instead of the browser's native confirm.
-  function confirmBox(msg, opts){
+  function confirmBox(msg, opts){   // → the app-wide dialog (TL.confirm); kept so existing calls read the same
     opts=opts||{};
-    return new Promise(function(resolve){
-      var bd=$("confirm-modal"), yes=$("confirm-yes"), no=$("confirm-no");
-      if(!bd){ resolve(window.confirm(msg)); return; }
-      $("confirm-title").textContent=opts.title||"Confirm";
-      $("confirm-msg").textContent=msg;
-      yes.textContent=opts.yes||"Confirm"; no.textContent=opts.no||"Cancel";
-      yes.className="btn "+(opts.danger?"btn-danger":"btn-primary");
-      function done(v){ bd.classList.remove("on"); yes.onclick=null; no.onclick=null; bd.onclick=null; resolve(v); }
-      yes.onclick=function(){ done(true); };
-      no.onclick=function(){ done(false); };
-      bd.onclick=function(e){ if(e.target===bd) done(false); };
-      bd.classList.add("on");
-    });
+    return TL.confirm({ title:opts.title||"Confirm", message:msg, confirmText:opts.yes||"Confirm", cancelText:opts.no||"Cancel", danger:!!opts.danger });
   }
+
   function hm(t){return t?t.slice(0,5):"";}
   // A lesson is "done" only once its end time has passed — so a lesson later TODAY stays
   // "scheduled" (date-only comparison wrongly marked every today lesson done). endHM = "HH:MM".
@@ -86,7 +74,7 @@
     }
     b.disabled=false;
     if(!rows.length){msg.textContent="That range is already logged \u2014 nothing new to add.";msg.className="msg";return;}
-    if(!confirm("Add "+TL.plural(rows.length,"lesson")+" from "+fromISO+" to "+toISO+"? Already-logged lessons are skipped."))return;
+    if(!(await TL.confirm({title:"Log lessons",message:"Add "+TL.plural(rows.length,"lesson")+" from "+fromISO+" to "+toISO+"? Lessons already logged are skipped.",confirmText:"Log "+rows.length})))return;
     b.disabled=true;
     var res=await window.sb.from("lessons").insert(rows);
     b.disabled=false;
@@ -296,7 +284,7 @@
 
   function remind(id){
     var num=waNumber(contactById[id]);
-    if(!num){alert("No contact number saved for "+(nameById[id]||"this student")+".\n\nAdd one on the Students page (Edit → Contact), then try again.");return;}
+    if(!num){TL.alert({title:"No WhatsApp number",message:"There\u2019s no WhatsApp number saved for "+(nameById[id]||"this student")+".\n\nAdd one on the Students page (Edit \u2192 WhatsApp number), then try again."});return;}
     var rows=outGroups[id]||[];
     if(!rows.length)return;
     var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
@@ -310,7 +298,7 @@
   function remindMany(ids){
     var num="", targetId=null;
     ids.some(function(id){var n=waNumber(contactById[id]);if(n){num=n;targetId=id;return true;}return false;});
-    if(!num){alert("None of the selected students have a saved contact number.\n\nAdd one on the Students page (Edit → Contact), then try again.");return;}
+    if(!num){TL.alert({title:"No WhatsApp number",message:"None of these students has a WhatsApp number saved.\n\nAdd one on the Students page (Edit \u2192 WhatsApp number), then try again."});return;}
     var all=[]; ids.forEach(function(id){(outGroups[id]||[]).forEach(function(l){all.push(l);});});
     if(!all.length)return;
     var sum=all.reduce(function(t,l){return t+Number(l.amount);},0);
@@ -470,10 +458,10 @@
     lastRecordRows.forEach(function(l){if(checked)selectedRecords[l.id]=1; else delete selectedRecords[l.id];});
     renderRecords();
   }
-  function deleteSelectedRecords(){
+  async function deleteSelectedRecords(){
     var ids=Object.keys(selectedRecords);
     if(!ids.length)return;
-    if(!confirm("Delete "+ids.length+" selected lesson(s) permanently? This cannot be undone."))return;
+    if(!(await TL.confirm({title:"Delete "+TL.plural(ids.length,"lesson")+"?",message:"The selected "+(ids.length===1?"lesson is":"lessons are")+" deleted permanently. This can\u2019t be undone.",confirmText:"Delete",danger:true})))return;
     selectedRecords={};
     deleteLessons(ids);
   }
@@ -543,18 +531,18 @@
   async function restoreLesson(l){
     var status=statusFor(l.lesson_date,hm(l.end_time));
     var res=await window.sb.from("lessons").update({status:status,compensation:null}).eq("id",l.id);
-    if(res.error){alert("Couldn't restore: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't restore: "+res.error.message);return;}
     load();
   }
   async function deleteLesson(id){
-    if(!confirm("Delete this lesson permanently? (Use Cancel instead if you just want to void it.)"))return;
+    if(!(await TL.confirm({title:"Delete lesson",message:"Delete this lesson permanently? Use Cancel lesson instead if you just want to void it.",confirmText:"Delete",danger:true})))return;
     var res=await window.sb.from("lessons").delete().eq("id",id);
-    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't delete: "+res.error.message);return;}
     load();
   }
   async function deleteLessons(ids){
     var res=await window.sb.from("lessons").delete().in("id",ids);
-    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't delete: "+res.error.message);return;}
     load();
   }
 
@@ -627,7 +615,7 @@
   // Core: mark lessons paid on the given date, settle the invoice, attach the screenshot.
   async function doMarkPaid(ids, paidDate, file){
     var res=await window.sb.from("lessons").update({paid:true,paid_date:paidDate}).in("id",ids);
-    if(res.error){alert("Couldn't update: "+res.error.message);return false;}
+    if(res.error){TL.alert("Couldn't update: "+res.error.message);return false;}
     var invId=null;
     try{ invId=await reconcileInvoicesForLessons(ids, paidDate, {create:true}); }
     catch(e){ console.warn("Invoice sync skipped:",e); }        // payment still stands
@@ -762,7 +750,7 @@
     openAdd(false);load();
   }
   async function generateMonth(){
-    if(!slots.length){alert("No recurring slots to generate from. Add them on the Planner first.");return;}
+    if(!slots.length){TL.alert("No recurring slots to generate from. Add them on the Planner first.");return;}
     var now=new Date(),base=new Date(now.getFullYear(),now.getMonth()+genMonthOff,1),y=base.getFullYear(),m=base.getMonth();
     var last=new Date(y,m+1,0).getDate();
     var mStart=iso(new Date(y,m,1)),mEnd=iso(new Date(y,m,last));
@@ -779,14 +767,14 @@
         rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:statusFor(di,hm(s.end_time)),paid:false});
       });
     }
-    if(!rows.length){alert(mo+" is already fully logged — nothing new to add.");return;}
-    if(!confirm("Add "+TL.plural(rows.length,"lesson")+" to fill every recurring slot across "+mo+"? Already-logged lessons are skipped."))return;
+    if(!rows.length){TL.alert(mo+" is already fully logged — nothing new to add.");return;}
+    if(!(await TL.confirm({title:"Log "+mo,message:"Add "+TL.plural(rows.length,"lesson")+" to fill every weekly slot in "+mo+"? Lessons already logged are skipped.",confirmText:"Log "+rows.length})))return;
     var res=await window.sb.from("lessons").insert(rows);
-    if(res.error){alert("Couldn't generate: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't generate: "+res.error.message);return;}
     load();
   }
   async function generateWeek(){
-    if(!slots.length){alert("No recurring slots to generate from. Add them on the Planner first.");return;}
+    if(!slots.length){TL.alert("No recurring slots to generate from. Add them on the Planner first.");return;}
     var mon=mondayOf(new Date());mon.setDate(mon.getDate()+genWeekOff*7);
     var weekStart=iso(mon),end=new Date(mon);end.setDate(mon.getDate()+6);var weekEnd=iso(end);
     var ex=await window.sb.from("lessons").select("student_id,lesson_date,start_time").gte("lesson_date",weekStart).lte("lesson_date",weekEnd);
@@ -798,10 +786,10 @@
       if(seen[s.student_id+"|"+di+"|"+hm(s.start_time)])return;
       rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:statusFor(di,hm(s.end_time)),paid:false});
     });
-    if(!rows.length){alert("This week is already logged — nothing new to add.");return;}
-    if(!confirm("Add "+TL.plural(rows.length,"lesson")+" for "+weekStart+" to "+weekEnd+"?"))return;
+    if(!rows.length){TL.alert("This week is already logged — nothing new to add.");return;}
+    if(!(await TL.confirm({title:"Log this week",message:"Add "+TL.plural(rows.length,"lesson")+" for "+weekStart+" to "+weekEnd+"? Lessons already logged are skipped.",confirmText:"Log "+rows.length})))return;
     var res=await window.sb.from("lessons").insert(rows);
-    if(res.error){alert("Couldn't generate: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't generate: "+res.error.message);return;}
     load();
   }
 
@@ -919,13 +907,13 @@
   }
   // Which payment options this tutor has set up. Every invoice shows all of them.
   function payOpts(){ return { pn:!!(profile&&profile.paynow_id), bk:hasBank(profile) }; }
-  function needPaySetup(){
-    if(confirm("No payment details saved yet. Add your PayNow number (and, if you like, bank details) in Settings now?")) location.href="settings";
+  async function needPaySetup(){
+    if(await TL.confirm({title:"Add payment details first",message:"Invoices need your PayNow number (and, if you like, bank details) so parents know how to pay.",confirmText:"Open Settings",cancelText:"Not now"})) location.href="settings";
   }
 
   async function openInvoice(studentId, onlyIds){
     if(!profile){
-      alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");
+      TL.alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");
       return;
     }
     var po=payOpts();
@@ -948,21 +936,21 @@
     if(!po.pn){ data.payTo=data.bank.name; presentInvoice(data,"",meta); return; }   // bank only
     try{ await loadQR(); }
     catch(e){
-      alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again.");
+      TL.alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again.");
       return;
     }
     data.payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
     try{
       var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
-        if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
+        if(err){TL.alert("Couldn't generate QR: "+(err.message||err));return;}
         presentInvoice(data,url,meta);
       });
-    }catch(e){ alert("Invoice error: "+(e.message||e)); }
+    }catch(e){ TL.alert("Invoice error: "+(e.message||e)); }
   }
 
   async function openInvoiceMany(ids, onlyIds){
-    if(!profile){alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");return;}
+    if(!profile){TL.alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");return;}
     var po=payOpts();
     if(!po.pn && !po.bk){ needPaySetup(); return; }
     var all=[];
@@ -985,15 +973,15 @@
     if(po.bk) data.bank=bankObj(profile);
     if(!po.pn){ data.payTo=data.bank.name; presentInvoice(data,"",meta); return; }   // bank only
     try{ await loadQR(); }
-    catch(e){ alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again."); return; }
+    catch(e){ TL.alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again."); return; }
     data.payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
     try{
       var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
-        if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
+        if(err){TL.alert("Couldn't generate QR: "+(err.message||err));return;}
         presentInvoice(data,url,meta);
       });
-    }catch(e){ alert("Invoice error: "+(e.message||e)); }
+    }catch(e){ TL.alert("Invoice error: "+(e.message||e)); }
   }
 
   async function saveInvoice(){
@@ -1008,7 +996,7 @@
     }).select("id").single();
     if(!res.error&&res.data)window._invSavedId=res.data.id;
     b.disabled=false;
-    if(res.error){b.textContent="Save to app";alert("Couldn't save invoice: "+res.error.message);return;}
+    if(res.error){b.textContent="Save to app";TL.alert("Couldn't save invoice: "+res.error.message);return;}
     window._invSaved=true;   // recorded in the Invoices tab
     b.textContent="Saved ✓";setTimeout(function(){b.textContent="Save to app";},1600);
   }
@@ -1083,14 +1071,14 @@
       var canvas=await window.html2canvas(node,{backgroundColor:"#ffffff",scale:2,useCORS:true});
       canvas.toBlob(async function(blob){
         b.disabled=false;b.textContent="Send on WhatsApp";
-        if(!blob){alert("Couldn't render the invoice image.");return;}
+        if(!blob){TL.alert("Couldn't render the invoice image.");return;}
         var file=new File([blob],(window._invTitle||("Invoice_"+m.invoiceNo))+".png",{type:"image/png"});
         // Original flow (Windows/Linux/Android/iOS): native share sheet, image attached. Skipped
         // only on macOS desktop, where the sheet dead-ends — that falls through to wa.me below.
         if(!isMacDesktop() && navigator.canShare && navigator.canShare({files:[file]})){
           try{
             await navigator.share({files:[file],text:msg});
-            alert((copied?"Your message is copied to the clipboard — ":"Tip: copy your message, then ")+"paste it into the chat if WhatsApp only shows the image.");
+            TL.alert((copied?"Your message is copied to the clipboard — ":"Tip: copy your message, then ")+"paste it into the chat if WhatsApp only shows the image.");
             return;
           }
           catch(e){ if(e&&e.name==="AbortError")return; /* otherwise fall through */ }
@@ -1102,11 +1090,11 @@
         var num=waNumber(contactById[m.studentId||(m.students&&m.students[0])]);   // combined: use the household's number
         window.open(num ? "https://wa.me/"+num+"?text="+encodeURIComponent(msg)
                         : "https://api.whatsapp.com/send?text="+encodeURIComponent(msg), "_blank");
-        alert((copied?"Your message has been copied — paste it into the chat if it doesn't prefill.\n\n":"")+"The invoice image was just downloaded — attach it in the WhatsApp chat that opened.");
+        TL.alert((copied?"Your message has been copied — paste it into the chat if it doesn't prefill.\n\n":"")+"The invoice image was just downloaded — attach it in the WhatsApp chat that opened.");
       },"image/png");
     }catch(e){
       b.disabled=false;b.textContent="Send on WhatsApp";
-      alert("Couldn't prepare the invoice image: "+(e.message||e)+"\n\nIf this keeps happening, the image library may be blocked — tell me and I'll set up a self-hosted copy.");
+      TL.alert("Couldn't prepare the invoice image: "+(e.message||e)+"\n\nIf this keeps happening, the image library may be blocked — tell me and I'll set up a self-hosted copy.");
     }
   }
 
@@ -1114,7 +1102,7 @@
     if(!window._invHTML)return;
     var css=document.querySelector('link[rel="stylesheet"]').href;
     var w=window.open("","_blank","width=720,height=900");
-    if(!w){alert("Allow pop-ups to print, or use your browser's print on this page.");return;}
+    if(!w){TL.alert("Allow pop-ups to print, or use your browser's print on this page.");return;}
     var title=esc(window._invTitle||"Invoice");
     w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
       '<link rel="stylesheet" href="'+css+'"><style>body{background:#fff;padding:28px;max-width:640px;margin:auto}</style></head>'+

@@ -166,10 +166,11 @@
     // Deleting a slot is safe now: each lesson carries its own one_off flag, so even though the DB
     // nulls slot_id on its past lessons ("on delete set null"), they keep the correct recurring/one-off
     // label and all their other data. The slot is just a template — binning it loses no lesson history.
-    if(!confirm("Remove this weekly slot?\n\nIt stops generating new lessons. Logged lessons stay in "+
-                "your records unchanged."))return;
+    if(!(await TL.confirm({title:"Remove this weekly slot?",
+      message:"It stops appearing on the calendar from now on. Lessons you\u2019ve already logged stay on the calendar and in your records.",
+      confirmText:"Remove slot", danger:true})))return;
     var res=await window.sb.from("recurring_slots").delete().eq("id",id);
-    if(res.error){alert("Couldn't remove: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't remove: "+res.error.message);return;}
     openModal(false);load();
   }
 

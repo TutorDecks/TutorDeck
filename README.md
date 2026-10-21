@@ -261,6 +261,22 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-21 — In-app dialogs replace every browser pop-up (v220).**
+  - **One shared helper** in app.js: `TL.confirm({title, message, confirmText, cancelText, danger})` → `Promise<boolean>`,
+    `TL.alert(text | {title, message})` → `Promise`, `TL.prompt({title, message, placeholder, match})` → `Promise<string|null>`.
+    House-style sheet (`.td-dlg`), red button + red top edge when `danger`, full-width buttons on phones, queued if two open at once.
+    Esc and backdrop = Cancel; Enter presses the focused button; focus starts on **Cancel** for destructive dialogs;
+    Tab stays inside; focus returns to where it was. `match` keeps the confirm button disabled until the typed text matches.
+  - **Swapped:** 16 `confirm()`, 52 `alert()`, 1 `prompt()` across students, planner, calendar, ledger, student, exams,
+    invoices, materials and settings. The calendar/ledger `#confirm-modal` markup and the old `.td-discard` sheet are gone —
+    lesson delete and "Discard changes?" use the same helper.
+  - **Clearer wording:** "Remove Caroline Tan?" spells out that it deletes their lessons (paid and unpaid), weekly slots and
+    exams and points to Discontinue/Merge; "Remove this weekly slot?" says logged lessons stay; delete account is one dialog
+    where you type DELETE.
+  - **Setup guide fixes:** a first slot on a day already past this week now shows the step-3 banner (setup mode is decided
+    from the data — slots but nothing ever logged — not the per-browser onboarded flag); logging it shows
+    "✓ You're all set up!"; the message explains past lessons are logged as taught and unpaid (red) until marked paid in Money.
+
 - **2026-10-21 — Onboarding fixes from a live new-tutor walkthrough (v219).**
   - **Per-user browser storage** (`TL.store`, keys `td:<auth uid>:<key>`). Calendar filters and view, Home and Ledger
     view choices, setup-done flag, dismissed tips, cached business name and all Google Calendar link state are now
