@@ -630,7 +630,7 @@
     var btn=$("cal-log-btn"); if(btn) btn.classList.remove("tg-hint");
     TL.guide.card({final:true, done:"\u2713 "+n+" lesson"+(n===1?"":"s")+" confirmed. You\u2019re all set up!",
       title:"What next?",
-      text:(past?(past===n?"Past lessons are logged as taught and unpaid, so "+(n===1?"it shows":"they show")+" in red. ":"Past lessons are logged as taught and unpaid (red). ")+
+      text:(past?(past===n?(n===1?"That past lesson is logged as taught and unpaid, so it shows in red. ":"Past lessons are logged as taught and unpaid, so they show in red. "):"Past lessons are logged as taught and unpaid (red). ")+
               "When the parent pays, mark them paid in <b>Money</b>. ":"When a parent pays, mark the lessons paid in <b>Money</b>. ")+
            "Each week, tap Log on the calendar to confirm that week\u2019s lessons.",
       href:"home", cta:"Go to Home"});
