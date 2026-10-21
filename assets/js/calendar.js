@@ -277,7 +277,8 @@
       if(dayExams.length) hasEx=true;
       // Carousel: a fixed slim row — first exam + "+N" — so weeks with and without exams line up.
       adCells+='<div class="cal-ad-cell">'+(opts.slimAllday
-        ? (dayExams.length?examChipHTML(dayExams[0])+(dayExams.length>1?'<span class="ad-more">+'+(dayExams.length-1)+'</span>':''):'')
+        ? (dayExams.length===1 ? examChipHTML(dayExams[0])
+          : dayExams.length ? '<button type="button" class="cal-chip is-exam ad-all" data-exday="'+iso(date)+'" aria-label="See all '+dayExams.length+' exams">◷ '+dayExams.length+'<span class="ad-lbl"> exams</span></button>' : '')
         : dayExams.map(examChipHTML).join(""))+'</div>';
     });
     var gutter="";
@@ -472,6 +473,9 @@
     calEl().querySelectorAll("[data-exam]").forEach(function(node){
       node.addEventListener("click", function(e){ e.stopPropagation(); showExamPopover(node); });
     });
+    calEl().querySelectorAll("[data-exday]").forEach(function(node){
+      node.addEventListener("click", function(e){ e.stopPropagation(); showExamDayPopover(node); });
+    });
   }
 
   // ---- popover: view + direct actions (postpone / cancel / restore / delete) ----
@@ -554,6 +558,29 @@
     var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
     positionPopover(node);
     $("cp-x").addEventListener("click", hidePopover);
+  }
+  // "+N" on a day with several exams: list every exam that day; tap one for its details.
+  function showExamDayPopover(node){
+    var dayISO=node.dataset.exday, list=(examsByDate()[dayISO]||[]).slice()
+      .sort(function(a,b){ return (nameById[a.student_id]||"").localeCompare(nameById[b.student_id]||""); });
+    if(!list.length) return;
+    popNode=node;
+    var pop=$("cal-pop"), dt=new Date(dayISO+"T00:00:00");
+    pop.innerHTML='<span class="cp-x" id="cp-x">×</span>'+
+      '<h4>'+list.length+' exams</h4>'+
+      '<div class="cp-row">'+DAY[(dt.getDay()+6)%7]+' '+dt.getDate()+' '+MON[dt.getMonth()]+' '+dt.getFullYear()+'</div>'+
+      '<div class="cp-exlist">'+list.map(function(ex){
+        var what=[ex.assessment_type,ex.subject].filter(Boolean).join(" · ")||"Exam";
+        return '<button type="button" class="cp-exitem" data-exam="'+esc(String(ex.id))+'">'+
+          '<b>'+esc(nameById[ex.student_id]||"—")+'</b><span>'+esc(what)+'</span></button>';
+      }).join("")+'</div>';
+    pop.style.display="block";
+    var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
+    positionPopover(node);
+    $("cp-x").addEventListener("click", hidePopover);
+    pop.querySelectorAll(".cp-exitem").forEach(function(btn){
+      btn.addEventListener("click", function(e){ e.stopPropagation(); showExamPopover(btn); popNode=node; positionPopover(node); });
+    });
   }
   function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.remove("on"); popNode=null; }
   // After any write, the visible range (and whichever month a lesson may have moved
