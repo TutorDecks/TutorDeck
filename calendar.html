@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Calendar · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=221">
+<link rel="stylesheet" href="assets/css/app.css?v=222">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -185,6 +185,8 @@
   /* Client view: no paid/unpaid colours or filters — every lesson looks like an ordinary booking */
   .client-view .is-paid,.client-view .is-unpaid{background:rgba(19,35,63,.10);border-color:rgba(19,35,63,.4);color:var(--navy)}
   .client-view .cal-chip.is-paid,.client-view .cal-chip.is-unpaid{background:rgba(19,35,63,.08);border-color:var(--navy);color:var(--navy)}
+  .cal-cvnote{display:none;font-size:12px;color:var(--muted)}
+  .client-view .cal-cvnote{display:block}
   .client-view .cal-legend [data-cat="paid"],.client-view .cal-legend [data-cat="unpaid"]{display:none}
   .client-view .ag-row.is-paid .ag-bar,.client-view .ag-row.is-unpaid .ag-bar{background:var(--navy)}
   .client-view .ag-row.is-paid .ag-tag,.client-view .ag-row.is-unpaid .ag-tag{display:none}
@@ -362,6 +364,7 @@
         <button class="leg" data-cat="proj" aria-pressed="true"><i class="cal-sw sw-proj"></i>Not logged</button>
         <button class="leg" data-cat="cancel" aria-pressed="true"><i class="cal-sw sw-cancel"></i>Cancelled</button>
       </div>
+      <div class="cal-cvnote">Client view is on, so paid and unpaid look the same. Tap the eye button to show them.</div>
       <div class="cal-symkey"><span><b>✦</b> One-off</span><span><b>↻</b> Postponed</span><span><b class="sym-clash">⚠</b> Clash (red outline)</span></div>
     </div>
     <div class="cal-gsync">
@@ -409,9 +412,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=221"></script>
-<script src="assets/js/supabase.js?v=221"></script>
-<script src="assets/js/app.js?v=221"></script>
-<script src="assets/js/calendar.js?v=221"></script>
+<script src="assets/js/config.js?v=222"></script>
+<script src="assets/js/supabase.js?v=222"></script>
+<script src="assets/js/app.js?v=222"></script>
+<script src="assets/js/calendar.js?v=222"></script>
 </body>
 </html>
