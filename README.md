@@ -336,6 +336,17 @@ A running log of Raphael's changes, newest first.
   tick box is gone from the student forms, and Settings → "Bank transfer (optional)" now says "fill these in to also show
   your bank details on every invoice; leave blank for PayNow only". The default WhatsApp invoice message matches
   (PayNow / bank / both). The `students.pay_by_bank` column is no longer used (left in place; no DB change needed).
+- **2026-10-20 — SEO groundwork for the public landing page.** `index.html` gets a keyword-bearing title
+  ("Tuition management app for private tutors in Singapore"), a rewritten meta description, `lang="en-SG"`, a canonical
+  URL, Open Graph + Twitter share tags with a new 1200×630 preview image (`assets/img/og-image.png`), an
+  `apple-touch-icon.png`, and JSON-LD structured data (Organization, SoftwareApplication, FAQPage). New **FAQ** section
+  (6 Q&As: PayNow invoices, WhatsApp reminders, who owes you, free, PDPA/data in Singapore) — every answer matches
+  privacy.html / terms.html. All signed-in and auth pages now carry `<meta name="robots" content="noindex,nofollow">`;
+  privacy/terms get descriptions + canonicals. New `robots.txt` (allows all, points to the sitemap — app pages are kept
+  out by their noindex tag, not by Disallow, so Google can actually read that tag) and `sitemap.xml` (/, /privacy,
+  /terms). Removed the duplicate `landing.html`; `/landing` and `/landing.html` now 301 to `/` in vercel.json.
+  Canonical domain is **https://www.tutordeck.com.sg** — once DNS is live, set Vercel to redirect tutordeck.vercel.app
+  there and submit the sitemap in Google Search Console. HTML-only change, no version bump.
 
 - **2026-10-20 — Nightly encrypted database backup (GitHub Actions).** New `.github/workflows/db-backup.yml` runs at
   02:00 SGT (and on demand). It installs a `pg_dump` that matches the server's Postgres version, dumps the `public` and
