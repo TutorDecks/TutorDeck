@@ -148,6 +148,7 @@
       allSlots=allSlots.filter(function(s){ return actIds[s.student_id]; });
     }
     fillSubjects(allSlots.map(function(s){return s.subject;}));render();
+    guideStart();
   }
 
   async function removeSlot(id){
@@ -176,7 +177,32 @@
       : await window.sb.from("recurring_slots").insert(payload);
     $("m-save").disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
+    var wasNew=!editingId;
     openModal(false);load();
+    if(wasNew && TL.guide && TL.guide.on){
+      var hint=document.querySelector("#modal .tg-inform"); if(hint) hint.remove();
+      TL.guide.card({step:3, done:"\u2713 Weekly lesson saved",
+        title:"Log it on your calendar",
+        text:"Your weekly lessons show there as Not logged. One tap turns them into real lessons you can track and bill.",
+        href:"calendar?guide=1", cta:"Open calendar"});
+    }
+  }
+
+  // First-run guide, step 2: open Add slot with the student from step 1 already picked.
+  var guided=false;
+  function guideStart(){
+    if(guided||!(TL.guide&&TL.guide.on))return; guided=true;
+    var want=(location.search.match(/[?&]student=([^&]+)/)||[])[1];
+    var st=students.filter(function(x){return String(x.id)===decodeURIComponent(want||"");})[0]||(students.length===1?students[0]:null);
+    if(!students.length){
+      TL.guide.card({step:1, title:"Add a student first", text:"Your weekly lessons belong to a student.", href:"students?guide=1", cta:"Add a student"});
+      return;
+    }
+    TL.guide.card({step:2, title:"Set "+(st?esc(st.name)+"\u2019s":"the")+" weekly lesson time",
+      text:"Pick the day, time and hourly rate. TutorDeck repeats it every week."});
+    openModal(true,null);
+    TL.guide.formHint($("m-title"), "Step 2 of 3 \u00b7 Pick the day, time and hourly rate. It repeats every week.");
+    if(st){ $("m-student").value=st.id; planPrefill(); }
   }
 
   function init(user){

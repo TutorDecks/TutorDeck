@@ -261,6 +261,15 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-21 — First-run setup guide (v218).** A new tutor's Home shows a simple "Set up TutorDeck" card: 3 steps
+  (Add your first student → Set their weekly lesson time → Log it on your calendar) and one button for the next step.
+  Each step opens the page with `?guide=1`, which opens the right form straight away: Add student; then Add weekly slot
+  with that student pre-picked; then the Calendar with the "Log N" chip pulsing. Forms show a one-line hint
+  ("Step 1 of 3 · Just a name is enough…"), and after each save a small card says "✓ Done" plus the next step. Logging
+  finishes setup ("✓ You're all set up!") and sets `td_onboarded`. Until then, the other one-time tips (client view,
+  calendar swipe/filters…) stay quiet so new tutors aren't buried in pop-ups. Home also sets `td_onboarded` when it sees
+  students, slots and lessons, so existing tutors are unaffected. Shared helpers: `TL.guide.card / formHint / finish`.
+  "Skip setup" on any guide card ends it. Student insert now returns the new id (`.select("id").single()`).
 - **2026-10-20 — Simpler, clearer forms (v217).** One pattern across every form: required fields have plain labels;
   anything you can skip carries a quiet grey **Optional** tag; long explanations moved out of labels into one short
   grey line under the field (`.fhint`); rarely-used fields sit under a **More details** fold (`details.more-fields`)

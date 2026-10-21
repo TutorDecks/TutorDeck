@@ -602,6 +602,7 @@
     var btn=$("cal-log-btn"); if(!btn) return;
     var t=logTarget(), n=hidden.proj ? 0 : unloggedIn(t).length;   // hidden while "Not logged" is filtered out
     btn.hidden=!n;
+    guideStep(n);
     if(!n) return;
     $("cal-log-txt").textContent="Log "+n;
     btn.title=n+" lesson"+(n===1?"":"s")+" not logged "+t.when+" — tap to log";
@@ -611,6 +612,26 @@
       TL.coach("cal-log", btn, "<b>Log lessons</b><br>Logs every <b>Not logged</b> lesson on screen in one tap.");
     });
   }
+  // First-run guide, step 3: point at the Log chip; logging finishes setup.
+  var guideFinished=false;
+  function guideStep(n){
+    if(!(TL.guide&&TL.guide.on)||guideFinished) return;
+    var btn=$("cal-log-btn"); if(btn) btn.classList.toggle("tg-hint", n>0);
+    if(n>0) TL.guide.card({step:3, title:"Tap \u201CLog "+n+"\u201D at the top",
+      text:"The dashed blocks are your weekly lessons, not logged yet. Logging turns them into real lessons you can mark done, paid and invoice."});
+    else TL.guide.card({step:3, title:"Nothing to log on this screen",
+      text:"Use the arrows to go to a week with dashed (Not logged) lessons, then tap Log."});
+  }
+  function guideFinish(n){
+    if(!(TL.guide&&TL.guide.on)||guideFinished) return;
+    guideFinished=true; TL.guide.finish();
+    var btn=$("cal-log-btn"); if(btn) btn.classList.remove("tg-hint");
+    TL.guide.card({final:true, done:"\u2713 "+n+" lesson"+(n===1?"":"s")+" logged. You\u2019re all set up!",
+      title:"What next?",
+      text:"Each week, tap Log on the calendar. When a parent pays, mark the lessons paid in <b>Money</b>.",
+      href:"home", cta:"Go to Home"});
+  }
+
   // One tip at a time: if another tip is open, wait for its "Got it" before showing the next.
   function whenNoTip(fn){
     var open=document.querySelector(".td-tip");
@@ -640,6 +661,7 @@
     btn.disabled=false;
     if(res.error){ alert("Couldn't log: "+res.error.message); return; }
     refreshAfterMutation();
+    guideFinish(rows.length);
   }
 
   // ---- add a one-off lesson straight from the calendar ----
