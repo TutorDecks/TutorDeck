@@ -15,12 +15,10 @@
       $("m-name").value=st.name||"";
       $("m-level").value=st.level||"";$("m-contact").value=st.contact||"";$("m-location").value=st.location||"";$("m-recipient").value=st.recipient_name||"";$("m-notes").value=st.notes||"";
       if($("m-enddate"))$("m-enddate").value=st.end_date||"";
-      if($("m-paybank"))$("m-paybank").checked=!!st.pay_by_bank;
     }else{
       editingId=null;
       $("m-title").textContent="Add student";$("m-save").textContent="Save student";
       ["m-name","m-level","m-contact","m-location","m-recipient","m-notes","m-enddate"].forEach(function(id){if($(id))$(id).value="";});
-      if($("m-paybank"))$("m-paybank").checked=false;
     }
     $("m-name").focus();
   }
@@ -32,7 +30,6 @@
       location:$("m-location").value.trim()||null,
       recipient_name:$("m-recipient").value.trim()||null,
       end_date:($("m-enddate")&&$("m-enddate").value)||null,
-      pay_by_bank:!!($("m-paybank")&&$("m-paybank").checked),
       notes:$("m-notes").value.trim()||null};
     $("m-save").disabled=true;
     var res=editingId

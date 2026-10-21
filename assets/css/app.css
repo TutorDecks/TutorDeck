@@ -1,4 +1,5 @@
-/* v215 */
+/* v218 */
+/* v218 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -690,7 +691,7 @@ span[data-sk],b[data-sk]{display:inline-block;line-height:1.15}
 .sk-on #exam-sec .teach-sub{color:transparent!important;display:inline-block;min-width:160px;border-radius:7px;
   background:linear-gradient(90deg,#EFECE6 25%,#F7F5F1 37%,#EFECE6 63%);background-size:400% 100%;animation:td-sk 1.4s ease infinite}
 
-/* ---- v215: first-run guide card (pages opened with ?guide=1) ---- */
+/* ---- v218: first-run guide card (pages opened with ?guide=1) ---- */
 .td-guide{background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:14px;
   padding:14px 16px 12px;margin:0 0 16px;box-shadow:var(--shadow)}
 .td-guide.tg-pop{animation:tg-pop .35s ease}
@@ -711,3 +712,19 @@ span[data-sk],b[data-sk]{display:inline-block;line-height:1.15}
 @keyframes tg-pulse{0%,100%{box-shadow:0 0 0 0 rgba(15,118,110,.35)}50%{box-shadow:0 0 0 7px rgba(15,118,110,0)}}
 @media(prefers-reduced-motion:reduce){ .cal-logchip.tg-hint{animation:none;box-shadow:0 0 0 3px rgba(15,118,110,.3)} }
 .tg-inform{margin:-4px 0 14px;padding:9px 12px;border-radius:10px;background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:600;line-height:1.4}
+.inv-pay.inv-bank{margin-top:10px}
+.inv-pay .pn-dot.bk{background:var(--accent)}
+
+/* ---- v217: simple forms — "Optional" tags, one-line hints, rarely-used fields under "More details" ---- */
+.field label .opt{font-weight:500;font-size:12px;color:var(--muted);margin-left:6px}
+.fhint{display:block;font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.45}
+details.more-fields{border-top:1px solid var(--line);margin:6px 0 10px}
+details.more-fields>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:12px 0;
+  font-size:14px;font-weight:700;color:var(--accent)}
+details.more-fields>summary::-webkit-details-marker{display:none}
+details.more-fields>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:rotate(-45deg);transition:transform .15s;margin:0 3px 0 1px}
+details.more-fields[open]>summary::before{transform:rotate(45deg)}
+details.more-fields>summary small{font-weight:500;font-size:12.5px;color:var(--muted)}
+details.more-fields>.more-body{padding-top:2px}
+.field .invalid,.field input.invalid,.field select.invalid{border-color:var(--owed)!important;box-shadow:0 0 0 3px rgba(180,67,47,.15)!important}

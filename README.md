@@ -261,7 +261,7 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
-- **2026-10-20 — First-run setup guide (v215).** A new tutor's Home shows a simple "Set up TutorDeck" card: 3 steps
+- **2026-10-21 — First-run setup guide (v218).** A new tutor's Home shows a simple "Set up TutorDeck" card: 3 steps
   (Add your first student → Set their weekly lesson time → Log it on your calendar) and one button for the next step.
   Each step opens the page with `?guide=1`, which opens the right form straight away: Add student; then Add weekly slot
   with that student pre-picked; then the Calendar with the "Log N" chip pulsing. Forms show a one-line hint
@@ -270,6 +270,30 @@ A running log of Raphael's changes, newest first.
   calendar swipe/filters…) stay quiet so new tutors aren't buried in pop-ups. Home also sets `td_onboarded` when it sees
   students, slots and lessons, so existing tutors are unaffected. Shared helpers: `TL.guide.card / formHint / finish`.
   "Skip setup" on any guide card ends it. Student insert now returns the new id (`.select("id").single()`).
+- **2026-10-20 — Simpler, clearer forms (v217).** One pattern across every form: required fields have plain labels;
+  anything you can skip carries a quiet grey **Optional** tag; long explanations moved out of labels into one short
+  grey line under the field (`.fhint`); rarely-used fields sit under a **More details** fold (`details.more-fields`)
+  that opens by itself when editing something already filled in (`openFilledMore` in app.js; auto-filled fields marked
+  `data-autofill`, like level, don't count).
+  - Student (add + edit): Name · Level · WhatsApp number, then More details: Name in messages, Location, Lessons run
+    until, Notes.
+  - Weekly slot: Student · Day · Start/End · Rate per hour · Subject; More details: Level, Split between.
+  - Add lesson (Ledger + Calendar): Student · Date · Start/End · Rate · Lesson fee · Subject · Already paid; More
+    details: Level, Split between.
+  - Exam (Exams page + student profile): Student · Exam date · Type · Subject · Topics tested; "Results" fold: Marks,
+    Remarks.
+  - Payment, cancel and note forms: clearer labels and hints ("Cancellation fee", "Payment screenshot").
+  Save with something missing: the first empty required field (`data-req`) is outlined red, scrolled to and
+  focused (the red message was often off-screen on phones). Otherwise field ids and saving are unchanged.
+  The Ledger's Add/Edit lesson form no longer has a "Postponed" tick box: postponing is done on the Calendar (tap a
+  lesson → Postpone, which moves it and can be reverted). Editing in the Ledger keeps a lesson's ↻ flag unchanged.
+
+- **2026-10-20 — Invoices show PayNow and bank transfer (v216).** Every invoice now lists all the payment options the
+  tutor has set up: the PayNow QR (if a PayNow number is saved) and, below it, "Or bank transfer" with the bank details
+  (if they're filled in in Settings), or just one of them. The per-student "Pays by bank transfer (overseas / no PayNow)"
+  tick box is gone from the student forms, and Settings → "Bank transfer (optional)" now says "fill these in to also show
+  your bank details on every invoice; leave blank for PayNow only". The default WhatsApp invoice message matches
+  (PayNow / bank / both). The `students.pay_by_bank` column is no longer used (left in place; no DB change needed).
 
 - **2026-10-20 — Nightly encrypted database backup (GitHub Actions).** New `.github/workflows/db-backup.yml` runs at
   02:00 SGT (and on demand). It installs a `pg_dump` that matches the server's Postgres version, dumps the `public` and

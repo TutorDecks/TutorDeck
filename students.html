@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Students · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=215">
+<link rel="stylesheet" href="assets/css/app.css?v=218">
 <style>
   a.slink{color:var(--navy);font-weight:700;text-decoration:none}
   a.slink:hover{text-decoration:underline}
@@ -121,41 +121,46 @@
       <h2 id="m-title">Add student</h2>
       <div class="field">
         <label for="m-name">Name</label>
-        <input id="m-name" type="text" placeholder="e.g. Qin Heng">
+        <input id="m-name" data-req type="text" placeholder="e.g. Qin Heng">
       </div>
       <div class="field">
-        <label for="m-level">Level</label>
+        <label for="m-level">Level <span class="opt">Optional</span></label>
         <input id="m-level" type="text" placeholder="e.g. Sec 3 G3">
+        <span class="fhint">Shown on invoices.</span>
       </div>
       <div class="field">
-        <label for="m-contact">Contact <span class="muted">(for reminders)</span></label>
-        <input id="m-contact" type="text" placeholder="e.g. +65 8123 4567">
+        <label for="m-contact">WhatsApp number <span class="opt">Optional</span></label>
+        <input id="m-contact" type="tel" placeholder="e.g. +65 8123 4567">
+        <span class="fhint">The parent's or student's number, for reminders and invoices.</span>
       </div>
-      <div class="field">
-        <label for="m-location">Location <span class="muted">(shown on the calendar — type a postal code and tap search to expand it)</span></label>
-        <div class="loc-wrap">
-          <input id="m-location" type="text" placeholder="e.g. Home, or a 6-digit postal code">
-          <button type="button" class="loc-find" id="m-postal-btn" title="Expand postal code to address" aria-label="Expand postal code to address"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.4" y1="15.4" x2="21" y2="21"/></svg></button>
+      <details class="more-fields">
+        <summary>More details <small>Optional</small></summary>
+        <div class="more-body">
+          <div class="field">
+            <label for="m-recipient">Name in messages <span class="opt">Optional</span></label>
+            <input id="m-recipient" type="text" placeholder="e.g. Mrs Tan">
+            <span class="fhint">Who your WhatsApp messages greet. Leave blank to use the student's name.</span>
+          </div>
+          <div class="field">
+            <label for="m-location">Location <span class="opt">Optional</span></label>
+            <div class="loc-wrap">
+              <input id="m-location" type="text" placeholder="e.g. Home, or a 6-digit postal code">
+              <button type="button" class="loc-find" id="m-postal-btn" title="Fill in the address from a postal code" aria-label="Fill in the address from a postal code"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.4" y1="15.4" x2="21" y2="21"/></svg></button>
+            </div>
+            <span class="postal-msg" id="m-postal-msg"></span>
+            <span class="fhint">Shown on your calendar. Type a postal code and tap the magnifier to fill in the address.</span>
+          </div>
+          <div class="field">
+            <label for="m-enddate">Lessons run until <span class="opt">Optional</span></label>
+            <input id="m-enddate" type="date">
+            <span class="fhint">For a fixed end, like after O-Levels. After this date no new lessons are made and the student moves to Discontinued. Clear it to bring them back.</span>
+          </div>
+          <div class="field">
+            <label for="m-notes">Notes <span class="opt">Optional</span></label>
+            <input id="m-notes" type="text" placeholder="e.g. prefers worked examples">
+          </div>
         </div>
-        <span class="postal-msg" id="m-postal-msg"></span>
-      </div>
-      <div class="field">
-        <label for="m-recipient">Message recipient <span class="muted">(e.g. parent's name — used in WhatsApp messages)</span></label>
-        <input id="m-recipient" type="text" placeholder="leave blank to address the student">
-      </div>
-      <label style="display:flex;align-items:flex-start;gap:9px;font-size:13.5px;margin:2px 0 14px;cursor:pointer">
-        <input type="checkbox" id="m-paybank" style="width:16px;height:16px;margin-top:1px;accent-color:var(--gold)">
-        <span>Pays by bank transfer <span class="muted">(overseas / no PayNow — invoices show your bank details instead of the PayNow QR)</span></span>
-      </label>
-      <div class="field">
-        <label for="m-enddate">Lessons run until <span class="muted">(optional — e.g. after O-Levels; leave blank if ongoing)</span></label>
-        <input id="m-enddate" type="date">
-        <div class="muted" style="font-size:12px;margin-top:3px">After this date they move to Discontinued automatically — no more lessons are generated and they drop off the Planner. Clear it to bring them back.</div>
-      </div>
-      <div class="field">
-        <label for="m-notes">Notes</label>
-        <input id="m-notes" type="text" placeholder="optional">
-      </div>
+      </details>
       <div class="msg" id="m-msg"></div>
       <div class="modal-actions">
         <button class="btn" id="m-cancel">Cancel</button>
@@ -185,9 +190,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=215"></script>
-<script src="assets/js/supabase.js?v=215"></script>
-<script src="assets/js/app.js?v=215"></script>
-<script src="assets/js/students.js?v=215"></script>
+<script src="assets/js/config.js?v=218"></script>
+<script src="assets/js/supabase.js?v=218"></script>
+<script src="assets/js/app.js?v=218"></script>
+<script src="assets/js/students.js?v=218"></script>
 </body>
 </html>
