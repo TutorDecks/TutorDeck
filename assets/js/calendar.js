@@ -76,8 +76,8 @@
       window.sb.from("students").select("id,name,location,contact,active,level,end_date"),
       window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true),
       window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,score,max_score,remarks"),
-      // setup check: has this tutor ever logged a lesson? (only asked while setup isn't marked done)
-      (TL.guide&&TL.guide.onboarded()) ? Promise.resolve({data:[{}]}) : window.sb.from("lessons").select("id").limit(1)
+      // setup check: has this tutor ever confirmed a lesson? (one tiny query)
+      window.sb.from("lessons").select("id").limit(1)
     ]);
     students=r[0].error?[]:(r[0].data||[]);
     nameById={}; locById={}; hhById={}; endById={};
@@ -86,11 +86,11 @@
     exams=r[2].error?[]:(r[2].data||[]);
     // Setup in progress = opened from the guide, or (worked out from the data, so it survives a refresh or
     // arriving from the tab bar) a weekly slot exists but no lesson has ever been logged.
+    // Decided from the data alone (like Home's setup card), not from a saved "done" flag — so an account
+    // that starts over (all lessons removed) is guided again.
     var everLogged=!!(r[3]&&!r[3].error&&r[3].data&&r[3].data.length);
-    if(TL.guide && !TL.guide.onboarded()){
-      if(everLogged && !TL.guide.on) TL.guide.finish();          // an established tutor on a new browser — nothing to guide
-      else setupMode = TL.guide.on || slots.length>0;
-    }
+    setupMode = !!TL.guide && (TL.guide.on || (slots.length>0 && !everLogged));
+    if(TL.guide && everLogged && !TL.guide.on && !TL.guide.onboarded()) TL.guide.finish();   // established tutor, new browser
     // During setup the "Not logged" lessons ARE the next step — never hide them (not saved as a preference).
     if(setupMode && hidden.proj){
       delete hidden.proj;
@@ -559,23 +559,11 @@
   // After any write, the visible range (and whichever month a lesson may have moved
   // into/out of) needs fresh data — simplest correct fix is to drop the whole cache.
   function refreshAfterMutation(){ hidePopover(); lessonCache={}; ensureData(); }
-  // In-app confirm dialog → Promise<boolean>; dims the page instead of the browser's native confirm.
-  function confirmBox(msg, opts){
+  function confirmBox(msg, opts){   // → the app-wide dialog (TL.confirm); kept so existing calls read the same
     opts=opts||{};
-    return new Promise(function(resolve){
-      var bd=$("confirm-modal"), yes=$("confirm-yes"), no=$("confirm-no");
-      if(!bd){ resolve(window.confirm(msg)); return; }
-      $("confirm-title").textContent=opts.title||"Confirm";
-      $("confirm-msg").textContent=msg;
-      yes.textContent=opts.yes||"Confirm"; no.textContent=opts.no||"Cancel";
-      yes.className="btn "+(opts.danger?"btn-danger":"btn-primary");
-      function done(v){ bd.classList.remove("on"); yes.onclick=null; no.onclick=null; bd.onclick=null; resolve(v); }
-      yes.onclick=function(){ done(true); };
-      no.onclick=function(){ done(false); };
-      bd.onclick=function(e){ if(e.target===bd) done(false); };
-      bd.classList.add("on");
-    });
+    return TL.confirm({ title:opts.title||"Confirm", message:msg, confirmText:opts.yes||"Confirm", cancelText:opts.no||"Cancel", danger:!!opts.danger });
   }
+
   function splitAmt(rate,s,e,split){ var sp=(split&&split>1)?split:1; return Math.round(TL.amount(rate,s,e)/sp*100)/100; }
   // Amount for a changed lesson time. Prefer the stored rate/split (matches the Ledger); if a lesson
   // has no rate, scale the old amount by the new/old duration ratio so it never drops to zero.
@@ -589,7 +577,7 @@
       start_time:b.startHM, end_time:b.endHM, subject:b.subject, level:b.level, rate:b.rate, split:b.split||1,
       amount:splitAmt(b.rate,b.startHM,b.endHM,b.split), status:statusFor(b.dateISO,b.endHM), paid:false };
     var res=await window.sb.from("lessons").insert(row);
-    if(res.error){alert("Couldn't log: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't log: "+res.error.message);return;}
     refreshAfterMutation();
   }
 
@@ -636,13 +624,15 @@
     else TL.guide.card({step:3, title:"Nothing to confirm on this screen",
       text:"Use the arrows to go to a week with dashed (Not logged) lessons, then tap Log."});
   }
-  function guideFinish(n){
+  function guideFinish(n, past){
     if(!setupMode||guideFinished) return;
-    guideFinished=true; TL.guide.finish();
+    guideFinished=true; TL.guide.finish(); TL.store.remove("td_setup_started");   // Home won't repeat the finish line
     var btn=$("cal-log-btn"); if(btn) btn.classList.remove("tg-hint");
     TL.guide.card({final:true, done:"\u2713 "+n+" lesson"+(n===1?"":"s")+" confirmed. You\u2019re all set up!",
       title:"What next?",
-      text:"Each week, tap Log on the calendar. When a parent pays, mark the lessons paid in <b>Money</b>.",
+      text:(past?(past===n?"Past lessons are logged as taught and unpaid, so "+(n===1?"it shows":"they show")+" in red. ":"Past lessons are logged as taught and unpaid (red). ")+
+              "When the parent pays, mark them paid in <b>Money</b>. ":"When a parent pays, mark the lessons paid in <b>Money</b>. ")+
+           "Each week, tap Log on the calendar to confirm that week\u2019s lessons.",
       href:"home", cta:"Go to Home"});
   }
 
@@ -673,9 +663,9 @@
     btn.disabled=true;
     var res=await window.sb.from("lessons").insert(rows);
     btn.disabled=false;
-    if(res.error){ alert("Couldn't log: "+res.error.message); return; }
+    if(res.error){ TL.alert("Couldn't log: "+res.error.message); return; }
     refreshAfterMutation();
-    guideFinish(rows.length);
+    guideFinish(rows.length, rows.filter(function(x){ return x.status!=="scheduled"; }).length);
   }
 
   // ---- add a one-off lesson straight from the calendar ----
@@ -753,13 +743,13 @@
   }
   async function doRestore(b){
     var res=await window.sb.from("lessons").update({status:statusFor(b.dateISO,hhmm2(b.endMin)),compensation:null}).eq("id",b.id);
-    if(res.error){alert("Couldn't restore: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't restore: "+res.error.message);return;}
     refreshAfterMutation();
   }
   async function doDelete(id){
     if(!(await confirmBox("Delete this lesson permanently? Use Cancel instead if you just want to void it.", {title:"Delete lesson", yes:"Delete", danger:true}))) return;
     var res=await window.sb.from("lessons").delete().eq("id",id);
-    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't delete: "+res.error.message);return;}
     refreshAfterMutation();
   }
   function showPostponeForm(b){
@@ -780,7 +770,7 @@
   }
   // Undo a postpone: move the lesson back to its recurring slot's original date + time.
   async function doRevert(b){
-    if(!b.slotId||!b.slotDate){ alert("This lesson has no original slot to revert to."); return; }
+    if(!b.slotId||!b.slotDate){ TL.alert("This lesson has no original slot to revert to."); return; }
     var slot=slots.filter(function(s){return String(s.id)===String(b.slotId);})[0];
     // Follow the planner: land on the slot's CURRENT weekday + time, anchored on the
     // occurrence week (slot_date). So if the slot's day/time changed, revert tracks it —
@@ -796,7 +786,7 @@
     if(!(await confirmBox("Revert this lesson to its original slot — "+date+", "+start+"–"+end+"?", {title:"Revert to slot", yes:"Revert"}))) return;
     var amount=amtFor(slot?slot.rate:b.rate, slot?slot.split:b.split, b.amount, b.startMin, b.endMin, start, end);
     var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,amount:amount,status:statusFor(date,end),postponed:false}).eq("id",b.id);
-    if(res.error){ alert("Couldn't revert: "+res.error.message); return; }
+    if(res.error){ TL.alert("Couldn't revert: "+res.error.message); return; }
     refreshAfterMutation();
   }
   async function savePostpone(b){

@@ -72,16 +72,16 @@
   async function openFile(id){
     var m=all.filter(function(x){return x.id===id;})[0];if(!m)return;
     var r=await window.sb.storage.from("materials").createSignedUrl(m.file_path,3600);
-    if(r.error||!r.data){alert("Couldn't open the file: "+((r.error&&r.error.message)||"unknown"));return;}
+    if(r.error||!r.data){TL.alert("Couldn't open the file: "+((r.error&&r.error.message)||"unknown"));return;}
     window.open(r.data.signedUrl,"_blank");
   }
 
   async function removeMaterial(id){
     var m=all.filter(function(x){return x.id===id;})[0];if(!m)return;
-    if(!confirm("Delete \u201C"+(m.title||m.file_name)+"\u201D? This removes the file permanently."))return;
+    if(!(await TL.confirm({title:"Delete \u201C"+(m.title||m.file_name)+"\u201D?",message:"This removes the file permanently.",confirmText:"Delete file",danger:true})))return;
     await window.sb.storage.from("materials").remove([m.file_path]);
     var r=await window.sb.from("materials").delete().eq("id",id);
-    if(r.error){alert("Couldn't delete the record: "+r.error.message);return;}
+    if(r.error){TL.alert("Couldn't delete the record: "+r.error.message);return;}
     load();
   }
 

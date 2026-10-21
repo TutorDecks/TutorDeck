@@ -241,9 +241,9 @@
     closeLesson();load();
   }
   async function deleteLesson(){
-    if(!confirm("Delete this lesson permanently?"))return;
+    if(!(await TL.confirm({title:"Delete lesson",message:"Delete this lesson permanently? Use Cancel lesson instead if you just want to void it.",confirmText:"Delete",danger:true})))return;
     var res=await window.sb.from("lessons").delete().eq("id",lessonId);
-    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't delete: "+res.error.message);return;}
     closeLesson();load();
   }
 
@@ -451,9 +451,9 @@
     closeExam();load();
   }
   async function deleteExam(){
-    if(!examId||!confirm("Delete this exam?"))return;
+    if(!examId||!(await TL.confirm({title:"Delete this exam?",message:"Its date, topics and marks will be removed, and it drops off the progress chart.",confirmText:"Delete exam",danger:true})))return;
     var res=await window.sb.from("exams").delete().eq("id",examId);
-    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't delete: "+res.error.message);return;}
     closeExam();load();
   }
 
