@@ -354,17 +354,70 @@ window.TL = (function () {
     var btn = Array.prototype.slice.call(bd.querySelectorAll(".modal-actions .btn")).filter(function (b) { return /^(cancel|close)$/i.test(b.textContent.trim()); })[0];
     if (btn) btn.click(); else bd.classList.remove("on");
   }
+  // ---- In-app dialogs: ONE component for every confirm / alert / prompt (no browser pop-ups) ----
+  // TL.confirm({ title, message, confirmText, cancelText, danger }) → Promise<boolean>
+  // TL.alert(message | { title, message, confirmText })            → Promise<void>
+  // TL.prompt({ title, message, placeholder, confirmText, danger, match }) → Promise<string|null>
+  //   (match: the confirm button stays disabled until the typed text equals it, e.g. "DELETE")
+  // Esc or a tap on the dimmed backdrop = Cancel. Enter in a text box = confirm; otherwise Enter presses the
+  // focused button. Focus starts on Cancel for destructive (danger) dialogs, on the main button otherwise,
+  // and stays inside the dialog (Tab loops). Messages are plain text; line breaks are kept.
+  var dlgQueue = Promise.resolve();
+  function dialog(o) {
+    var run = function () { return new Promise(function (resolve) {
+      var prev = document.activeElement, isPrompt = !!o.prompt, hasCancel = o.cancelText !== false;
+      var wrap = document.createElement("div");
+      wrap.className = "td-dlg";
+      wrap.innerHTML = '<div class="td-dlg-box' + (o.danger ? ' danger' : '') + '" role="alertdialog" aria-modal="true" aria-labelledby="td-dlg-t" aria-describedby="td-dlg-m">' +
+        '<h2 class="td-dlg-t" id="td-dlg-t"></h2><p class="td-dlg-m" id="td-dlg-m"></p>' +
+        (isPrompt ? '<input class="td-dlg-in" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">' : '') +
+        '<div class="td-dlg-acts">' + (hasCancel ? '<button type="button" class="btn" data-no></button>' : '') +
+        '<button type="button" class="btn ' + (o.danger ? 'btn-danger' : 'btn-primary') + '" data-yes></button></div></div>';
+      wrap.querySelector(".td-dlg-t").textContent = o.title || "";
+      if (!o.title) wrap.querySelector(".td-dlg-t").remove();
+      wrap.querySelector(".td-dlg-m").textContent = o.message || "";
+      var yesB = wrap.querySelector("[data-yes]"), noB = wrap.querySelector("[data-no]"), inp = wrap.querySelector(".td-dlg-in");
+      yesB.textContent = o.confirmText || "OK";
+      if (noB) noB.textContent = o.cancelText || "Cancel";
+      if (inp) { inp.placeholder = o.placeholder || ""; if (o.match) { yesB.disabled = true; inp.addEventListener("input", function () { yesB.disabled = inp.value.trim() !== o.match; }); } }
+      document.body.appendChild(wrap);
+      document.body.classList.add("td-dlg-open");
+      function done(ok) {
+        document.removeEventListener("keydown", onKey, true);
+        wrap.remove();
+        if (!document.querySelector(".td-dlg")) document.body.classList.remove("td-dlg-open");
+        try { if (prev && prev.focus) prev.focus({ preventScroll: true }); } catch (e) {}
+        resolve(isPrompt ? (ok ? inp.value.trim() : null) : ok);
+      }
+      function onKey(e) {
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(false); }
+        else if (e.key === "Enter" && (document.activeElement === inp || !document.activeElement || document.activeElement === document.body)) {
+          e.preventDefault(); if (!yesB.disabled) done(true);
+        } else if (e.key === "Tab") {                      // keep focus inside the dialog
+          var f = Array.prototype.filter.call(wrap.querySelectorAll("input,button"), function (x) { return !x.disabled; });
+          if (!f.length) return;
+          var i = f.indexOf(document.activeElement);
+          if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+          else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+        }
+      }
+      document.addEventListener("keydown", onKey, true);
+      yesB.addEventListener("click", function () { done(true); });
+      if (noB) noB.addEventListener("click", function () { done(false); });
+      wrap.addEventListener("click", function (e) { if (e.target === wrap) done(!hasCancel); });   // backdrop = Cancel (or OK for a plain notice)
+      setTimeout(function () { (inp || (o.danger && noB) || yesB).focus(); }, 30);
+    }); };
+    var p = dlgQueue.then(run, run);                      // one at a time
+    dlgQueue = p.catch(function () {});
+    return p;
+  }
+  function tlConfirm(o) { return dialog(Object.assign({ confirmText: "OK" }, o)).then(function (v) { return !!v; }); }
+  function tlAlert(o) { if (typeof o === "string") o = { message: o }; return dialog(Object.assign({ confirmText: "OK", cancelText: false }, o)).then(function () {}); }
+  function tlPrompt(o) { return dialog(Object.assign({ confirmText: "OK" }, o, { prompt: true })); }
+
   function askDiscard(yes) {
-    var d = document.createElement("div");
-    d.className = "td-discard";
-    d.innerHTML = '<div class="td-discard-box" role="alertdialog" aria-label="Discard changes?"><b>Discard changes?</b>' +
-      '<p>What you\u2019ve typed in this form will be lost.</p><div class="td-discard-acts">' +
-      '<button type="button" class="btn" data-k>Keep editing</button><button type="button" class="btn td-discard-yes" data-d>Discard</button></div></div>';
-    document.body.appendChild(d);
-    d.addEventListener("click", function (e) {
-      if (e.target.hasAttribute("data-d")) { d.remove(); yes(); }
-      else if (e.target === d || e.target.hasAttribute("data-k")) d.remove();
-    });
+    tlConfirm({ title: "Discard changes?", message: "What you\u2019ve typed in this form will be lost.",
+      confirmText: "Discard", cancelText: "Keep editing", danger: true }).then(function (ok) { if (ok) yes(); });
   }
   function enhanceForms() {
     document.querySelectorAll(".modal-backdrop").forEach(function (bd) {
@@ -679,6 +732,7 @@ window.TL = (function () {
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
            store: store, uid: function () { return UID; }, plural: plural,
+           confirm: tlConfirm, alert: tlAlert, prompt: tlPrompt,
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,

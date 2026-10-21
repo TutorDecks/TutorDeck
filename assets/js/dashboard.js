@@ -464,12 +464,12 @@
     if(lessons>0) steps.forEach(function(s){ s.done=true; });   // has confirmed lessons before = set up (even if no active slots now)
     if(steps.every(function(s){return s.done;})){
       // Finished. If this tutor went through setup here and hasn't seen the finish line yet, show it once.
-      if(!G.onboarded() && TL.store.get("td_setup_started")==="1"){
+      if(TL.store.get("td_setup_started")==="1"){
         box.innerHTML='<div class="ob-card ob-done"><div class="ob-tick" aria-hidden="true">\u2713</div>'+
           '<h3 class="ob-h">You\u2019re all set up!</h3>'+
           '<p class="ob-sub">Your first lessons are confirmed. From now on:</p>'+
           '<ul class="ob-next"><li><b>Each week</b>, tap <b>Log</b> on the calendar to confirm that week\u2019s lessons.</li>'+
-          '<li><b>When a parent pays</b>, mark the lessons paid in <b>Money</b>.</li></ul>'+
+          '<li><b>When a parent pays</b>, mark the lessons paid in <b>Money</b>. Past lessons are logged as taught and unpaid (red) until then.</li></ul>'+
           '<button type="button" class="btn btn-gold ob-go" id="ob-ok">Got it</button></div>';
         box.style.display="block";
         // Setup counts as finished (and the usual tips may start) once they've read this and tapped Got it.

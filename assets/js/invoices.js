@@ -19,7 +19,7 @@
     var css=document.querySelector('link[rel="stylesheet"]').href;
     var title=esc(current.data.title||("Invoice_"+current.invoice_no));
     var w=window.open("","_blank","width=720,height=900");
-    if(!w){alert("Allow pop-ups to print, or use your browser's print on this page.");return;}
+    if(!w){TL.alert("Allow pop-ups to print, or use your browser's print on this page.");return;}
     w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
       '<link rel="stylesheet" href="'+css+'"><style>body{background:#fff;padding:28px;max-width:640px;margin:auto}</style></head>'+
       '<body>'+current.data.html+'</body></html>');
@@ -31,18 +31,18 @@
   async function togglePaid(inv){
     var next=inv.status==="paid"?"issued":"paid", pd=next==="paid"?todayISO():null;
     var res=await window.sb.from("invoices").update({status:next,paid_date:pd}).eq("id",inv.id);
-    if(res.error){alert("Couldn't update: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't update: "+res.error.message);return;}
     // Keep the Ledger in sync — settle (or un-settle) the lessons this invoice covers.
     var lids=(inv.data&&inv.data.lesson_ids)||null;
     if(lids&&lids.length){
       var lr=await window.sb.from("lessons").update({paid:next==="paid",paid_date:pd}).in("id",lids);
-      if(lr.error) alert("Invoice updated, but its lessons didn't sync: "+lr.error.message);
+      if(lr.error) TL.alert("Invoice updated, but its lessons didn't sync: "+lr.error.message);
     }
     load();
   }
   async function updatePaidDate(id,date){
     var res=await window.sb.from("invoices").update({paid_date:date||null}).eq("id",id);
-    if(res.error){alert("Couldn't update the paid date: "+res.error.message);load();return;}
+    if(res.error){TL.alert("Couldn't update the paid date: "+res.error.message);load();return;}
     var v=invoices.filter(function(x){return x.id===id;})[0];
     if(v){ v.paid_date=date||null;
       var lids=(v.data&&v.data.lesson_ids)||null;
@@ -50,9 +50,9 @@
     }
   }
   async function del(id){
-    if(!confirm("Delete this saved invoice? This only removes the saved copy — it does not change any lessons or payments."))return;
+    if(!(await TL.confirm({title:"Delete this saved invoice?",message:"This only removes the saved copy. Lessons and payments stay exactly as they are.",confirmText:"Delete invoice",danger:true})))return;
     var res=await window.sb.from("invoices").delete().eq("id",id);
-    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't delete: "+res.error.message);return;}
     load();
   }
 
@@ -83,23 +83,23 @@
     var safe=file.name.replace(/[^A-Za-z0-9._-]/g,"_");
     var path=userId+"/"+id+"_"+Date.now()+"_"+safe;
     var up=await window.sb.storage.from("receipts").upload(path,file,{upsert:false});
-    if(up.error){ alert("Upload failed: "+up.error.message); return; }
+    if(up.error){ TL.alert("Upload failed: "+up.error.message); return; }
     var res=await window.sb.from("invoices").update({proof_path:path}).eq("id",id);
-    if(res.error){ await window.sb.storage.from("receipts").remove([path]); alert("Couldn't save: "+res.error.message); return; }
+    if(res.error){ await window.sb.storage.from("receipts").remove([path]); TL.alert("Couldn't save: "+res.error.message); return; }
     load();
   }
   async function viewProof(v){
     if(!v||!v.proof_path) return;
     var r=await window.sb.storage.from("receipts").createSignedUrl(v.proof_path,3600);
-    if(r.error||!r.data){ alert("Couldn't open the screenshot: "+((r.error&&r.error.message)||"unknown")); return; }
+    if(r.error||!r.data){ TL.alert("Couldn't open the screenshot: "+((r.error&&r.error.message)||"unknown")); return; }
     window.open(r.data.signedUrl,"_blank");
   }
   async function removeProof(v){
     if(!v||!v.proof_path) return;
-    if(!confirm("Remove the transaction screenshot from this invoice?")) return;
+    if(!(await TL.confirm({title:"Remove the payment screenshot?",message:"The screenshot is deleted from this invoice. The invoice stays marked as paid.",confirmText:"Remove screenshot",danger:true}))) return;
     await window.sb.storage.from("receipts").remove([v.proof_path]);
     var res=await window.sb.from("invoices").update({proof_path:null}).eq("id",v.id);
-    if(res.error){ alert("Couldn't update: "+res.error.message); return; }
+    if(res.error){ TL.alert("Couldn't update: "+res.error.message); return; }
     load();
   }
 
@@ -206,7 +206,7 @@
   async function setSent(v,sent){
     var at=sent?new Date().toISOString():null;
     var res=await window.sb.from("invoices").update({sent_at:at}).eq("id",v.id);
-    if(res.error){alert("Couldn't update: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't update: "+res.error.message);return;}
     v.sent_at=at; render();
   }
 

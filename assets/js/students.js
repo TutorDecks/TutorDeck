@@ -81,10 +81,11 @@
 
   // ---------- remove ----------
   async function remove(id,name){
-    if(!confirm("Remove "+name+"?\n\nThis permanently DELETES their lessons, slots and exams too. "+
-                "To combine duplicates without losing history, use Merge instead."))return;
+    if(!(await TL.confirm({title:"Remove "+name+"?",
+      message:"This permanently deletes "+name+"\u2019s lessons (including their paid and unpaid records), weekly slots and exams. It can\u2019t be undone.\n\nTo keep their history, use Discontinue instead. To combine a duplicate, use Merge.",
+      confirmText:"Remove student", danger:true})))return;
     var res=await window.sb.from("students").delete().eq("id",id);
-    if(res.error){alert("Couldn't remove: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't remove: "+res.error.message);return;}
     load();
   }
   async function setActive(id,active){
@@ -94,7 +95,7 @@
     var fields={active:active};
     if(active && cur && TL.isEnded(cur.end_date)) fields.end_date=null;
     var res=await window.sb.from("students").update(fields).eq("id",id);
-    if(res.error){alert("Couldn't update: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't update: "+res.error.message);return;}
     // Keep the weekly schedule in step: discontinuing removes the student's recurring slots from the
     // Planner/Calendar (both filter active slots); reactivating brings them back. Lessons are untouched.
     try{ await window.sb.from("recurring_slots").update({active:active}).eq("student_id",id); }
