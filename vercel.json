@@ -2,7 +2,25 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "redirects": [
-    { "source": "/app", "destination": "/home", "permanent": true },
-    { "source": "/app.html", "destination": "/home", "permanent": true }
+    {
+      "source": "/app",
+      "destination": "/home",
+      "permanent": true
+    },
+    {
+      "source": "/app.html",
+      "destination": "/home",
+      "permanent": true
+    },
+    {
+      "source": "/landing",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/landing.html",
+      "destination": "/",
+      "permanent": true
+    }
   ]
 }
