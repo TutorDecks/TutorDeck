@@ -261,6 +261,26 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-21 — Onboarding fixes from a live new-tutor walkthrough (v219).**
+  - **Per-user browser storage** (`TL.store`, keys `td:<auth uid>:<key>`). Calendar filters and view, Home and Ledger
+    view choices, setup-done flag, dismissed tips, cached business name and all Google Calendar link state are now
+    per tutor, so a second account in the same browser no longer inherits the first one's settings. Old unscoped keys
+    are dropped on load (nobody can tell whose they were), so each tip shows once more and Google Calendar needs one
+    reconnect. Device-wide on purpose: `td_client` (Client view). Account deletion clears all of that tutor's keys.
+  - **Google Calendar sync safety.** Events are tagged with the TutorDeck owner (`tlOwner`); sync only creates, updates
+    or deletes the current tutor's own events. Old untagged events are adopted only if they mirror one of your lessons
+    and are never deleted. The linked Google account is remembered per tutor; if the token's account differs, sync
+    stops and asks before switching. Sign-out forgets the Google link on that browser and revokes the token.
+  - **Setup guide is worked out from the data** (has a student / a slot / any confirmed lesson), so the Calendar's
+    Step 3 banner survives a refresh or arriving from the tab bar, and "Not logged" is always shown during setup
+    (without changing the saved filter). Finishing on the Calendar shows "You're all set up!"; finishing anywhere else
+    shows a one-time "You're all set up!" card on Home (tips wait until it's dismissed). Established tutors are
+    recognised from their lessons and never see setup UI. Step 3 is now "Confirm this week's lessons".
+  - Weekly slot form shows a live price line ("1.5 hours × $50.00 = $75.00 per lesson"; per-student share for groups).
+  - Singular/plural fixed: "1 lesson this week", Ledger counts and confirmations, student lesson count.
+  - Faster page switches: the page draws straight away using the business name saved last time, then corrects it
+    when the profile arrives (only the first visit on a browser waits). ~1.5s → ~0.2s with a slow profile request.
+
 - **2026-10-21 — First-run setup guide (v218).** A new tutor's Home shows a simple "Set up TutorDeck" card: 3 steps
   (Add your first student → Set their weekly lesson time → Log it on your calendar) and one button for the next step.
   Each step opens the page with `?guide=1`, which opens the right form straight away: Add student; then Add weekly slot

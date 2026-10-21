@@ -19,7 +19,18 @@
     $("m-day").value="0";if(students.length)$("m-student").value=students[0].id;
   }
 
+  // Live price under the rate: "1.5 hours × S$50 = S$75 per lesson" (÷ students for a group).
+  function pricePreview(){
+    var el=$("m-price");if(!el)return;
+    var rate=parseFloat($("m-rate").value),sp=Math.max(1,parseInt($("m-split").value,10)||1),
+        s=$("m-start").value,e=$("m-end").value;
+    if(!(rate>=0)||!s||!e||e<=s){el.textContent="";return;}
+    var h=TL.hoursBetween(s,e), hTxt=(Math.round(h*100)/100)+" hour"+(h===1?"":"s"), total=TL.amount(rate,s,e);
+    el.textContent=hTxt+" \u00d7 "+TL.sgd(rate)+" = "+TL.sgd(total)+" per lesson"+
+      (sp>1?" \u00b7 "+TL.sgd(Math.round(total/sp*100)/100)+" each for "+sp+" students":"");
+  }
   function splitHint(){
+    pricePreview();
     var el=$("m-splithint");if(!el)return;
     var rate=parseFloat($("m-rate").value),sp=Math.max(1,parseInt($("m-split").value,10)||1),
         s=$("m-start").value,e=$("m-end").value;
@@ -182,8 +193,8 @@
     if(wasNew && TL.guide && TL.guide.on){
       var hint=document.querySelector("#modal .tg-inform"); if(hint) hint.remove();
       TL.guide.card({step:3, done:"\u2713 Weekly lesson saved",
-        title:"Log it on your calendar",
-        text:"Your weekly lessons show there as Not logged. One tap turns them into real lessons you can track and bill.",
+        title:"Confirm this week\u2019s lessons",
+        text:"Your weekly lessons show on the calendar as Not logged. One tap confirms them, so you can track and bill them.",
         href:"calendar?guide=1", cta:"Open calendar"});
     }
   }
@@ -213,7 +224,7 @@
     $("m-save").addEventListener("click",save);
     if($("m-remove")) $("m-remove").addEventListener("click",function(){ if(editingId) removeSlot(editingId); });
     $("m-student").addEventListener("change",planPrefill);
-    ["m-rate","m-split","m-start","m-end"].forEach(function(id){var el=$(id);if(el)el.addEventListener("input",splitHint);});
+    ["m-rate","m-split","m-start","m-end"].forEach(function(id){var el=$(id);if(el){el.addEventListener("input",splitHint);el.addEventListener("change",splitHint);}});
     load();
   }
   TL.requireAuth("planner",init);

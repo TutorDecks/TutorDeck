@@ -86,7 +86,7 @@
     }
     b.disabled=false;
     if(!rows.length){msg.textContent="That range is already logged \u2014 nothing new to add.";msg.className="msg";return;}
-    if(!confirm("Add "+rows.length+" lessons from "+fromISO+" to "+toISO+"? Already-logged lessons are skipped."))return;
+    if(!confirm("Add "+TL.plural(rows.length,"lesson")+" from "+fromISO+" to "+toISO+"? Already-logged lessons are skipped."))return;
     b.disabled=true;
     var res=await window.sb.from("lessons").insert(rows);
     b.disabled=false;
@@ -219,7 +219,7 @@
     } else { if(openOweKey)closeOwe(); W=document.createElement("div"); }
     W.querySelectorAll("[data-pay]").forEach(function(b){b.addEventListener("click",function(){openPayModal([b.dataset.pay]);});});
     W.querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.payall.split(",");if(await confirmBox("Mark all "+ids.length+" of this student's lessons as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
-    W.querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpayall.split(",");if(await confirmBox("Mark all "+ids.length+" lessons for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
+    W.querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpayall.split(",");if(await confirmBox("Mark "+(ids.length===1?"this lesson":"all "+ids.length+" lessons")+" for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
     W.querySelectorAll("[data-paysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.paysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
     W.querySelectorAll("[data-invsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.invsel.split("::");openInvoice(p[0], p[1]?p[1].split(","):null);});});
     W.querySelectorAll("[data-hhpaysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpaysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
@@ -381,7 +381,7 @@
     empty.style.display="none";table.style.display="table";
     rows.sort(function(a,b){return b.lesson_date.localeCompare(a.lesson_date);});
     lastRecordRows=rows;
-    $("month-hint").textContent=rows.length+" lessons";
+    $("month-hint").textContent=TL.plural(rows.length,"lesson");
     // Anchor the "Today" jump. Rows run newest-first, so when today has no lessons
     // the divider goes in front of the first older row — i.e. where today would sit.
     var today=todayISO();
@@ -487,7 +487,7 @@
     if($("rec-view"))$("rec-view").style.display=rec?"block":"none";
     if($("seg-out"))$("seg-out").classList.toggle("on",!rec);
     if($("seg-rec"))$("seg-rec").classList.toggle("on",rec);
-    try{localStorage.setItem("tl_ledger_mode",mode);}catch(e){}
+    try{TL.store.set("tl_ledger_mode",mode);}catch(e){}
   }
   // Count rides on the tab so you can see who's owing without switching to look.
   function setOutCount(n){var el=$("seg-out-n");if(el)el.textContent=n?" · "+n:"";}
@@ -780,7 +780,7 @@
       });
     }
     if(!rows.length){alert(mo+" is already fully logged — nothing new to add.");return;}
-    if(!confirm("Add "+rows.length+" lessons to fill every recurring slot across "+mo+"? Already-logged lessons are skipped."))return;
+    if(!confirm("Add "+TL.plural(rows.length,"lesson")+" to fill every recurring slot across "+mo+"? Already-logged lessons are skipped."))return;
     var res=await window.sb.from("lessons").insert(rows);
     if(res.error){alert("Couldn't generate: "+res.error.message);return;}
     load();
@@ -799,7 +799,7 @@
       rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:statusFor(di,hm(s.end_time)),paid:false});
     });
     if(!rows.length){alert("This week is already logged — nothing new to add.");return;}
-    if(!confirm("Add "+rows.length+" lessons for "+weekStart+" to "+weekEnd+"?"))return;
+    if(!confirm("Add "+TL.plural(rows.length,"lesson")+" for "+weekStart+" to "+weekEnd+"?"))return;
     var res=await window.sb.from("lessons").insert(rows);
     if(res.error){alert("Couldn't generate: "+res.error.message);return;}
     load();
@@ -1165,7 +1165,7 @@
     var n=new Date(), cur=period.mode==="month"&&period.y===n.getFullYear()&&period.m===n.getMonth();
     if($("p-today"))$("p-today").style.display=cur?"none":"";
   }
-  function persistPeriod(){ try{localStorage.setItem("tl_period",JSON.stringify(period));}catch(e){} }
+  function persistPeriod(){ try{TL.store.set("tl_period",JSON.stringify(period));}catch(e){} }
   function refreshPeriod(){ persistPeriod(); updatePeriodUI(); renderPendingKpi(); renderMonthKpis(); renderOutstanding(lastUnpaid); renderRecords(); }
   // Pending KPI: All = all-time total; a specific month = that month's pending.
   function renderPendingKpi(){
@@ -1197,7 +1197,7 @@
   function init(user){
     userId=user.id;
     var on=function(id,evt,fn){var el=$(id);if(el)el.addEventListener(evt,fn);};
-    try{var sp=localStorage.getItem("tl_period"); if(sp)period=JSON.parse(sp);}catch(e){}
+    try{var sp=TL.store.get("tl_period"); if(sp)period=JSON.parse(sp);}catch(e){}
     if(!period||!period.mode) period={mode:"month",y:new Date().getFullYear(),m:new Date().getMonth()};
     updatePeriodUI();
     on("p-prev","click",function(){shiftMonth(-1);});
@@ -1257,7 +1257,7 @@
     document.addEventListener("keydown",function(e){if(e.key==="Escape"&&$("rec-detail").classList.contains("on"))closeRecDetail();});
     on("seg-rec","click",function(){setLedgerMode("rec");});
     var savedMode="out";
-    try{savedMode=localStorage.getItem("tl_ledger_mode")||"out";}catch(e){}
+    try{savedMode=TL.store.get("tl_ledger_mode")||"out";}catch(e){}
     setLedgerMode(savedMode);
     load();
   }

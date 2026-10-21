@@ -1,5 +1,5 @@
-/* v218 */
-/* v218 */
+/* v219 */
+/* v219 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -728,3 +728,5 @@ details.more-fields[open]>summary::before{transform:rotate(45deg)}
 details.more-fields>summary small{font-weight:500;font-size:12.5px;color:var(--muted)}
 details.more-fields>.more-body{padding-top:2px}
 .field .invalid,.field input.invalid,.field select.invalid{border-color:var(--owed)!important;box-shadow:0 0 0 3px rgba(180,67,47,.15)!important}
+.fhint.fprice{color:var(--ink);font-weight:600}
+.fhint.fprice:empty{display:none}

@@ -189,7 +189,7 @@ window.TL = (function () {
     }
     applyClient();
     // First-time tip on whichever page a new user opens first (not over the Calendar's own first tip).
-    var calTipsPending = false; try { calTipsPending = active === "calendar" && !localStorage.getItem("td_tip_cal-filters"); } catch (e) {}
+    var calTipsPending = active === "calendar" && !store.get("td_tip_cal-filters");
     if (!CLIENT && !calTipsPending)
       setTimeout(function () { coach("client-view", document.getElementById("td-cv"),
         "<b>Client view</b><br>Student or parent nearby? Tap this eye to hide all money instantly. Tap it again to bring it back.", { above: true }); }, 700);
@@ -240,6 +240,34 @@ window.TL = (function () {
     setTimeout(function () { mo.disconnect(); document.querySelectorAll("[data-sk]").forEach(function (e) { e.removeAttribute("data-sk"); }); }, 15000);
   }
 
+  // ---- per-user browser storage ----
+  // Several tutors can use the same browser (and a tester signs up next to their own account), so any
+  // saved preference or state that belongs to a tutor is keyed by their auth user id: "td:<uid>:<key>".
+  // Device-wide on purpose: td_client (Client view hides money on THIS screen). sessionStorage td_stab_<studentId>
+  // is already unique per student and per tab.
+  var UID = null;
+  function skey(k) { return UID ? "td:" + UID + ":" + k : null; }
+  var store = {
+    get: function (k) { var s = skey(k); if (!s) return null; try { return localStorage.getItem(s); } catch (e) { return null; } },
+    set: function (k, v) { var s = skey(k); if (!s) return; try { localStorage.setItem(s, String(v)); } catch (e) {} },
+    remove: function (k) { var s = skey(k); if (!s) return; try { localStorage.removeItem(s); } catch (e) {} },
+    // remove this tutor's keys that start with prefix ("" = all of this tutor's keys)
+    clear: function (prefix) {
+      var base = skey(prefix || ""); if (!base) return;
+      try { for (var i = localStorage.length - 1; i >= 0; i--) { var k = localStorage.key(i); if (k && k.indexOf(base) === 0) localStorage.removeItem(k); } } catch (e) {}
+    }
+  };
+  // Old builds kept these unscoped, so a second account in the same browser inherited the first one's
+  // state (e.g. "Not logged" hidden, Google Calendar "connected"). Nobody can tell whose they were — drop them.
+  (function dropLegacy() {
+    try {
+      var old = ["td_onboarded", "tl_cal_hidden", "tl_cal_mode", "tl_dash_mode", "tl_fin_sub", "tl_ledger_mode", "tl_period",
+                 "tl_gcal_connected", "tl_gcal_list", "tl_gcal_chosen", "tl_gcal_calendar", "tl_gcal_cals"];
+      old.forEach(function (k) { localStorage.removeItem(k); });
+      for (var i = localStorage.length - 1; i >= 0; i--) { var k = localStorage.key(i); if (k && k.indexOf("td_tip_") === 0) localStorage.removeItem(k); }
+    } catch (e) {}
+  })();
+
   async function requireAuth(active, init) {
     var hr = new Date().getHours();
     var meta = { dashboard: [hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening",
@@ -263,6 +291,7 @@ window.TL = (function () {
     var res = await window.sb.auth.getSession();
     var session = res.data && res.data.session;
     if (!session) { location.replace("login"); return; }
+    UID = session.user.id;
     isOwner = session.user.id === OWNER_ID;
     window.TL_IS_OWNER = isOwner; window.TL_OWNER_ID = OWNER_ID;
     // If two-factor is enabled but not yet satisfied this session (e.g. after a
@@ -273,16 +302,34 @@ window.TL = (function () {
         location.replace("login?mfa=1"); return;
       }
     } catch (e) { /* MFA unavailable — proceed as normal */ }
-    // Brand the sidebar with this tutor's business name; fall back to the default.
-    try {
-      var pr = await window.sb.from("profiles").select("business_name").eq("id", session.user.id).single();
-      var bn = pr.data && pr.data.business_name && pr.data.business_name.trim();
-      brandName = bn || DEFAULT_BRAND;
-    } catch (e) { brandName = DEFAULT_BRAND; }
+    // Brand the top bar with this tutor's business name. Draw the page straight away with the name we saw
+    // last time on this browser (no blank screen while the profile loads); fix it up if it has changed.
+    // First visit on a browser: wait for the profile as before.
+    var profileP = window.sb.from("profiles").select("business_name").eq("id", session.user.id).single()
+      .then(function (pr) { var bn = pr && pr.data && pr.data.business_name && pr.data.business_name.trim(); return bn || DEFAULT_BRAND; },
+            function () { return DEFAULT_BRAND; });
+    var cachedBrand = store.get("td_brand");
+    var greet = meta[0];
+    function heroTitle(name) {
+      return (active === "dashboard" && name && name !== DEFAULT_BRAND)
+        ? '<span class="hi-eyebrow">' + greet + '</span><span class="hi-name">' + esc(name) + '</span>' : greet;
+    }
+    if (cachedBrand === null) { brandName = await profileP; store.set("td_brand", brandName); }
+    else {
+      brandName = cachedBrand || DEFAULT_BRAND;
+      profileP.then(function (fresh) {
+        store.set("td_brand", fresh);
+        if (fresh === brandName) return;
+        brandName = fresh;
+        var who = document.querySelector(".tn-who b"); if (who) who.textContent = fresh;
+        var av = document.getElementById("tl-acct"); if (av) { av.title = fresh; av.textContent = monogram(fresh); }
+        var ms = document.querySelector(".ms-brand b"); if (ms) ms.textContent = fresh;
+        var h1 = document.querySelector(".topbar h1"); if (h1 && active === "dashboard") h1.innerHTML = heroTitle(fresh);
+      });
+    }
     // Home greets the tutor by their business name ("Good afternoon, Raphael Tuition")
     // Apple-style hero: small grey greeting over the business name in large, heavy type.
-    if (active === "dashboard" && brandName && brandName !== DEFAULT_BRAND)
-      meta[0] = '<span class="hi-eyebrow">' + meta[0] + '</span><span class="hi-name">' + esc(brandName) + '</span>';
+    meta[0] = heroTitle(brandName);
     mountShell(active, session.user.email, meta[0], meta[1]);
     skWatch();
     if (typeof init === "function") init(session.user);
@@ -403,8 +450,8 @@ window.TL = (function () {
   // One step at a time: the page opens the right form, then a small card says what's next.
   // Until setup is finished (td_onboarded), the other one-time tips stay quiet.
   var GUIDE = /[?&]guide=1(&|$)/.test(location.search);
-  function onboarded() { try { return localStorage.getItem("td_onboarded") === "1"; } catch (e) { return true; } }
-  function setOnboarded() { try { localStorage.setItem("td_onboarded", "1"); } catch (e) {} }
+  function onboarded() { return store.get("td_onboarded") === "1"; }
+  function setOnboarded() { store.set("td_onboarded", "1"); }
   // o: { step:1-3, done:"✓ line", title, text, href, cta }
   function guideCard(o) {
     var c = document.getElementById("content"); if (!c) return;
@@ -432,7 +479,7 @@ window.TL = (function () {
     opts = opts || {};
     if (GUIDE || !onboarded()) return;   // new tutors: finish the 3-step setup first, then tips
     var k = "td_tip_" + key;
-    try { if (localStorage.getItem(k)) return; } catch (e) { return; }
+    if (store.get(k)) return;
     if (!anchor || !anchor.getBoundingClientRect || document.getElementById("td-tip-" + key)) return;
     var tip = document.createElement("div");
     tip.className = "td-tip"; tip.id = "td-tip-" + key; tip.setAttribute("role", "status");
@@ -457,12 +504,16 @@ window.TL = (function () {
     }
     place(); window.addEventListener("resize", place);
     tip.querySelector(".td-tip-ok").addEventListener("click", function () {
-      try { localStorage.setItem(k, "1"); } catch (e) {}
+      store.set(k, "1");
       window.removeEventListener("resize", place); tip.remove();
     });
   }
 
   async function signOut() {
+    // Google Calendar access belongs to this tutor's session only: forget the link on this browser,
+    // so the next person to sign in here can't sync into (or clean up) this tutor's Google Calendar.
+    store.clear("tl_gcal_");
+    try { if (window.TD_GCAL_REVOKE) window.TD_GCAL_REVOKE(); } catch (e) {}
     try { await window.sb.auth.signOut(); } catch (e) {}
     location.replace("login");
   }
@@ -544,6 +595,8 @@ window.TL = (function () {
     return "$" + (Number(n) || 0).toLocaleString("en-SG",
       { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
+  // "1 lesson", "2 lessons"
+  function plural(n, word, many) { return n + " " + (n === 1 ? word : (many || word + "s")); }
   function hoursBetween(start, end) {              // "17:00" → "18:30" = 1.5
     function m(t){ var p=t.split(":"); return (+p[0])*60+(+p[1]); }
     return (m(end) - m(start)) / 60;
@@ -625,6 +678,7 @@ window.TL = (function () {
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
+           store: store, uid: function () { return UID; }, plural: plural,
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,

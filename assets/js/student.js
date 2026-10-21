@@ -173,7 +173,7 @@
     live.sort(function(a,b){return (b.lesson_date+(b.start_time||"")).localeCompare(a.lesson_date+(a.start_time||""));});
     var box=$("p-lessons");
     if(!live.length){box.innerHTML='<p class="muted" style="font-size:13.5px;margin:0">No lessons yet.</p>';$("p-lhint2").textContent="";return;}
-    $("p-lhint2").textContent=live.length+" lessons";
+    $("p-lhint2").textContent=TL.plural(live.length,"lesson");
     box.innerHTML='<div class="nlist">'+live.map(function(l){
       var has=l.topics||l.homework||l.remarks,bits="";
       if(l.topics)bits+='<div class="nbits"><span class="nk">Topics</span>'+esc(l.topics)+'</div>';

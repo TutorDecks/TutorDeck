@@ -75,13 +75,27 @@
     var r=await Promise.all([
       window.sb.from("students").select("id,name,location,contact,active,level,end_date"),
       window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true),
-      window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,score,max_score,remarks")
+      window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,score,max_score,remarks"),
+      // setup check: has this tutor ever logged a lesson? (only asked while setup isn't marked done)
+      (TL.guide&&TL.guide.onboarded()) ? Promise.resolve({data:[{}]}) : window.sb.from("lessons").select("id").limit(1)
     ]);
     students=r[0].error?[]:(r[0].data||[]);
     nameById={}; locById={}; hhById={}; endById={};
     students.forEach(function(s){ nameById[s.id]=s.name; locById[s.id]=s.location||""; hhById[s.id]=hhKey(s.contact); endById[s.id]=s.end_date||null; });
     slots=r[1].error?[]:(r[1].data||[]);
     exams=r[2].error?[]:(r[2].data||[]);
+    // Setup in progress = opened from the guide, or (worked out from the data, so it survives a refresh or
+    // arriving from the tab bar) a weekly slot exists but no lesson has ever been logged.
+    var everLogged=!!(r[3]&&!r[3].error&&r[3].data&&r[3].data.length);
+    if(TL.guide && !TL.guide.onboarded()){
+      if(everLogged && !TL.guide.on) TL.guide.finish();          // an established tutor on a new browser — nothing to guide
+      else setupMode = TL.guide.on || slots.length>0;
+    }
+    // During setup the "Not logged" lessons ARE the next step — never hide them (not saved as a preference).
+    if(setupMode && hidden.proj){
+      delete hidden.proj;
+      var lg=document.querySelector('.cal-legend [data-cat="proj"]'); if(lg){ lg.classList.remove("off"); lg.setAttribute("aria-pressed","true"); }
+    }
     loadedStatic=true;
   }
   function examsByDate(){
@@ -613,20 +627,20 @@
     });
   }
   // First-run guide, step 3: point at the Log chip; logging finishes setup.
-  var guideFinished=false;
+  var guideFinished=false, setupMode=false;
   function guideStep(n){
-    if(!(TL.guide&&TL.guide.on)||guideFinished) return;
+    if(!setupMode||guideFinished) return;
     var btn=$("cal-log-btn"); if(btn) btn.classList.toggle("tg-hint", n>0);
-    if(n>0) TL.guide.card({step:3, title:"Tap \u201CLog "+n+"\u201D at the top",
-      text:"The dashed blocks are your weekly lessons, not logged yet. Logging turns them into real lessons you can mark done, paid and invoice."});
-    else TL.guide.card({step:3, title:"Nothing to log on this screen",
+    if(n>0) TL.guide.card({step:3, title:"Tap \u201CLog "+n+"\u201D to confirm "+(n===1?"this lesson":"these lessons"),
+      text:"Dashed blocks are your weekly lessons, not confirmed yet. Logging confirms them, so you can mark them done and paid, and invoice them."});
+    else TL.guide.card({step:3, title:"Nothing to confirm on this screen",
       text:"Use the arrows to go to a week with dashed (Not logged) lessons, then tap Log."});
   }
   function guideFinish(n){
-    if(!(TL.guide&&TL.guide.on)||guideFinished) return;
+    if(!setupMode||guideFinished) return;
     guideFinished=true; TL.guide.finish();
     var btn=$("cal-log-btn"); if(btn) btn.classList.remove("tg-hint");
-    TL.guide.card({final:true, done:"\u2713 "+n+" lesson"+(n===1?"":"s")+" logged. You\u2019re all set up!",
+    TL.guide.card({final:true, done:"\u2713 "+n+" lesson"+(n===1?"":"s")+" confirmed. You\u2019re all set up!",
       title:"What next?",
       text:"Each week, tap Log on the calendar. When a parent pays, mark the lessons paid in <b>Money</b>.",
       href:"home", cta:"Go to Home"});
@@ -802,17 +816,25 @@
   function gTokenValid(){ return !!gToken && Date.now()<gTokenExp; }   // reuse an unexpired token, no fresh Google popup
 
   function gcalConfigured(){ return !!GCLIENT; }
-  function gcalConnected(){ try{ return localStorage.getItem("tl_gcal_connected")==="1"; }catch(e){ return false; } }
-  function gcalListGranted(){ try{ return localStorage.getItem("tl_gcal_list")==="1"; }catch(e){ return false; } }
-  function gcalChosen(){ try{ return localStorage.getItem("tl_gcal_chosen")==="1"; }catch(e){ return false; } }
-  function gcalTarget(){ try{ return localStorage.getItem("tl_gcal_calendar")||"primary"; }catch(e){ return "primary"; } }
+  function gcalConnected(){ try{ return TL.store.get("tl_gcal_connected")==="1"; }catch(e){ return false; } }
+  function gcalListGranted(){ try{ return TL.store.get("tl_gcal_list")==="1"; }catch(e){ return false; } }
+  function gcalChosen(){ try{ return TL.store.get("tl_gcal_chosen")==="1"; }catch(e){ return false; } }
+  function gcalTarget(){ try{ return TL.store.get("tl_gcal_calendar")||"primary"; }catch(e){ return "primary"; } }
   function gStatus(t,cls){ var el=$("gcal-status"); if(el){ el.textContent=t||""; el.className="gcal-status"+(cls?" "+cls:""); } }
-  function gcalCals(){ try{ return JSON.parse(localStorage.getItem("tl_gcal_cals")||"[]")||[]; }catch(e){ return []; } }
+  function gcalCals(){ try{ return JSON.parse(TL.store.get("tl_gcal_cals")||"[]")||[]; }catch(e){ return []; } }
+  // Safety: the Google account this tutor linked (its primary calendar id = the account email), and the
+  // account the current token belongs to. Sync only when they match, so one tutor can never write into
+  // (or clean up) another person's Google Calendar from a shared browser.
+  var gTokenAccount=null;
+  function gcalAccount(){ return TL.store.get("tl_gcal_account")||""; }
+  function gOwnerOf(ev){ try{ return ev.extendedProperties.private.tlOwner||""; }catch(e){ return ""; } }
+  // Revoke the live token on sign-out (app.js calls this).
+  window.TD_GCAL_REVOKE=function(){ try{ if(gToken && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(gToken, function(){}); }catch(e){} gToken=null; gTokenExp=0; };
   // A connection attempt failed — drop back to the Connect step (clear the loaded list so the
   // dropdown gives way to the Connect button). Keep the chosen calendar so reconnect resumes it.
   function gcalFail(msg){
-    gToken=null; gTokenExp=0;
-    try{ localStorage.removeItem("tl_gcal_connected"); localStorage.removeItem("tl_gcal_list"); localStorage.removeItem("tl_gcal_cals"); }catch(e){}
+    gToken=null; gTokenExp=0; gTokenAccount=null;
+    try{ TL.store.remove("tl_gcal_connected"); TL.store.remove("tl_gcal_list"); TL.store.remove("tl_gcal_cals"); }catch(e){}
     updateGcalUI();
     gStatus(msg||"Couldn't connect to Google — click Connect to try again.","err");
   }
@@ -869,7 +891,7 @@
           if(resp && resp.access_token){
             gToken=resp.access_token;
             gTokenExp=Date.now()+(((+resp.expires_in||3600)*1000)-60000);   // reuse until ~1min before expiry
-            try{localStorage.setItem("tl_gcal_connected","1");}catch(e){}
+            try{TL.store.set("tl_gcal_connected","1");}catch(e){}
             updateGcalUI(); populateCalendars();
             if(gUserInit){                                              // only sync on a deliberate click, not silent load
               gUserInit=false;
@@ -915,11 +937,14 @@
       }
       if(res.status===401){ gcalFail("Google session expired — click Connect to reconnect."); return; }
       if(!res.ok){ return; }
-      try{ localStorage.setItem("tl_gcal_list","1"); }catch(e){}
+      try{ TL.store.set("tl_gcal_list","1"); }catch(e){}
       var d=await res.json();
+      var prim=(d.items||[]).filter(function(c){ return c.primary; })[0];
+      gTokenAccount=(prim&&prim.id)||null;
+      if(gTokenAccount && !gcalAccount()) TL.store.set("tl_gcal_account", gTokenAccount);   // first link: remember the account
       var items=(d.items||[]).filter(function(c){ return c.accessRole==="owner"||c.accessRole==="writer"; })
         .map(function(c){ return { v:c.primary?"primary":c.id, l:c.primary?"Main calendar":(c.summary||c.id) }; });
-      try{ localStorage.setItem("tl_gcal_cals", JSON.stringify(items)); }catch(e){}   // remember for next load
+      try{ TL.store.set("tl_gcal_cals", JSON.stringify(items)); }catch(e){}   // remember for next load
       fillDropdown(items);
       updateGcalUI();   // list just arrived → re-render so the Connect button gives way to the picker
     }catch(e){}
@@ -935,7 +960,7 @@
       start:{ dateTime:l.lesson_date+"T"+hhmm(l.start_time)+":00", timeZone:GTZ },
       end:{ dateTime:l.lesson_date+"T"+hhmm(l.end_time)+":00", timeZone:GTZ },
       reminders:{ useDefault:false },                      // no notification spam on re-create
-      extendedProperties:{ private:{ tlengSync:"1", tlLessonId:String(l.id) } } };  // tag + which lesson it mirrors
+      extendedProperties:{ private:{ tlengSync:"1", tlLessonId:String(l.id), tlOwner:String(userId) } } };  // tag + lesson + which TutorDeck tutor
     var loc=locById[l.student_id]; if(loc) e.location=loc;
     return e;
   }
@@ -981,19 +1006,25 @@
     var cal=gcalTarget(), w=monthWindow(when);
     gStatus("Syncing "+w.label+"…");
     var events=await listAppEvents(cal, w.tmin, w.tmax);
-    var byLesson={}, extra=[];                              // extra = duplicates or legacy events (no lesson id)
-    events.forEach(function(ev){ var lid=evLessonId(ev); if(lid && !byLesson[lid]) byLesson[lid]=ev; else extra.push(ev); });
+    // Only this tutor's events: tagged with their id, or untagged older events (adopted below only if they
+    // mirror one of this tutor's lessons — never deleted). Events tagged with another tutor are never touched.
+    var mine=events.filter(function(ev){ return gOwnerOf(ev)===String(userId); });
+    var legacy=events.filter(function(ev){ return !gOwnerOf(ev); });
+    var byLesson={}, extra=[];                              // extra = duplicates of this tutor's own events
+    mine.forEach(function(ev){ var lid=evLessonId(ev); if(lid && !byLesson[lid]) byLesson[lid]=ev; else extra.push(ev); });
     var ls=await window.sb.from("lessons")
       .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id,one_off")
       .gte("lesson_date", w.firstISO).lte("lesson_date", w.lastISO);
     if(ls.error) return { created:0, updated:0, deleted:0, skipped:0, fail:1 };
     var rows=(ls.data||[]).filter(function(l){ return l.status!=="cancelled"; });
+    var mineIds={}; rows.forEach(function(l){ mineIds[String(l.id)]=1; });
+    legacy.forEach(function(ev){ var lid=evLessonId(ev); if(lid && mineIds[lid] && !byLesson[lid]) byLesson[lid]=Object.assign({_legacy:true},ev); });
     var created=0, updated=0, deleted=0, skipped=0, fail=0, keep={};
     for(var i=0;i<rows.length;i++){
       var l=rows[i], want=gEvent(l), ev=byLesson[String(l.id)]; keep[String(l.id)]=1;
       try{
         if(!ev){ await gapi("POST","/calendars/"+encodeURIComponent(cal)+"/events", want); created++; }
-        else if(gFP(ev)!==gFP(want)){ await gapi("PUT","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(ev.id), want); updated++; }
+        else if(ev._legacy || gFP(ev)!==gFP(want)){ await gapi("PUT","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(ev.id), want); updated++; }
         else skipped++;
       }catch(e){ if(e&&e.code===401) throw e; fail++; }
     }
@@ -1006,6 +1037,7 @@
   // you've logged for future months go too, while past months are left untouched.
   async function syncNow(){
     if(!gToken) return;
+    if(!(await gcalAccountOK())) return;
     if(!loadedStatic) await loadStatic();
     var now=new Date(), fromM=new Date(now.getFullYear(), now.getMonth(), 1);
     var q=await window.sb.from("lessons").select("lesson_date").gte("lesson_date", iso(fromM)).order("lesson_date",{ascending:false}).limit(1);
@@ -1025,6 +1057,22 @@
     var detail=parts.length?parts.join(", "):"already up to date";
     gStatus("Synced ✓ "+total+" lesson"+(total===1?"":"s")+" in "+secs+"s · "+detail+(fail?" · "+fail+" failed":""), "ok");
   }
+  // Make sure the Google account behind the token is the one this tutor linked. If it changed (another
+  // Google account is signed in on this browser), stop and ask before anything is written.
+  async function gcalAccountOK(){
+    if(!gTokenAccount) await populateCalendars();
+    var linked=gcalAccount();
+    if(!gTokenAccount){ gStatus("Couldn't confirm which Google account this is — click Connect to try again.","err"); return false; }
+    if(!linked){ TL.store.set("tl_gcal_account", gTokenAccount); return true; }
+    if(linked===gTokenAccount) return true;
+    var ok=await confirmBox("You're signed in to Google as "+gTokenAccount+", but this TutorDeck account syncs to "+linked+". Switch your lesson sync to "+gTokenAccount+"?",
+      { title:"Different Google account", yes:"Switch account", no:"Cancel" });
+    if(!ok){ gStatus("Sync cancelled. Sign in to Google as "+linked+", then press Sync again.","err"); return false; }
+    TL.store.set("tl_gcal_account", gTokenAccount);
+    TL.store.remove("tl_gcal_chosen"); TL.store.remove("tl_gcal_calendar");      // the old calendar choice was for the other account
+    updateGcalUI(); gStatus("Now choose which calendar to sync into.");
+    return false;
+  }
   // Switch which calendar we sync into: wipe ALL our events off the old calendar, then rebuild
   // the current month on the new one.
   async function setGcalTarget(raw){
@@ -1032,16 +1080,16 @@
     var newT=(raw||"").trim(), oldT=gcalTarget(), first=!gcalChosen();
     if(!gToken){
       // No live token this session — remember the choice, then get a token and sync to it.
-      try{ localStorage.setItem("tl_gcal_calendar", newT); localStorage.setItem("tl_gcal_chosen","1"); }catch(e){}
+      try{ TL.store.set("tl_gcal_calendar", newT); TL.store.set("tl_gcal_chosen","1"); }catch(e){}
       updateGcalUI(); gStatus("Connecting to Google…");
       connectGcal();                                          // gUserInit=true → syncNow() to the chosen calendar after the token
       return;
     }
     if(!first && newT!==oldT){
       gStatus("Moving to the new calendar…");
-      try{ var evs=await listAppEvents(oldT); for(var i=0;i<evs.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(evs[i].id)); }catch(e){} } }catch(e){}
+      try{ var evs=(await listAppEvents(oldT)).filter(function(ev){ return gOwnerOf(ev)===String(userId); }); for(var i=0;i<evs.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(evs[i].id)); }catch(e){} } }catch(e){}
     }
-    try{ localStorage.setItem("tl_gcal_calendar", newT); localStorage.setItem("tl_gcal_chosen","1"); }catch(e){}
+    try{ TL.store.set("tl_gcal_calendar", newT); TL.store.set("tl_gcal_chosen","1"); }catch(e){}
     updateGcalUI();
     syncNow();
   }
@@ -1049,7 +1097,7 @@
   // ---- nav / mode ----
   function setMode(m){
     mode=m;
-    try{ localStorage.setItem("tl_cal_mode",m); }catch(e){}
+    try{ TL.store.set("tl_cal_mode",m); }catch(e){}
     ensureData();
   }
   function stepAnchor(a, dir){
@@ -1097,7 +1145,7 @@
       var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ io.disconnect(); show(); } }, { threshold:1 });
       io.observe(key);
     }
-    var seen=true; try{ seen=!!localStorage.getItem("td_tip_cal-swipe"); }catch(e){}
+    var seen=true; try{ seen=!!TL.store.get("td_tip_cal-swipe"); }catch(e){}
     if(!isPhone() || seen){ filters(); return; }
     var cur=document.querySelector("#cal-vp .cal-pane:nth-child(2)");
     var anchor=(cur && (cur.querySelector(".cal-head")||cur.querySelector(".dhead")||cur.querySelector(".cal-mhead"))) || $("cal");
@@ -1117,7 +1165,7 @@
         e.stopPropagation();
         if(hidden[cat]) delete hidden[cat]; else hidden[cat]=true;
         btn.classList.toggle("off", !!hidden[cat]); btn.setAttribute("aria-pressed", hidden[cat]?"false":"true");
-        try{ localStorage.setItem("tl_cal_hidden", JSON.stringify(hidden)); }catch(e2){}
+        try{ TL.store.set("tl_cal_hidden", JSON.stringify(hidden)); }catch(e2){}
         render();   // re-filter; no refetch needed
       });
     });
@@ -1125,9 +1173,9 @@
 
   function init(user){
     userId=user.id; anchor=new Date();
-    try{ mode=localStorage.getItem("tl_cal_mode")||""; }catch(e){ mode=""; }
+    try{ mode=TL.store.get("tl_cal_mode")||""; }catch(e){ mode=""; }
     if(!mode) mode="week";   // default everywhere; the user's last choice is remembered (tl_cal_mode)
-    try{ hidden=JSON.parse(localStorage.getItem("tl_cal_hidden")||"{}")||{}; }catch(e){ hidden={}; }
+    try{ hidden=JSON.parse(TL.store.get("tl_cal_hidden")||"{}")||{}; }catch(e){ hidden={}; }
     $("cal-prev").addEventListener("click", function(){ go(-1); });
     $("cal-next").addEventListener("click", function(){ go(1); });
     $("cal-today").addEventListener("click", goToday);
