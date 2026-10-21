@@ -247,7 +247,7 @@
     if($("teach-view"))$("teach-view").style.display=teach?"block":"none";
     if($("seg-fin"))$("seg-fin").classList.toggle("on",!teach);
     if($("seg-teach"))$("seg-teach").classList.toggle("on",teach);
-    try{localStorage.setItem("tl_dash_mode",mode);}catch(e){}
+    try{TL.store.set("tl_dash_mode",mode);}catch(e){}
   }
 
   // ---- Financial year ----
@@ -345,7 +345,7 @@
     if($("fseg-month"))$("fseg-month").classList.toggle("on",!year);
     if($("fseg-year"))$("fseg-year").classList.toggle("on",year);
     finSub=mode;
-    try{localStorage.setItem("tl_fin_sub",mode);}catch(e){}
+    try{TL.store.set("tl_fin_sub",mode);}catch(e){}
     if(year)renderYear();   // render while visible so the chart sizes correctly
   }
 
@@ -395,7 +395,7 @@
     var sun=new Date(mon);sun.setDate(mon.getDate()+6);
     var ws=iso(mon),we=iso(sun);
     var week=lessons.filter(function(l){return l.lesson_date>=ws&&l.lesson_date<=we&&l.status!=="cancelled";});
-    setText("k-week",week.length);
+    setText("k-week",week.length); setText("k-week-w",week.length===1?"lesson":"lessons");
 
     // income by month for current year: collected (paid) + pending (done, unpaid) + upcoming (scheduled)
     var collected=new Array(12).fill(0),pending=new Array(12).fill(0),upcoming=new Array(12).fill(0);
@@ -424,7 +424,7 @@
       if($("seg-fin"))$("seg-fin").addEventListener("click",function(){setDashMode("fin");});
       if($("seg-teach"))$("seg-teach").addEventListener("click",function(){setDashMode("teach");});
       if($("dash-seg")){
-        var saved="fin"; try{saved=localStorage.getItem("tl_dash_mode")||"fin";}catch(e){}
+        var saved="fin"; try{saved=TL.store.get("tl_dash_mode")||"fin";}catch(e){}
         setDashMode(saved);
       }   // applied after the chart rendered while visible, so sizing is correct
     }
@@ -437,7 +437,7 @@
       if($("fy-prev"))$("fy-prev").addEventListener("click",function(){stepFy(-1);});
       if($("fy-next"))$("fy-next").addEventListener("click",function(){stepFy(1);});
       if($("fy-today"))$("fy-today").addEventListener("click",function(){fyAnchor=currentFyAnchor();renderYear();});
-      var fsub="month"; try{fsub=localStorage.getItem("tl_fin_sub")||"month";}catch(e){}
+      var fsub="month"; try{fsub=TL.store.get("tl_fin_sub")||"month";}catch(e){}
       setFinSub(fsub);
     }
 
@@ -451,26 +451,43 @@
     }
   }
 
+  // First-run setup: three short steps, each opening the right form (?guide=1). Worked out from the data
+  // (students, weekly slots, logged lessons), so it's right after any refresh or route back to Home.
   function renderOnboarding(students, slots, lessons){
     var box=$("onboard");if(!box)return;
     var steps=[
-      {done:students>0, t:"Add your students", d:"Create a profile for each student you teach.", href:"students", cta:"Add students"},
-      {done:slots>0,    t:"Set up the weekly schedule", d:"In the planner, add each student's recurring lesson slots.", href:"planner", cta:"Open planner"},
-      {done:lessons>0,  t:"Fill the ledger from your schedule", d:"On the ledger, tap \u201CLog this week\u201D or \u201CLog this month\u201D to create lessons from your slots.", href:"ledger", cta:"Open ledger"}
+      {done:students>0, t:"Add your first student",          d:"Just a name to start.",                     href:"students?guide=1", cta:"Add your first student"},
+      {done:slots>0,    t:"Set their weekly lesson time",    d:"Day, time and rate. It repeats every week.", href:"planner?guide=1",  cta:"Set the weekly lesson time"},
+      {done:lessons>0,  t:"Confirm this week\u2019s lessons", d:"So you can track and bill them.",            href:"calendar?guide=1", cta:"Confirm on the calendar"}
     ];
-    if(steps.every(function(s){return s.done;})){box.style.display="none";box.innerHTML="";return;}
-    var nextShown=false;
+    var G=TL.guide||{onboarded:function(){return true;},finish:function(){}};
+    if(lessons>0) steps.forEach(function(s){ s.done=true; });   // has confirmed lessons before = set up (even if no active slots now)
+    if(steps.every(function(s){return s.done;})){
+      // Finished. If this tutor went through setup here and hasn't seen the finish line yet, show it once.
+      if(TL.store.get("td_setup_started")==="1"){
+        box.innerHTML='<div class="ob-card ob-done"><div class="ob-tick" aria-hidden="true">\u2713</div>'+
+          '<h3 class="ob-h">You\u2019re all set up!</h3>'+
+          '<p class="ob-sub">Your first lessons are confirmed. From now on:</p>'+
+          '<ul class="ob-next"><li><b>Each week</b>, tap <b>Log</b> on the calendar to confirm that week\u2019s lessons.</li>'+
+          '<li><b>When a parent pays</b>, mark the lessons paid in <b>Money</b>. Past lessons are logged as taught and unpaid (red) until then.</li></ul>'+
+          '<button type="button" class="btn btn-gold ob-go" id="ob-ok">Got it</button></div>';
+        box.style.display="block";
+        // Setup counts as finished (and the usual tips may start) once they've read this and tapped Got it.
+        $("ob-ok").addEventListener("click",function(){ box.style.display="none"; box.innerHTML=""; G.finish(); TL.store.remove("td_setup_started"); });
+        return;
+      }
+      box.style.display="none";box.innerHTML="";G.finish();return;
+    }
+    TL.store.set("td_setup_started","1");
+    var next=steps.filter(function(s){return !s.done;})[0];
     var rows=steps.map(function(s,i){
-      var isNext=!s.done&&!nextShown; if(isNext)nextShown=true;
-      var num=s.done?"\u2713":(i+1);
-      var btn=s.done?"":'<a class="btn '+(isNext?"btn-gold":"")+'" href="'+s.href+'">'+s.cta+'</a>';
-      return '<div class="ob-step'+(s.done?" done":"")+'">'+
-        '<span class="ob-num">'+num+'</span>'+
-        '<span class="ob-body"><span class="ob-t">'+s.t+'</span><span class="ob-d">'+s.d+'</span></span>'+
-        btn+'</div>';
+      var cur=s===next;
+      return '<li class="ob-step'+(s.done?" done":"")+(cur?" cur":"")+'"><span class="ob-num">'+(s.done?"\u2713":(i+1))+'</span>'+
+        '<span class="ob-txt"><span class="ob-t">'+s.t+'</span>'+(cur?'<span class="ob-d">'+s.d+'</span>':'')+'</span></li>';
     }).join("");
-    box.innerHTML='<div class="ob-card"><h3 class="ob-h">Let\u2019s get you set up</h3>'+
-      '<p class="ob-sub">Three steps to a working dashboard. It\u2019ll disappear once you\u2019re done.</p>'+rows+'</div>';
+    box.innerHTML='<div class="ob-card"><h3 class="ob-h">Set up TutorDeck</h3>'+
+      '<p class="ob-sub">3 quick steps, about 2 minutes.</p><ol class="ob-list">'+rows+'</ol>'+
+      '<a class="btn btn-gold ob-go" href="'+next.href+'">'+next.cta+'</a></div>';
     box.style.display="block";
   }
 

@@ -1,4 +1,5 @@
-/* v214 */
+/* v221 */
+/* v221 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -615,12 +616,6 @@ body:has(.modal-backdrop.on){overflow:hidden}   /* page behind an open form stay
   display:grid;place-items:center;cursor:pointer;color:var(--muted);z-index:3}
 .modal-x:hover{background:#F1EFEA;color:var(--ink)}
 .td-form .modal-actions{position:sticky;bottom:-22px;background:var(--paper);z-index:2;margin:16px -24px -22px;padding:12px 24px 16px;border-top:1px solid var(--line)}
-.td-discard{position:fixed;inset:0;z-index:120;background:rgba(19,35,63,.35);display:grid;place-items:center;padding:20px}
-.td-discard-box{background:var(--paper);border-radius:16px;padding:20px;max-width:320px;width:100%;box-shadow:0 20px 50px rgba(19,35,63,.25)}
-.td-discard-box b{font-size:17px;color:var(--ink)}
-.td-discard-box p{margin:6px 0 16px;color:var(--muted);font-size:14px}
-.td-discard-acts{display:flex;gap:8px;justify-content:flex-end}
-.td-discard-yes{color:var(--owed);border-color:var(--owed)}
 @media(max-width:820px){
   .td-form.modal-backdrop{padding:0}
   .td-form.modal-backdrop.on{place-items:end stretch}
@@ -689,3 +684,61 @@ span[data-sk],b[data-sk]{display:inline-block;line-height:1.15}
 .sk-on .mprog-legend{visibility:hidden}
 .sk-on #exam-sec .teach-sub{color:transparent!important;display:inline-block;min-width:160px;border-radius:7px;
   background:linear-gradient(90deg,#EFECE6 25%,#F7F5F1 37%,#EFECE6 63%);background-size:400% 100%;animation:td-sk 1.4s ease infinite}
+
+/* ---- v218: first-run guide card (pages opened with ?guide=1) ---- */
+.td-guide{background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:14px;
+  padding:14px 16px 12px;margin:0 0 16px;box-shadow:var(--shadow)}
+.td-guide.tg-pop{animation:tg-pop .35s ease}
+@keyframes tg-pop{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
+.tg-done{color:var(--accent);font-weight:700;font-size:13.5px;margin-bottom:8px}
+.tg-row{display:flex;align-items:center;gap:14px}
+.tg-body{flex:1;min-width:0}
+.tg-step{display:block;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.tg-t{display:block;font-size:15.5px;font-weight:800;color:var(--ink);letter-spacing:-.01em}
+.tg-d{display:block;font-size:13.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+.tg-btn{flex:none;white-space:nowrap}
+.tg-skip{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--muted);text-decoration:none}
+.tg-skip:hover{text-decoration:underline}
+@media(max-width:820px){ .tg-row{flex-direction:column;align-items:stretch;gap:10px} .tg-btn{text-align:center;justify-content:center} }
+@media(prefers-reduced-motion:reduce){ .td-guide.tg-pop{animation:none} }
+/* the Calendar "Log N" chip gently pulses while it's the guide's next step */
+.cal-logchip.tg-hint{animation:tg-pulse 1.6s ease-in-out infinite}
+@keyframes tg-pulse{0%,100%{box-shadow:0 0 0 0 rgba(15,118,110,.35)}50%{box-shadow:0 0 0 7px rgba(15,118,110,0)}}
+@media(prefers-reduced-motion:reduce){ .cal-logchip.tg-hint{animation:none;box-shadow:0 0 0 3px rgba(15,118,110,.3)} }
+.tg-inform{margin:-4px 0 14px;padding:9px 12px;border-radius:10px;background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:600;line-height:1.4}
+.inv-pay.inv-bank{margin-top:10px}
+.inv-pay .pn-dot.bk{background:var(--accent)}
+
+/* ---- v217: simple forms — "Optional" tags, one-line hints, rarely-used fields under "More details" ---- */
+.field label .opt{font-weight:500;font-size:12px;color:var(--muted);margin-left:6px}
+.fhint{display:block;font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.45}
+details.more-fields{border-top:1px solid var(--line);margin:6px 0 10px}
+details.more-fields>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:12px 0;
+  font-size:14px;font-weight:700;color:var(--accent)}
+details.more-fields>summary::-webkit-details-marker{display:none}
+details.more-fields>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:rotate(-45deg);transition:transform .15s;margin:0 3px 0 1px}
+details.more-fields[open]>summary::before{transform:rotate(45deg)}
+details.more-fields>summary small{font-weight:500;font-size:12.5px;color:var(--muted)}
+details.more-fields>.more-body{padding-top:2px}
+.field .invalid,.field input.invalid,.field select.invalid{border-color:var(--owed)!important;box-shadow:0 0 0 3px rgba(180,67,47,.15)!important}
+.fhint.fprice{color:var(--ink);font-weight:600}
+.fhint.fprice:empty{display:none}
+
+/* ---- v220: in-app dialog (TL.confirm / TL.alert / TL.prompt) — one look for every confirm and notice ---- */
+.td-dlg{position:fixed;inset:0;z-index:300;background:rgba(19,35,63,.45);display:grid;place-items:center;padding:20px;animation:td-dlg-in .14s ease}
+.td-dlg-box{background:var(--paper);width:100%;max-width:400px;border-radius:16px;border-top:4px solid var(--navy);
+  padding:22px 22px 18px;box-shadow:0 24px 60px rgba(19,35,63,.3);animation:td-dlg-pop .16s ease}
+.td-dlg-box.danger{border-top-color:var(--owed)}
+.td-dlg-t{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.01em;margin:0 0 8px}
+.td-dlg-m{color:var(--muted);font-size:14.5px;line-height:1.55;margin:0 0 18px;white-space:pre-line}
+.td-dlg-in{width:100%;box-sizing:border-box;padding:11px 13px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:16px;margin:-6px 0 18px}
+.td-dlg-in:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(15,118,110,.18)}
+.td-dlg-acts{display:flex;justify-content:flex-end;gap:10px}
+.td-dlg-acts .btn{min-width:96px;justify-content:center;height:44px;border-radius:11px;font-size:15px}
+.td-dlg-acts .btn:disabled{opacity:.45;cursor:not-allowed}
+body.td-dlg-open{overflow:hidden}
+@keyframes td-dlg-in{from{opacity:0}to{opacity:1}}
+@keyframes td-dlg-pop{from{transform:translateY(6px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+@media(max-width:520px){ .td-dlg-acts .btn{flex:1} }
+@media(prefers-reduced-motion:reduce){ .td-dlg,.td-dlg-box{animation:none} }

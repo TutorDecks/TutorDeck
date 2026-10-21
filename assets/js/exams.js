@@ -51,9 +51,9 @@
   }
 
   async function del(id){
-    if(!confirm("Delete this exam?"))return;
+    if(!(await TL.confirm({title:"Delete this exam?",message:"Its date, topics and marks will be removed, and it drops off the progress chart.",confirmText:"Delete exam",danger:true})))return;
     var res=await window.sb.from("exams").delete().eq("id",id);
-    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't delete: "+res.error.message);return;}
     load();
   }
 

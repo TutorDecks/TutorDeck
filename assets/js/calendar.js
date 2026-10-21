@@ -75,13 +75,27 @@
     var r=await Promise.all([
       window.sb.from("students").select("id,name,location,contact,active,level,end_date"),
       window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true),
-      window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,score,max_score,remarks")
+      window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,score,max_score,remarks"),
+      // setup check: has this tutor ever confirmed a lesson? (one tiny query)
+      window.sb.from("lessons").select("id").limit(1)
     ]);
     students=r[0].error?[]:(r[0].data||[]);
     nameById={}; locById={}; hhById={}; endById={};
     students.forEach(function(s){ nameById[s.id]=s.name; locById[s.id]=s.location||""; hhById[s.id]=hhKey(s.contact); endById[s.id]=s.end_date||null; });
     slots=r[1].error?[]:(r[1].data||[]);
     exams=r[2].error?[]:(r[2].data||[]);
+    // Setup in progress = opened from the guide, or (worked out from the data, so it survives a refresh or
+    // arriving from the tab bar) a weekly slot exists but no lesson has ever been logged.
+    // Decided from the data alone (like Home's setup card), not from a saved "done" flag — so an account
+    // that starts over (all lessons removed) is guided again.
+    var everLogged=!!(r[3]&&!r[3].error&&r[3].data&&r[3].data.length);
+    setupMode = !!TL.guide && (TL.guide.on || (slots.length>0 && !everLogged));
+    if(TL.guide && everLogged && !TL.guide.on && !TL.guide.onboarded()) TL.guide.finish();   // established tutor, new browser
+    // During setup the "Not logged" lessons ARE the next step — never hide them (not saved as a preference).
+    if(setupMode && hidden.proj){
+      delete hidden.proj;
+      var lg=document.querySelector('.cal-legend [data-cat="proj"]'); if(lg){ lg.classList.remove("off"); lg.setAttribute("aria-pressed","true"); }
+    }
     loadedStatic=true;
   }
   function examsByDate(){
@@ -263,7 +277,8 @@
       if(dayExams.length) hasEx=true;
       // Carousel: a fixed slim row — first exam + "+N" — so weeks with and without exams line up.
       adCells+='<div class="cal-ad-cell">'+(opts.slimAllday
-        ? (dayExams.length?examChipHTML(dayExams[0])+(dayExams.length>1?'<span class="ad-more">+'+(dayExams.length-1)+'</span>':''):'')
+        ? (dayExams.length===1 ? examChipHTML(dayExams[0])
+          : dayExams.length ? '<button type="button" class="cal-chip is-exam ad-all" data-exday="'+iso(date)+'" aria-label="See all '+dayExams.length+' exams">◷ '+dayExams.length+'<span class="ad-lbl"> exams</span></button>' : '')
         : dayExams.map(examChipHTML).join(""))+'</div>';
     });
     var gutter="";
@@ -458,6 +473,9 @@
     calEl().querySelectorAll("[data-exam]").forEach(function(node){
       node.addEventListener("click", function(e){ e.stopPropagation(); showExamPopover(node); });
     });
+    calEl().querySelectorAll("[data-exday]").forEach(function(node){
+      node.addEventListener("click", function(e){ e.stopPropagation(); showExamDayPopover(node); });
+    });
   }
 
   // ---- popover: view + direct actions (postpone / cancel / restore / delete) ----
@@ -541,27 +559,38 @@
     positionPopover(node);
     $("cp-x").addEventListener("click", hidePopover);
   }
+  // "+N" on a day with several exams: list every exam that day; tap one for its details.
+  function showExamDayPopover(node){
+    var dayISO=node.dataset.exday, list=(examsByDate()[dayISO]||[]).slice()
+      .sort(function(a,b){ return (nameById[a.student_id]||"").localeCompare(nameById[b.student_id]||""); });
+    if(!list.length) return;
+    popNode=node;
+    var pop=$("cal-pop"), dt=new Date(dayISO+"T00:00:00");
+    pop.innerHTML='<span class="cp-x" id="cp-x">×</span>'+
+      '<h4>'+list.length+' exams</h4>'+
+      '<div class="cp-row">'+DAY[(dt.getDay()+6)%7]+' '+dt.getDate()+' '+MON[dt.getMonth()]+' '+dt.getFullYear()+'</div>'+
+      '<div class="cp-exlist">'+list.map(function(ex){
+        var what=[ex.assessment_type,ex.subject].filter(Boolean).join(" · ")||"Exam";
+        return '<button type="button" class="cp-exitem" data-exam="'+esc(String(ex.id))+'">'+
+          '<b>'+esc(nameById[ex.student_id]||"—")+'</b><span>'+esc(what)+'</span></button>';
+      }).join("")+'</div>';
+    pop.style.display="block";
+    var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
+    positionPopover(node);
+    $("cp-x").addEventListener("click", hidePopover);
+    pop.querySelectorAll(".cp-exitem").forEach(function(btn){
+      btn.addEventListener("click", function(e){ e.stopPropagation(); showExamPopover(btn); popNode=node; positionPopover(node); });
+    });
+  }
   function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.remove("on"); popNode=null; }
   // After any write, the visible range (and whichever month a lesson may have moved
   // into/out of) needs fresh data — simplest correct fix is to drop the whole cache.
   function refreshAfterMutation(){ hidePopover(); lessonCache={}; ensureData(); }
-  // In-app confirm dialog → Promise<boolean>; dims the page instead of the browser's native confirm.
-  function confirmBox(msg, opts){
+  function confirmBox(msg, opts){   // → the app-wide dialog (TL.confirm); kept so existing calls read the same
     opts=opts||{};
-    return new Promise(function(resolve){
-      var bd=$("confirm-modal"), yes=$("confirm-yes"), no=$("confirm-no");
-      if(!bd){ resolve(window.confirm(msg)); return; }
-      $("confirm-title").textContent=opts.title||"Confirm";
-      $("confirm-msg").textContent=msg;
-      yes.textContent=opts.yes||"Confirm"; no.textContent=opts.no||"Cancel";
-      yes.className="btn "+(opts.danger?"btn-danger":"btn-primary");
-      function done(v){ bd.classList.remove("on"); yes.onclick=null; no.onclick=null; bd.onclick=null; resolve(v); }
-      yes.onclick=function(){ done(true); };
-      no.onclick=function(){ done(false); };
-      bd.onclick=function(e){ if(e.target===bd) done(false); };
-      bd.classList.add("on");
-    });
+    return TL.confirm({ title:opts.title||"Confirm", message:msg, confirmText:opts.yes||"Confirm", cancelText:opts.no||"Cancel", danger:!!opts.danger });
   }
+
   function splitAmt(rate,s,e,split){ var sp=(split&&split>1)?split:1; return Math.round(TL.amount(rate,s,e)/sp*100)/100; }
   // Amount for a changed lesson time. Prefer the stored rate/split (matches the Ledger); if a lesson
   // has no rate, scale the old amount by the new/old duration ratio so it never drops to zero.
@@ -575,7 +604,7 @@
       start_time:b.startHM, end_time:b.endHM, subject:b.subject, level:b.level, rate:b.rate, split:b.split||1,
       amount:splitAmt(b.rate,b.startHM,b.endHM,b.split), status:statusFor(b.dateISO,b.endHM), paid:false };
     var res=await window.sb.from("lessons").insert(row);
-    if(res.error){alert("Couldn't log: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't log: "+res.error.message);return;}
     refreshAfterMutation();
   }
 
@@ -602,6 +631,7 @@
     var btn=$("cal-log-btn"); if(!btn) return;
     var t=logTarget(), n=hidden.proj ? 0 : unloggedIn(t).length;   // hidden while "Not logged" is filtered out
     btn.hidden=!n;
+    guideStep(n);
     if(!n) return;
     $("cal-log-txt").textContent="Log "+n;
     btn.title=n+" lesson"+(n===1?"":"s")+" not logged "+t.when+" — tap to log";
@@ -611,6 +641,28 @@
       TL.coach("cal-log", btn, "<b>Log lessons</b><br>Logs every <b>Not logged</b> lesson on screen in one tap.");
     });
   }
+  // First-run guide, step 3: point at the Log chip; logging finishes setup.
+  var guideFinished=false, setupMode=false;
+  function guideStep(n){
+    if(!setupMode||guideFinished) return;
+    var btn=$("cal-log-btn"); if(btn) btn.classList.toggle("tg-hint", n>0);
+    if(n>0) TL.guide.card({step:3, title:"Tap \u201CLog "+n+"\u201D to confirm "+(n===1?"this lesson":"these lessons"),
+      text:"Dashed blocks are your weekly lessons, not confirmed yet. Logging confirms them, so you can mark them done and paid, and invoice them."});
+    else TL.guide.card({step:3, title:"Nothing to confirm on this screen",
+      text:"Use the arrows to go to a week with dashed (Not logged) lessons, then tap Log."});
+  }
+  function guideFinish(n, past){
+    if(!setupMode||guideFinished) return;
+    guideFinished=true; TL.guide.finish(); TL.store.remove("td_setup_started");   // Home won't repeat the finish line
+    var btn=$("cal-log-btn"); if(btn) btn.classList.remove("tg-hint");
+    TL.guide.card({final:true, done:"\u2713 "+n+" lesson"+(n===1?"":"s")+" confirmed. You\u2019re all set up!",
+      title:"What next?",
+      text:(past?(past===n?(n===1?"That past lesson is logged as taught and unpaid, so it shows in red. ":"Past lessons are logged as taught and unpaid, so they show in red. "):"Past lessons are logged as taught and unpaid (red). ")+
+              "When the parent pays, mark them paid in <b>Money</b>. ":"When a parent pays, mark the lessons paid in <b>Money</b>. ")+
+           "Each week, tap Log on the calendar to confirm that week\u2019s lessons.",
+      href:"home", cta:"Go to Home"});
+  }
+
   // One tip at a time: if another tip is open, wait for its "Got it" before showing the next.
   function whenNoTip(fn){
     var open=document.querySelector(".td-tip");
@@ -638,8 +690,9 @@
     btn.disabled=true;
     var res=await window.sb.from("lessons").insert(rows);
     btn.disabled=false;
-    if(res.error){ alert("Couldn't log: "+res.error.message); return; }
+    if(res.error){ TL.alert("Couldn't log: "+res.error.message); return; }
     refreshAfterMutation();
+    guideFinish(rows.length, rows.filter(function(x){ return x.status!=="scheduled"; }).length);
   }
 
   // ---- add a one-off lesson straight from the calendar ----
@@ -717,13 +770,13 @@
   }
   async function doRestore(b){
     var res=await window.sb.from("lessons").update({status:statusFor(b.dateISO,hhmm2(b.endMin)),compensation:null}).eq("id",b.id);
-    if(res.error){alert("Couldn't restore: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't restore: "+res.error.message);return;}
     refreshAfterMutation();
   }
   async function doDelete(id){
     if(!(await confirmBox("Delete this lesson permanently? Use Cancel instead if you just want to void it.", {title:"Delete lesson", yes:"Delete", danger:true}))) return;
     var res=await window.sb.from("lessons").delete().eq("id",id);
-    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't delete: "+res.error.message);return;}
     refreshAfterMutation();
   }
   function showPostponeForm(b){
@@ -744,7 +797,7 @@
   }
   // Undo a postpone: move the lesson back to its recurring slot's original date + time.
   async function doRevert(b){
-    if(!b.slotId||!b.slotDate){ alert("This lesson has no original slot to revert to."); return; }
+    if(!b.slotId||!b.slotDate){ TL.alert("This lesson has no original slot to revert to."); return; }
     var slot=slots.filter(function(s){return String(s.id)===String(b.slotId);})[0];
     // Follow the planner: land on the slot's CURRENT weekday + time, anchored on the
     // occurrence week (slot_date). So if the slot's day/time changed, revert tracks it —
@@ -760,7 +813,7 @@
     if(!(await confirmBox("Revert this lesson to its original slot — "+date+", "+start+"–"+end+"?", {title:"Revert to slot", yes:"Revert"}))) return;
     var amount=amtFor(slot?slot.rate:b.rate, slot?slot.split:b.split, b.amount, b.startMin, b.endMin, start, end);
     var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,amount:amount,status:statusFor(date,end),postponed:false}).eq("id",b.id);
-    if(res.error){ alert("Couldn't revert: "+res.error.message); return; }
+    if(res.error){ TL.alert("Couldn't revert: "+res.error.message); return; }
     refreshAfterMutation();
   }
   async function savePostpone(b){
@@ -780,17 +833,25 @@
   function gTokenValid(){ return !!gToken && Date.now()<gTokenExp; }   // reuse an unexpired token, no fresh Google popup
 
   function gcalConfigured(){ return !!GCLIENT; }
-  function gcalConnected(){ try{ return localStorage.getItem("tl_gcal_connected")==="1"; }catch(e){ return false; } }
-  function gcalListGranted(){ try{ return localStorage.getItem("tl_gcal_list")==="1"; }catch(e){ return false; } }
-  function gcalChosen(){ try{ return localStorage.getItem("tl_gcal_chosen")==="1"; }catch(e){ return false; } }
-  function gcalTarget(){ try{ return localStorage.getItem("tl_gcal_calendar")||"primary"; }catch(e){ return "primary"; } }
+  function gcalConnected(){ try{ return TL.store.get("tl_gcal_connected")==="1"; }catch(e){ return false; } }
+  function gcalListGranted(){ try{ return TL.store.get("tl_gcal_list")==="1"; }catch(e){ return false; } }
+  function gcalChosen(){ try{ return TL.store.get("tl_gcal_chosen")==="1"; }catch(e){ return false; } }
+  function gcalTarget(){ try{ return TL.store.get("tl_gcal_calendar")||"primary"; }catch(e){ return "primary"; } }
   function gStatus(t,cls){ var el=$("gcal-status"); if(el){ el.textContent=t||""; el.className="gcal-status"+(cls?" "+cls:""); } }
-  function gcalCals(){ try{ return JSON.parse(localStorage.getItem("tl_gcal_cals")||"[]")||[]; }catch(e){ return []; } }
+  function gcalCals(){ try{ return JSON.parse(TL.store.get("tl_gcal_cals")||"[]")||[]; }catch(e){ return []; } }
+  // Safety: the Google account this tutor linked (its primary calendar id = the account email), and the
+  // account the current token belongs to. Sync only when they match, so one tutor can never write into
+  // (or clean up) another person's Google Calendar from a shared browser.
+  var gTokenAccount=null;
+  function gcalAccount(){ return TL.store.get("tl_gcal_account")||""; }
+  function gOwnerOf(ev){ try{ return ev.extendedProperties.private.tlOwner||""; }catch(e){ return ""; } }
+  // Revoke the live token on sign-out (app.js calls this).
+  window.TD_GCAL_REVOKE=function(){ try{ if(gToken && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(gToken, function(){}); }catch(e){} gToken=null; gTokenExp=0; };
   // A connection attempt failed — drop back to the Connect step (clear the loaded list so the
   // dropdown gives way to the Connect button). Keep the chosen calendar so reconnect resumes it.
   function gcalFail(msg){
-    gToken=null; gTokenExp=0;
-    try{ localStorage.removeItem("tl_gcal_connected"); localStorage.removeItem("tl_gcal_list"); localStorage.removeItem("tl_gcal_cals"); }catch(e){}
+    gToken=null; gTokenExp=0; gTokenAccount=null;
+    try{ TL.store.remove("tl_gcal_connected"); TL.store.remove("tl_gcal_list"); TL.store.remove("tl_gcal_cals"); }catch(e){}
     updateGcalUI();
     gStatus(msg||"Couldn't connect to Google — click Connect to try again.","err");
   }
@@ -847,7 +908,7 @@
           if(resp && resp.access_token){
             gToken=resp.access_token;
             gTokenExp=Date.now()+(((+resp.expires_in||3600)*1000)-60000);   // reuse until ~1min before expiry
-            try{localStorage.setItem("tl_gcal_connected","1");}catch(e){}
+            try{TL.store.set("tl_gcal_connected","1");}catch(e){}
             updateGcalUI(); populateCalendars();
             if(gUserInit){                                              // only sync on a deliberate click, not silent load
               gUserInit=false;
@@ -893,11 +954,14 @@
       }
       if(res.status===401){ gcalFail("Google session expired — click Connect to reconnect."); return; }
       if(!res.ok){ return; }
-      try{ localStorage.setItem("tl_gcal_list","1"); }catch(e){}
+      try{ TL.store.set("tl_gcal_list","1"); }catch(e){}
       var d=await res.json();
+      var prim=(d.items||[]).filter(function(c){ return c.primary; })[0];
+      gTokenAccount=(prim&&prim.id)||null;
+      if(gTokenAccount && !gcalAccount()) TL.store.set("tl_gcal_account", gTokenAccount);   // first link: remember the account
       var items=(d.items||[]).filter(function(c){ return c.accessRole==="owner"||c.accessRole==="writer"; })
         .map(function(c){ return { v:c.primary?"primary":c.id, l:c.primary?"Main calendar":(c.summary||c.id) }; });
-      try{ localStorage.setItem("tl_gcal_cals", JSON.stringify(items)); }catch(e){}   // remember for next load
+      try{ TL.store.set("tl_gcal_cals", JSON.stringify(items)); }catch(e){}   // remember for next load
       fillDropdown(items);
       updateGcalUI();   // list just arrived → re-render so the Connect button gives way to the picker
     }catch(e){}
@@ -913,7 +977,7 @@
       start:{ dateTime:l.lesson_date+"T"+hhmm(l.start_time)+":00", timeZone:GTZ },
       end:{ dateTime:l.lesson_date+"T"+hhmm(l.end_time)+":00", timeZone:GTZ },
       reminders:{ useDefault:false },                      // no notification spam on re-create
-      extendedProperties:{ private:{ tlengSync:"1", tlLessonId:String(l.id) } } };  // tag + which lesson it mirrors
+      extendedProperties:{ private:{ tlengSync:"1", tlLessonId:String(l.id), tlOwner:String(userId) } } };  // tag + lesson + which TutorDeck tutor
     var loc=locById[l.student_id]; if(loc) e.location=loc;
     return e;
   }
@@ -959,19 +1023,25 @@
     var cal=gcalTarget(), w=monthWindow(when);
     gStatus("Syncing "+w.label+"…");
     var events=await listAppEvents(cal, w.tmin, w.tmax);
-    var byLesson={}, extra=[];                              // extra = duplicates or legacy events (no lesson id)
-    events.forEach(function(ev){ var lid=evLessonId(ev); if(lid && !byLesson[lid]) byLesson[lid]=ev; else extra.push(ev); });
+    // Only this tutor's events: tagged with their id, or untagged older events (adopted below only if they
+    // mirror one of this tutor's lessons — never deleted). Events tagged with another tutor are never touched.
+    var mine=events.filter(function(ev){ return gOwnerOf(ev)===String(userId); });
+    var legacy=events.filter(function(ev){ return !gOwnerOf(ev); });
+    var byLesson={}, extra=[];                              // extra = duplicates of this tutor's own events
+    mine.forEach(function(ev){ var lid=evLessonId(ev); if(lid && !byLesson[lid]) byLesson[lid]=ev; else extra.push(ev); });
     var ls=await window.sb.from("lessons")
       .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id,one_off")
       .gte("lesson_date", w.firstISO).lte("lesson_date", w.lastISO);
     if(ls.error) return { created:0, updated:0, deleted:0, skipped:0, fail:1 };
     var rows=(ls.data||[]).filter(function(l){ return l.status!=="cancelled"; });
+    var mineIds={}; rows.forEach(function(l){ mineIds[String(l.id)]=1; });
+    legacy.forEach(function(ev){ var lid=evLessonId(ev); if(lid && mineIds[lid] && !byLesson[lid]) byLesson[lid]=Object.assign({_legacy:true},ev); });
     var created=0, updated=0, deleted=0, skipped=0, fail=0, keep={};
     for(var i=0;i<rows.length;i++){
       var l=rows[i], want=gEvent(l), ev=byLesson[String(l.id)]; keep[String(l.id)]=1;
       try{
         if(!ev){ await gapi("POST","/calendars/"+encodeURIComponent(cal)+"/events", want); created++; }
-        else if(gFP(ev)!==gFP(want)){ await gapi("PUT","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(ev.id), want); updated++; }
+        else if(ev._legacy || gFP(ev)!==gFP(want)){ await gapi("PUT","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(ev.id), want); updated++; }
         else skipped++;
       }catch(e){ if(e&&e.code===401) throw e; fail++; }
     }
@@ -984,6 +1054,7 @@
   // you've logged for future months go too, while past months are left untouched.
   async function syncNow(){
     if(!gToken) return;
+    if(!(await gcalAccountOK())) return;
     if(!loadedStatic) await loadStatic();
     var now=new Date(), fromM=new Date(now.getFullYear(), now.getMonth(), 1);
     var q=await window.sb.from("lessons").select("lesson_date").gte("lesson_date", iso(fromM)).order("lesson_date",{ascending:false}).limit(1);
@@ -1003,6 +1074,22 @@
     var detail=parts.length?parts.join(", "):"already up to date";
     gStatus("Synced ✓ "+total+" lesson"+(total===1?"":"s")+" in "+secs+"s · "+detail+(fail?" · "+fail+" failed":""), "ok");
   }
+  // Make sure the Google account behind the token is the one this tutor linked. If it changed (another
+  // Google account is signed in on this browser), stop and ask before anything is written.
+  async function gcalAccountOK(){
+    if(!gTokenAccount) await populateCalendars();
+    var linked=gcalAccount();
+    if(!gTokenAccount){ gStatus("Couldn't confirm which Google account this is — click Connect to try again.","err"); return false; }
+    if(!linked){ TL.store.set("tl_gcal_account", gTokenAccount); return true; }
+    if(linked===gTokenAccount) return true;
+    var ok=await confirmBox("You're signed in to Google as "+gTokenAccount+", but this TutorDeck account syncs to "+linked+". Switch your lesson sync to "+gTokenAccount+"?",
+      { title:"Different Google account", yes:"Switch account", no:"Cancel" });
+    if(!ok){ gStatus("Sync cancelled. Sign in to Google as "+linked+", then press Sync again.","err"); return false; }
+    TL.store.set("tl_gcal_account", gTokenAccount);
+    TL.store.remove("tl_gcal_chosen"); TL.store.remove("tl_gcal_calendar");      // the old calendar choice was for the other account
+    updateGcalUI(); gStatus("Now choose which calendar to sync into.");
+    return false;
+  }
   // Switch which calendar we sync into: wipe ALL our events off the old calendar, then rebuild
   // the current month on the new one.
   async function setGcalTarget(raw){
@@ -1010,16 +1097,16 @@
     var newT=(raw||"").trim(), oldT=gcalTarget(), first=!gcalChosen();
     if(!gToken){
       // No live token this session — remember the choice, then get a token and sync to it.
-      try{ localStorage.setItem("tl_gcal_calendar", newT); localStorage.setItem("tl_gcal_chosen","1"); }catch(e){}
+      try{ TL.store.set("tl_gcal_calendar", newT); TL.store.set("tl_gcal_chosen","1"); }catch(e){}
       updateGcalUI(); gStatus("Connecting to Google…");
       connectGcal();                                          // gUserInit=true → syncNow() to the chosen calendar after the token
       return;
     }
     if(!first && newT!==oldT){
       gStatus("Moving to the new calendar…");
-      try{ var evs=await listAppEvents(oldT); for(var i=0;i<evs.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(evs[i].id)); }catch(e){} } }catch(e){}
+      try{ var evs=(await listAppEvents(oldT)).filter(function(ev){ return gOwnerOf(ev)===String(userId); }); for(var i=0;i<evs.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(evs[i].id)); }catch(e){} } }catch(e){}
     }
-    try{ localStorage.setItem("tl_gcal_calendar", newT); localStorage.setItem("tl_gcal_chosen","1"); }catch(e){}
+    try{ TL.store.set("tl_gcal_calendar", newT); TL.store.set("tl_gcal_chosen","1"); }catch(e){}
     updateGcalUI();
     syncNow();
   }
@@ -1027,7 +1114,7 @@
   // ---- nav / mode ----
   function setMode(m){
     mode=m;
-    try{ localStorage.setItem("tl_cal_mode",m); }catch(e){}
+    try{ TL.store.set("tl_cal_mode",m); }catch(e){}
     ensureData();
   }
   function stepAnchor(a, dir){
@@ -1075,7 +1162,7 @@
       var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ io.disconnect(); show(); } }, { threshold:1 });
       io.observe(key);
     }
-    var seen=true; try{ seen=!!localStorage.getItem("td_tip_cal-swipe"); }catch(e){}
+    var seen=true; try{ seen=!!TL.store.get("td_tip_cal-swipe"); }catch(e){}
     if(!isPhone() || seen){ filters(); return; }
     var cur=document.querySelector("#cal-vp .cal-pane:nth-child(2)");
     var anchor=(cur && (cur.querySelector(".cal-head")||cur.querySelector(".dhead")||cur.querySelector(".cal-mhead"))) || $("cal");
@@ -1095,7 +1182,7 @@
         e.stopPropagation();
         if(hidden[cat]) delete hidden[cat]; else hidden[cat]=true;
         btn.classList.toggle("off", !!hidden[cat]); btn.setAttribute("aria-pressed", hidden[cat]?"false":"true");
-        try{ localStorage.setItem("tl_cal_hidden", JSON.stringify(hidden)); }catch(e2){}
+        try{ TL.store.set("tl_cal_hidden", JSON.stringify(hidden)); }catch(e2){}
         render();   // re-filter; no refetch needed
       });
     });
@@ -1103,9 +1190,9 @@
 
   function init(user){
     userId=user.id; anchor=new Date();
-    try{ mode=localStorage.getItem("tl_cal_mode")||""; }catch(e){ mode=""; }
+    try{ mode=TL.store.get("tl_cal_mode")||""; }catch(e){ mode=""; }
     if(!mode) mode="week";   // default everywhere; the user's last choice is remembered (tl_cal_mode)
-    try{ hidden=JSON.parse(localStorage.getItem("tl_cal_hidden")||"{}")||{}; }catch(e){ hidden={}; }
+    try{ hidden=JSON.parse(TL.store.get("tl_cal_hidden")||"{}")||{}; }catch(e){ hidden={}; }
     $("cal-prev").addEventListener("click", function(){ go(-1); });
     $("cal-next").addEventListener("click", function(){ go(1); });
     $("cal-today").addEventListener("click", goToday);

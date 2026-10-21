@@ -50,6 +50,7 @@
     $("save").disabled = false;
     if (res.error) { msg.textContent = res.error.message; msg.className = "msg err"; return; }
     msg.textContent = "Saved ✓"; msg.className = "msg ok";
+    TL.store.set("td_brand", (biz || "").trim() || "TutorDeck");   // the top bar shows the new name on the next page straight away
   }
 
   // ---- Two-factor (TOTP) ----
@@ -101,7 +102,7 @@
     refreshMfa();
   }
   async function mfaDisable() {
-    if (!confirm("Turn off two-factor authentication? You'll sign in with just your password.")) return;
+    if (!(await TL.confirm({ title: "Turn off two-factor authentication?", message: "You\u2019ll sign in with just your password, which makes your account easier to break into.", confirmText: "Turn off", danger: true }))) return;
     $("mfa-disable").disabled = true;
     try {
       var r = await window.sb.auth.mfa.listFactors();
@@ -137,8 +138,9 @@
 
   async function deleteAccount(){
     var m=$("data-msg");
-    if(!confirm("This permanently deletes your account and ALL your data (students, lessons, invoices, settings). This cannot be undone. Continue?"))return;
-    var typed=prompt("To confirm, type DELETE below:");
+    var typed=await TL.prompt({title:"Delete your account?",
+      message:"This permanently deletes your account and ALL your data: students, lessons, invoices and settings. It can\u2019t be undone.\n\nTo confirm, type DELETE below.",
+      placeholder:"DELETE", match:"DELETE", confirmText:"Delete account", danger:true});
     if(typed!=="DELETE"){ m.textContent="Deletion cancelled."; m.className="msg"; return; }
     $("delete-btn").disabled=true; m.textContent="Deleting…"; m.className="msg";
     try{
@@ -150,8 +152,8 @@
       var res=await window.sb.functions.invoke("delete-account");
       if(res.error) throw res.error;
 
-      try{ await window.sb.auth.signOut(); }catch(e){}
-      alert("Your account and all data have been permanently deleted.");
+      try{ TL.store.clear(""); }catch(e){} try{ await window.sb.auth.signOut(); }catch(e){}
+      await TL.alert({title:"Account deleted",message:"Your account and all your data have been permanently deleted."});
       location.replace("login");
     }catch(e){
       // Fallback if the Edge Function isn't deployed: wipe the data rows directly.
@@ -160,8 +162,9 @@
         await window.sb.from("invoices").delete().eq("tutor_id",userId);
         await window.sb.from("students").delete().eq("tutor_id",userId);  // cascades lessons, slots, exams
         await window.sb.from("profiles").delete().eq("id",userId);
+        try{ TL.store.clear(""); }catch(e){}
         await window.sb.auth.signOut();
-        alert("Your data has been deleted and you've been signed out.\n\n(Note: the account login record couldn't be removed automatically — deploy the delete-account function for full removal.)");
+        await TL.alert("Your data has been deleted and you've been signed out.\n\n(Note: the account login record couldn't be removed automatically — deploy the delete-account function for full removal.)");
         location.replace("login");
       }catch(e2){
         m.textContent="Couldn't complete deletion: "+(e2.message||e2); m.className="msg err";

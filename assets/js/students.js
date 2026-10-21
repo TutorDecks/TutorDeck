@@ -15,12 +15,10 @@
       $("m-name").value=st.name||"";
       $("m-level").value=st.level||"";$("m-contact").value=st.contact||"";$("m-location").value=st.location||"";$("m-recipient").value=st.recipient_name||"";$("m-notes").value=st.notes||"";
       if($("m-enddate"))$("m-enddate").value=st.end_date||"";
-      if($("m-paybank"))$("m-paybank").checked=!!st.pay_by_bank;
     }else{
       editingId=null;
       $("m-title").textContent="Add student";$("m-save").textContent="Save student";
       ["m-name","m-level","m-contact","m-location","m-recipient","m-notes","m-enddate"].forEach(function(id){if($(id))$(id).value="";});
-      if($("m-paybank"))$("m-paybank").checked=false;
     }
     $("m-name").focus();
   }
@@ -32,15 +30,23 @@
       location:$("m-location").value.trim()||null,
       recipient_name:$("m-recipient").value.trim()||null,
       end_date:($("m-enddate")&&$("m-enddate").value)||null,
-      pay_by_bank:!!($("m-paybank")&&$("m-paybank").checked),
       notes:$("m-notes").value.trim()||null};
     $("m-save").disabled=true;
     var res=editingId
       ? await window.sb.from("students").update(fields).eq("id",editingId)
-      : await window.sb.from("students").insert(Object.assign({tutor_id:userId},fields));
+      : await window.sb.from("students").insert(Object.assign({tutor_id:userId},fields)).select("id").single();
     $("m-save").disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
+    var wasNew=!editingId;
     openModal(false);load();
+    if(wasNew && TL.guide && TL.guide.on){
+      var hint=document.querySelector("#modal .tg-inform"); if(hint) hint.remove();
+      var nid=res.data&&res.data.id;
+      TL.guide.card({step:2, done:"\u2713 "+esc(name)+" added",
+        title:"Set "+esc(name)+"\u2019s weekly lesson time",
+        text:"Pick the day, time and hourly rate. TutorDeck repeats it every week.",
+        href:"planner?guide=1"+(nid?"&student="+encodeURIComponent(nid):""), cta:"Set lesson time"});
+    }
   }
 
   // ---------- merge ----------
@@ -75,10 +81,11 @@
 
   // ---------- remove ----------
   async function remove(id,name){
-    if(!confirm("Remove "+name+"?\n\nThis permanently DELETES their lessons, slots and exams too. "+
-                "To combine duplicates without losing history, use Merge instead."))return;
+    if(!(await TL.confirm({title:"Remove "+name+"?",
+      message:"This permanently deletes "+name+"\u2019s lessons (including their paid and unpaid records), weekly slots and exams. It can\u2019t be undone.\n\nTo keep their history, use Discontinue instead. To combine a duplicate, use Merge.",
+      confirmText:"Remove student", danger:true})))return;
     var res=await window.sb.from("students").delete().eq("id",id);
-    if(res.error){alert("Couldn't remove: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't remove: "+res.error.message);return;}
     load();
   }
   async function setActive(id,active){
@@ -88,7 +95,7 @@
     var fields={active:active};
     if(active && cur && TL.isEnded(cur.end_date)) fields.end_date=null;
     var res=await window.sb.from("students").update(fields).eq("id",id);
-    if(res.error){alert("Couldn't update: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't update: "+res.error.message);return;}
     // Keep the weekly schedule in step: discontinuing removes the student's recurring slots from the
     // Planner/Calendar (both filter active slots); reactivating brings them back. Lessons are untouched.
     try{ await window.sb.from("recurring_slots").update({active:active}).eq("student_id",id); }
@@ -216,6 +223,16 @@
     students=res.data||[];
     fillStuFilters();
     renderRoster();
+    guideStart();
+  }
+  // First-run guide, step 1: open the Add-student form straight away (once per visit).
+  var guided=false;
+  function guideStart(){
+    if(guided||!(TL.guide&&TL.guide.on))return; guided=true;
+    TL.guide.card({step:1, title:"Add your first student",
+      text:"Just a name is enough to start. You can fill in the rest any time."});
+    openModal(true,null);
+    TL.guide.formHint($("m-title"), "Step 1 of 3 \u00b7 Just a name is enough to start. Fill in the rest any time.");
   }
 
   function init(user){

@@ -189,7 +189,7 @@ window.TL = (function () {
     }
     applyClient();
     // First-time tip on whichever page a new user opens first (not over the Calendar's own first tip).
-    var calTipsPending = false; try { calTipsPending = active === "calendar" && !localStorage.getItem("td_tip_cal-filters"); } catch (e) {}
+    var calTipsPending = active === "calendar" && !store.get("td_tip_cal-filters");
     if (!CLIENT && !calTipsPending)
       setTimeout(function () { coach("client-view", document.getElementById("td-cv"),
         "<b>Client view</b><br>Student or parent nearby? Tap this eye to hide all money instantly. Tap it again to bring it back.", { above: true }); }, 700);
@@ -240,6 +240,34 @@ window.TL = (function () {
     setTimeout(function () { mo.disconnect(); document.querySelectorAll("[data-sk]").forEach(function (e) { e.removeAttribute("data-sk"); }); }, 15000);
   }
 
+  // ---- per-user browser storage ----
+  // Several tutors can use the same browser (and a tester signs up next to their own account), so any
+  // saved preference or state that belongs to a tutor is keyed by their auth user id: "td:<uid>:<key>".
+  // Device-wide on purpose: td_client (Client view hides money on THIS screen). sessionStorage td_stab_<studentId>
+  // is already unique per student and per tab.
+  var UID = null;
+  function skey(k) { return UID ? "td:" + UID + ":" + k : null; }
+  var store = {
+    get: function (k) { var s = skey(k); if (!s) return null; try { return localStorage.getItem(s); } catch (e) { return null; } },
+    set: function (k, v) { var s = skey(k); if (!s) return; try { localStorage.setItem(s, String(v)); } catch (e) {} },
+    remove: function (k) { var s = skey(k); if (!s) return; try { localStorage.removeItem(s); } catch (e) {} },
+    // remove this tutor's keys that start with prefix ("" = all of this tutor's keys)
+    clear: function (prefix) {
+      var base = skey(prefix || ""); if (!base) return;
+      try { for (var i = localStorage.length - 1; i >= 0; i--) { var k = localStorage.key(i); if (k && k.indexOf(base) === 0) localStorage.removeItem(k); } } catch (e) {}
+    }
+  };
+  // Old builds kept these unscoped, so a second account in the same browser inherited the first one's
+  // state (e.g. "Not logged" hidden, Google Calendar "connected"). Nobody can tell whose they were — drop them.
+  (function dropLegacy() {
+    try {
+      var old = ["td_onboarded", "tl_cal_hidden", "tl_cal_mode", "tl_dash_mode", "tl_fin_sub", "tl_ledger_mode", "tl_period",
+                 "tl_gcal_connected", "tl_gcal_list", "tl_gcal_chosen", "tl_gcal_calendar", "tl_gcal_cals"];
+      old.forEach(function (k) { localStorage.removeItem(k); });
+      for (var i = localStorage.length - 1; i >= 0; i--) { var k = localStorage.key(i); if (k && k.indexOf("td_tip_") === 0) localStorage.removeItem(k); }
+    } catch (e) {}
+  })();
+
   async function requireAuth(active, init) {
     var hr = new Date().getHours();
     var meta = { dashboard: [hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening",
@@ -263,6 +291,7 @@ window.TL = (function () {
     var res = await window.sb.auth.getSession();
     var session = res.data && res.data.session;
     if (!session) { location.replace("login"); return; }
+    UID = session.user.id;
     isOwner = session.user.id === OWNER_ID;
     window.TL_IS_OWNER = isOwner; window.TL_OWNER_ID = OWNER_ID;
     // If two-factor is enabled but not yet satisfied this session (e.g. after a
@@ -273,16 +302,34 @@ window.TL = (function () {
         location.replace("login?mfa=1"); return;
       }
     } catch (e) { /* MFA unavailable — proceed as normal */ }
-    // Brand the sidebar with this tutor's business name; fall back to the default.
-    try {
-      var pr = await window.sb.from("profiles").select("business_name").eq("id", session.user.id).single();
-      var bn = pr.data && pr.data.business_name && pr.data.business_name.trim();
-      brandName = bn || DEFAULT_BRAND;
-    } catch (e) { brandName = DEFAULT_BRAND; }
+    // Brand the top bar with this tutor's business name. Draw the page straight away with the name we saw
+    // last time on this browser (no blank screen while the profile loads); fix it up if it has changed.
+    // First visit on a browser: wait for the profile as before.
+    var profileP = window.sb.from("profiles").select("business_name").eq("id", session.user.id).single()
+      .then(function (pr) { var bn = pr && pr.data && pr.data.business_name && pr.data.business_name.trim(); return bn || DEFAULT_BRAND; },
+            function () { return DEFAULT_BRAND; });
+    var cachedBrand = store.get("td_brand");
+    var greet = meta[0];
+    function heroTitle(name) {
+      return (active === "dashboard" && name && name !== DEFAULT_BRAND)
+        ? '<span class="hi-eyebrow">' + greet + '</span><span class="hi-name">' + esc(name) + '</span>' : greet;
+    }
+    if (cachedBrand === null) { brandName = await profileP; store.set("td_brand", brandName); }
+    else {
+      brandName = cachedBrand || DEFAULT_BRAND;
+      profileP.then(function (fresh) {
+        store.set("td_brand", fresh);
+        if (fresh === brandName) return;
+        brandName = fresh;
+        var who = document.querySelector(".tn-who b"); if (who) who.textContent = fresh;
+        var av = document.getElementById("tl-acct"); if (av) { av.title = fresh; av.textContent = monogram(fresh); }
+        var ms = document.querySelector(".ms-brand b"); if (ms) ms.textContent = fresh;
+        var h1 = document.querySelector(".topbar h1"); if (h1 && active === "dashboard") h1.innerHTML = heroTitle(fresh);
+      });
+    }
     // Home greets the tutor by their business name ("Good afternoon, Raphael Tuition")
     // Apple-style hero: small grey greeting over the business name in large, heavy type.
-    if (active === "dashboard" && brandName && brandName !== DEFAULT_BRAND)
-      meta[0] = '<span class="hi-eyebrow">' + meta[0] + '</span><span class="hi-name">' + esc(brandName) + '</span>';
+    meta[0] = heroTitle(brandName);
     mountShell(active, session.user.email, meta[0], meta[1]);
     skWatch();
     if (typeof init === "function") init(session.user);
@@ -293,21 +340,84 @@ window.TL = (function () {
   // outside or a swipe never silently throws away what you've typed. (The ✕ was retired in v202.)
   function formFields(m) { return Array.prototype.slice.call(m.querySelectorAll("input,select,textarea")); }
   function formSnap(m) { return formFields(m).map(function (f) { return f.type === "checkbox" || f.type === "radio" ? f.checked : f.value; }).join("\u0001"); }
+  // "More details" folds: open when something inside is already filled in (editing), closed otherwise.
+  function openFilledMore(m) {
+    m.querySelectorAll("details.more-fields").forEach(function (d) {
+      d.open = Array.prototype.some.call(d.querySelectorAll("input,select,textarea"), function (f) {
+        if (f.type === "checkbox" || f.type === "radio") return f.checked !== f.defaultChecked;
+        if (f.tagName === "SELECT" || f.disabled || f.hasAttribute("data-autofill")) return false;   // auto-filled (e.g. level) doesn't count
+        return f.value.trim() !== "" && f.value !== f.defaultValue;
+      });
+    });
+  }
   function formClose(bd) {   // use the form's own Cancel/Close button so each page's close logic runs
     var btn = Array.prototype.slice.call(bd.querySelectorAll(".modal-actions .btn")).filter(function (b) { return /^(cancel|close)$/i.test(b.textContent.trim()); })[0];
     if (btn) btn.click(); else bd.classList.remove("on");
   }
+  // ---- In-app dialogs: ONE component for every confirm / alert / prompt (no browser pop-ups) ----
+  // TL.confirm({ title, message, confirmText, cancelText, danger }) → Promise<boolean>
+  // TL.alert(message | { title, message, confirmText })            → Promise<void>
+  // TL.prompt({ title, message, placeholder, confirmText, danger, match }) → Promise<string|null>
+  //   (match: the confirm button stays disabled until the typed text equals it, e.g. "DELETE")
+  // Esc or a tap on the dimmed backdrop = Cancel. Enter in a text box = confirm; otherwise Enter presses the
+  // focused button. Focus starts on Cancel for destructive (danger) dialogs, on the main button otherwise,
+  // and stays inside the dialog (Tab loops). Messages are plain text; line breaks are kept.
+  var dlgQueue = Promise.resolve();
+  function dialog(o) {
+    var run = function () { return new Promise(function (resolve) {
+      var prev = document.activeElement, isPrompt = !!o.prompt, hasCancel = o.cancelText !== false;
+      var wrap = document.createElement("div");
+      wrap.className = "td-dlg";
+      wrap.innerHTML = '<div class="td-dlg-box' + (o.danger ? ' danger' : '') + '" role="alertdialog" aria-modal="true" aria-labelledby="td-dlg-t" aria-describedby="td-dlg-m">' +
+        '<h2 class="td-dlg-t" id="td-dlg-t"></h2><p class="td-dlg-m" id="td-dlg-m"></p>' +
+        (isPrompt ? '<input class="td-dlg-in" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">' : '') +
+        '<div class="td-dlg-acts">' + (hasCancel ? '<button type="button" class="btn" data-no></button>' : '') +
+        '<button type="button" class="btn ' + (o.danger ? 'btn-danger' : 'btn-primary') + '" data-yes></button></div></div>';
+      wrap.querySelector(".td-dlg-t").textContent = o.title || "";
+      if (!o.title) wrap.querySelector(".td-dlg-t").remove();
+      wrap.querySelector(".td-dlg-m").textContent = o.message || "";
+      var yesB = wrap.querySelector("[data-yes]"), noB = wrap.querySelector("[data-no]"), inp = wrap.querySelector(".td-dlg-in");
+      yesB.textContent = o.confirmText || "OK";
+      if (noB) noB.textContent = o.cancelText || "Cancel";
+      if (inp) { inp.placeholder = o.placeholder || ""; if (o.match) { yesB.disabled = true; inp.addEventListener("input", function () { yesB.disabled = inp.value.trim() !== o.match; }); } }
+      document.body.appendChild(wrap);
+      document.body.classList.add("td-dlg-open");
+      function done(ok) {
+        document.removeEventListener("keydown", onKey, true);
+        wrap.remove();
+        if (!document.querySelector(".td-dlg")) document.body.classList.remove("td-dlg-open");
+        try { if (prev && prev.focus) prev.focus({ preventScroll: true }); } catch (e) {}
+        resolve(isPrompt ? (ok ? inp.value.trim() : null) : ok);
+      }
+      function onKey(e) {
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(false); }
+        else if (e.key === "Enter" && (document.activeElement === inp || !document.activeElement || document.activeElement === document.body)) {
+          e.preventDefault(); if (!yesB.disabled) done(true);
+        } else if (e.key === "Tab") {                      // keep focus inside the dialog
+          var f = Array.prototype.filter.call(wrap.querySelectorAll("input,button"), function (x) { return !x.disabled; });
+          if (!f.length) return;
+          var i = f.indexOf(document.activeElement);
+          if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+          else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+        }
+      }
+      document.addEventListener("keydown", onKey, true);
+      yesB.addEventListener("click", function () { done(true); });
+      if (noB) noB.addEventListener("click", function () { done(false); });
+      wrap.addEventListener("click", function (e) { if (e.target === wrap) done(!hasCancel); });   // backdrop = Cancel (or OK for a plain notice)
+      setTimeout(function () { (inp || (o.danger && noB) || yesB).focus(); }, 30);
+    }); };
+    var p = dlgQueue.then(run, run);                      // one at a time
+    dlgQueue = p.catch(function () {});
+    return p;
+  }
+  function tlConfirm(o) { return dialog(Object.assign({ confirmText: "OK" }, o)).then(function (v) { return !!v; }); }
+  function tlAlert(o) { if (typeof o === "string") o = { message: o }; return dialog(Object.assign({ confirmText: "OK", cancelText: false }, o)).then(function () {}); }
+  function tlPrompt(o) { return dialog(Object.assign({ confirmText: "OK" }, o, { prompt: true })); }
+
   function askDiscard(yes) {
-    var d = document.createElement("div");
-    d.className = "td-discard";
-    d.innerHTML = '<div class="td-discard-box" role="alertdialog" aria-label="Discard changes?"><b>Discard changes?</b>' +
-      '<p>What you\u2019ve typed in this form will be lost.</p><div class="td-discard-acts">' +
-      '<button type="button" class="btn" data-k>Keep editing</button><button type="button" class="btn td-discard-yes" data-d>Discard</button></div></div>';
-    document.body.appendChild(d);
-    d.addEventListener("click", function (e) {
-      if (e.target.hasAttribute("data-d")) { d.remove(); yes(); }
-      else if (e.target === d || e.target.hasAttribute("data-k")) d.remove();
-    });
+    tlConfirm({ title: "Discard changes?", message: "What you\u2019ve typed in this form will be lost.",
+      confirmText: "Discard", cancelText: "Keep editing", danger: true }).then(function (ok) { if (ok) yes(); });
   }
   function enhanceForms() {
     document.querySelectorAll(".modal-backdrop").forEach(function (bd) {
@@ -351,9 +461,26 @@ window.TL = (function () {
       }
       m.addEventListener("touchend", endDrag, { passive: true });
       m.addEventListener("touchcancel", endDrag, { passive: true });
+      // Save pressed with something missing: the page shows a red .msg — make it impossible to miss.
+      // Outline the first empty required field ([data-req]) in red, scroll to it and focus it;
+      // otherwise (e.g. end before start) scroll the message itself into view.
+      m.querySelectorAll(".msg").forEach(function (msgEl) {
+        new MutationObserver(function () {
+          if (!msgEl.classList.contains("err") || !msgEl.textContent.trim()) return;
+          var miss = Array.prototype.filter.call(m.querySelectorAll("[data-req]"), function (f) { return !String(f.value || "").trim(); })[0];
+          if (miss) {
+            miss.classList.add("invalid");
+            var d = miss.closest("details"); if (d) d.open = true;
+            miss.scrollIntoView({ block: "center", behavior: "smooth" });
+            try { miss.focus({ preventScroll: true }); } catch (e) {}
+          } else msgEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }).observe(msgEl, { attributes: true, attributeFilter: ["class"], childList: true });
+      });
+      m.addEventListener("input", function (e) { if (e.target.classList) e.target.classList.remove("invalid"); });
+      m.addEventListener("change", function (e) { if (e.target.classList) e.target.classList.remove("invalid"); });
       // remember the form as it opened, to know later whether anything was typed
       new MutationObserver(function () {
-        if (bd.classList.contains("on")) { if (!bd._open) { bd._open = true; setTimeout(function () { bd._snap = formSnap(m); m.scrollTop = 0; }, 0); } }
+        if (bd.classList.contains("on")) { if (!bd._open) { bd._open = true; setTimeout(function () { m.querySelectorAll(".invalid").forEach(function (x) { x.classList.remove("invalid"); }); openFilledMore(m); bd._snap = formSnap(m); m.scrollTop = 0; }, 0); } }
         else bd._open = false;
       }).observe(bd, { attributes: true, attributeFilter: ["class"] });
       // a tap outside: close if nothing changed, otherwise ask first (runs before the page's own handler)
@@ -372,10 +499,40 @@ window.TL = (function () {
   // TL.coach(key, anchorEl, html): shows a small tip under anchorEl ONCE per browser; "Got it" dismisses it
   // for good (localStorage "td_tip_<key>"). Use for new or non-obvious features instead of permanent banners.
   // opts.above: open above the anchor (for buttons pinned to the bottom of the screen).
+  // ---- first-run guide (pages opened with ?guide=1 from Home's "Set up in 3 steps") ----
+  // One step at a time: the page opens the right form, then a small card says what's next.
+  // Until setup is finished (td_onboarded), the other one-time tips stay quiet.
+  var GUIDE = /[?&]guide=1(&|$)/.test(location.search);
+  function onboarded() { return store.get("td_onboarded") === "1"; }
+  function setOnboarded() { store.set("td_onboarded", "1"); }
+  // o: { step:1-3, done:"✓ line", title, text, href, cta }
+  function guideCard(o) {
+    var c = document.getElementById("content"); if (!c) return;
+    var g = document.getElementById("td-guide");
+    if (!g) { g = document.createElement("div"); g.id = "td-guide"; g.className = "td-guide"; c.insertBefore(g, c.firstChild); }
+    g.innerHTML =
+      (o.done ? '<div class="tg-done">' + o.done + '</div>' : '') +
+      '<div class="tg-row"><div class="tg-body">' +
+      (o.step ? '<span class="tg-step">Step ' + o.step + ' of 3</span>' : '') +
+      '<b class="tg-t">' + o.title + '</b>' + (o.text ? '<span class="tg-d">' + o.text + '</span>' : '') +
+      '</div>' + (o.href ? '<a class="btn btn-gold tg-btn" href="' + o.href + '">' + o.cta + '</a>' : '') + '</div>' +
+      (o.final ? '' : '<a class="tg-skip" href="home" data-skip>Skip setup</a>');
+    var sk = g.querySelector("[data-skip]"); if (sk) sk.addEventListener("click", setOnboarded);
+    g.classList.remove("tg-pop"); void g.offsetWidth; g.classList.add("tg-pop");
+  }
+
+  // A one-line hint inside a form (the guide card sits behind the form sheet on phones).
+  function guideFormHint(afterEl, text) {
+    if (!afterEl || afterEl.parentNode.querySelector(".tg-inform")) return;
+    var p = document.createElement("p"); p.className = "tg-inform"; p.textContent = text;
+    afterEl.insertAdjacentElement("afterend", p);
+  }
+
   function coach(key, anchor, html, opts) {
     opts = opts || {};
+    if (GUIDE || !onboarded()) return;   // new tutors: finish the 3-step setup first, then tips
     var k = "td_tip_" + key;
-    try { if (localStorage.getItem(k)) return; } catch (e) { return; }
+    if (store.get(k)) return;
     if (!anchor || !anchor.getBoundingClientRect || document.getElementById("td-tip-" + key)) return;
     var tip = document.createElement("div");
     tip.className = "td-tip"; tip.id = "td-tip-" + key; tip.setAttribute("role", "status");
@@ -400,12 +557,16 @@ window.TL = (function () {
     }
     place(); window.addEventListener("resize", place);
     tip.querySelector(".td-tip-ok").addEventListener("click", function () {
-      try { localStorage.setItem(k, "1"); } catch (e) {}
+      store.set(k, "1");
       window.removeEventListener("resize", place); tip.remove();
     });
   }
 
   async function signOut() {
+    // Google Calendar access belongs to this tutor's session only: forget the link on this browser,
+    // so the next person to sign in here can't sync into (or clean up) this tutor's Google Calendar.
+    store.clear("tl_gcal_");
+    try { if (window.TD_GCAL_REVOKE) window.TD_GCAL_REVOKE(); } catch (e) {}
     try { await window.sb.auth.signOut(); } catch (e) {}
     location.replace("login");
   }
@@ -487,6 +648,8 @@ window.TL = (function () {
     return "$" + (Number(n) || 0).toLocaleString("en-SG",
       { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
+  // "1 lesson", "2 lessons"
+  function plural(n, word, many) { return n + " " + (n === 1 ? word : (many || word + "s")); }
   function hoursBetween(start, end) {              // "17:00" → "18:30" = 1.5
     function m(t){ var p=t.split(":"); return (+p[0])*60+(+p[1]); }
     return (m(end) - m(start)) / 60;
@@ -568,6 +731,9 @@ window.TL = (function () {
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
+           store: store, uid: function () { return UID; }, plural: plural,
+           confirm: tlConfirm, alert: tlAlert, prompt: tlPrompt,
+           guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,
            todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd };

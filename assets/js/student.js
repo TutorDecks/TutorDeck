@@ -84,7 +84,6 @@
     $("e-location").value=student.location||"";
     $("e-recipient").value=student.recipient_name||"";$("e-notes").value=student.notes||"";
     if($("e-enddate"))$("e-enddate").value=student.end_date||"";
-    $("e-paybank").checked=!!student.pay_by_bank;
     $("e-msg").textContent="";$("e-msg").className="msg";
     $("e-modal").classList.add("on");
   }
@@ -98,8 +97,7 @@
       level:$("e-level").value.trim()||null,contact:$("e-contact").value.trim()||null,
       location:$("e-location").value.trim()||null,
       recipient_name:$("e-recipient").value.trim()||null,notes:$("e-notes").value.trim()||null,
-      end_date:($("e-enddate")&&$("e-enddate").value)||null,
-      pay_by_bank:$("e-paybank").checked
+      end_date:($("e-enddate")&&$("e-enddate").value)||null
     }).eq("id",sid);
     b.disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
@@ -175,7 +173,7 @@
     live.sort(function(a,b){return (b.lesson_date+(b.start_time||"")).localeCompare(a.lesson_date+(a.start_time||""));});
     var box=$("p-lessons");
     if(!live.length){box.innerHTML='<p class="muted" style="font-size:13.5px;margin:0">No lessons yet.</p>';$("p-lhint2").textContent="";return;}
-    $("p-lhint2").textContent=live.length+" lessons";
+    $("p-lhint2").textContent=TL.plural(live.length,"lesson");
     box.innerHTML='<div class="nlist">'+live.map(function(l){
       var has=l.topics||l.homework||l.remarks,bits="";
       if(l.topics)bits+='<div class="nbits"><span class="nk">Topics</span>'+esc(l.topics)+'</div>';
@@ -243,9 +241,9 @@
     closeLesson();load();
   }
   async function deleteLesson(){
-    if(!confirm("Delete this lesson permanently?"))return;
+    if(!(await TL.confirm({title:"Delete lesson",message:"Delete this lesson permanently? Use Cancel lesson instead if you just want to void it.",confirmText:"Delete",danger:true})))return;
     var res=await window.sb.from("lessons").delete().eq("id",lessonId);
-    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't delete: "+res.error.message);return;}
     closeLesson();load();
   }
 
@@ -453,9 +451,9 @@
     closeExam();load();
   }
   async function deleteExam(){
-    if(!examId||!confirm("Delete this exam?"))return;
+    if(!examId||!(await TL.confirm({title:"Delete this exam?",message:"Its date, topics and marks will be removed, and it drops off the progress chart.",confirmText:"Delete exam",danger:true})))return;
     var res=await window.sb.from("exams").delete().eq("id",examId);
-    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't delete: "+res.error.message);return;}
     closeExam();load();
   }
 

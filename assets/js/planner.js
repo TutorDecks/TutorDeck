@@ -19,7 +19,18 @@
     $("m-day").value="0";if(students.length)$("m-student").value=students[0].id;
   }
 
+  // Live price under the rate: "1.5 hours × S$50 = S$75 per lesson" (÷ students for a group).
+  function pricePreview(){
+    var el=$("m-price");if(!el)return;
+    var rate=parseFloat($("m-rate").value),sp=Math.max(1,parseInt($("m-split").value,10)||1),
+        s=$("m-start").value,e=$("m-end").value;
+    if(!(rate>=0)||!s||!e||e<=s){el.textContent="";return;}
+    var h=TL.hoursBetween(s,e), hTxt=(Math.round(h*100)/100)+" hour"+(h===1?"":"s"), total=TL.amount(rate,s,e);
+    el.textContent=hTxt+" \u00d7 "+TL.sgd(rate)+" = "+TL.sgd(total)+" per lesson"+
+      (sp>1?" \u00b7 "+TL.sgd(Math.round(total/sp*100)/100)+" each for "+sp+" students":"");
+  }
   function splitHint(){
+    pricePreview();
     var el=$("m-splithint");if(!el)return;
     var rate=parseFloat($("m-rate").value),sp=Math.max(1,parseInt($("m-split").value,10)||1),
         s=$("m-start").value,e=$("m-end").value;
@@ -148,16 +159,18 @@
       allSlots=allSlots.filter(function(s){ return actIds[s.student_id]; });
     }
     fillSubjects(allSlots.map(function(s){return s.subject;}));render();
+    guideStart();
   }
 
   async function removeSlot(id){
     // Deleting a slot is safe now: each lesson carries its own one_off flag, so even though the DB
     // nulls slot_id on its past lessons ("on delete set null"), they keep the correct recurring/one-off
     // label and all their other data. The slot is just a template — binning it loses no lesson history.
-    if(!confirm("Remove this weekly slot?\n\nIt stops generating new lessons. Logged lessons stay in "+
-                "your records unchanged."))return;
+    if(!(await TL.confirm({title:"Remove this weekly slot?",
+      message:"It stops appearing on the calendar from now on. Lessons you\u2019ve already logged stay on the calendar and in your records.",
+      confirmText:"Remove slot", danger:true})))return;
     var res=await window.sb.from("recurring_slots").delete().eq("id",id);
-    if(res.error){alert("Couldn't remove: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't remove: "+res.error.message);return;}
     openModal(false);load();
   }
 
@@ -176,7 +189,32 @@
       : await window.sb.from("recurring_slots").insert(payload);
     $("m-save").disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
+    var wasNew=!editingId;
     openModal(false);load();
+    if(wasNew && TL.guide && TL.guide.on){
+      var hint=document.querySelector("#modal .tg-inform"); if(hint) hint.remove();
+      TL.guide.card({step:3, done:"\u2713 Weekly lesson saved",
+        title:"Confirm this week\u2019s lessons",
+        text:"Your weekly lessons show on the calendar as Not logged. One tap confirms them, so you can track and bill them.",
+        href:"calendar?guide=1", cta:"Open calendar"});
+    }
+  }
+
+  // First-run guide, step 2: open Add slot with the student from step 1 already picked.
+  var guided=false;
+  function guideStart(){
+    if(guided||!(TL.guide&&TL.guide.on))return; guided=true;
+    var want=(location.search.match(/[?&]student=([^&]+)/)||[])[1];
+    var st=students.filter(function(x){return String(x.id)===decodeURIComponent(want||"");})[0]||(students.length===1?students[0]:null);
+    if(!students.length){
+      TL.guide.card({step:1, title:"Add a student first", text:"Your weekly lessons belong to a student.", href:"students?guide=1", cta:"Add a student"});
+      return;
+    }
+    TL.guide.card({step:2, title:"Set "+(st?esc(st.name)+"\u2019s":"the")+" weekly lesson time",
+      text:"Pick the day, time and hourly rate. TutorDeck repeats it every week."});
+    openModal(true,null);
+    TL.guide.formHint($("m-title"), "Step 2 of 3 \u00b7 Pick the day, time and hourly rate. It repeats every week.");
+    if(st){ $("m-student").value=st.id; planPrefill(); }
   }
 
   function init(user){
@@ -187,7 +225,7 @@
     $("m-save").addEventListener("click",save);
     if($("m-remove")) $("m-remove").addEventListener("click",function(){ if(editingId) removeSlot(editingId); });
     $("m-student").addEventListener("change",planPrefill);
-    ["m-rate","m-split","m-start","m-end"].forEach(function(id){var el=$(id);if(el)el.addEventListener("input",splitHint);});
+    ["m-rate","m-split","m-start","m-end"].forEach(function(id){var el=$(id);if(el){el.addEventListener("input",splitHint);el.addEventListener("change",splitHint);}});
     load();
   }
   TL.requireAuth("planner",init);
