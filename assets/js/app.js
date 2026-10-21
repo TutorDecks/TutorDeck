@@ -399,8 +399,38 @@ window.TL = (function () {
   // TL.coach(key, anchorEl, html): shows a small tip under anchorEl ONCE per browser; "Got it" dismisses it
   // for good (localStorage "td_tip_<key>"). Use for new or non-obvious features instead of permanent banners.
   // opts.above: open above the anchor (for buttons pinned to the bottom of the screen).
+  // ---- first-run guide (pages opened with ?guide=1 from Home's "Set up in 3 steps") ----
+  // One step at a time: the page opens the right form, then a small card says what's next.
+  // Until setup is finished (td_onboarded), the other one-time tips stay quiet.
+  var GUIDE = /[?&]guide=1(&|$)/.test(location.search);
+  function onboarded() { try { return localStorage.getItem("td_onboarded") === "1"; } catch (e) { return true; } }
+  function setOnboarded() { try { localStorage.setItem("td_onboarded", "1"); } catch (e) {} }
+  // o: { step:1-3, done:"✓ line", title, text, href, cta }
+  function guideCard(o) {
+    var c = document.getElementById("content"); if (!c) return;
+    var g = document.getElementById("td-guide");
+    if (!g) { g = document.createElement("div"); g.id = "td-guide"; g.className = "td-guide"; c.insertBefore(g, c.firstChild); }
+    g.innerHTML =
+      (o.done ? '<div class="tg-done">' + o.done + '</div>' : '') +
+      '<div class="tg-row"><div class="tg-body">' +
+      (o.step ? '<span class="tg-step">Step ' + o.step + ' of 3</span>' : '') +
+      '<b class="tg-t">' + o.title + '</b>' + (o.text ? '<span class="tg-d">' + o.text + '</span>' : '') +
+      '</div>' + (o.href ? '<a class="btn btn-gold tg-btn" href="' + o.href + '">' + o.cta + '</a>' : '') + '</div>' +
+      (o.final ? '' : '<a class="tg-skip" href="home" data-skip>Skip setup</a>');
+    var sk = g.querySelector("[data-skip]"); if (sk) sk.addEventListener("click", setOnboarded);
+    g.classList.remove("tg-pop"); void g.offsetWidth; g.classList.add("tg-pop");
+  }
+
+  // A one-line hint inside a form (the guide card sits behind the form sheet on phones).
+  function guideFormHint(afterEl, text) {
+    if (!afterEl || afterEl.parentNode.querySelector(".tg-inform")) return;
+    var p = document.createElement("p"); p.className = "tg-inform"; p.textContent = text;
+    afterEl.insertAdjacentElement("afterend", p);
+  }
+
   function coach(key, anchor, html, opts) {
     opts = opts || {};
+    if (GUIDE || !onboarded()) return;   // new tutors: finish the 3-step setup first, then tips
     var k = "td_tip_" + key;
     try { if (localStorage.getItem(k)) return; } catch (e) { return; }
     if (!anchor || !anchor.getBoundingClientRect || document.getElementById("td-tip-" + key)) return;
@@ -595,6 +625,7 @@ window.TL = (function () {
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
+           guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,
            todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd };

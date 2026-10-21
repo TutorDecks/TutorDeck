@@ -1,4 +1,5 @@
-/* v217 */
+/* v218 */
+/* v218 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -689,6 +690,28 @@ span[data-sk],b[data-sk]{display:inline-block;line-height:1.15}
 .sk-on .mprog-legend{visibility:hidden}
 .sk-on #exam-sec .teach-sub{color:transparent!important;display:inline-block;min-width:160px;border-radius:7px;
   background:linear-gradient(90deg,#EFECE6 25%,#F7F5F1 37%,#EFECE6 63%);background-size:400% 100%;animation:td-sk 1.4s ease infinite}
+
+/* ---- v218: first-run guide card (pages opened with ?guide=1) ---- */
+.td-guide{background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:14px;
+  padding:14px 16px 12px;margin:0 0 16px;box-shadow:var(--shadow)}
+.td-guide.tg-pop{animation:tg-pop .35s ease}
+@keyframes tg-pop{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
+.tg-done{color:var(--accent);font-weight:700;font-size:13.5px;margin-bottom:8px}
+.tg-row{display:flex;align-items:center;gap:14px}
+.tg-body{flex:1;min-width:0}
+.tg-step{display:block;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.tg-t{display:block;font-size:15.5px;font-weight:800;color:var(--ink);letter-spacing:-.01em}
+.tg-d{display:block;font-size:13.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+.tg-btn{flex:none;white-space:nowrap}
+.tg-skip{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--muted);text-decoration:none}
+.tg-skip:hover{text-decoration:underline}
+@media(max-width:820px){ .tg-row{flex-direction:column;align-items:stretch;gap:10px} .tg-btn{text-align:center;justify-content:center} }
+@media(prefers-reduced-motion:reduce){ .td-guide.tg-pop{animation:none} }
+/* the Calendar "Log N" chip gently pulses while it's the guide's next step */
+.cal-logchip.tg-hint{animation:tg-pulse 1.6s ease-in-out infinite}
+@keyframes tg-pulse{0%,100%{box-shadow:0 0 0 0 rgba(15,118,110,.35)}50%{box-shadow:0 0 0 7px rgba(15,118,110,0)}}
+@media(prefers-reduced-motion:reduce){ .cal-logchip.tg-hint{animation:none;box-shadow:0 0 0 3px rgba(15,118,110,.3)} }
+.tg-inform{margin:-4px 0 14px;padding:9px 12px;border-radius:10px;background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:600;line-height:1.4}
 .inv-pay.inv-bank{margin-top:10px}
 .inv-pay .pn-dot.bk{background:var(--accent)}
 

@@ -5,23 +5,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Home · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=217">
+<link rel="stylesheet" href="assets/css/app.css?v=218">
 <style>
   #onboard{display:none;margin-bottom:20px}
-  .ob-card{background:linear-gradient(180deg,#FFFFFF,#EEF6F4);border:1px solid var(--gold);
-    border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
-  .ob-h{font-family:var(--serif,Georgia);font-size:18px;color:var(--navy);margin:0 0 3px}
-  .ob-sub{color:var(--muted);font-size:13.5px;margin:0 0 16px}
-  .ob-step{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-top:1px solid rgba(15,118,110,.25)}
-  .ob-num{flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-weight:800;font-size:14px;background:var(--navy);color:#fff}
-  .ob-step.done .ob-num{background:var(--teal)}
-  .ob-step.done .ob-t{color:var(--muted);text-decoration:line-through}
-  .ob-body{flex:1;min-width:0}
-  .ob-t{display:block;font-weight:700;font-size:14.5px;color:var(--ink)}
-  .ob-d{display:block;color:var(--muted);font-size:13px;margin-top:3px}
-  .ob-step .btn{flex:0 0 auto;align-self:center;padding:7px 14px;font-size:13px}
-  @media(max-width:520px){ .ob-step{flex-wrap:wrap} .ob-step .btn{margin-left:42px} }
+  /* v218: first-run setup card — 3 short steps, one button */
+  .ob-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 20px 18px;box-shadow:var(--shadow)}
+  .ob-h{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.01em;margin:0 0 2px}
+  .ob-sub{color:var(--muted);font-size:13.5px;margin:0 0 14px}
+  .ob-list{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-direction:column;gap:4px}
+  .ob-step{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:10px}
+  .ob-step.cur{background:var(--accent-soft)}
+  .ob-num{flex:0 0 26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;
+    background:#fff;border:1.5px solid var(--line);color:var(--muted)}
+  .ob-step.cur .ob-num{border-color:var(--accent);color:var(--accent)}
+  .ob-step.done .ob-num{background:var(--accent);border-color:var(--accent);color:#fff}
+  .ob-t{font-size:14.5px;font-weight:700;color:var(--ink)}
+  .ob-step.done .ob-t{color:var(--muted);font-weight:600}
+  .ob-go{display:flex;justify-content:center;width:100%;height:46px;align-items:center;border-radius:11px;font-size:15px}
   .dmonth{display:flex;align-items:center;gap:8px;margin-bottom:14px}
   .dmonth .gennav{padding:7px 12px;font-weight:700}
   .dm-lbl{min-width:150px;text-align:center;font-weight:700;font-size:14.5px;color:var(--navy)}
@@ -240,9 +240,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=217"></script>
-<script src="assets/js/supabase.js?v=217"></script>
-<script src="assets/js/app.js?v=217"></script>
-<script src="assets/js/dashboard.js?v=217"></script>
+<script src="assets/js/config.js?v=218"></script>
+<script src="assets/js/supabase.js?v=218"></script>
+<script src="assets/js/app.js?v=218"></script>
+<script src="assets/js/dashboard.js?v=218"></script>
 </body>
 </html>
