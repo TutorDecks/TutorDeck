@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Students · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=228">
+<link rel="stylesheet" href="assets/css/app.css?v=229">
 <style>
   a.slink{color:var(--navy);font-weight:700;text-decoration:none}
   a.slink:hover{text-decoration:underline}
@@ -35,7 +35,7 @@
   .rmore:hover,.rm.open .rmore{background:#F1EFEA;color:var(--ink)}
   .rm-menu{display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:30;min-width:170px;background:#fff;border:1px solid var(--line);
     border-radius:12px;box-shadow:0 12px 32px rgba(19,35,63,.14);padding:6px;text-align:left}
-  .rm.open .rm-menu{display:block}
+  .rm.open .rm-menu{display:block;position:fixed;right:auto;z-index:250}   /* placed by placeMenu() in students.js */
   .rm-menu .tact{display:block;width:100%;box-sizing:border-box;padding:9px 10px;margin:0!important;border-radius:8px;font-size:14px;font-weight:600;color:var(--ink)}
   .rm-menu .tact:hover{background:#F7F6F2;text-decoration:none}
   .rm-menu .tact.del{color:var(--owed)}
@@ -191,9 +191,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=228"></script>
-<script src="assets/js/supabase.js?v=228"></script>
-<script src="assets/js/app.js?v=228"></script>
-<script src="assets/js/students.js?v=228"></script>
+<script src="assets/js/config.js?v=229"></script>
+<script src="assets/js/supabase.js?v=229"></script>
+<script src="assets/js/app.js?v=229"></script>
+<script src="assets/js/students.js?v=229"></script>
 </body>
 </html>
