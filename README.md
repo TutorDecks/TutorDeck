@@ -261,6 +261,16 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-22 — One standard setup step 3 and finish; friendlier log dates (v223).**
+  - Step 3 banner is the same for every tutor, whether this week's first lesson is still to come or already passed:
+    "Tap Log to confirm this week's lessons." During setup the calendar opens on this week in Week view (not saved).
+    No extra step; nothing forces a future day or asks about previous weeks.
+  - One finish message for everyone (calendar card and Home card): "✓ You're all set up! Lessons that already happened
+    show as Unpaid. Mark them paid in Money when the parent pays."
+  - Ledger "Log this week" / "Log lessons" dialogs show dates as "19–25 Oct" (or "28 Oct – 3 Nov") instead of ISO dates.
+  - Calendar on phones: a **Today** button appears next to › as soon as you move away from today's week, day or month
+    (it was hidden on phones; tapping Schedule again still works too).
+
 - **2026-10-21 — Calendar in Client view keeps unpaid lessons visible (v222).** Client view hides the Paid/Unpaid
   switches, so a saved "Unpaid off" (or "Paid off") filter made those lessons vanish with no way back. Those two filters are
   now ignored while Client view is on, the calendar re-draws when you toggle Client view, and the key shows a short note

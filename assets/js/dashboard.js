@@ -467,9 +467,7 @@
       if(TL.store.get("td_setup_started")==="1"){
         box.innerHTML='<div class="ob-card ob-done"><div class="ob-tick" aria-hidden="true">\u2713</div>'+
           '<h3 class="ob-h">You\u2019re all set up!</h3>'+
-          '<p class="ob-sub">Your first lessons are confirmed. From now on:</p>'+
-          '<ul class="ob-next"><li><b>Each week</b>, tap <b>Log</b> on the calendar to confirm that week\u2019s lessons.</li>'+
-          '<li><b>When a parent pays</b>, mark the lessons paid in <b>Money</b>. Past lessons are logged as taught and unpaid (red) until then.</li></ul>'+
+          '<p class="ob-sub">Lessons that already happened show as Unpaid. Mark them paid in <b>Money</b> when the parent pays.</p>'+
           '<button type="button" class="btn btn-gold ob-go" id="ob-ok">Got it</button></div>';
         box.style.display="block";
         // Setup counts as finished (and the usual tips may start) once they've read this and tapped Got it.

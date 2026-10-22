@@ -1,5 +1,14 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
+  // "19–25 Oct", "28 Oct – 3 Nov", "29 Dec 2026 – 4 Jan 2027" from two YYYY-MM-DD dates
+  function rangeText(a,b){
+    var M=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    var x=String(a).split("-").map(Number), y=String(b).split("-").map(Number);
+    if(a===b) return x[2]+" "+M[x[1]-1];
+    if(x[0]!==y[0]) return x[2]+" "+M[x[1]-1]+" "+x[0]+" \u2013 "+y[2]+" "+M[y[1]-1]+" "+y[0];
+    if(x[1]!==y[1]) return x[2]+" "+M[x[1]-1]+" \u2013 "+y[2]+" "+M[y[1]-1];
+    return x[2]+"\u2013"+y[2]+" "+M[y[1]-1];
+  }
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
   var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, levelById = {}, endById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   // Payment options on invoices: PayNow QR (if set up) and bank transfer (if bank details are filled in), or both.
@@ -74,7 +83,7 @@
     }
     b.disabled=false;
     if(!rows.length){msg.textContent="That range is already logged \u2014 nothing new to add.";msg.className="msg";return;}
-    if(!(await TL.confirm({title:"Log lessons",message:"Add "+TL.plural(rows.length,"lesson")+" from "+fromISO+" to "+toISO+"? Lessons already logged are skipped.",confirmText:"Log "+rows.length})))return;
+    if(!(await TL.confirm({title:"Log lessons",message:"Add "+TL.plural(rows.length,"lesson")+" for "+rangeText(fromISO,toISO)+"? Lessons already logged are skipped.",confirmText:"Log "+rows.length})))return;
     b.disabled=true;
     var res=await window.sb.from("lessons").insert(rows);
     b.disabled=false;
@@ -787,7 +796,7 @@
       rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:statusFor(di,hm(s.end_time)),paid:false});
     });
     if(!rows.length){TL.alert("This week is already logged — nothing new to add.");return;}
-    if(!(await TL.confirm({title:"Log this week",message:"Add "+TL.plural(rows.length,"lesson")+" for "+weekStart+" to "+weekEnd+"? Lessons already logged are skipped.",confirmText:"Log "+rows.length})))return;
+    if(!(await TL.confirm({title:"Log this week",message:"Add "+TL.plural(rows.length,"lesson")+" for "+rangeText(weekStart,weekEnd)+"? Lessons already logged are skipped.",confirmText:"Log "+rows.length})))return;
     var res=await window.sb.from("lessons").insert(rows);
     if(res.error){TL.alert("Couldn't generate: "+res.error.message);return;}
     load();
