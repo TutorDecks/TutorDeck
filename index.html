@@ -25,90 +25,95 @@
 <meta name="twitter:description" content="Students, schedule and payments in one place for private tutors in Singapore.">
 <meta name="twitter:image" content="https://www.tutordeck.com.sg/assets/img/og-image.png">
 <script type="application/ld+json">
-[
- {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "name": "TutorDeck",
-  "legalName": "TutorDeck Pte. Ltd.",
-  "url": "https://www.tutordeck.com.sg/",
-  "logo": "https://www.tutordeck.com.sg/assets/img/logo.svg",
-  "email": "tutordeckadmin@gmail.com",
-  "address": {
-   "@type": "PostalAddress",
-   "addressCountry": "SG"
-  }
- },
- {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "TutorDeck",
-  "applicationCategory": "BusinessApplication",
-  "operatingSystem": "Web, iOS, Android",
-  "url": "https://www.tutordeck.com.sg/",
-  "description": "Tuition management app for private tutors in Singapore. Track students, lessons and payments in one place — PayNow QR invoices and WhatsApp reminders in two taps.",
-  "offers": {
-   "@type": "Offer",
-   "price": "0",
-   "priceCurrency": "SGD"
-  },
-  "areaServed": "SG"
- },
- {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-   {
-    "@type": "Question",
-    "name": "What is TutorDeck?",
-    "acceptedAnswer": {
-     "@type": "Answer",
-     "text": "TutorDeck is a tuition management app for private tutors in Singapore. It keeps your students, weekly schedule, lessons, payments and invoices in one place, so you can stop juggling spreadsheets and WhatsApp chats."
-    }
-   },
-   {
-    "@type": "Question",
-    "name": "Can I send PayNow invoices to parents?",
-    "acceptedAnswer": {
-     "@type": "Answer",
-     "text": "Yes. TutorDeck creates an invoice with a PayNow QR code for the exact amount owed, and you can send it on WhatsApp in two taps. Siblings or paired students can be billed together on one invoice."
-    }
-   },
-   {
-    "@type": "Question",
-    "name": "Does it send WhatsApp payment reminders?",
-    "acceptedAnswer": {
-     "@type": "Answer",
-     "text": "Yes. One tap opens WhatsApp with a ready-to-send reminder to the parent, showing the outstanding amount and your PayNow details. You can edit the message template to match how you write."
-    }
-   },
-   {
-    "@type": "Question",
-    "name": "How does it track who owes me money?",
-    "acceptedAnswer": {
-     "@type": "Answer",
-     "text": "Every lesson you teach is logged against the student. TutorDeck shows outstanding balances by student, flags how long each one has been unpaid, and marks lessons paid when parents settle up."
-    }
-   },
-   {
-    "@type": "Question",
-    "name": "Is TutorDeck free?",
-    "acceptedAnswer": {
-     "@type": "Answer",
-     "text": "Yes, TutorDeck is currently free while it is in early access. If paid plans are introduced, you will be told the fees before you are charged anything."
-    }
-   },
-   {
-    "@type": "Question",
-    "name": "Where is my students' data stored?",
-    "acceptedAnswer": {
-     "@type": "Answer",
-     "text": "Your data is stored on secure servers in Singapore and handled in line with Singapore's Personal Data Protection Act (PDPA). Each tutor can only see their own students."
-    }
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "Organization",
+   "@id": "https://www.tutordeck.com.sg/#organization",
+   "name": "TutorDeck",
+   "legalName": "TutorDeck Pte. Ltd.",
+   "url": "https://www.tutordeck.com.sg/",
+   "logo": "https://www.tutordeck.com.sg/assets/img/apple-touch-icon.png",
+   "email": "tutordeckadmin@gmail.com",
+   "areaServed": {
+    "@type": "Country",
+    "name": "Singapore"
    }
-  ]
- }
-]
+  },
+  {
+   "@type": "SoftwareApplication",
+   "@id": "https://www.tutordeck.com.sg/#app",
+   "name": "TutorDeck",
+   "applicationCategory": "BusinessApplication",
+   "operatingSystem": "Web",
+   "description": "Tuition management app for private tutors in Singapore. Track students, lessons and payments in one place — PayNow QR invoices and WhatsApp reminders in two taps.",
+   "url": "https://www.tutordeck.com.sg/",
+   "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "SGD"
+   },
+   "publisher": {
+    "@id": "https://www.tutordeck.com.sg/#organization"
+   }
+  },
+  {
+   "@type": "FAQPage",
+   "@id": "https://www.tutordeck.com.sg/#faq",
+   "mainEntity": [
+    {
+     "@type": "Question",
+     "name": "What is TutorDeck?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "TutorDeck is a tuition management app for private tutors in Singapore. It keeps your students, weekly schedule, lessons, payments and invoices in one place, so you can stop juggling spreadsheets and WhatsApp chats."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Can I send PayNow invoices to parents?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. TutorDeck creates an invoice with a PayNow QR code for the exact amount owed, and you can send it on WhatsApp in two taps. Siblings or paired students can be billed together on one invoice."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Does it send WhatsApp payment reminders?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. One tap opens WhatsApp with a ready-to-send reminder to the parent, showing the outstanding amount and your PayNow details. You can edit the message template to match how you write."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "How does it track who owes me money?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Every lesson you teach is logged against the student. TutorDeck shows outstanding balances by student, flags how long each one has been unpaid, and marks lessons paid when parents settle up."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Is TutorDeck free?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes, TutorDeck is currently free while it is in early access. If paid plans are introduced, you will be told the fees before you are charged anything."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Where is my students' data stored?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Your data is stored on secure servers in Singapore and handled in line with Singapore's Personal Data Protection Act (PDPA). Each tutor can only see their own students."
+     }
+    }
+   ]
+  }
+ ]
+}
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">

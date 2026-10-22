@@ -261,6 +261,16 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-22 — Landing page structured data as one JSON-LD `@graph` (v225).** Replaces the earlier array of three
+  separate blocks in `index.html` with one `<script type="application/ld+json">` holding:
+  - **Organization** (`#organization`): TutorDeck / TutorDeck Pte. Ltd., url, square logo
+    `assets/img/apple-touch-icon.png` (180×180 PNG), email, areaServed Singapore.
+  - **SoftwareApplication** (`#app`): BusinessApplication, operatingSystem Web, description = the meta description,
+    offers price 0 SGD (the FAQ says it's currently free; drop `offers` if that answer changes), publisher → Organization.
+  - **FAQPage** (`#faq`): the 6 on-page questions and answers, copied exactly from the page (checked by script).
+  - No ratings or reviews. Page renders pixel-identical; robots.txt and sitemap.xml unchanged.
+  - **Keep in sync:** if you edit an FAQ answer or the meta description, update the JSON-LD to match.
+
 - **2026-10-22 — Saved invoices survive removing a student (v224).** Checked the live DB: `invoices.student_id` →
   students is `on delete set null` (tutor_id → auth.users cascades), so removing a student keeps their saved invoices
   with no student link.
