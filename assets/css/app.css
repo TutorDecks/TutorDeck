@@ -1,5 +1,5 @@
-/* v227 */
-/* v227 */
+/* v228 */
+/* v228 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -783,9 +783,15 @@ body.client-view .cv-fab{background:rgba(19,35,63,.80);border-color:rgba(255,255
   body .tabbar{background:rgba(255,255,255,.78);
     -webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);
     border-top:1px solid rgba(19,35,63,.08);box-shadow:0 -6px 24px rgba(19,35,63,.06)}
-  /* Client view eye sits top-right on phones, clear of the headings and lists that start at the left
-     (it used to cover "TEACHING" on Home at the bottom-left). */
-  body .cv-fab{left:auto;right:16px;bottom:auto;top:calc(env(safe-area-inset-top,0px) + 14px);width:42px;height:42px;border-radius:21px}
+}
+/* Room under every page for the floating controls, so the last content (Home's TEACHING section, the
+   calendar key's "One-off" label…) can always scroll clear of them. Desktop: the eye (24px from the
+   bottom, 48px tall). Phones: the eye / "+" (they sit 80–84px up and reach ~136px) above the tab bar,
+   plus the safe-area inset. */
+body .main{padding-bottom:96px}
+@media(max-width:820px){
+  body .main{padding-bottom:calc(152px + env(safe-area-inset-bottom,0px))}
+  body:has(.td-fab) .content{padding-bottom:0}
 }
 @supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
   body .cv-fab, body .td-fab, body .cal-fab{background:#fff;border-color:var(--line)}

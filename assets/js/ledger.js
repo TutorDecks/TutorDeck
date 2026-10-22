@@ -276,24 +276,40 @@
     if(d.length===8)return "65"+d;   // Singapore local mobile/landline
     return d;                         // assume it already carries a country code
   }
-  var DEFAULT_REMINDER="Hi {name}! Friendly reminder from {business}: you have an outstanding balance of {amount} for {count} tuition lesson(s). PayNow to {paynow}. Thank you!";
-  // Bank transfer only (no PayNow): the default reminder shouldn't say "PayNow to ".
-  var DEFAULT_REMINDER_BANK="Hi {name}! Friendly reminder from {business}: you have an outstanding balance of {amount} for {count} tuition lesson(s). You can pay by bank transfer (details are on your invoice). Thank you!";
-  function reminderTpl(p, hasParent){ p=p||{}; return p.reminder_message||noParent(!p.paynow_id&&hasBank(p)?DEFAULT_REMINDER_BANK:DEFAULT_REMINDER, hasParent); }
+  // Default payment reminder (tutors' own saved templates are never changed). {student_s} is the possessive
+  // ("Ethan's", "Ethan & Chloe's"), and "{count} lessons" is pluralised when the message is filled in.
+  var DEFAULT_REMINDER="Hi {name}! Just a gentle reminder from {business}: {student_s} fees for {month} come to {amount} ({count} lessons). You can PayNow to {paynow}. Thank you so much!";
+  // No PayNow but bank details: give the bank transfer details instead. Neither: leave the payment line out.
+  var DEFAULT_REMINDER_BANK="Hi {name}! Just a gentle reminder from {business}: {student_s} fees for {month} come to {amount} ({count} lessons). You can pay by bank transfer to {bank}. Thank you so much!";
+  var DEFAULT_REMINDER_NOPAY="Hi {name}! Just a gentle reminder from {business}: {student_s} fees for {month} come to {amount} ({count} lessons). Thank you so much!";
+  function reminderTpl(p, hasParent){ p=p||{};
+    return p.reminder_message||noParent(p.paynow_id?DEFAULT_REMINDER:(hasBank(p)?DEFAULT_REMINDER_BANK:DEFAULT_REMINDER_NOPAY), hasParent); }
+  // Bank transfer details in one line: "DBS Bank 123-45678-9 (Tan Ah Kow)".
+  function bankLine(p){ if(!hasBank(p)) return ""; var b=bankObj(p);
+    return [b.bank,b.acct].filter(Boolean).join(" ")+(b.name?" ("+b.name+")":""); }
   function invoiceTpl(p, pn, bk, hasParent){ p=p||{}; return p.invoice_message||noParent(pn&&bk?DEFAULT_INVOICE_BOTH:(bk?DEFAULT_INVOICE_BANK:DEFAULT_INVOICE), hasParent); }
   // The default messages go to the parent. With no parent name saved, don't greet the student by name:
   // "Hi! Here's Ethan's invoice …" / "… Ethan has an outstanding balance …". Custom templates are left as written.
   function noParent(tpl, hasParent){
     if(hasParent) return tpl;
     return tpl.replace("Hi {name}! Here's your invoice","Hi! Here's {student_s} invoice")
-              .replace(": you have an outstanding balance",": {student} has an outstanding balance")
-              .replace("Hi {name}! Friendly","Hi! Friendly");
+              .replace("Hi {name}! Just a gentle reminder","Hi! Just a gentle reminder");
+  }
+  // Siblings in one message: "Ethan & Chloe", "Ethan, Chloe & Ryan" (first names read more naturally).
+  function firstNames(ids){
+    var n=ids.map(function(id){return TL.firstName(nameById[id]);}).filter(Boolean);
+    return n.length<2 ? (nameById[ids[0]]||n[0]||"") : n.slice(0,-1).join(", ")+" & "+n[n.length-1];
   }
   function possessive(n){ n=String(n||"").trim(); return n ? (/s$/i.test(n) ? n+"'" : n+"'s") : "your"; }
   var DEFAULT_INVOICE="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. PayNow to {paynow}. Thank you!";
   var DEFAULT_INVOICE_BANK="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. Bank-transfer details are on the invoice. Thank you!";
   var DEFAULT_INVOICE_BOTH="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. PayNow to {paynow}, or bank transfer (details on the invoice). Thank you!";
-  function fillTemplate(tpl,vars){return String(tpl).replace(/\{(\w+)\}/g,function(_,k){return vars[k]!=null?String(vars[k]):"";});}
+  // "{count} lessons" / "{count} tuition lesson(s)" → "1 lesson" / "2 lessons" (also in tutors' own templates).
+  function fillTemplate(tpl,vars){
+    var n=parseInt(vars.count,10);
+    var t=String(tpl).replace(/\{count\}(\s+tuition)?\s+lesson(?:\(s\)|s\b|\b)/g,function(_,tu){ return "{count}"+(tu||"")+" "+(n===1?"lesson":"lessons"); });
+    return t.replace(/\{(\w+)\}/g,function(_,k){return vars[k]!=null?String(vars[k]):"";});
+  }
   var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
   function monthsLabel(rows){
     var seen={},keys=[];
@@ -319,7 +335,7 @@
     var vars={name:recipientById[id]||nameById[id]||"",student:nameById[id]||"",business:TL.payeeName(profile,"your tutor"),
       amount:TL.sgd(sum),count:rows.length,invoice:"",paynow:(profile&&profile.paynow_id)||"",
       month:monthsLabel(rows),date:prettyDate(iso(new Date())),year:String(new Date().getFullYear())};
-    var tpl=reminderTpl(profile, !!recipientById[id]); vars.student_s=possessive(vars.student);
+    var tpl=reminderTpl(profile, !!recipientById[id]); vars.student_s=possessive(vars.student); vars.bank=bankLine(profile);
     window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
   }
 
@@ -339,7 +355,7 @@
     var vars={name:recipientById[targetId]||nameById[targetId]||"",student:who,business:TL.payeeName(profile,"your tutor"),
       amount:TL.sgd(sum),count:all.length,invoice:"",paynow:(profile&&profile.paynow_id)||"",
       month:monthsLabel(all),date:prettyDate(iso(new Date())),year:String(new Date().getFullYear())};
-    var tpl=reminderTpl(profile, !!recipientById[targetId]); vars.student_s=possessive(vars.student);
+    var tpl=reminderTpl(profile, !!recipientById[targetId]); vars.student_s=possessive(firstNames(ids)); vars.bank=bankLine(profile);
     window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
   }
   function periodLabel(){return period.mode==="all"?"All time":new Date(period.y,period.m,1).toLocaleString("en-SG",{month:"long",year:"numeric"});}
@@ -1008,7 +1024,7 @@
         amount:TL.sgd(sum),count:rows.length,paynow:d.paynow_id||"(your PayNow ID)",
         invoice:isInv?nextInvNo(d):"",
         month:monthsLabel(rows),date:prettyDate(iso(now)),year:String(now.getFullYear())};
-      vars.student_s=possessive(who);
+      vars.student_s=possessive(ids.length>1?firstNames(ids):who); vars.bank=bankLine(d);
       var tpl=isInv?invoiceTpl(d,pn,bk,!!recipientById[to]):reminderTpl(d,!!recipientById[to]);
       q("pc-wa").textContent=fillTemplate(tpl,vars);
     }

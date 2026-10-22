@@ -272,9 +272,8 @@ window.TL = (function () {
   function cvTip() {
     if (CLIENT) return;
     coach("client-view", document.getElementById("td-cv"),
-      "<b>Client view</b><br>Student or parent nearby? Tap this eye to hide all money instantly. Tap it again to bring it back.", { above: !isPhoneCv() });
+      "<b>Client view</b><br>Student or parent nearby? Tap this eye to hide all money instantly. Tap it again to bring it back.", { above: true });
   }
-  function isPhoneCv() { return window.matchMedia("(max-width:820px)").matches; }
   // Levels: a student's Level is the year ("Sec 4"); G1/G2/G3 (or IB HL/SL) belongs to each subject and is kept
   // on the weekly slot / lesson. Older data may hold both together ("Sec 4 G3"), so pull them apart here.
   var SUBLVL_RE = /\b(G[1-3]|HL|SL)\b/i;

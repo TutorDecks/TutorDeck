@@ -261,6 +261,18 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-22 — Eye back at the bottom left everywhere; friendlier default reminder (v228).** Builds on v227.
+  - **Client view eye** is at the bottom left on phones again (same spot as desktop, easy to reach). Instead, every
+    page has room underneath (`.main` bottom padding: 96px on desktop; 152px + safe-area on phones, which covers the
+    eye / "+" and the tab bar), so the last content always scrolls clear of the floating buttons. Checked at the
+    bottom of Home, Calendar, Planner, Students, Ledger, Invoices and Settings on phone and desktop.
+  - **Default payment reminder:** "Hi {name}! Just a gentle reminder from {business}: {student}'s fees for {month}
+    come to {amount} ({count} lessons). You can PayNow to {paynow}. Thank you so much!" — bank-only tutors get
+    "You can pay by bank transfer to <bank> <account> (<holder>)"; with no payment details the payment sentence is
+    left out. Households use first names ("Ethan & Chloe's fees"); no parent name → "Hi! Just a gentle reminder…".
+  - **Plurals:** "{count} lessons" / "{count} tuition lesson(s)" now fill in as "1 lesson" / "2 lessons", in the
+    defaults and in tutors' own templates (the only change made to a saved template). New `{bank}` variable.
+
 - **2026-10-22 — Onboarding polish from a full new-tutor walkthrough (v227).** Builds on v226 (same migration).
   1. **After email sign-up:** "Check your email" — "Check <email> to finish signing up. Already have an account? Sign in
      instead." The technical "email confirmation disabled" line is gone. Neutral on purpose: Supabase returns the same
@@ -271,8 +283,7 @@ A running log of Raphael's changes, newest first.
      "A-Math · Sec 4 G3" label until the slots get one. The student profile lists each weekly lesson with its subject
      level, and its Level chip shows the year once subjects carry their own.
   3. **Avatar** (top right) uses the tutor's own initials (Alex Tan → "AT"), falling back to the business monogram.
-  4. **Client view eye** sits at the top right on phones, so it no longer covers Home's "TEACHING" heading or the
-     left-aligned lists. Desktop keeps it at the bottom left.
+  4. **Client view eye** (superseded in v228: back at the bottom left, with page bottom padding instead).
   5. **Client view tip** isn't shown on Home while the setup or Get paid faster card (or the Welcome screen) is up;
      it appears on a later visit (other pages show it as before).
   6. **Empty Ledger for a new tutor:** "Once a lesson has happened, it'll show here and you can send an invoice in one
