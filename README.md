@@ -261,6 +261,10 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-22 — Students ⋯ menu always on top (v229).** The row menu opened inside the list, so on phones the
+  rows below painted over it and the last rows' menus were clipped. It now floats above the page (fixed position,
+  placed under the ⋯, or above it when there's no room before the bottom bar) and closes when you scroll away.
+
 - **2026-10-22 — Eye back at the bottom left everywhere; friendlier default reminder (v228).** Builds on v227.
   - **Client view eye** is at the bottom left on phones again (same spot as desktop, easy to reach). Instead, every
     page has room underneath (`.main` bottom padding: 96px on desktop; 152px + safe-area on phones, which covers the
