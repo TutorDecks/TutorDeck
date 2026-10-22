@@ -92,6 +92,8 @@
     setupMode = !!TL.guide && (TL.guide.on || (slots.length>0 && !everLogged));
     if(TL.guide && everLogged && !TL.guide.on && !TL.guide.onboarded()) TL.guide.finish();   // established tutor, new browser
     // During setup the "Not logged" lessons ARE the next step — never hide them (not saved as a preference).
+    // Setup step 3 is the same for everyone: this week, in Week view (not saved as a preference).
+    if(setupMode && !TL.guide.onboarded() && effMode()!=="week"){ mode="week"; anchor=new Date(); }
     if(setupMode && hidden.proj){
       delete hidden.proj;
       var lg=document.querySelector('.cal-legend [data-cat="proj"]'); if(lg){ lg.classList.remove("off"); lg.setAttribute("aria-pressed","true"); }
@@ -648,20 +650,19 @@
   function guideStep(n){
     if(!setupMode||guideFinished) return;
     var btn=$("cal-log-btn"); if(btn) btn.classList.toggle("tg-hint", n>0);
-    if(n>0) TL.guide.card({step:3, title:"Tap \u201CLog "+n+"\u201D to confirm "+(n===1?"this lesson":"these lessons"),
-      text:"Dashed blocks are your weekly lessons, not confirmed yet. Logging confirms them, so you can mark them done and paid, and invoice them."});
-    else TL.guide.card({step:3, title:"Nothing to confirm on this screen",
-      text:"Use the arrows to go to a week with dashed (Not logged) lessons, then tap Log."});
+    // One standard step 3, whether this week's first lesson is still to come or already passed.
+    TL.guide.card({step:3, title:"Tap Log to confirm this week\u2019s lessons.",
+      text:n>0 ? "Dashed blocks are your weekly lessons, not confirmed yet."
+               : "No lessons on this screen. Go back to this week to see them."});
   }
-  function guideFinish(n, past){
+  function guideFinish(){
     if(!setupMode||guideFinished) return;
     guideFinished=true; TL.guide.finish(); TL.store.remove("td_setup_started");   // Home won't repeat the finish line
     var btn=$("cal-log-btn"); if(btn) btn.classList.remove("tg-hint");
-    TL.guide.card({final:true, done:"\u2713 "+n+" lesson"+(n===1?"":"s")+" confirmed. You\u2019re all set up!",
-      title:"What next?",
-      text:(past?(past===n?(n===1?"That past lesson is logged as taught and unpaid, so it shows in red. ":"Past lessons are logged as taught and unpaid, so they show in red. "):"Past lessons are logged as taught and unpaid (red). ")+
-              "When the parent pays, mark them paid in <b>Money</b>. ":"When a parent pays, mark the lessons paid in <b>Money</b>. ")+
-           "Each week, tap Log on the calendar to confirm that week\u2019s lessons.",
+    // Same finish message for everyone, whether the lessons were past or still to come.
+    TL.guide.card({final:true, done:"\u2713 You\u2019re all set up!",
+      title:"Lessons that already happened show as Unpaid.",
+      text:"Mark them paid in <b>Money</b> when the parent pays.",
       href:"home", cta:"Go to Home"});
   }
 
@@ -694,7 +695,7 @@
     btn.disabled=false;
     if(res.error){ TL.alert("Couldn't log: "+res.error.message); return; }
     refreshAfterMutation();
-    guideFinish(rows.length, rows.filter(function(x){ return x.status!=="scheduled"; }).length);
+    guideFinish();
   }
 
   // ---- add a one-off lesson straight from the calendar ----
