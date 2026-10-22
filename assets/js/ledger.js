@@ -584,7 +584,7 @@
       tutor_id:userId,student_id:single?stuIds[0]:null,invoice_no:invoiceNo,
       issued_date:pd,total:total,status:"paid",paid_date:pd,
       data:{html:html,title:"Invoice_"+slug+"_"+pd,
-        students:single?null:stuIds,name:single?null:billTo,lesson_ids:rows.map(function(l){return l.id;})}
+        students:single?null:stuIds,name:billTo,lesson_ids:rows.map(function(l){return l.id;})}
     }).select("id").single();
     return ins.error?null:(ins.data&&ins.data.id);
   }
@@ -909,7 +909,7 @@
   // Show the built invoice in the overlay (shared by the PayNow and bank-transfer paths).
   function presentInvoice(data, qrUrl, meta){
     window._invHTML=invoiceHTML(data,qrUrl); window._invSaved=false; window._invSavedId=null;
-    window._invMeta=meta;
+    window._invMeta=meta; window._invBillTo=data.student||null;   // kept on the saved invoice, so it survives the student being removed
     $("inv-body").innerHTML=window._invHTML;
     $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
     $("inv-backdrop").classList.add("on");
@@ -1001,7 +1001,7 @@
       tutor_id:userId,student_id:m.studentId,invoice_no:m.invoiceNo,
       issued_date:m.issuedDate,total:m.total,status:"issued",
       data:{html:window._invHTML,title:window._invTitle||("Invoice_"+m.invoiceNo),
-        students:m.students||null,name:m.name||null,lesson_ids:m.lessonIds||null}
+        students:m.students||null,name:m.name||window._invBillTo||null,lesson_ids:m.lessonIds||null}
     }).select("id").single();
     if(!res.error&&res.data)window._invSavedId=res.data.id;
     b.disabled=false;
