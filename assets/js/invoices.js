@@ -6,12 +6,20 @@
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
   function prettyDate(s){if(!s)return"—";var p=s.split("-");var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return (+p[2])+" "+mo[(+p[1])-1]+" "+p[0];}
 
+  // Who the invoice is for. Removing a student keeps their saved invoices (student_id is set to null),
+  // so fall back to what the invoice itself recorded: the stored name, then the "Bill to" line of the
+  // saved snapshot, then "Removed student".
+  var billToCache={};
   function studentName(inv){
     if(inv.student_id&&nameById[inv.student_id])return nameById[inv.student_id];
-    // fall back to the snapshot title: Invoice_Name_YYYY-MM-DD
-    var t=(inv.data&&inv.data.title)||"";
-    var parts=t.split("_");
-    return parts.length>=3?parts[1]:"—";
+    var d=inv.data||{};
+    if(d.name)return d.name;
+    if(!(inv.id in billToCache)){
+      var nm="";
+      try{ if(d.html){ var b=new DOMParser().parseFromString(d.html,"text/html").querySelector(".inv-to b"); nm=b?b.textContent.trim():""; } }catch(e){}
+      billToCache[inv.id]=nm;
+    }
+    return billToCache[inv.id]||"Removed student";
   }
 
   function printInvoice(){
@@ -147,7 +155,7 @@
           :(!hasSent?'<span class="iv-st wait">Awaiting</span>'
           :(isSent(v)?'<span class="iv-st sent">Sent '+shortDate(String(v.sent_at).slice(0,10))+'</span>':'<span class="iv-st unsent">Not sent</span>'));
         return '<button type="button" class="iv-row" data-open="'+v.id+'">'+
-          '<span class="iv-av" aria-hidden="true">'+esc(initials(nm))+'</span>'+
+          '<span class="iv-av" aria-hidden="true">'+esc(nm==="Removed student"?"\u2013":initials(nm))+'</span>'+
           '<span class="iv-main"><span class="iv-name">'+esc(nm)+'</span><span class="iv-sub">'+esc(v.invoice_no)+' · issued '+shortDate(v.issued_date)+'</span></span>'+
           (v.proof_path?CLIP:'')+
           '<span class="iv-right2"><span class="iv-amt">'+TL.sgd(v.total)+'</span>'+st+'</span></button>';

@@ -82,7 +82,7 @@
   // ---------- remove ----------
   async function remove(id,name){
     if(!(await TL.confirm({title:"Remove "+name+"?",
-      message:"This permanently deletes "+name+"\u2019s lessons (including their paid and unpaid records), weekly slots and exams. It can\u2019t be undone.\n\nTo keep their history, use Discontinue instead. To combine a duplicate, use Merge.",
+      message:"This permanently deletes "+name+"\u2019s lessons (including their paid and unpaid records), weekly slots and exams. It can\u2019t be undone.\n\nSaved invoices are kept in Invoices, under their name.\n\nTo keep their history, use Discontinue instead.",
       confirmText:"Remove student", danger:true})))return;
     var res=await window.sb.from("students").delete().eq("id",id);
     if(res.error){TL.alert("Couldn't remove: "+res.error.message);return;}
