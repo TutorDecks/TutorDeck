@@ -11,10 +11,11 @@
 
   async function load() {
     var res = await window.sb.from("profiles")
-      .select("business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,fy_start_month,bank_account_name,bank_name,bank_account_no,bank_swift").eq("id", userId).single();
+      .select("business_name,full_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,fy_start_month,bank_account_name,bank_name,bank_account_no,bank_swift").eq("id", userId).single();
     if (res.error) { $("s-msg").textContent = "Couldn't load: " + res.error.message; $("s-msg").className = "msg err"; return; }
     var p = res.data || {};
     $("biz").value = p.business_name || "";
+    $("fullname").value = p.full_name || "";
     $("ptype").value = p.paynow_type || "mobile";
     $("pid").value = p.paynow_id || "";
     $("prefix").value = p.invoice_prefix || "INV";
@@ -30,14 +31,14 @@
 
   async function save() {
     var msg = $("s-msg");
-    var biz = $("biz").value.trim(), pid = $("pid").value.trim();
-    if (!biz) { msg.textContent = "Enter a business name."; msg.className = "msg err"; return; }
-    if (!pid) { msg.textContent = "Enter your PayNow ID."; msg.className = "msg err"; return; }
+    // Tuition name and PayNow are optional: invoices fall back to your own name, and can use bank transfer instead.
+    var biz = $("biz").value.trim(), pid = $("pid").value.trim(), fn = $("fullname").value.trim();
     $("save").disabled = true;
     var res = await window.sb.from("profiles").update({
-      business_name: biz,
+      full_name: fn || null,
+      business_name: biz || null,
       paynow_type: $("ptype").value,
-      paynow_id: pid,
+      paynow_id: pid || null,
       invoice_prefix: $("prefix").value.trim() || "INV",
       fy_start_month: parseInt($("fystart").value, 10) || 1,
       reminder_message: $("rmsg").value.trim() || null,
@@ -50,7 +51,8 @@
     $("save").disabled = false;
     if (res.error) { msg.textContent = res.error.message; msg.className = "msg err"; return; }
     msg.textContent = "Saved ✓"; msg.className = "msg ok";
-    TL.store.set("td_brand", (biz || "").trim() || "TutorDeck");   // the top bar shows the new name on the next page straight away
+    TL.setBrand(biz || "");   // the top bar (and the next page) shows the new name straight away
+    TL.setHello(TL.firstName(fn), fn);
   }
 
   // ---- Two-factor (TOTP) ----
@@ -183,8 +185,23 @@
     $("mfa-disable").addEventListener("click", mfaDisable);
     $("export-btn").addEventListener("click", exportData);
     $("delete-btn").addEventListener("click", deleteAccount);
-    load();
+    // Opening the message templates counts as "checked your WhatsApp reminder" (Home's Get paid faster card).
+    $("msg-more").addEventListener("toggle", function () {
+      if (!$("msg-more").open || checkedMsg) return; checkedMsg = true;
+      window.sb.from("profiles").update({ reminder_checked_at: new Date().toISOString() }).eq("id", userId).then(function () {}, function () {});
+    });
+    load().then(jumpTo);
     refreshMfa();
+  }
+  var checkedMsg = false;
+  // settings#paid / settings#messages (from Home's Get paid faster card): scroll there and open the right part.
+  function jumpTo() {
+    var h = location.hash.slice(1), sec = h && document.getElementById(h);
+    if (!sec || (h !== "paid" && h !== "messages")) return;
+    if (h === "messages") $("msg-more").open = true;
+    sec.scrollIntoView({ block: "start" });
+    var f = h === "paid" ? $("pid") : $("rmsg");
+    setTimeout(function () { try { f.focus({ preventScroll: true }); } catch (e) {} }, 80);
   }
   TL.requireAuth("settings", init);
 })();

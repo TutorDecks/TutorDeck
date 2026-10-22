@@ -356,13 +356,19 @@
   }
   async function loadInner(){
     await TL.promotePastLessons();
-    var st=await window.sb.from("students").select("id,name");
+    var st=await window.sb.from("students").select("id,name,contact");
     var nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
     nameByIdM=nameById;
 
     userId=(await window.sb.auth.getUser()).data.user.id;
-    var pr=await window.sb.from("profiles").select("fy_start_month").eq("id",userId).single();
+    // Home also reads the onboarding columns (db/migration_onboarding.sql). Before that migration
+    // has run, fall back to the old query and simply skip the Welcome screen and Get paid card.
+    var homeOnly=!!$("onboard");
+    var pr=homeOnly ? await window.sb.from("profiles").select("fy_start_month,full_name,business_name,paynow_id,reminder_message,reminder_checked_at,getpaid_dismissed_at,welcomed_at").eq("id",userId).single() : {error:true};
+    var hasOnb=!pr.error;
+    if(!hasOnb) pr=await window.sb.from("profiles").select("fy_start_month").eq("id",userId).single();
     fyStart=(pr.data&&pr.data.fy_start_month)||1;
+    homeProfile=hasOnb?(pr.data||{}):null;
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
 
@@ -372,7 +378,15 @@
     // chart below reads plain l.amount, so normalizing it once here keeps that code simple.
     lessons.forEach(function(l){ if(l.status==="cancelled") l.amount=Number(l.compensation)||0; });
 
+    homeStudents=st.data||[];
     renderOnboarding((st.data||[]).length, (sl.data||[]).length, lessons.length);
+    // New account (never welcomed, no students yet): ask their name first, before the 3-step setup.
+    if(homeProfile && !homeProfile.welcomed_at && !homeStudents.length) welcome(homeProfile);
+    // Client view tip: only on a visit with no setup / Get paid faster card / Welcome on screen.
+    if($("onboard")){
+      var busy=welcomeOpen||($("onboard").style.display==="block")||($("getpaid")&&$("getpaid").style.display==="block");
+      if(!busy) setTimeout(function(){ if(!document.querySelector(".td-dlg")) TL.cvTip(); },700);
+    }
     allLessons=lessons;
     var now=new Date(),y=now.getFullYear(),m=now.getMonth();
     if(selY===null){selY=y;selM=m;}
@@ -453,6 +467,63 @@
 
   // First-run setup: three short steps, each opening the right form (?guide=1). Worked out from the data
   // (students, weekly slots, logged lessons), so it's right after any refresh or route back to Home.
+  // ---------- Welcome screen (once, for a brand-new account) ----------
+  var homeProfile=null, homeStudents=[], welcomeOpen=false;
+  async function welcome(p){
+    if(welcomeOpen) return; welcomeOpen=true;
+    var u=(await window.sb.auth.getUser()).data.user||{}, md=u.user_metadata||{};
+    var body=document.createElement("div"); body.className="td-dlg-f";
+    body.innerHTML=
+      '<div class="field"><label for="wl-name">Your name</label>'+
+        '<input id="wl-name" type="text" autocomplete="name" maxlength="60" placeholder="e.g. Sarah Lim"></div>'+
+      '<div class="field"><label for="wl-biz">Tuition name <span class="opt">Optional</span></label>'+
+        '<input id="wl-biz" type="text" autocomplete="organization" maxlength="25" placeholder="e.g. Bright Minds Tuition">'+
+        '<p class="fhint">Shown on invoices. Leave blank to use your name.</p></div>';
+    var nm=body.querySelector("#wl-name"), bz=body.querySelector("#wl-biz");
+    nm.value=(p.full_name||md.full_name||md.name||"").trim();   // Google gives us their name
+    bz.value=(p.business_name||"").trim();
+    var ok=await TL.dialog({title:"Welcome to TutorDeck!", message:"What should we call you?", body:body,
+      confirmText:"Continue", cancelText:"Skip for now", cancelLink:true, keepOnBackdrop:true,
+      canConfirm:function(){ return nm.value.trim()!==""; }});
+    var upd={welcomed_at:new Date().toISOString()};
+    if(ok){ upd.full_name=nm.value.trim(); upd.business_name=bz.value.trim()||null; }
+    var r=await window.sb.from("profiles").update(upd).eq("id",userId);
+    welcomeOpen=false;
+    if(r.error) return;
+    Object.assign(p,upd);
+    if(ok){ TL.setHello(TL.firstName(upd.full_name), upd.full_name); TL.setBrand(upd.business_name||""); }
+  }
+
+  // ---------- Get paid faster (after the 3-step setup) ----------
+  function renderGetPaid(){
+    var box=$("getpaid"), p=homeProfile; if(!box) return;
+    function hide(){ box.style.display="none"; box.innerHTML=""; }
+    // New-flow accounts only (went through the Welcome screen), once the 3-step setup is done.
+    if(!p || !p.welcomed_at || p.getpaid_dismissed_at || !setupComplete) return hide();
+    var noNum=homeStudents.filter(function(s){ return !(s.contact||"").trim(); })[0];
+    var items=[
+      {done:!!p.paynow_id, t:"Add your PayNow so invoices show a QR code", href:"settings#paid"},
+      {done:!!(p.reminder_message||p.reminder_checked_at), t:"Check your WhatsApp reminder message", href:"settings#messages"},
+      {done:homeStudents.some(function(s){ return !!(s.contact||"").trim(); }), t:"Add a parent\u2019s WhatsApp number",
+        href:noNum?"students?edit="+encodeURIComponent(noNum.id)+"&focus=contact":"students"}
+    ];
+    if(items.every(function(i){ return i.done; })) return hide();
+    var left=items.filter(function(i){ return !i.done; }).length;
+    box.innerHTML='<div class="ob-card gp-card"><button type="button" class="gp-x" id="gp-x" aria-label="Dismiss Get paid faster">\u00d7</button>'+
+      '<h3 class="ob-h">Get paid faster</h3><p class="ob-sub">'+TL.plural(left,"quick thing")+' so parents can pay you in a tap.</p><ol class="ob-list gp-list">'+
+      items.map(function(i,n){
+        var inner='<span class="ob-num">'+(i.done?"\u2713":(n+1))+'</span><span class="ob-txt"><span class="ob-t">'+i.t+'</span></span>';
+        return i.done ? '<li class="ob-step done">'+inner+'</li>'
+                      : '<li><a class="ob-step gp-go" href="'+i.href+'">'+inner+'<span class="gp-arr" aria-hidden="true">\u203a</span></a></li>';
+      }).join("")+'</ol></div>';
+    box.style.display="block";
+    $("gp-x").addEventListener("click", async function(){
+      hide(); p.getpaid_dismissed_at=new Date().toISOString();
+      await window.sb.from("profiles").update({getpaid_dismissed_at:p.getpaid_dismissed_at}).eq("id",userId);
+    });
+  }
+  var setupComplete=false;
+
   function renderOnboarding(students, slots, lessons){
     var box=$("onboard");if(!box)return;
     var steps=[
@@ -471,11 +542,12 @@
           '<button type="button" class="btn btn-gold ob-go" id="ob-ok">Got it</button></div>';
         box.style.display="block";
         // Setup counts as finished (and the usual tips may start) once they've read this and tapped Got it.
-        $("ob-ok").addEventListener("click",function(){ box.style.display="none"; box.innerHTML=""; G.finish(); TL.store.remove("td_setup_started"); });
-        return;
+        $("ob-ok").addEventListener("click",function(){ box.style.display="none"; box.innerHTML=""; G.finish(); TL.store.remove("td_setup_started"); setupComplete=true; renderGetPaid(); });
+        setupComplete=false; renderGetPaid(); return;
       }
-      box.style.display="none";box.innerHTML="";G.finish();return;
+      box.style.display="none";box.innerHTML="";G.finish();setupComplete=true;renderGetPaid();return;
     }
+    setupComplete=false; renderGetPaid();
     TL.store.set("td_setup_started","1");
     var next=steps.filter(function(s){return !s.done;})[0];
     var rows=steps.map(function(s,i){

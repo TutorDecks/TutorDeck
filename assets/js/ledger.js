@@ -13,7 +13,7 @@
   var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, levelById = {}, endById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   // Payment options on invoices: PayNow QR (if set up) and bank transfer (if bank details are filled in), or both.
   function hasBank(p){ return !!(p && p.bank_account_no); }
-  function bankObj(p){ return { name:(p.bank_account_name||p.business_name||""), bank:(p.bank_name||""), acct:(p.bank_account_no||""), swift:(p.bank_swift||"") }; }
+  function bankObj(p){ return { name:(p.bank_account_name||TL.payeeName(p,"")), bank:(p.bank_name||""), acct:(p.bank_account_no||""), swift:(p.bank_swift||"") }; }
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -140,7 +140,9 @@
       var sb=groups[b].reduce(function(t,l){return t+Number(l.amount);},0);return sb-sa;});
     if(!ids.length){
       var em=periodKey()==="all"?"All settled 🎉":"Nothing pending for "+periodLabel();
-      $("outstanding").innerHTML='<div class="card empty"><h3>'+em+'</h3></div>';$("out-hint").textContent="";setOutCount(0);return;}
+      // A new tutor with nothing taught yet: say what will appear here.
+      var fresh=!allLessons.some(function(l){return l.status==="done"||l.paid;});
+      $("outstanding").innerHTML='<div class="card empty"><h3>'+em+'</h3>'+(fresh?'<p class="empty-hint">Once a lesson has happened, it\u2019ll show here and you can send an invoice in one tap.</p>':'')+'</div>';$("out-hint").textContent="";setOutCount(0);return;}
     $("out-hint").textContent=ids.length+(ids.length===1?" student owing":" students owing");
     setOutCount(ids.length);
     var unpaidLessonIds={};unpaid.forEach(function(l){unpaidLessonIds[l.id]=1;});
@@ -274,11 +276,40 @@
     if(d.length===8)return "65"+d;   // Singapore local mobile/landline
     return d;                         // assume it already carries a country code
   }
-  var DEFAULT_REMINDER="Hi {name}! Friendly reminder from {business}: you have an outstanding balance of {amount} for {count} tuition lesson(s). PayNow to {paynow}. Thank you!";
+  // Default payment reminder (tutors' own saved templates are never changed). {student_s} is the possessive
+  // ("Ethan's", "Ethan & Chloe's"), and "{count} lessons" is pluralised when the message is filled in.
+  var DEFAULT_REMINDER="Hi {name}! Just a gentle reminder from {business}: {student_s} fees for {month} come to {amount} ({count} lessons). You can PayNow to {paynow}. Thank you so much!";
+  // No PayNow but bank details: give the bank transfer details instead. Neither: leave the payment line out.
+  var DEFAULT_REMINDER_BANK="Hi {name}! Just a gentle reminder from {business}: {student_s} fees for {month} come to {amount} ({count} lessons). You can pay by bank transfer to {bank}. Thank you so much!";
+  var DEFAULT_REMINDER_NOPAY="Hi {name}! Just a gentle reminder from {business}: {student_s} fees for {month} come to {amount} ({count} lessons). Thank you so much!";
+  function reminderTpl(p, hasParent){ p=p||{};
+    return p.reminder_message||noParent(p.paynow_id?DEFAULT_REMINDER:(hasBank(p)?DEFAULT_REMINDER_BANK:DEFAULT_REMINDER_NOPAY), hasParent); }
+  // Bank transfer details in one line: "DBS Bank 123-45678-9 (Tan Ah Kow)".
+  function bankLine(p){ if(!hasBank(p)) return ""; var b=bankObj(p);
+    return [b.bank,b.acct].filter(Boolean).join(" ")+(b.name?" ("+b.name+")":""); }
+  function invoiceTpl(p, pn, bk, hasParent){ p=p||{}; return p.invoice_message||noParent(pn&&bk?DEFAULT_INVOICE_BOTH:(bk?DEFAULT_INVOICE_BANK:DEFAULT_INVOICE), hasParent); }
+  // The default messages go to the parent. With no parent name saved, don't greet the student by name:
+  // "Hi! Here's Ethan's invoice …" / "… Ethan has an outstanding balance …". Custom templates are left as written.
+  function noParent(tpl, hasParent){
+    if(hasParent) return tpl;
+    return tpl.replace("Hi {name}! Here's your invoice","Hi! Here's {student_s} invoice")
+              .replace("Hi {name}! Just a gentle reminder","Hi! Just a gentle reminder");
+  }
+  // Siblings in one message: "Ethan & Chloe", "Ethan, Chloe & Ryan" (first names read more naturally).
+  function firstNames(ids){
+    var n=ids.map(function(id){return TL.firstName(nameById[id]);}).filter(Boolean);
+    return n.length<2 ? (nameById[ids[0]]||n[0]||"") : n.slice(0,-1).join(", ")+" & "+n[n.length-1];
+  }
+  function possessive(n){ n=String(n||"").trim(); return n ? (/s$/i.test(n) ? n+"'" : n+"'s") : "your"; }
   var DEFAULT_INVOICE="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. PayNow to {paynow}. Thank you!";
   var DEFAULT_INVOICE_BANK="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. Bank-transfer details are on the invoice. Thank you!";
   var DEFAULT_INVOICE_BOTH="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. PayNow to {paynow}, or bank transfer (details on the invoice). Thank you!";
-  function fillTemplate(tpl,vars){return String(tpl).replace(/\{(\w+)\}/g,function(_,k){return vars[k]!=null?String(vars[k]):"";});}
+  // "{count} lessons" / "{count} tuition lesson(s)" → "1 lesson" / "2 lessons" (also in tutors' own templates).
+  function fillTemplate(tpl,vars){
+    var n=parseInt(vars.count,10);
+    var t=String(tpl).replace(/\{count\}(\s+tuition)?\s+lesson(?:\(s\)|s\b|\b)/g,function(_,tu){ return "{count}"+(tu||"")+" "+(n===1?"lesson":"lessons"); });
+    return t.replace(/\{(\w+)\}/g,function(_,k){return vars[k]!=null?String(vars[k]):"";});
+  }
   var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
   function monthsLabel(rows){
     var seen={},keys=[];
@@ -292,19 +323,27 @@
   }
 
   function remind(id){
+    if(waNumber(contactById[id]) && needPayCard("reminder")){ payCard("reminder",[id],null,function(){ remindNow(id); }); return; }
+    remindNow(id);
+  }
+  function remindNow(id){
     var num=waNumber(contactById[id]);
     if(!num){TL.alert({title:"No WhatsApp number",message:"There\u2019s no WhatsApp number saved for "+(nameById[id]||"this student")+".\n\nAdd one on the Students page (Edit \u2192 WhatsApp number), then try again."});return;}
     var rows=outGroups[id]||[];
     if(!rows.length)return;
     var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
-    var vars={name:recipientById[id]||nameById[id]||"",student:nameById[id]||"",business:(profile&&profile.business_name)||"your tutor",
+    var vars={name:recipientById[id]||nameById[id]||"",student:nameById[id]||"",business:TL.payeeName(profile,"your tutor"),
       amount:TL.sgd(sum),count:rows.length,invoice:"",paynow:(profile&&profile.paynow_id)||"",
       month:monthsLabel(rows),date:prettyDate(iso(new Date())),year:String(new Date().getFullYear())};
-    var tpl=(profile&&profile.reminder_message)||DEFAULT_REMINDER;
+    var tpl=reminderTpl(profile, !!recipientById[id]); vars.student_s=possessive(vars.student); vars.bank=bankLine(profile);
     window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
   }
 
   function remindMany(ids){
+    if(ids.some(function(id){return waNumber(contactById[id]);}) && needPayCard("reminder")){ payCard("reminder",ids,null,function(){ remindManyNow(ids); }); return; }
+    remindManyNow(ids);
+  }
+  function remindManyNow(ids){
     var num="", targetId=null;
     ids.some(function(id){var n=waNumber(contactById[id]);if(n){num=n;targetId=id;return true;}return false;});
     if(!num){TL.alert({title:"No WhatsApp number",message:"None of these students has a WhatsApp number saved.\n\nAdd one on the Students page (Edit \u2192 WhatsApp number), then try again."});return;}
@@ -313,10 +352,10 @@
     var sum=all.reduce(function(t,l){return t+Number(l.amount);},0);
     var names=ids.map(function(id){return nameById[id]||"";}).filter(Boolean);
     var who=names.length===2?names[0]+" & "+names[1]:names.join(", ");
-    var vars={name:recipientById[targetId]||nameById[targetId]||"",student:who,business:(profile&&profile.business_name)||"your tutor",
+    var vars={name:recipientById[targetId]||nameById[targetId]||"",student:who,business:TL.payeeName(profile,"your tutor"),
       amount:TL.sgd(sum),count:all.length,invoice:"",paynow:(profile&&profile.paynow_id)||"",
       month:monthsLabel(all),date:prettyDate(iso(new Date())),year:String(new Date().getFullYear())};
-    var tpl=(profile&&profile.reminder_message)||DEFAULT_REMINDER;
+    var tpl=reminderTpl(profile, !!recipientById[targetId]); vars.student_s=possessive(firstNames(ids)); vars.bank=bankLine(profile);
     window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
   }
   function periodLabel(){return period.mode==="all"?"All time":new Date(period.y,period.m,1).toLocaleString("en-SG",{month:"long",year:"numeric"});}
@@ -572,11 +611,11 @@
     var total=Math.round(rows.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
     var slug=single?((names[0]||"").replace(/[^A-Za-z0-9]/g,"").slice(0,8).toUpperCase()||"STUDENT")
                    :(names.map(function(n){return n.replace(/[^A-Za-z0-9]/g,"").slice(0,4);}).join("+").toUpperCase().slice(0,18)||"GROUP");
-    var invoiceNo=(profile.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug;
+    var invoiceNo=nextInvNo(profile);
     var sorted=rows.slice().sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
     if(!single)sorted=sorted.map(function(l){return Object.assign({_who:nameById[l.student_id]||"—"},l);});
     var dstr=pdate.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"});
-    var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,dateStr:dstr,paidStr:dstr,
+    var data={biz:TL.payeeName(profile,"Tuition"),invoiceNo:invoiceNo,dateStr:dstr,paidStr:dstr,
       student:billTo,lessons:sorted,total:total,combined:!single,paid:true,
       payTo:profile.paynow_id?PayNow.normalize(profile.paynow_type,profile.paynow_id):(hasBank(profile)?bankObj(profile).name:"")};
     var html=invoiceHTML(data,"");   // paid receipt — no QR needed
@@ -586,6 +625,7 @@
       data:{html:html,title:"Invoice_"+slug+"_"+pd,
         students:single?null:stuIds,name:billTo,lesson_ids:rows.map(function(l){return l.id;})}
     }).select("id").single();
+    if(!ins.error) noteInvNo(invoiceNo);
     return ins.error?null:(ins.data&&ins.data.id);
   }
   // Settle/create the invoice covering these lessons; returns its id so proof can attach.
@@ -813,19 +853,23 @@
       var dur=durHrs(l);
       return "<tr><td>"+prettyDate(l.lesson_date)+"</td><td>"+(dur?hrsLabel(dur):"Lesson")+'</td><td class="r">'+TL.sgd(l.amount)+"</td></tr>";
     }
-    // Label for a student's lessons: SUBJECTS from the invoiced lessons themselves (so only what's
-    // actually billed this month appears — a Math-only month never lists their Chinese slot), and
-    // LEVEL from the student profile (one grade across subjects; this is the field that was showing
-    // wrong when a lesson kept a switched student's stale level). Level falls back to the lesson's own
-    // value only if the profile has none. Called per student (single invoice / one household member).
+    // Label for a student's lessons: each SUBJECT from the invoiced lessons (so only what's billed appears),
+    // with its own subject level from those lessons ("A-Math G2, E-Math G3"), then the YEAR from the student
+    // profile ("Sec 4"). Older data kept the G-level on the student ("Sec 4 G3"): that's still shown, after
+    // the year, only when none of the billed lessons carries a subject level of its own.
     function subjLevel(ls){
       var out=[], done={};
       ls.forEach(function(l){
         var id=l.student_id; if(id==null||done[id])return; done[id]=1;
         var mine=ls.filter(function(x){return String(x.student_id)===String(id);});
-        var subs=[], seen={};
-        mine.forEach(function(x){ if(x.subject && !seen[x.subject]){ seen[x.subject]=1; subs.push(x.subject); } });
-        var lvl=levelById[id]||(mine[0]&&mine[0].level)||"";
+        var subs=[], seen={}, anyG=false;
+        mine.forEach(function(x){
+          var g=TL.subLevel(x.level)||TL.subLevel(x.subject), key=(x.subject||"")+"|"+g;
+          if(g) anyG=true;
+          if((x.subject||g) && !seen[key]){ seen[key]=1; subs.push(x.subject && TL.subLevel(x.subject) ? x.subject : [x.subject,g].filter(Boolean).join(" ")); }
+        });
+        var raw=levelById[id]||(mine[0]&&mine[0].level)||"";
+        var lvl=anyG?TL.yearLevel(raw):raw;
         var label=[subs.join(", "), lvl].filter(Boolean).join(" · ");
         if(label) out.push(label);
       });
@@ -916,8 +960,95 @@
   }
   // Which payment options this tutor has set up. Every invoice shows all of them.
   function payOpts(){ return { pn:!!(profile&&profile.paynow_id), bk:hasBank(profile) }; }
-  async function needPaySetup(){
-    if(await TL.confirm({title:"Add payment details first",message:"Invoices need your PayNow number (and, if you like, bank details) so parents know how to pay.",confirmText:"Open Settings",cancelText:"Not now"})) location.href="settings";
+  // ---- "Before your first invoice": no PayNow and no bank details yet ----
+  // Shown in place (no trip to Settings) the first time a tutor invoices or reminds without payment details.
+  // Invoices need one of them, so it shows each time until one is saved; for reminders it shows once
+  // (per tutor, then "Not now" means send without), because a reminder works without them.
+  var PAYCARD_SEEN="td_paycard_reminder";
+  // ---- Invoice numbers: a short running number per tutor and prefix (INV-0001, INV-0002 …) ----
+  // Read from the saved invoices on load; older date-style numbers (INV-20261022-NAME) are ignored.
+  var invMax={};
+  async function loadInvSeq(){
+    var r=await window.sb.from("invoices").select("invoice_no"); if(r.error) return;
+    invMax={}; (r.data||[]).forEach(function(v){ noteInvNo(v.invoice_no); });
+  }
+  function noteInvNo(no){
+    var m=/^(.+)-(\d{1,6})$/.exec(String(no||"")); if(!m) return;
+    var k=m[1].toUpperCase(), n=parseInt(m[2],10); if(!(invMax[k]>=n)) invMax[k]=n;
+  }
+  function nextInvNo(p){
+    var pre=((p&&p.invoice_prefix)||"INV").trim()||"INV", n=(invMax[pre.toUpperCase()]||0)+1;
+    return pre+"-"+String(n).padStart(4,"0");
+  }
+  function needPayCard(kind){
+    var po=payOpts();
+    if(po.pn||po.bk||!profile) return false;
+    return kind==="invoice" || TL.store.get(PAYCARD_SEEN)!=="1";
+  }
+  function payCard(kind, ids, onlyIds, resume){
+    var p=profile||{}, isInv=kind==="invoice";
+    var rows=[]; ids.forEach(function(id){ (outGroups[id]||[]).forEach(function(l){ if(!onlyIds||onlyIds.indexOf(String(l.id))>-1) rows.push(l); }); });
+    var sum=Math.round(rows.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
+    var names=ids.map(function(id){return nameById[id]||"";}).filter(Boolean);
+    var who=names.length===2?names[0]+" & "+names[1]:names.join(", ");
+    var to=ids.filter(function(id){return recipientById[id];})[0]||ids[0];
+    var now=new Date();
+    var slug=ids.length===1?(names[0]||"").replace(/[^A-Za-z0-9]/g,"").slice(0,8).toUpperCase()
+                           :names.map(function(n){return n.replace(/[^A-Za-z0-9]/g,"").slice(0,4);}).join("+").toUpperCase().slice(0,18)||"GROUP";
+    var body=document.createElement("div"); body.className="td-dlg-f";
+    body.innerHTML=
+      '<div class="field"><label for="pc-name">Name on invoices</label><input id="pc-name" type="text" maxlength="25" autocomplete="organization"></div>'+
+      '<div class="row2"><div class="field"><label for="pc-ptype">PayNow type</label><select id="pc-ptype"><option value="mobile">Mobile number</option><option value="uen">UEN</option></select></div>'+
+        '<div class="field"><label for="pc-pid">PayNow ID</label><input id="pc-pid" type="text" inputmode="tel" placeholder="e.g. 9123 4567"></div></div>'+
+      '<details id="pc-bank"><summary>Bank transfer instead <span>Optional</span></summary>'+
+        '<div class="field"><label for="pc-bkname">Account holder name</label><input id="pc-bkname" type="text" placeholder="e.g. Tan Ah Kow"></div>'+
+        '<div class="field"><label for="pc-bkbank">Bank name</label><input id="pc-bkbank" type="text" placeholder="e.g. DBS Bank"></div>'+
+        '<div class="field"><label for="pc-bkacct">Account number</label><input id="pc-bkacct" type="text" inputmode="numeric" placeholder="e.g. 123-45678-9"></div></details>'+
+      '<div><p class="td-dlg-wal">WhatsApp message preview</p><div class="td-dlg-wa" id="pc-wa"></div></div>';
+    var q=function(id){ return body.querySelector("#"+id); };
+    q("pc-name").value=TL.payeeName(p,"");
+    q("pc-ptype").value=p.paynow_type||"mobile";
+    function vals(){
+      return { biz:q("pc-name").value.trim(), ptype:q("pc-ptype").value, pid:q("pc-pid").value.trim(),
+               bkname:q("pc-bkname").value.trim(), bkbank:q("pc-bkbank").value.trim(), acct:q("pc-bkacct").value.trim() };
+    }
+    function draft(){   // the profile as it will be once saved
+      var v=vals(), d=Object.assign({},p,{business_name:v.biz||p.business_name||null});
+      if(v.pid){ d.paynow_type=v.ptype; d.paynow_id=v.pid; }
+      if(v.acct){ d.bank_account_name=v.bkname||null; d.bank_name=v.bkbank||null; d.bank_account_no=v.acct; }
+      return d;
+    }
+    function draw(){
+      var d=draft(), pn=!!d.paynow_id, bk=hasBank(d);
+      var vars={name:recipientById[to]||nameById[to]||"",student:who,business:TL.payeeName(d,"your tutor"),
+        amount:TL.sgd(sum),count:rows.length,paynow:d.paynow_id||"(your PayNow ID)",
+        invoice:isInv?nextInvNo(d):"",
+        month:monthsLabel(rows),date:prettyDate(iso(now)),year:String(now.getFullYear())};
+      vars.student_s=possessive(ids.length>1?firstNames(ids):who); vars.bank=bankLine(d);
+      var tpl=isInv?invoiceTpl(d,pn,bk,!!recipientById[to]):reminderTpl(d,!!recipientById[to]);
+      q("pc-wa").textContent=fillTemplate(tpl,vars);
+    }
+    body.addEventListener("input",draw); body.addEventListener("change",draw); draw();
+    TL.dialog({title:"Before your first "+(isInv?"invoice":"reminder")+", add how parents should pay you.",
+      body:body, focus:"#pc-pid", confirmText:"Save & continue", cancelText:"Not now", keepOnBackdrop:true,
+      canConfirm:function(){ var v=vals(); return !!(v.pid||v.acct); },
+      onClose:function(ok){
+        // Runs inside the tap, so a reminder can still open WhatsApp without being blocked.
+        if(!ok){ if(!isInv){ TL.store.set(PAYCARD_SEEN,"1"); resume(); } return; }
+        var v=vals(), d=draft(), upd={};
+        // Keep the tutor's own name out of business_name unless they changed it (Settings shows it as "Tuition name").
+        if(v.biz && (p.business_name || v.biz!==(p.full_name||"").trim())) upd.business_name=v.biz;
+        if(v.pid){ upd.paynow_type=v.ptype; upd.paynow_id=v.pid; }
+        if(v.acct){ upd.bank_account_name=v.bkname||null; upd.bank_name=v.bkbank||null; upd.bank_account_no=v.acct; }
+        if(!upd.business_name) d.business_name=p.business_name||null;
+        profile=Object.assign(p,d);
+        if(!isInv) TL.store.set(PAYCARD_SEEN,"1");
+        resume();
+        window.sb.from("profiles").update(upd).eq("id",userId).then(function(r){
+          if(r.error){ TL.alert({title:"Couldn\u2019t save your payment details",message:r.error.message+"\n\nYou can add them in Settings."}); return; }
+          if(upd.business_name) TL.setBrand(upd.business_name);
+        });
+      }});
   }
 
   async function openInvoice(studentId, onlyIds){
@@ -926,7 +1057,7 @@
       return;
     }
     var po=payOpts();
-    if(!po.pn && !po.bk){ needPaySetup(); return; }
+    if(!po.pn && !po.bk){ payCard("invoice",[studentId],onlyIds,function(){ openInvoice(studentId, onlyIds); }); return; }
     var lessons=(outGroups[studentId]||[]).slice()
       .filter(function(l){ return !onlyIds || onlyIds.indexOf(String(l.id))>-1; })   // invoice only the picked lessons, if any
       .sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
@@ -936,8 +1067,8 @@
     var now=new Date();
     window._invTitle="Invoice_"+(student.replace(/[^A-Za-z0-9]+/g,"")||"Student")+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
     var slug=student.replace(/[^A-Za-z0-9]/g,"").slice(0,8).toUpperCase();
-    var invoiceNo=(profile.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug;
-    var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,
+    var invoiceNo=nextInvNo(profile);
+    var data={biz:TL.payeeName(profile,"Tuition"),invoiceNo:invoiceNo,
       dateStr:now.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"}),
       student:student,lessons:lessons,total:total};
     var meta={studentId:studentId,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(lessons),lessonIds:lessons.map(function(l){return l.id;})};
@@ -950,7 +1081,7 @@
     }
     data.payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
     try{
-      var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
+      var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:TL.payeeName(profile,"Tuition"),reference:invoiceNo});
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){TL.alert("Couldn't generate QR: "+(err.message||err));return;}
         presentInvoice(data,url,meta);
@@ -961,7 +1092,7 @@
   async function openInvoiceMany(ids, onlyIds){
     if(!profile){TL.alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");return;}
     var po=payOpts();
-    if(!po.pn && !po.bk){ needPaySetup(); return; }
+    if(!po.pn && !po.bk){ payCard("invoice",ids,onlyIds,function(){ openInvoiceMany(ids, onlyIds); }); return; }
     var all=[];
     ids.forEach(function(id){(outGroups[id]||[]).forEach(function(l){ if(!onlyIds||onlyIds.indexOf(String(l.id))>-1) all.push(Object.assign({_who:nameById[id]||"—"},l)); });});
     all.sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date)||String(a._who).localeCompare(String(b._who));});
@@ -972,8 +1103,8 @@
     var now=new Date();
     var slug=names.map(function(n){return n.replace(/[^A-Za-z0-9]/g,"").slice(0,4);}).join("+").toUpperCase().slice(0,18)||"GROUP";
     window._invTitle="Invoice_"+slug+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
-    var invoiceNo=(profile.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug;
-    var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,
+    var invoiceNo=nextInvNo(profile);
+    var data={biz:TL.payeeName(profile,"Tuition"),invoiceNo:invoiceNo,
       dateStr:now.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"}),
       student:billTo,lessons:all,total:total,combined:true};
     var meta={studentId:null,students:ids,name:billTo,
@@ -985,7 +1116,7 @@
     catch(e){ TL.alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again."); return; }
     data.payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
     try{
-      var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
+      var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:TL.payeeName(profile,"Tuition"),reference:invoiceNo});
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){TL.alert("Couldn't generate QR: "+(err.message||err));return;}
         presentInvoice(data,url,meta);
@@ -1003,7 +1134,7 @@
       data:{html:window._invHTML,title:window._invTitle||("Invoice_"+m.invoiceNo),
         students:m.students||null,name:m.name||window._invBillTo||null,lesson_ids:m.lessonIds||null}
     }).select("id").single();
-    if(!res.error&&res.data)window._invSavedId=res.data.id;
+    if(!res.error&&res.data){window._invSavedId=res.data.id;noteInvNo(m.invoiceNo);}
     b.disabled=false;
     if(res.error){b.textContent="Save to app";TL.alert("Couldn't save invoice: "+res.error.message);return;}
     window._invSaved=true;   // recorded in the Invoices tab
@@ -1031,11 +1162,12 @@
     var isCombined=!m.studentId;
     var po=payOpts();
     var vars={name:isCombined?(m.recipient||m.name||""):(recipientById[m.studentId]||nameById[m.studentId]||""),
-      student:isCombined?(m.name||""):(nameById[m.studentId]||""),business:(profile&&profile.business_name)||"your tutor",
+      student:isCombined?(m.name||""):(nameById[m.studentId]||""),business:TL.payeeName(profile,"your tutor"),
       amount:TL.sgd(m.total),count:"",invoice:m.invoiceNo,paynow:(profile&&profile.paynow_id)||"",
       month:m.month||"",date:prettyDate(m.issuedDate),year:(m.issuedDate||"").slice(0,4)};
     // Default message matches what's on the invoice: PayNow, bank transfer, or both.
-    var tpl=(profile&&profile.invoice_message)||(po.pn&&po.bk?DEFAULT_INVOICE_BOTH:(po.bk?DEFAULT_INVOICE_BANK:DEFAULT_INVOICE));
+    vars.student_s=possessive(vars.student);
+    var tpl=invoiceTpl(profile, po.pn, po.bk, isCombined ? !!m.recipient : !!recipientById[m.studentId]);
     return fillTemplate(tpl,vars);
   }
   // Two WhatsApp flows, picked by OS:
@@ -1122,8 +1254,11 @@
 
   // ---------- load ----------
   async function load(){
+    var seqP=loadInvSeq();
     await TL.promotePastLessons();
-    var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,bank_account_name,bank_name,bank_account_no,bank_swift").eq("id",userId).single();
+    var PCOLS="business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,bank_account_name,bank_name,bank_account_no,bank_swift";
+    var pr=await window.sb.from("profiles").select(PCOLS+",full_name").eq("id",userId).single();
+    if(pr.error) pr=await window.sb.from("profiles").select(PCOLS).eq("id",userId).single();   // older DB without full_name
     profile=pr.error?null:pr.data;
 
     var st=await window.sb.from("students").select("id,name,active,contact,recipient_name,pay_by_bank,level,end_date").order("name");
@@ -1142,7 +1277,7 @@
     lessons.forEach(function(l){ if(l.status==="cancelled") l.amount=Number(l.compensation)||0; });
 
     allLessons=lessons;
-    await loadSentMap();
+    await loadSentMap(); await seqP;
     var unpaid=lessons.filter(function(l){return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));});
     lastUnpaid=unpaid;
     renderPendingKpi();   // pending follows the month picker (All = all-time total)
