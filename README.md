@@ -268,6 +268,8 @@ A running log of Raphael's changes, newest first.
   - One finish message for everyone (calendar card and Home card): "✓ You're all set up! Lessons that already happened
     show as Unpaid. Mark them paid in Money when the parent pays."
   - Ledger "Log this week" / "Log lessons" dialogs show dates as "19–25 Oct" (or "28 Oct – 3 Nov") instead of ISO dates.
+  - Calendar on phones: a **Today** button appears next to › as soon as you move away from today's week, day or month
+    (it was hidden on phones; tapping Schedule again still works too).
 
 - **2026-10-21 — Calendar in Client view keeps unpaid lessons visible (v222).** Client view hides the Paid/Unpaid
   switches, so a saved "Unpaid off" (or "Paid off") filter made those lessons vanish with no way back. Those two filters are

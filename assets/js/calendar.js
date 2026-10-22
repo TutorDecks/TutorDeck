@@ -407,6 +407,12 @@
   function render(){
     if(!$("cal")) return;
     $("cal-range").textContent=rangeLabel();
+    // Phones: "Today" only appears once you've moved away from the period that contains today.
+    var now=new Date(), em=effMode(), here=
+      em==="day"   ? iso(anchor)===iso(now) :
+      em==="month" ? anchor.getFullYear()===now.getFullYear() && anchor.getMonth()===now.getMonth() :
+                     iso(mondayOf(anchor))===iso(mondayOf(now));
+    var nav=document.querySelector(".cal-nav"); if(nav) nav.classList.toggle("away", !here);
     var m=effMode();
     document.body.classList.toggle("cal-agenda", m==="list");
     document.body.classList.toggle("cal-dayview", m==="day");
