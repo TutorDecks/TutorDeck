@@ -261,6 +261,11 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-22 — Glass made easier to read (v230).** UI pass over every page on phone and desktop (all ⋯ / dropdown
+  menus open on top and are tappable; no sideways scrolling; no page errors). One fix: list text scrolling under the
+  phone tab bar competed with the tab labels, so the bar is now 92% white with a stronger blur, and the floating eye
+  and "+" 82%.
+
 - **2026-10-22 — Students ⋯ menu always on top (v229).** The row menu opened inside the list, so on phones the
   rows below painted over it and the last rows' menus were clipped. It now floats above the page (fixed position,
   placed under the ⋯, or above it when there's no room before the bottom bar) and closes when you scroll away.
