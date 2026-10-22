@@ -264,7 +264,8 @@ A running log of Raphael's changes, newest first.
 - **2026-10-22 — Saved invoices survive removing a student (v224).** Checked the live DB: `invoices.student_id` →
   students is `on delete set null` (tutor_id → auth.users cascades), so removing a student keeps their saved invoices
   with no student link.
-  - "Remove student" dialog now says: "Saved invoices are kept in Invoices, under their name."
+  - "Remove student" dialog now says: "Saved invoices are kept in Invoices, under their name." It no longer mentions
+    Merge (removed from the menu in v160).
   - Invoices list, invoice sheet and CSV export name an unlinked invoice from what it recorded: the stored name
     (`data.name`), else the "Bill to" line of the saved snapshot, else "Removed student" (dash avatar).
   - New invoices always store the bill-to name in `data.name` (single-student ones too), so the name survives exactly.
