@@ -152,7 +152,8 @@
     // Mobile: rows are a compact list — tapping one (not a link/button) opens the profile.
     scope.querySelectorAll(".rmore").forEach(function(b){b.addEventListener("click",function(e){
       e.stopPropagation();var m=b.parentNode,o=!m.classList.contains("open");
-      document.querySelectorAll(".rm.open").forEach(function(x){x.classList.remove("open");});m.classList.toggle("open",o);});});
+      document.querySelectorAll(".rm.open").forEach(function(x){x.classList.remove("open");});m.classList.toggle("open",o);
+      if(o)placeMenu(b,m.querySelector(".rm-menu"));});});
     scope.querySelectorAll(".rm-menu .tact").forEach(function(b){b.addEventListener("click",function(){var m=b.closest(".rm");if(m)m.classList.remove("open");});});
     scope.querySelectorAll("tr[data-id]").forEach(function(tr){
       tr.addEventListener("click",function(e){
@@ -217,6 +218,20 @@
       wire($("disc-body"));
     }else{$("disc-title").style.display="none";$("disc-card").style.display="none";}
   }
+  // The ⋯ menu floats above the page (fixed), so the rows below can't cover it and the list's scroll box can't
+  // clip it. It opens under the button, or above it when there isn't room below; scrolling closes it.
+  function placeMenu(btn,menu){
+    if(!menu)return;
+    var r=btn.getBoundingClientRect(), mh=menu.offsetHeight, mw=menu.offsetWidth, vh=window.innerHeight;
+    var bottomBar=document.querySelector(".tabbar"), limit=vh-((bottomBar&&bottomBar.offsetHeight)||0)-8;
+    var top=(r.bottom+4+mh<=limit||r.top-4-mh<8)?r.bottom+4:r.top-4-mh;
+    menu.style.top=Math.max(8,top)+"px"; menuY=window.scrollY;
+    menu.style.left=Math.max(8,Math.min(window.innerWidth-mw-8,r.right-mw))+"px";
+  }
+  var menuY=0;
+  function closeMenus(){document.querySelectorAll(".rm.open").forEach(function(x){x.classList.remove("open");});}
+  window.addEventListener("scroll",function(){ if(Math.abs(window.scrollY-menuY)>24) closeMenus(); },{passive:true});
+  window.addEventListener("resize",closeMenus);
   async function load(){
     var res=await window.sb.from("students").select("id,name,kind,level,contact,location,notes,active,recipient_name,end_date,pay_by_bank").order("name");
     if(res.error){$("s-count").textContent="Couldn't load students: "+res.error.message;return;}
