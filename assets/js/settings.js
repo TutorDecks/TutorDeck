@@ -52,7 +52,7 @@
     if (res.error) { msg.textContent = res.error.message; msg.className = "msg err"; return; }
     msg.textContent = "Saved ✓"; msg.className = "msg ok";
     TL.setBrand(biz || "");   // the top bar (and the next page) shows the new name straight away
-    TL.store.set("td_first", TL.firstName(fn));
+    TL.setHello(TL.firstName(fn), fn);
   }
 
   // ---- Two-factor (TOTP) ----

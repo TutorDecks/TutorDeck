@@ -261,6 +261,32 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-22 — Onboarding polish from a full new-tutor walkthrough (v227).** Builds on v226 (same migration).
+  1. **After email sign-up:** "Check your email" — "Check <email> to finish signing up. Already have an account? Sign in
+     instead." The technical "email confirmation disabled" line is gone. Neutral on purpose: Supabase returns the same
+     result for an email that's already registered.
+  2. **Levels:** a student's Level is just the year ("e.g. Sec 3"); G1/G2/G3 (or IB HL/SL) is the **Subject level** on
+     each weekly slot and lesson (Planner / Ledger forms, with suggestions). Invoices read "A-Math G2, E-Math G3 · Sec 4"
+     (`TL.subLevel` / `TL.yearLevel` split older "Sec 4 G3" values). Older data with no subject levels keeps the old
+     "A-Math · Sec 4 G3" label until the slots get one. The student profile lists each weekly lesson with its subject
+     level, and its Level chip shows the year once subjects carry their own.
+  3. **Avatar** (top right) uses the tutor's own initials (Alex Tan → "AT"), falling back to the business monogram.
+  4. **Client view eye** sits at the top right on phones, so it no longer covers Home's "TEACHING" heading or the
+     left-aligned lists. Desktop keeps it at the bottom left.
+  5. **Client view tip** isn't shown on Home while the setup or Get paid faster card (or the Welcome screen) is up;
+     it appears on a later visit (other pages show it as before).
+  6. **Empty Ledger for a new tutor:** "Once a lesson has happened, it'll show here and you can send an invoice in one
+     tap." (only when nothing has been taught yet).
+  7. **Invoice numbers:** short running number per tutor and prefix — INV-0001, INV-0002 … (prefix setting kept;
+     continues after the highest saved number such as RT-0012 → RT-0013; old date-style numbers are ignored). Also
+     used as the PayNow reference and for paid receipts.
+  8. **Default WhatsApp messages without a parent name** don't greet the student: "Hi! Here's Ethan's invoice …",
+     "Hi! Friendly reminder from …: Ethan has an outstanding balance …". With a parent name they're unchanged;
+     custom templates are never changed.
+  9. **Frosted-glass floating controls:** Client view eye, floating +, and the phone tab bar — translucent white,
+     backdrop blur, thin light border, faint navy hairline, soft shadow, teal icons; Client view on = dark glass.
+     Solid fallback where `backdrop-filter` isn't supported. Cards and forms unchanged.
+
 - **2026-10-22 — New onboarding and get-paid flow (v226).** Sign up → Welcome → 3-step setup → (later) Before your
   first invoice → optional Get paid faster.
   **Requires `db/migration_onboarding.sql` in Supabase BEFORE this reaches dev or main** (adds nullable

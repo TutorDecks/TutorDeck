@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Sign in · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=226">
+<link rel="stylesheet" href="assets/css/app.css?v=227">
 <style>
   .oauth-div{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--muted);font-size:12.5px}
   .oauth-div::before,.oauth-div::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -91,9 +91,9 @@
     <!-- account-created success state -->
     <div id="created" style="display:none">
       <div class="ok-check">✓</div>
-      <h2>Account created</h2>
+      <h2>Check your email</h2>
       <p class="created-msg" id="created-msg"></p>
-      <button class="btn btn-gold" id="to-login">Go to sign in</button>
+      <button class="btn btn-gold" id="to-login">Sign in</button>
     </div>
 
     <!-- two-factor challenge -->
@@ -113,8 +113,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=226"></script>
-<script src="assets/js/supabase.js?v=226"></script>
+<script src="assets/js/config.js?v=227"></script>
+<script src="assets/js/supabase.js?v=227"></script>
 <script>
 (function () {
   var mode = "in";
@@ -153,12 +153,10 @@
   function showCreated(email, confirmNeeded) {
     $("form-area").style.display = "none";
     $("created").style.display = "block";
-    $("created-msg").innerHTML = confirmNeeded
-      ? "We've sent a confirmation link to <b>" + email + "</b>. Open it to verify your " +
-        "address, then come back and sign in.<br><br>Didn't get it? Check spam, or your project " +
-        "may have email confirmation disabled — in which case you can just sign in now."
-      : "Your account <b>" + email + "</b> is ready. You can sign in now.";
+    // Neutral on purpose: Supabase shows this same result when the email is already registered.
+    $("created-msg").innerHTML = "Check <b>" + esc(email) + "</b> to finish signing up.<br>Already have an account? Sign in instead.";
   }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   $("to-login").onclick = function () {
     $("created").style.display = "none";
     $("form-area").style.display = "block";

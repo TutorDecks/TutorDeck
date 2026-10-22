@@ -77,6 +77,8 @@ window.TL = (function () {
     return /s$/i.test(s) ? s + "’" : s + "’s";
   }
 
+  // Account avatar: the tutor's own initials ("Alex Tan" → "AT"); without a name, the business monogram.
+  function acctInitials() { return helloFull ? monogram(helloFull) : monogram(brandName); }
   function mono() {
     return '<span class="mono">' + esc(monogram(brandName)) + '</span><span><b>' +
            esc(brandName === DEFAULT_BRAND ? brandName : possessive(brandName)) + '</b><small>Dashboard</small></span>';
@@ -103,7 +105,7 @@ window.TL = (function () {
       return '<a href="' + n.href + '" class="tn-ic' + (n.id === active ? " active" : "") + '" title="' + n.label +
              '" aria-label="' + n.label + '">' + icon(n.ic, 19) + '</a>';
     }).join("");
-    var initials = monogram(brandName);
+    var initials = acctInitials();
 
     // Phone bottom bar: the four groups + More.
     var bar = GROUPS.map(function (g) {
@@ -190,9 +192,8 @@ window.TL = (function () {
     applyClient();
     // First-time tip on whichever page a new user opens first (not over the Calendar's own first tip).
     var calTipsPending = active === "calendar" && !store.get("td_tip_cal-filters");
-    if (!CLIENT && !calTipsPending)
-      setTimeout(function () { coach("client-view", document.getElementById("td-cv"),
-        "<b>Client view</b><br>Student or parent nearby? Tap this eye to hide all money instantly. Tap it again to bring it back.", { above: true }); }, 700);
+    // Home decides for itself once its cards are drawn (not alongside the setup or Get paid faster card).
+    if (!CLIENT && !calTipsPending && active !== "dashboard") setTimeout(cvTip, 700);
 
     enhanceForms();
     // Phones: a page's main "add" button (marked data-fab) becomes a floating + at bottom right,
@@ -268,9 +269,20 @@ window.TL = (function () {
     } catch (e) {}
   })();
 
+  function cvTip() {
+    if (CLIENT) return;
+    coach("client-view", document.getElementById("td-cv"),
+      "<b>Client view</b><br>Student or parent nearby? Tap this eye to hide all money instantly. Tap it again to bring it back.", { above: !isPhoneCv() });
+  }
+  function isPhoneCv() { return window.matchMedia("(max-width:820px)").matches; }
+  // Levels: a student's Level is the year ("Sec 4"); G1/G2/G3 (or IB HL/SL) belongs to each subject and is kept
+  // on the weekly slot / lesson. Older data may hold both together ("Sec 4 G3"), so pull them apart here.
+  var SUBLVL_RE = /\b(G[1-3]|HL|SL)\b/i;
+  function subLevel(s) { var m = SUBLVL_RE.exec(String(s || "")); return m ? m[1].toUpperCase() : ""; }
+  function yearLevel(s) { return String(s || "").replace(new RegExp(SUBLVL_RE.source, "gi"), "").replace(/\s{2,}/g, " ").trim(); }
   // First word of a full name ("Raphael Long" → "Raphael").
   function firstName(n) { return String(n || "").trim().split(/\s+/)[0] || ""; }
-  var helloFirst = "", setHello = function () {}, setBrand = function () {};
+  var helloFirst = "", helloFull = "", setHello = function () {}, setBrand = function () {};
   async function requireAuth(active, init) {
     var hr = new Date().getHours();
     var meta = { dashboard: [hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening",
@@ -317,17 +329,18 @@ window.TL = (function () {
       })
       .then(function (pr) {
         var d = (pr && pr.data) || {}, bn = (d.business_name || "").trim();
-        return { brand: bn || DEFAULT_BRAND, first: firstName(d.full_name) };
-      }, function () { return { brand: DEFAULT_BRAND, first: "" }; });
-    var cachedBrand = store.get("td_brand"), cachedFirst = store.get("td_first");
+        return { brand: bn || DEFAULT_BRAND, first: firstName(d.full_name), full: String(d.full_name || "").trim() };
+      }, function () { return { brand: DEFAULT_BRAND, first: "", full: "" }; });
+    var cachedBrand = store.get("td_brand"), cachedFirst = store.get("td_first"), cachedFull = store.get("td_full");
     var greet = meta[0];
     function heroTitle(name, first) {
       var who = first || (name && name !== DEFAULT_BRAND ? name : "");
       return (active === "dashboard" && who)
         ? '<span class="hi-eyebrow">' + greet + '</span><span class="hi-name">' + esc(who) + '</span>' : greet;
     }
-    setHello = function (first) {
+    setHello = function (first, full) {
       helloFirst = first || ""; store.set("td_first", helloFirst);
+      if (full !== undefined) { helloFull = full || ""; store.set("td_full", helloFull); var a = document.getElementById("tl-acct"); if (a) a.textContent = acctInitials(); }
       var h1 = document.querySelector(".topbar h1"); if (h1 && active === "dashboard") h1.innerHTML = heroTitle(brandName, helloFirst);
     };
     setBrand = function (fresh) {
@@ -335,17 +348,17 @@ window.TL = (function () {
       if (fresh === brandName) return;
       brandName = fresh;
       var who = document.querySelector(".tn-who b"); if (who) who.textContent = fresh;
-      var av = document.getElementById("tl-acct"); if (av) { av.title = fresh; av.textContent = monogram(fresh); }
+      var av = document.getElementById("tl-acct"); if (av) { av.title = fresh; av.textContent = acctInitials(); }
       var ms = document.querySelector(".ms-brand b"); if (ms) ms.textContent = fresh;
       var h1 = document.querySelector(".topbar h1"); if (h1 && active === "dashboard") h1.innerHTML = heroTitle(fresh, helloFirst);
     };
-    if (cachedBrand === null) { var p0 = await profileP; brandName = p0.brand; helloFirst = p0.first; store.set("td_brand", brandName); store.set("td_first", helloFirst); }
+    if (cachedBrand === null) { var p0 = await profileP; brandName = p0.brand; helloFirst = p0.first; helloFull = p0.full; store.set("td_brand", brandName); store.set("td_first", helloFirst); store.set("td_full", helloFull); }
     else {
-      brandName = cachedBrand || DEFAULT_BRAND; helloFirst = cachedFirst || "";
+      brandName = cachedBrand || DEFAULT_BRAND; helloFirst = cachedFirst || ""; helloFull = cachedFull || "";
       profileP.then(function (fresh) {
-        var f0 = helloFirst; helloFirst = fresh.first; store.set("td_first", fresh.first);
-        if (fresh.brand !== brandName) setBrand(fresh.brand);
-        else if (fresh.first !== f0) setHello(fresh.first);
+        var f0 = helloFirst, n0 = helloFull; helloFirst = fresh.first; store.set("td_first", fresh.first);
+        if (fresh.brand !== brandName) { helloFull = fresh.full; store.set("td_full", fresh.full); setBrand(fresh.brand); }
+        else if (fresh.first !== f0 || fresh.full !== n0) setHello(fresh.first, fresh.full);
       });
     }
     // Apple-style hero: small grey greeting over the tutor's first name in large, heavy type.
@@ -773,8 +786,8 @@ window.TL = (function () {
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,
            todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd,
-           dialog: dialog, firstName: firstName,
-           setHello: function (f) { setHello(f); }, setBrand: function (b) { setBrand(b); },
+           dialog: dialog, firstName: firstName, subLevel: subLevel, yearLevel: yearLevel, cvTip: function () { cvTip(); },
+           setHello: function (f, full) { setHello(f, full); }, setBrand: function (b) { setBrand(b); },
            // Name parents see (invoices, PayNow, WhatsApp): tuition name, else the tutor's own name, else generic.
            payeeName: function (p, generic) { p = p || {}; return (p.business_name || "").trim() || (p.full_name || "").trim() || generic; } };
 })();

@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Planner · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=226">
+<link rel="stylesheet" href="assets/css/app.css?v=227">
 <style>
   /* make the lesson time the visual anchor of each slot */
   .slot{padding-top:9px}
@@ -110,11 +110,12 @@
         <input id="m-subject" list="dl-subject" type="text" placeholder="e.g. A-Math"><datalist id="dl-subject"></datalist>
       </div>
       <details class="more-fields">
-        <summary>More details <small>Level, group lessons</small></summary>
+        <summary>More details <small>Subject level, group lessons</small></summary>
         <div class="more-body">
           <div class="field">
-            <label for="m-level">Level <span class="opt">Optional</span></label>
-            <input id="m-level" type="text" placeholder="e.g. P6, Sec 3, JC1" data-autofill>
+            <label for="m-level">Subject level <span class="opt">Optional</span></label>
+            <input id="m-level" type="text" list="dl-sublevel" placeholder="e.g. G3" data-autofill><datalist id="dl-sublevel"><option value="G1"><option value="G2"><option value="G3"><option value="HL"><option value="SL"></datalist>
+            <span class="fhint">G1, G2 or G3 for this subject (or HL / SL). Shown next to the subject on invoices.</span>
           </div>
           <div class="field">
             <label for="m-split">Split between <span class="opt">Optional</span></label>
@@ -135,9 +136,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=226"></script>
-<script src="assets/js/supabase.js?v=226"></script>
-<script src="assets/js/app.js?v=226"></script>
-<script src="assets/js/planner.js?v=226"></script>
+<script src="assets/js/config.js?v=227"></script>
+<script src="assets/js/supabase.js?v=227"></script>
+<script src="assets/js/app.js?v=227"></script>
+<script src="assets/js/planner.js?v=227"></script>
 </body>
 </html>

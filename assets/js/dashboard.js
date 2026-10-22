@@ -382,6 +382,11 @@
     renderOnboarding((st.data||[]).length, (sl.data||[]).length, lessons.length);
     // New account (never welcomed, no students yet): ask their name first, before the 3-step setup.
     if(homeProfile && !homeProfile.welcomed_at && !homeStudents.length) welcome(homeProfile);
+    // Client view tip: only on a visit with no setup / Get paid faster card / Welcome on screen.
+    if($("onboard")){
+      var busy=welcomeOpen||($("onboard").style.display==="block")||($("getpaid")&&$("getpaid").style.display==="block");
+      if(!busy) setTimeout(function(){ if(!document.querySelector(".td-dlg")) TL.cvTip(); },700);
+    }
     allLessons=lessons;
     var now=new Date(),y=now.getFullYear(),m=now.getMonth();
     if(selY===null){selY=y;selM=m;}
@@ -486,7 +491,7 @@
     welcomeOpen=false;
     if(r.error) return;
     Object.assign(p,upd);
-    if(ok){ TL.setHello(TL.firstName(upd.full_name)); TL.setBrand(upd.business_name||""); }
+    if(ok){ TL.setHello(TL.firstName(upd.full_name), upd.full_name); TL.setBrand(upd.business_name||""); }
   }
 
   // ---------- Get paid faster (after the 3-step setup) ----------
