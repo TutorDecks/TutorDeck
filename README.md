@@ -261,6 +261,16 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-22 — Saved invoices survive removing a student (v224).** Checked the live DB: `invoices.student_id` →
+  students is `on delete set null` (tutor_id → auth.users cascades), so removing a student keeps their saved invoices
+  with no student link.
+  - "Remove student" dialog now says: "Saved invoices are kept in Invoices, under their name." It no longer mentions
+    Merge (removed from the menu in v160).
+  - Invoices list, invoice sheet and CSV export name an unlinked invoice from what it recorded: the stored name
+    (`data.name`), else the "Bill to" line of the saved snapshot, else "Removed student" (dash avatar).
+  - New invoices always store the bill-to name in `data.name` (single-student ones too), so the name survives exactly.
+  - Ledger, Home and the student profile load fine with unlinked invoices (they match invoices by `lesson_ids`).
+
 - **2026-10-22 — One standard setup step 3 and finish; friendlier log dates (v223).**
   - Step 3 banner is the same for every tutor, whether this week's first lesson is still to come or already passed:
     "Tap Log to confirm this week's lessons." During setup the calendar opens on this week in Week view (not saved).
