@@ -268,6 +268,9 @@ window.TL = (function () {
     } catch (e) {}
   })();
 
+  // First word of a full name ("Raphael Long" → "Raphael").
+  function firstName(n) { return String(n || "").trim().split(/\s+/)[0] || ""; }
+  var helloFirst = "", setHello = function () {}, setBrand = function () {};
   async function requireAuth(active, init) {
     var hr = new Date().getHours();
     var meta = { dashboard: [hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening",
@@ -305,31 +308,48 @@ window.TL = (function () {
     // Brand the top bar with this tutor's business name. Draw the page straight away with the name we saw
     // last time on this browser (no blank screen while the profile loads); fix it up if it has changed.
     // First visit on a browser: wait for the profile as before.
-    var profileP = window.sb.from("profiles").select("business_name").eq("id", session.user.id).single()
-      .then(function (pr) { var bn = pr && pr.data && pr.data.business_name && pr.data.business_name.trim(); return bn || DEFAULT_BRAND; },
-            function () { return DEFAULT_BRAND; });
-    var cachedBrand = store.get("td_brand");
+    // Home greets the tutor by their own first name (profiles.full_name, from the Welcome screen or Google);
+    // without one it falls back to the business name, as before.
+    var profileP = window.sb.from("profiles").select("business_name,full_name").eq("id", session.user.id).single()
+      .then(function (pr) {
+        if (pr && pr.error) return window.sb.from("profiles").select("business_name").eq("id", session.user.id).single();
+        return pr;
+      })
+      .then(function (pr) {
+        var d = (pr && pr.data) || {}, bn = (d.business_name || "").trim();
+        return { brand: bn || DEFAULT_BRAND, first: firstName(d.full_name) };
+      }, function () { return { brand: DEFAULT_BRAND, first: "" }; });
+    var cachedBrand = store.get("td_brand"), cachedFirst = store.get("td_first");
     var greet = meta[0];
-    function heroTitle(name) {
-      return (active === "dashboard" && name && name !== DEFAULT_BRAND)
-        ? '<span class="hi-eyebrow">' + greet + '</span><span class="hi-name">' + esc(name) + '</span>' : greet;
+    function heroTitle(name, first) {
+      var who = first || (name && name !== DEFAULT_BRAND ? name : "");
+      return (active === "dashboard" && who)
+        ? '<span class="hi-eyebrow">' + greet + '</span><span class="hi-name">' + esc(who) + '</span>' : greet;
     }
-    if (cachedBrand === null) { brandName = await profileP; store.set("td_brand", brandName); }
+    setHello = function (first) {
+      helloFirst = first || ""; store.set("td_first", helloFirst);
+      var h1 = document.querySelector(".topbar h1"); if (h1 && active === "dashboard") h1.innerHTML = heroTitle(brandName, helloFirst);
+    };
+    setBrand = function (fresh) {
+      fresh = fresh || DEFAULT_BRAND; store.set("td_brand", fresh);
+      if (fresh === brandName) return;
+      brandName = fresh;
+      var who = document.querySelector(".tn-who b"); if (who) who.textContent = fresh;
+      var av = document.getElementById("tl-acct"); if (av) { av.title = fresh; av.textContent = monogram(fresh); }
+      var ms = document.querySelector(".ms-brand b"); if (ms) ms.textContent = fresh;
+      var h1 = document.querySelector(".topbar h1"); if (h1 && active === "dashboard") h1.innerHTML = heroTitle(fresh, helloFirst);
+    };
+    if (cachedBrand === null) { var p0 = await profileP; brandName = p0.brand; helloFirst = p0.first; store.set("td_brand", brandName); store.set("td_first", helloFirst); }
     else {
-      brandName = cachedBrand || DEFAULT_BRAND;
+      brandName = cachedBrand || DEFAULT_BRAND; helloFirst = cachedFirst || "";
       profileP.then(function (fresh) {
-        store.set("td_brand", fresh);
-        if (fresh === brandName) return;
-        brandName = fresh;
-        var who = document.querySelector(".tn-who b"); if (who) who.textContent = fresh;
-        var av = document.getElementById("tl-acct"); if (av) { av.title = fresh; av.textContent = monogram(fresh); }
-        var ms = document.querySelector(".ms-brand b"); if (ms) ms.textContent = fresh;
-        var h1 = document.querySelector(".topbar h1"); if (h1 && active === "dashboard") h1.innerHTML = heroTitle(fresh);
+        var f0 = helloFirst; helloFirst = fresh.first; store.set("td_first", fresh.first);
+        if (fresh.brand !== brandName) setBrand(fresh.brand);
+        else if (fresh.first !== f0) setHello(fresh.first);
       });
     }
-    // Home greets the tutor by their business name ("Good afternoon, Raphael Tuition")
-    // Apple-style hero: small grey greeting over the business name in large, heavy type.
-    meta[0] = heroTitle(brandName);
+    // Apple-style hero: small grey greeting over the tutor's first name in large, heavy type.
+    meta[0] = heroTitle(brandName, helloFirst);
     mountShell(active, session.user.email, meta[0], meta[1]);
     skWatch();
     if (typeof init === "function") init(session.user);
@@ -368,21 +388,33 @@ window.TL = (function () {
       var prev = document.activeElement, isPrompt = !!o.prompt, hasCancel = o.cancelText !== false;
       var wrap = document.createElement("div");
       wrap.className = "td-dlg";
-      wrap.innerHTML = '<div class="td-dlg-box' + (o.danger ? ' danger' : '') + '" role="alertdialog" aria-modal="true" aria-labelledby="td-dlg-t" aria-describedby="td-dlg-m">' +
+      // o.body: an element with form fields shown under the message (Welcome, payment details).
+      // o.canConfirm(): live check that enables the confirm button. o.onClose(ok): runs synchronously
+      // inside the tap, before the promise resolves (so it can open WhatsApp without a pop-up blocker).
+      // o.cancelLink: show Cancel as a small text link (e.g. "Skip for now"). o.keepOnBackdrop: a tap
+      // outside doesn't close it (forms, so typed details aren't lost).
+      wrap.innerHTML = '<div class="td-dlg-box' + (o.danger ? ' danger' : '') + (o.body ? ' form' : '') + '" role="' + (o.body ? 'dialog' : 'alertdialog') + '" aria-modal="true" aria-labelledby="td-dlg-t" aria-describedby="td-dlg-m">' +
         '<h2 class="td-dlg-t" id="td-dlg-t"></h2><p class="td-dlg-m" id="td-dlg-m"></p>' +
         (isPrompt ? '<input class="td-dlg-in" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">' : '') +
-        '<div class="td-dlg-acts">' + (hasCancel ? '<button type="button" class="btn" data-no></button>' : '') +
+        '<div class="td-dlg-acts' + (o.cancelLink ? ' link' : '') + '">' + (hasCancel ? '<button type="button" class="btn' + (o.cancelLink ? ' td-dlg-link' : '') + '" data-no></button>' : '') +
         '<button type="button" class="btn ' + (o.danger ? 'btn-danger' : 'btn-primary') + '" data-yes></button></div></div>';
       wrap.querySelector(".td-dlg-t").textContent = o.title || "";
       if (!o.title) wrap.querySelector(".td-dlg-t").remove();
       wrap.querySelector(".td-dlg-m").textContent = o.message || "";
+      if (!o.message) wrap.querySelector(".td-dlg-m").remove();
+      if (o.body) wrap.querySelector(".td-dlg-acts").parentNode.insertBefore(o.body, wrap.querySelector(".td-dlg-acts"));
       var yesB = wrap.querySelector("[data-yes]"), noB = wrap.querySelector("[data-no]"), inp = wrap.querySelector(".td-dlg-in");
       yesB.textContent = o.confirmText || "OK";
       if (noB) noB.textContent = o.cancelText || "Cancel";
       if (inp) { inp.placeholder = o.placeholder || ""; if (o.match) { yesB.disabled = true; inp.addEventListener("input", function () { yesB.disabled = inp.value.trim() !== o.match; }); } }
+      if (o.canConfirm) {
+        var check = function () { yesB.disabled = !o.canConfirm(); };
+        wrap.addEventListener("input", check); wrap.addEventListener("change", check); check();
+      }
       document.body.appendChild(wrap);
       document.body.classList.add("td-dlg-open");
       function done(ok) {
+        if (o.onClose) { try { o.onClose(ok); } catch (e) { console.error(e); } }
         document.removeEventListener("keydown", onKey, true);
         wrap.remove();
         if (!document.querySelector(".td-dlg")) document.body.classList.remove("td-dlg-open");
@@ -391,10 +423,11 @@ window.TL = (function () {
       }
       function onKey(e) {
         if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(false); }
-        else if (e.key === "Enter" && (document.activeElement === inp || !document.activeElement || document.activeElement === document.body)) {
+        else if (e.key === "Enter" && (document.activeElement === inp || !document.activeElement || document.activeElement === document.body ||
+                 (o.body && document.activeElement.tagName === "INPUT" && o.body.contains(document.activeElement)))) {
           e.preventDefault(); if (!yesB.disabled) done(true);
         } else if (e.key === "Tab") {                      // keep focus inside the dialog
-          var f = Array.prototype.filter.call(wrap.querySelectorAll("input,button"), function (x) { return !x.disabled; });
+          var f = Array.prototype.filter.call(wrap.querySelectorAll("input,button,select,textarea,summary,a[href]"), function (x) { return !x.disabled && x.offsetParent !== null; });
           if (!f.length) return;
           var i = f.indexOf(document.activeElement);
           if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
@@ -404,8 +437,11 @@ window.TL = (function () {
       document.addEventListener("keydown", onKey, true);
       yesB.addEventListener("click", function () { done(true); });
       if (noB) noB.addEventListener("click", function () { done(false); });
-      wrap.addEventListener("click", function (e) { if (e.target === wrap) done(!hasCancel); });   // backdrop = Cancel (or OK for a plain notice)
-      setTimeout(function () { (inp || (o.danger && noB) || yesB).focus(); }, 30);
+      wrap.addEventListener("click", function (e) { if (e.target === wrap && !o.keepOnBackdrop) done(!hasCancel); });   // backdrop = Cancel (or OK for a plain notice)
+      setTimeout(function () {
+        var first = o.body && (o.focus ? o.body.querySelector(o.focus) : o.body.querySelector("input:not([type=checkbox]),select,textarea"));
+        (first || inp || (o.danger && noB) || yesB).focus();
+      }, 30);
     }); };
     var p = dlgQueue.then(run, run);                      // one at a time
     dlgQueue = p.catch(function () {});
@@ -736,5 +772,9 @@ window.TL = (function () {
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,
-           todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd };
+           todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd,
+           dialog: dialog, firstName: firstName,
+           setHello: function (f) { setHello(f); }, setBrand: function (b) { setBrand(b); },
+           // Name parents see (invoices, PayNow, WhatsApp): tuition name, else the tutor's own name, else generic.
+           payeeName: function (p, generic) { p = p || {}; return (p.business_name || "").trim() || (p.full_name || "").trim() || generic; } };
 })();

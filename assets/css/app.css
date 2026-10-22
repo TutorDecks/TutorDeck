@@ -1,5 +1,5 @@
-/* v225 */
-/* v225 */
+/* v226 */
+/* v226 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -735,10 +735,32 @@ details.more-fields>.more-body{padding-top:2px}
 .td-dlg-in{width:100%;box-sizing:border-box;padding:11px 13px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:16px;margin:-6px 0 18px}
 .td-dlg-in:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(15,118,110,.18)}
 .td-dlg-acts{display:flex;justify-content:flex-end;gap:10px}
-.td-dlg-acts .btn{min-width:96px;justify-content:center;height:44px;border-radius:11px;font-size:15px}
+.td-dlg-acts .btn{min-width:96px;justify-content:center;height:44px;border-radius:11px;font-size:15px;white-space:nowrap;padding-left:14px;padding-right:14px}
 .td-dlg-acts .btn:disabled{opacity:.45;cursor:not-allowed}
 body.td-dlg-open{overflow:hidden}
 @keyframes td-dlg-in{from{opacity:0}to{opacity:1}}
 @keyframes td-dlg-pop{from{transform:translateY(6px) scale(.98);opacity:0}to{transform:none;opacity:1}}
-@media(max-width:520px){ .td-dlg-acts .btn{flex:1} }
+/* form dialogs (Welcome, payment details): fields inside the dialog, scroll if tall */
+.td-dlg-box.form{max-width:440px;max-height:calc(100vh - 40px);max-height:calc(100dvh - 40px);overflow:auto}
+.td-dlg-box.form .td-dlg-m{margin-bottom:14px}
+.td-dlg-f{display:flex;flex-direction:column;gap:12px;margin:0 0 18px}
+.td-dlg-f .field{margin:0}
+.td-dlg-f label{display:block;font-size:13px;font-weight:700;color:var(--ink);margin:0 0 5px}
+.td-dlg-f label .opt{font-weight:600;color:var(--muted);font-size:12px;margin-left:4px}
+.td-dlg-f input,.td-dlg-f select{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:16px;background:#fff;color:var(--ink)}
+.td-dlg-f input:focus,.td-dlg-f select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(15,118,110,.18)}
+.td-dlg-f .fhint{font-size:12.5px;color:var(--muted);margin:5px 0 0;line-height:1.45}
+.td-dlg-f .row2{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:10px}
+.td-dlg-f details{border:1px solid var(--line);border-radius:10px;padding:0 12px}
+.td-dlg-f details[open]{padding-bottom:12px}
+.td-dlg-f summary{cursor:pointer;padding:11px 0;font-size:13.5px;font-weight:700;color:var(--ink)}
+.td-dlg-f summary span{font-weight:600;color:var(--muted);font-size:12px;margin-left:4px}
+.td-dlg-f details .field + .field{margin-top:10px}
+.td-dlg-wa{background:#E7F6EF;border-radius:12px 12px 12px 4px;padding:10px 12px;font-size:13.5px;line-height:1.5;color:var(--ink);white-space:pre-line;word-break:break-word}
+.td-dlg-wal{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}
+.td-dlg-acts.link{align-items:center;justify-content:space-between}
+.td-dlg-acts .btn.td-dlg-link{all:unset;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);padding:10px 4px}
+.td-dlg-acts .btn.td-dlg-link:hover{color:var(--ink);text-decoration:underline}
+.td-dlg-acts .btn.td-dlg-link:focus-visible{outline:3px solid rgba(15,118,110,.35);border-radius:6px}
+@media(max-width:520px){ .td-dlg-acts .btn{flex:1} .td-dlg-acts .btn.td-dlg-link{flex:none} .td-dlg-f .row2{grid-template-columns:1fr} }
 @media(prefers-reduced-motion:reduce){ .td-dlg,.td-dlg-box{animation:none} }

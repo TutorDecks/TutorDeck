@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Settings · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=225">
+<link rel="stylesheet" href="assets/css/app.css?v=226">
 <style>
   .field textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
     font:inherit;background:#FFFFFF;color:var(--ink);resize:vertical;line-height:1.45}
@@ -40,6 +40,7 @@
     .set-save{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
     .set-save .btn{flex:none}
   }
+  .set-card .field .fhint{margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -47,10 +48,17 @@
  <div class="set-wrap">
   <section class="card set-card">
     <h2>Business</h2>
-    <p class="set-sub">Shown on your invoices and PayNow QR.</p>
-    <div class="field">
-      <label for="biz">Business name</label>
-      <input id="biz" type="text" placeholder="e.g. Bright Minds Tuition" maxlength="25">
+    <p class="set-sub">How you appear on invoices, PayNow and WhatsApp messages.</p>
+    <div class="row2">
+      <div class="field">
+        <label for="fullname">Your name</label>
+        <input id="fullname" type="text" autocomplete="name" placeholder="e.g. Sarah Lim" maxlength="60">
+      </div>
+      <div class="field">
+        <label for="biz">Tuition name <span class="opt">Optional</span></label>
+        <input id="biz" type="text" autocomplete="organization" placeholder="e.g. Bright Minds Tuition" maxlength="25">
+        <span class="fhint">Shown on invoices. Leave blank to use your name.</span>
+      </div>
     </div>
     <div class="row2">
       <div class="field">
@@ -77,7 +85,7 @@
     </div>
   </section>
 
-  <section class="card set-card">
+  <section class="card set-card" id="paid">
     <h2>Getting paid</h2>
     <p class="set-sub">Your PayNow details go on every invoice as a QR code.</p>
     <div class="row2">
@@ -108,10 +116,10 @@
     </details>
   </section>
 
-  <section class="card set-card">
+  <section class="card set-card" id="messages">
     <h2>WhatsApp messages</h2>
     <p class="set-sub">What Remind and Send on WhatsApp say. Leave blank to use the default shown.</p>
-    <details class="set-more">
+    <details class="set-more" id="msg-more">
       <summary>Edit message templates</summary>
       <p class="set-sub">These fill in automatically: <b>{name}</b> (parent if set, else student) · <b>{student}</b> · <b>{business}</b> · <b>{amount}</b> · <b>{count}</b> · <b>{month}</b> · <b>{invoice}</b> · <b>{paynow}</b> · <b>{date}</b> · <b>{year}</b></p>
       <div class="field">
@@ -180,10 +188,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=225"></script>
-<script src="assets/js/supabase.js?v=225"></script>
-<script src="assets/js/app.js?v=225"></script>
-<script src="assets/js/paynow.js?v=225"></script>
-<script src="assets/js/settings.js?v=225"></script>
+<script src="assets/js/config.js?v=226"></script>
+<script src="assets/js/supabase.js?v=226"></script>
+<script src="assets/js/app.js?v=226"></script>
+<script src="assets/js/paynow.js?v=226"></script>
+<script src="assets/js/settings.js?v=226"></script>
 </body>
 </html>

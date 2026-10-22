@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Home · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=225">
+<link rel="stylesheet" href="assets/css/app.css?v=226">
 <style>
   #onboard{display:none;margin-bottom:20px}
   /* v218: first-run setup card — 3 short steps, one button */
@@ -29,6 +29,19 @@
     background:var(--accent-soft);color:var(--accent)}
   .ob-next{text-align:left;margin:0 0 16px;padding-left:20px;color:var(--ink);font-size:14px;line-height:1.55}
   .ob-next li{margin-bottom:4px}
+  /* Get paid faster (after setup) */
+  #getpaid{display:none;margin-bottom:18px}
+  .gp-card{position:relative}
+  .gp-x{all:unset;box-sizing:border-box;position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;
+    cursor:pointer;color:var(--muted);font-size:22px;line-height:1}
+  .gp-x:hover{background:#F1EFEA;color:var(--ink)}
+  .gp-x:focus-visible{outline:3px solid rgba(15,118,110,.35)}
+  .gp-list{margin-bottom:0}
+  .gp-list li{list-style:none}
+  a.gp-go{text-decoration:none;color:inherit}
+  a.gp-go:hover{background:var(--accent-soft)}
+  a.gp-go .ob-num{border-color:var(--accent);color:var(--accent)}
+  .gp-arr{margin-left:auto;color:var(--muted);font-size:20px;font-weight:700;padding-left:8px}
   .ob-go{display:flex;justify-content:center;width:100%;height:46px;align-items:center;border-radius:11px;font-size:15px}
   .dmonth{display:flex;align-items:center;gap:8px;margin-bottom:14px}
   .dmonth .gennav{padding:7px 12px;font-weight:700}
@@ -175,6 +188,7 @@
 <body>
 <div id="view">
   <div id="onboard"></div>
+  <div id="getpaid"></div>
 
   <!-- MONEY: one card — collected vs owed, and the month's progress bar (hidden in Client view) -->
   <section class="h-sec sk-on" id="home-money">
@@ -248,9 +262,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=225"></script>
-<script src="assets/js/supabase.js?v=225"></script>
-<script src="assets/js/app.js?v=225"></script>
-<script src="assets/js/dashboard.js?v=225"></script>
+<script src="assets/js/config.js?v=226"></script>
+<script src="assets/js/supabase.js?v=226"></script>
+<script src="assets/js/app.js?v=226"></script>
+<script src="assets/js/dashboard.js?v=226"></script>
 </body>
 </html>

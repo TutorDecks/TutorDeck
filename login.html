@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Sign in · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=225">
+<link rel="stylesheet" href="assets/css/app.css?v=226">
 <style>
   .oauth-div{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--muted);font-size:12.5px}
   .oauth-div::before,.oauth-div::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -30,6 +30,14 @@
   .auth-wrap{align-content:center;gap:18px}
   .lg-foot{margin-top:0}
   #msg:empty,#mfa-msg:empty{display:none}
+  /* password: show/hide toggle inside the field; hint under it on Create account */
+  .pw-wrap{position:relative}
+  .pw-wrap input{padding-right:68px}
+  .pw-eye{all:unset;box-sizing:border-box;position:absolute;right:6px;top:50%;transform:translateY(-50%);height:32px;padding:0 10px;
+    border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--accent)}
+  .pw-eye:hover{background:var(--accent-soft)}
+  .pw-eye:focus-visible{outline:3px solid rgba(15,118,110,.35)}
+  .pw-hint{font-size:12.5px;color:var(--muted);margin-top:6px}
   #forgot{display:block;margin:12px auto 0}
   .tabs button.on{color:var(--ink)}
   .auth-card .btn{height:46px;border-radius:11px;font-size:15px}
@@ -54,17 +62,17 @@
         <button id="tab-in" class="on">Sign in</button>
         <button id="tab-up">Create account</button>
       </div>
-      <div class="field" id="name-field" style="display:none">
-        <label for="name">Business name</label>
-        <input id="name" type="text" autocomplete="organization" placeholder="e.g. Bright Minds Tuition">
-      </div>
       <div class="field">
         <label for="email">Email</label>
         <input id="email" type="email" autocomplete="email" placeholder="you@example.com">
       </div>
       <div class="field">
         <label for="pw">Password</label>
-        <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••">
+        <div class="pw-wrap">
+          <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••" aria-describedby="pw-hint">
+          <button type="button" class="pw-eye" id="pw-eye" aria-label="Show password" aria-pressed="false">Show</button>
+        </div>
+        <div class="pw-hint" id="pw-hint" style="display:none">At least 6 characters</div>
       </div>
       <label id="consent-field" style="display:none;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--muted);margin:2px 0 14px;line-height:1.5;cursor:pointer">
         <input id="consent" type="checkbox" style="width:16px;height:16px;margin-top:1px;flex:0 0 auto;accent-color:var(--teal)">
@@ -105,8 +113,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=225"></script>
-<script src="assets/js/supabase.js?v=225"></script>
+<script src="assets/js/config.js?v=226"></script>
+<script src="assets/js/supabase.js?v=226"></script>
 <script>
 (function () {
   var mode = "in";
@@ -117,7 +125,7 @@
     mode = m;
     $("tab-in").classList.toggle("on", m === "in");
     $("tab-up").classList.toggle("on", m === "up");
-    $("name-field").style.display = m === "up" ? "block" : "none";
+    $("pw-hint").style.display = m === "up" ? "block" : "none";
     $("consent-field").style.display = m === "up" ? "flex" : "none";
     if (m !== "up" && $("consent")) $("consent").checked = false;
     $("go").textContent = m === "up" ? "Create account" : "Sign in";
@@ -128,6 +136,17 @@
   }
   $("tab-in").onclick = function () { setMode("in"); };
   $("tab-up").onclick = function () { setMode("up"); };
+
+  // Show / hide password
+  $("pw-eye").onclick = function () {
+    var on = $("pw").type === "password";
+    $("pw").type = on ? "text" : "password";
+    $("pw-eye").textContent = on ? "Hide" : "Show";
+    $("pw-eye").setAttribute("aria-label", on ? "Hide password" : "Show password");
+    $("pw-eye").setAttribute("aria-pressed", on ? "true" : "false");
+    $("pw").focus();
+  };
+  var PW_MIN = 6;   // Supabase project setting: Authentication → Sign In / Providers → Email → Minimum password length
 
   function show(text, ok) { msg.textContent = text; msg.className = "msg " + (ok ? "ok" : "err"); }
 
@@ -207,20 +226,15 @@
     $("go").disabled = true;
     try {
       if (mode === "up") {
-        var biz = $("name").value.trim();
+        if (pw.length < PW_MIN) { show("Your password needs at least " + PW_MIN + " characters.", false); return; }
         if (!$("consent").checked) { show("Please accept the Terms and Privacy Policy to create an account.", false); return; }
+        // Name and tuition name are asked on the Welcome screen after the first sign-in (same as Google sign-up).
         var up = await window.sb.auth.signUp(
-          { email: email, password: pw, options: { data: { business_name: biz,
+          { email: email, password: pw, options: { data: {
             consent_version: "v1", consent_accepted_at: new Date().toISOString() },
             emailRedirectTo: new URL("/confirmed", location.origin).href } });
         if (up.error) throw up.error;
-        if (up.data.session) {
-          // Confirm-email off: we're logged in, so persist the business name onto the
-          // profile the signup trigger just created (RLS needs this session). Non-fatal —
-          // it can always be set later in Settings.
-          if (biz) { try { await window.sb.from("profiles").update({ business_name: biz }).eq("id", up.data.user.id); } catch (e) {} }
-          location.replace("home"); return;
-        }
+        if (up.data.session) { location.replace("home"); return; }   // confirm-email off: straight in (Welcome screen next)
         showCreated(email, true);                                         // confirm on → success screen
       } else {
         var inn = await window.sb.auth.signInWithPassword({ email: email, password: pw });

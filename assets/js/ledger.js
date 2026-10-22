@@ -13,7 +13,7 @@
   var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, levelById = {}, endById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   // Payment options on invoices: PayNow QR (if set up) and bank transfer (if bank details are filled in), or both.
   function hasBank(p){ return !!(p && p.bank_account_no); }
-  function bankObj(p){ return { name:(p.bank_account_name||p.business_name||""), bank:(p.bank_name||""), acct:(p.bank_account_no||""), swift:(p.bank_swift||"") }; }
+  function bankObj(p){ return { name:(p.bank_account_name||TL.payeeName(p,"")), bank:(p.bank_name||""), acct:(p.bank_account_no||""), swift:(p.bank_swift||"") }; }
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -275,6 +275,9 @@
     return d;                         // assume it already carries a country code
   }
   var DEFAULT_REMINDER="Hi {name}! Friendly reminder from {business}: you have an outstanding balance of {amount} for {count} tuition lesson(s). PayNow to {paynow}. Thank you!";
+  // Bank transfer only (no PayNow): the default reminder shouldn't say "PayNow to ".
+  var DEFAULT_REMINDER_BANK="Hi {name}! Friendly reminder from {business}: you have an outstanding balance of {amount} for {count} tuition lesson(s). You can pay by bank transfer (details are on your invoice). Thank you!";
+  function reminderTpl(p){ p=p||{}; return p.reminder_message||(!p.paynow_id&&hasBank(p)?DEFAULT_REMINDER_BANK:DEFAULT_REMINDER); }
   var DEFAULT_INVOICE="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. PayNow to {paynow}. Thank you!";
   var DEFAULT_INVOICE_BANK="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. Bank-transfer details are on the invoice. Thank you!";
   var DEFAULT_INVOICE_BOTH="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. PayNow to {paynow}, or bank transfer (details on the invoice). Thank you!";
@@ -292,19 +295,27 @@
   }
 
   function remind(id){
+    if(waNumber(contactById[id]) && needPayCard("reminder")){ payCard("reminder",[id],null,function(){ remindNow(id); }); return; }
+    remindNow(id);
+  }
+  function remindNow(id){
     var num=waNumber(contactById[id]);
     if(!num){TL.alert({title:"No WhatsApp number",message:"There\u2019s no WhatsApp number saved for "+(nameById[id]||"this student")+".\n\nAdd one on the Students page (Edit \u2192 WhatsApp number), then try again."});return;}
     var rows=outGroups[id]||[];
     if(!rows.length)return;
     var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
-    var vars={name:recipientById[id]||nameById[id]||"",student:nameById[id]||"",business:(profile&&profile.business_name)||"your tutor",
+    var vars={name:recipientById[id]||nameById[id]||"",student:nameById[id]||"",business:TL.payeeName(profile,"your tutor"),
       amount:TL.sgd(sum),count:rows.length,invoice:"",paynow:(profile&&profile.paynow_id)||"",
       month:monthsLabel(rows),date:prettyDate(iso(new Date())),year:String(new Date().getFullYear())};
-    var tpl=(profile&&profile.reminder_message)||DEFAULT_REMINDER;
+    var tpl=reminderTpl(profile);
     window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
   }
 
   function remindMany(ids){
+    if(ids.some(function(id){return waNumber(contactById[id]);}) && needPayCard("reminder")){ payCard("reminder",ids,null,function(){ remindManyNow(ids); }); return; }
+    remindManyNow(ids);
+  }
+  function remindManyNow(ids){
     var num="", targetId=null;
     ids.some(function(id){var n=waNumber(contactById[id]);if(n){num=n;targetId=id;return true;}return false;});
     if(!num){TL.alert({title:"No WhatsApp number",message:"None of these students has a WhatsApp number saved.\n\nAdd one on the Students page (Edit \u2192 WhatsApp number), then try again."});return;}
@@ -313,10 +324,10 @@
     var sum=all.reduce(function(t,l){return t+Number(l.amount);},0);
     var names=ids.map(function(id){return nameById[id]||"";}).filter(Boolean);
     var who=names.length===2?names[0]+" & "+names[1]:names.join(", ");
-    var vars={name:recipientById[targetId]||nameById[targetId]||"",student:who,business:(profile&&profile.business_name)||"your tutor",
+    var vars={name:recipientById[targetId]||nameById[targetId]||"",student:who,business:TL.payeeName(profile,"your tutor"),
       amount:TL.sgd(sum),count:all.length,invoice:"",paynow:(profile&&profile.paynow_id)||"",
       month:monthsLabel(all),date:prettyDate(iso(new Date())),year:String(new Date().getFullYear())};
-    var tpl=(profile&&profile.reminder_message)||DEFAULT_REMINDER;
+    var tpl=reminderTpl(profile);
     window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
   }
   function periodLabel(){return period.mode==="all"?"All time":new Date(period.y,period.m,1).toLocaleString("en-SG",{month:"long",year:"numeric"});}
@@ -576,7 +587,7 @@
     var sorted=rows.slice().sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
     if(!single)sorted=sorted.map(function(l){return Object.assign({_who:nameById[l.student_id]||"—"},l);});
     var dstr=pdate.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"});
-    var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,dateStr:dstr,paidStr:dstr,
+    var data={biz:TL.payeeName(profile,"Tuition"),invoiceNo:invoiceNo,dateStr:dstr,paidStr:dstr,
       student:billTo,lessons:sorted,total:total,combined:!single,paid:true,
       payTo:profile.paynow_id?PayNow.normalize(profile.paynow_type,profile.paynow_id):(hasBank(profile)?bankObj(profile).name:"")};
     var html=invoiceHTML(data,"");   // paid receipt — no QR needed
@@ -916,8 +927,79 @@
   }
   // Which payment options this tutor has set up. Every invoice shows all of them.
   function payOpts(){ return { pn:!!(profile&&profile.paynow_id), bk:hasBank(profile) }; }
-  async function needPaySetup(){
-    if(await TL.confirm({title:"Add payment details first",message:"Invoices need your PayNow number (and, if you like, bank details) so parents know how to pay.",confirmText:"Open Settings",cancelText:"Not now"})) location.href="settings";
+  // ---- "Before your first invoice": no PayNow and no bank details yet ----
+  // Shown in place (no trip to Settings) the first time a tutor invoices or reminds without payment details.
+  // Invoices need one of them, so it shows each time until one is saved; for reminders it shows once
+  // (per tutor, then "Not now" means send without), because a reminder works without them.
+  var PAYCARD_SEEN="td_paycard_reminder";
+  function needPayCard(kind){
+    var po=payOpts();
+    if(po.pn||po.bk||!profile) return false;
+    return kind==="invoice" || TL.store.get(PAYCARD_SEEN)!=="1";
+  }
+  function payCard(kind, ids, onlyIds, resume){
+    var p=profile||{}, isInv=kind==="invoice";
+    var rows=[]; ids.forEach(function(id){ (outGroups[id]||[]).forEach(function(l){ if(!onlyIds||onlyIds.indexOf(String(l.id))>-1) rows.push(l); }); });
+    var sum=Math.round(rows.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
+    var names=ids.map(function(id){return nameById[id]||"";}).filter(Boolean);
+    var who=names.length===2?names[0]+" & "+names[1]:names.join(", ");
+    var to=ids.filter(function(id){return recipientById[id];})[0]||ids[0];
+    var now=new Date();
+    var slug=ids.length===1?(names[0]||"").replace(/[^A-Za-z0-9]/g,"").slice(0,8).toUpperCase()
+                           :names.map(function(n){return n.replace(/[^A-Za-z0-9]/g,"").slice(0,4);}).join("+").toUpperCase().slice(0,18)||"GROUP";
+    var body=document.createElement("div"); body.className="td-dlg-f";
+    body.innerHTML=
+      '<div class="field"><label for="pc-name">Name on invoices</label><input id="pc-name" type="text" maxlength="25" autocomplete="organization"></div>'+
+      '<div class="row2"><div class="field"><label for="pc-ptype">PayNow type</label><select id="pc-ptype"><option value="mobile">Mobile number</option><option value="uen">UEN</option></select></div>'+
+        '<div class="field"><label for="pc-pid">PayNow ID</label><input id="pc-pid" type="text" inputmode="tel" placeholder="e.g. 9123 4567"></div></div>'+
+      '<details id="pc-bank"><summary>Bank transfer instead <span>Optional</span></summary>'+
+        '<div class="field"><label for="pc-bkname">Account holder name</label><input id="pc-bkname" type="text" placeholder="e.g. Tan Ah Kow"></div>'+
+        '<div class="field"><label for="pc-bkbank">Bank name</label><input id="pc-bkbank" type="text" placeholder="e.g. DBS Bank"></div>'+
+        '<div class="field"><label for="pc-bkacct">Account number</label><input id="pc-bkacct" type="text" inputmode="numeric" placeholder="e.g. 123-45678-9"></div></details>'+
+      '<div><p class="td-dlg-wal">WhatsApp message preview</p><div class="td-dlg-wa" id="pc-wa"></div></div>';
+    var q=function(id){ return body.querySelector("#"+id); };
+    q("pc-name").value=TL.payeeName(p,"");
+    q("pc-ptype").value=p.paynow_type||"mobile";
+    function vals(){
+      return { biz:q("pc-name").value.trim(), ptype:q("pc-ptype").value, pid:q("pc-pid").value.trim(),
+               bkname:q("pc-bkname").value.trim(), bkbank:q("pc-bkbank").value.trim(), acct:q("pc-bkacct").value.trim() };
+    }
+    function draft(){   // the profile as it will be once saved
+      var v=vals(), d=Object.assign({},p,{business_name:v.biz||p.business_name||null});
+      if(v.pid){ d.paynow_type=v.ptype; d.paynow_id=v.pid; }
+      if(v.acct){ d.bank_account_name=v.bkname||null; d.bank_name=v.bkbank||null; d.bank_account_no=v.acct; }
+      return d;
+    }
+    function draw(){
+      var d=draft(), pn=!!d.paynow_id, bk=hasBank(d);
+      var vars={name:recipientById[to]||nameById[to]||"",student:who,business:TL.payeeName(d,"your tutor"),
+        amount:TL.sgd(sum),count:rows.length,paynow:d.paynow_id||"(your PayNow ID)",
+        invoice:isInv?(d.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug:"",
+        month:monthsLabel(rows),date:prettyDate(iso(now)),year:String(now.getFullYear())};
+      var tpl=isInv?(d.invoice_message||(pn&&bk?DEFAULT_INVOICE_BOTH:(bk?DEFAULT_INVOICE_BANK:DEFAULT_INVOICE))):reminderTpl(d);
+      q("pc-wa").textContent=fillTemplate(tpl,vars);
+    }
+    body.addEventListener("input",draw); body.addEventListener("change",draw); draw();
+    TL.dialog({title:"Before your first "+(isInv?"invoice":"reminder")+", add how parents should pay you.",
+      body:body, focus:"#pc-pid", confirmText:"Save & continue", cancelText:"Not now", keepOnBackdrop:true,
+      canConfirm:function(){ var v=vals(); return !!(v.pid||v.acct); },
+      onClose:function(ok){
+        // Runs inside the tap, so a reminder can still open WhatsApp without being blocked.
+        if(!ok){ if(!isInv){ TL.store.set(PAYCARD_SEEN,"1"); resume(); } return; }
+        var v=vals(), d=draft(), upd={};
+        // Keep the tutor's own name out of business_name unless they changed it (Settings shows it as "Tuition name").
+        if(v.biz && (p.business_name || v.biz!==(p.full_name||"").trim())) upd.business_name=v.biz;
+        if(v.pid){ upd.paynow_type=v.ptype; upd.paynow_id=v.pid; }
+        if(v.acct){ upd.bank_account_name=v.bkname||null; upd.bank_name=v.bkbank||null; upd.bank_account_no=v.acct; }
+        if(!upd.business_name) d.business_name=p.business_name||null;
+        profile=Object.assign(p,d);
+        if(!isInv) TL.store.set(PAYCARD_SEEN,"1");
+        resume();
+        window.sb.from("profiles").update(upd).eq("id",userId).then(function(r){
+          if(r.error){ TL.alert({title:"Couldn\u2019t save your payment details",message:r.error.message+"\n\nYou can add them in Settings."}); return; }
+          if(upd.business_name) TL.setBrand(upd.business_name);
+        });
+      }});
   }
 
   async function openInvoice(studentId, onlyIds){
@@ -926,7 +1008,7 @@
       return;
     }
     var po=payOpts();
-    if(!po.pn && !po.bk){ needPaySetup(); return; }
+    if(!po.pn && !po.bk){ payCard("invoice",[studentId],onlyIds,function(){ openInvoice(studentId, onlyIds); }); return; }
     var lessons=(outGroups[studentId]||[]).slice()
       .filter(function(l){ return !onlyIds || onlyIds.indexOf(String(l.id))>-1; })   // invoice only the picked lessons, if any
       .sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
@@ -937,7 +1019,7 @@
     window._invTitle="Invoice_"+(student.replace(/[^A-Za-z0-9]+/g,"")||"Student")+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
     var slug=student.replace(/[^A-Za-z0-9]/g,"").slice(0,8).toUpperCase();
     var invoiceNo=(profile.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug;
-    var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,
+    var data={biz:TL.payeeName(profile,"Tuition"),invoiceNo:invoiceNo,
       dateStr:now.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"}),
       student:student,lessons:lessons,total:total};
     var meta={studentId:studentId,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(lessons),lessonIds:lessons.map(function(l){return l.id;})};
@@ -950,7 +1032,7 @@
     }
     data.payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
     try{
-      var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
+      var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:TL.payeeName(profile,"Tuition"),reference:invoiceNo});
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){TL.alert("Couldn't generate QR: "+(err.message||err));return;}
         presentInvoice(data,url,meta);
@@ -961,7 +1043,7 @@
   async function openInvoiceMany(ids, onlyIds){
     if(!profile){TL.alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");return;}
     var po=payOpts();
-    if(!po.pn && !po.bk){ needPaySetup(); return; }
+    if(!po.pn && !po.bk){ payCard("invoice",ids,onlyIds,function(){ openInvoiceMany(ids, onlyIds); }); return; }
     var all=[];
     ids.forEach(function(id){(outGroups[id]||[]).forEach(function(l){ if(!onlyIds||onlyIds.indexOf(String(l.id))>-1) all.push(Object.assign({_who:nameById[id]||"—"},l)); });});
     all.sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date)||String(a._who).localeCompare(String(b._who));});
@@ -973,7 +1055,7 @@
     var slug=names.map(function(n){return n.replace(/[^A-Za-z0-9]/g,"").slice(0,4);}).join("+").toUpperCase().slice(0,18)||"GROUP";
     window._invTitle="Invoice_"+slug+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
     var invoiceNo=(profile.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug;
-    var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,
+    var data={biz:TL.payeeName(profile,"Tuition"),invoiceNo:invoiceNo,
       dateStr:now.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"}),
       student:billTo,lessons:all,total:total,combined:true};
     var meta={studentId:null,students:ids,name:billTo,
@@ -985,7 +1067,7 @@
     catch(e){ TL.alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again."); return; }
     data.payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
     try{
-      var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
+      var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:TL.payeeName(profile,"Tuition"),reference:invoiceNo});
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){TL.alert("Couldn't generate QR: "+(err.message||err));return;}
         presentInvoice(data,url,meta);
@@ -1031,7 +1113,7 @@
     var isCombined=!m.studentId;
     var po=payOpts();
     var vars={name:isCombined?(m.recipient||m.name||""):(recipientById[m.studentId]||nameById[m.studentId]||""),
-      student:isCombined?(m.name||""):(nameById[m.studentId]||""),business:(profile&&profile.business_name)||"your tutor",
+      student:isCombined?(m.name||""):(nameById[m.studentId]||""),business:TL.payeeName(profile,"your tutor"),
       amount:TL.sgd(m.total),count:"",invoice:m.invoiceNo,paynow:(profile&&profile.paynow_id)||"",
       month:m.month||"",date:prettyDate(m.issuedDate),year:(m.issuedDate||"").slice(0,4)};
     // Default message matches what's on the invoice: PayNow, bank transfer, or both.
@@ -1123,7 +1205,9 @@
   // ---------- load ----------
   async function load(){
     await TL.promotePastLessons();
-    var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,bank_account_name,bank_name,bank_account_no,bank_swift").eq("id",userId).single();
+    var PCOLS="business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,bank_account_name,bank_name,bank_account_no,bank_swift";
+    var pr=await window.sb.from("profiles").select(PCOLS+",full_name").eq("id",userId).single();
+    if(pr.error) pr=await window.sb.from("profiles").select(PCOLS).eq("id",userId).single();   // older DB without full_name
     profile=pr.error?null:pr.data;
 
     var st=await window.sb.from("students").select("id,name,active,contact,recipient_name,pay_by_bank,level,end_date").order("name");

@@ -261,6 +261,35 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-22 — New onboarding and get-paid flow (v226).** Sign up → Welcome → 3-step setup → (later) Before your
+  first invoice → optional Get paid faster.
+  **Requires `db/migration_onboarding.sql` in Supabase BEFORE this reaches dev or main** (adds nullable
+  `profiles.welcomed_at`, `reminder_checked_at`, `getpaid_dismissed_at`, and `full_name` if missing; changes no rows).
+  Before it's run, pages still work: Home just skips the Welcome screen and Get paid card.
+  - **Sign-up (login.html):** Create account is Email, Password and the Terms/Privacy (PDPA) consent only (Business name
+    removed; consent check and `consent_version: "v1"` unchanged). Show/Hide password toggle; "At least 6 characters"
+    under the password (Supabase project minimum: 6, no other rules), checked before sending.
+  - **Welcome screen (Home, once):** "Welcome to TutorDeck! What should we call you?" — Your name (required; prefilled
+    from Google's `full_name`/`name`) and Tuition name (optional, "Shown on invoices. Leave blank to use your name.").
+    Continue / Skip for now. Saves `profiles.full_name`, `business_name` (tuition name) and `welcomed_at`. Shown only
+    when `welcomed_at` is empty AND the account has no students, so existing tutors never see it.
+  - **Home greeting** uses the tutor's first name ("Good afternoon, Sam"); falls back to the business name as before.
+  - **Settings → Business:** new "Your name"; Business name is now "Tuition name", optional. PayNow no longer required
+    to save (bank transfer alone is fine). `settings#paid` / `settings#messages` jump to those sections.
+  - **Before your first invoice (Ledger):** Send invoice / Remind (single and household) with no PayNow and no bank
+    details opens an in-app card: Name on invoices, PayNow type + ID, bank details (folded), and a live WhatsApp
+    message preview. Save & continue saves to the profile and carries on with exactly that action (WhatsApp opens in
+    the same tap). Not now: an invoice stays closed (it needs a way to pay); a reminder is sent as is and the card isn't
+    shown for reminders again. These are the only entry points (Invoices and the student page don't create or send).
+  - **Get paid faster (Home):** after the 3-step setup, for accounts that went through the Welcome screen: Add your
+    PayNow (→ settings#paid), Check your WhatsApp reminder message (→ settings#messages; ticks when the templates are
+    opened), Add a parent's WhatsApp number (→ that student's form, at the number). Ticks from data; hides when all are
+    done or dismissed (`profiles.getpaid_dismissed_at`, so per account, not per browser).
+  - **Name fallbacks:** invoices, PayNow QR name, bank account name and WhatsApp `{business}` use tuition name, then the
+    tutor's own name, then "Tuition" / "your tutor" (`TL.payeeName`). Bank-only tutors get a reminder default that
+    doesn't say "PayNow to".
+  - `TL.dialog` now takes a form `body`, `canConfirm`, `onClose` (runs inside the tap) and `cancelLink`.
+
 - **2026-10-22 — Landing page structured data as one JSON-LD `@graph` (v225).** Replaces the earlier array of three
   separate blocks in `index.html` with one `<script type="application/ld+json">` holding:
   - **Organization** (`#organization`): TutorDeck / TutorDeck Pte. Ltd., url, square logo
