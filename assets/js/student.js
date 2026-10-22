@@ -29,7 +29,7 @@
     lessons.forEach(function(l){ if(l.status==="cancelled") l.amount=Number(l.compensation)||0; });
     var xres=await window.sb.from("exams").select("id,exam_date,assessment_type,subject,topics,remarks,score,max_score").eq("student_id",sid);
     exams=xres.data||[];
-    var slres=await window.sb.from("recurring_slots").select("id,weekday,start_time,end_time,subject,rate").eq("student_id",sid).eq("active",true);
+    var slres=await window.sb.from("recurring_slots").select("id,weekday,start_time,end_time,subject,level,rate").eq("student_id",sid).eq("active",true);
     slots=slres.data||[];
     if(schM==null){ var nn=new Date(); schY=nn.getFullYear(); schM=nn.getMonth(); }
 
@@ -62,7 +62,10 @@
     if(student.location)lines.push('<span class="ii">'+ic("pin")+'<span>'+esc(student.location)+'</span></span>');
     if(student.recipient_name)lines.push('<span class="ii">'+ic("msg")+'<span>Messages to <b>'+esc(student.recipient_name)+'</b></span></span>');
     if(student.notes)lines.push('<span class="ii">'+ic("note")+'<span>'+esc(student.notes)+'</span></span>');
-    var chips=(student.level?'<span class="lvl">'+esc(student.level)+'</span>':'')+
+    // Year only once the subjects carry their own G-level (older profiles may say "Sec 4 G3").
+    var anyG=slots.some(function(x){return TL.subLevel(x.level)||TL.subLevel(x.subject);});
+    var lvlTxt=anyG?TL.yearLevel(student.level):(student.level||"");
+    var chips=(lvlTxt?'<span class="lvl">'+esc(lvlTxt)+'</span>':'')+
       (!student.active?'<span class="lvl off">Discontinued</span>':'')+
       (student.end_date&&student.active?'<span class="lvl soft">Until '+prettyDate(student.end_date)+'</span>':'');
     $("p-head").innerHTML='<div class="sp-chips">'+chips+
@@ -292,7 +295,7 @@
     var rows=slots.map(function(s){
       return '<div class="slotline">'+
         '<span class="slt">'+DOW[s.weekday]+" "+hhmm(s.start_time)+"–"+hhmm(s.end_time)+'</span>'+
-        '<span class="slsub">'+(s.subject?esc(s.subject):"")+'</span>'+
+        '<span class="slsub">'+esc([s.subject, TL.subLevel(s.subject)?"":TL.subLevel(s.level)].filter(Boolean).join(" "))+'</span>'+
         '<span class="slc">'+TL.sgd(TL.amount(s.rate,hhmm(s.start_time),hhmm(s.end_time)))+'</span></div>';
     }).join("");
     $("p-slots").innerHTML='<div class="slotwrap">'+rows+link+'</div>';

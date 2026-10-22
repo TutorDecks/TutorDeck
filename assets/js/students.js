@@ -224,6 +224,20 @@
     fillStuFilters();
     renderRoster();
     guideStart();
+    deepEdit();
+  }
+  // students?edit=<id>&focus=contact (from Home's "Get paid faster"): open that student's form at the WhatsApp number.
+  var deepDone=false;
+  function deepEdit(){
+    if(deepDone)return; deepDone=true;
+    var q=new URLSearchParams(location.search), id=q.get("edit"); if(!id)return;
+    var st=students.filter(function(x){return String(x.id)===id;})[0]; if(!st)return;
+    openModal(true,st);
+    if(q.get("focus")==="contact"){
+      var c=$("m-contact"), d=c&&c.closest("details"); if(d)d.open=true;
+      setTimeout(function(){ if(c){ c.focus(); c.scrollIntoView({block:"center"}); } },60);
+    }
+    history.replaceState(null,"",location.pathname);   // a refresh won't reopen it
   }
   // First-run guide, step 1: open the Add-student form straight away (once per visit).
   var guided=false;

@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Ledger · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=225">
+<link rel="stylesheet" href="assets/css/app.css?v=228">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -362,9 +362,9 @@
         <input type="checkbox" id="m-paid"> Already paid
       </label>
       <details class="more-fields">
-        <summary>More details <small>Level, group lessons</small></summary>
+        <summary>More details <small>Subject level, group lessons</small></summary>
         <div class="more-body">
-          <div class="field"><label for="m-level">Level <span class="opt">Optional</span></label><input id="m-level" type="text" placeholder="e.g. Sec 3" data-autofill></div>
+          <div class="field"><label for="m-level">Subject level <span class="opt">Optional</span></label><input id="m-level" type="text" list="dl-sublevel" placeholder="e.g. G3" data-autofill><datalist id="dl-sublevel"><option value="G1"><option value="G2"><option value="G3"><option value="HL"><option value="SL"></datalist><span class="fhint">G1, G2 or G3 for this subject (or HL / SL).</span></div>
           <div class="field"><label for="m-split">Split between <span class="opt">Optional</span></label><input id="m-split" type="number" min="1" step="1" value="1">
             <span class="fhint">For group lessons: the fee is shared by this many students. Leave at 1 for one-to-one.</span></div>
         </div>
@@ -453,10 +453,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=225"></script>
-<script src="assets/js/supabase.js?v=225"></script>
-<script src="assets/js/app.js?v=225"></script>
-<script src="assets/js/paynow.js?v=225"></script>
-<script src="assets/js/ledger.js?v=225"></script>
+<script src="assets/js/config.js?v=228"></script>
+<script src="assets/js/supabase.js?v=228"></script>
+<script src="assets/js/app.js?v=228"></script>
+<script src="assets/js/paynow.js?v=228"></script>
+<script src="assets/js/ledger.js?v=228"></script>
 </body>
 </html>
