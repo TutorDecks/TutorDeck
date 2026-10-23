@@ -261,6 +261,31 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-23 — Already-invoiced lessons: one line instead of a dialog (v233).** Builds on v231 (replaces v232's
+  dialog). When some lessons you're invoicing are already on an unpaid invoice, Send invoice goes straight to one
+  invoice for all of them (plus that invoice's other unpaid lessons, so none is left uncovered) with a line above
+  the preview: "**Replaces INV-0001** (sent 15 Oct) · Only bill 12 Oct". Two dates are named, more are counted
+  ("Only bill the 3 new lessons"); two older invoices are named ("Replaces INV-0001 and INV-0003"), three or more
+  counted; "also adds 19 Oct from it" when it pulls in an unticked lesson. Saving or sending marks the old one
+  "Replaced"; "Only bill …" switches the preview to just the new lessons; closing without saving changes nothing.
+  Nothing new to bill → it reopens the existing invoice. The line isn't part of the invoice image or PDF.
+
+- **2026-10-23 — No more duplicate invoices (v231).** Three ways a second copy of the same invoice was saved:
+  1. **Save to app tapped twice** (the button reset after 1.6s) → each open invoice now saves once; Save stays "Saved ✓".
+  2. **Save and Send on WhatsApp tapped together** → they share the one save.
+  3. **Send invoice again for the same lessons** (e.g. re-sending to a parent; how the Iffah copy happened) → if an
+     unpaid invoice already covers exactly these lessons for the same total, it's reopened as it was sent (same
+     number, date and QR) and Send just updates its Sent date.
+  - **New lessons since the last invoice:** the new invoice (e.g. INV-0002 for lessons 1–2) marks the older unpaid one
+    whose lessons are all on it (INV-0001 for lesson 1) as **"Replaced by INV-0002"** (`invoices.data.replaced_by`,
+    no migration). It stays in the Invoices list under All, greyed with its amount struck through, but is left out of
+    Paid / Awaiting / Not sent, the status filters, the CSV and paid/unpaid syncing. Paid invoices are never replaced.
+
+- **2026-10-22 — Glass made easier to read (v230).** UI pass over every page on phone and desktop (all ⋯ / dropdown
+  menus open on top and are tappable; no sideways scrolling; no page errors). One fix: list text scrolling under the
+  phone tab bar competed with the tab labels, so the bar is now 92% white with a stronger blur, and the floating eye
+  and "+" 82%.
+
 - **2026-10-22 — Students ⋯ menu always on top (v229).** The row menu opened inside the list, so on phones the
   rows below painted over it and the last rows' menus were clipped. It now floats above the page (fixed position,
   placed under the ⋯, or above it when there's no room before the bottom bar) and closes when you scroll away.
