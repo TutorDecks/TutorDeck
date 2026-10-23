@@ -272,6 +272,9 @@ A running log of Raphael's changes, newest first.
     QR, and **Save invoice to Photos** (to scan the QR from the gallery when paying on the same phone). Paid →
     "✓ Paid on 24 Oct. Thank you!", QR hidden. Replaced → points to the newer invoice. Broken / unknown codes get a
     plain message. No app menus.
+  - **"Just reply 'paid'":** the default message ends "…here: <link> Just reply "paid" once it's done. Thank you!", and
+    the page says "Once you've paid, just reply "paid" in WhatsApp so your tutor can confirm it." — the tutor then
+    checks the bank and taps Mark paid (TutorDeck can't see the bank; the link flips to Paid after that).
   - **Invoices tab:** "Copy family link" on each invoice.
   - Previously tried in Aug (v82–v94, removed); this version is read-only (no parent "I've paid").
 

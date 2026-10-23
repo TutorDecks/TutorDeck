@@ -27,6 +27,7 @@
   .pv-acts{display:flex;flex-direction:column;gap:8px;margin:16px 0 0}
   .pv-acts .btn{height:48px;justify-content:center;border-radius:12px;font-size:15px}
   .pv-hint{color:var(--muted);font-size:13px;line-height:1.5;text-align:center;margin:8px 4px 0}
+  .pv-done{margin:14px 0 0;padding:11px 14px;border-radius:12px;background:var(--accent-soft);color:var(--accent-ink);font-size:14px;line-height:1.45;text-align:center;font-weight:600}
   .pv-msg{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px 22px;text-align:center}
   .pv-msg h1{font-size:19px;margin:0 0 6px;color:var(--ink)}
   .pv-msg p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.5}
@@ -77,7 +78,8 @@
       '<div class="pv-card' + (repl ? ' dim' : paid ? ' paid' : '') + '" id="pv-inv">' + v.html + '</div>' +
       (paid || repl ? '' :
         '<div class="pv-acts"><button class="btn btn-primary" id="pv-save" type="button">Save invoice to Photos</button></div>' +
-        (hasQR ? '<p class="pv-hint">Paying on this phone? Save it, then in your banking app tap Scan and pick the picture from your photos.</p>' : '')) +
+        (hasQR ? '<p class="pv-hint">Paying on this phone? Save it, then in your banking app tap Scan and pick the picture from your photos.</p>' : '') +
+        '<p class="pv-done">Once you\u2019ve paid, just reply \u201Cpaid\u201D in WhatsApp so your tutor can confirm it.</p>') +
       foot();
     if (paid) document.querySelectorAll("#pv-inv .inv-total span:first-child").forEach(function (e) { if (/due/i.test(e.textContent)) e.textContent = "Total paid"; });
     var sv = document.getElementById("pv-save");

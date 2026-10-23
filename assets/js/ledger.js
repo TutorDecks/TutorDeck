@@ -1148,9 +1148,9 @@
 
   // ---- family link: tutordeck…/pay?t=<code> opens this one invoice, no login (db/migration_family_link.sql) ----
   function familyLink(token){ return token ? location.origin+"/pay?t="+token : null; }
-  var DEFAULT_INVOICE_LINK="Hi {name}! Here's your invoice {invoice} from {business} for {amount}. You can view it and pay by PayNow here: {link} Thank you!";
-  var DEFAULT_INVOICE_LINK_BANK="Hi {name}! Here's your invoice {invoice} from {business} for {amount}. You can view it and the bank transfer details here: {link} Thank you!";
-  var DEFAULT_INVOICE_LINK_BOTH="Hi {name}! Here's your invoice {invoice} from {business} for {amount}. You can view it and pay by PayNow or bank transfer here: {link} Thank you!";
+  var DEFAULT_INVOICE_LINK="Hi {name}! Here's your invoice {invoice} from {business} for {amount}. You can view it and pay by PayNow here: {link} Just reply \"paid\" once it's done. Thank you!";
+  var DEFAULT_INVOICE_LINK_BANK="Hi {name}! Here's your invoice {invoice} from {business} for {amount}. You can view it and the bank transfer details here: {link} Just reply \"paid\" once it's done. Thank you!";
+  var DEFAULT_INVOICE_LINK_BOTH="Hi {name}! Here's your invoice {invoice} from {business} for {amount}. You can view it and pay by PayNow or bank transfer here: {link} Just reply \"paid\" once it's done. Thank you!";
   // ---- one invoice per set of lessons ----
   // Same lessons, same total, still unpaid → reopen that invoice (same number) instead of making a copy.
   // Lessons as a set, sorted, so the order they were billed in doesn't matter.
