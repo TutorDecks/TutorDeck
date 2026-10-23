@@ -261,6 +261,13 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-23 — Tips stay dismissed (v234).** Seen tips and "setup done" lived only in the browser, and browser storage
+  is per website and per device: every Vercel preview link (a new address each push), the live site, a phone and a
+  laptop each started fresh, so the Log / filter / swipe / Client view tips came back. They're now also saved on the
+  **account** (Supabase Auth user metadata: `td_onboarded`, `td_tips`, no table or migration) and read back on sign-in,
+  with a quiet refresh so a tip dismissed on another device a minute ago doesn't reappear. A tap anywhere outside a
+  tip now dismisses it too (it used to need "Got it"), and only one tip shows at a time.
+
 - **2026-10-23 — Already-invoiced lessons: one line instead of a dialog (v233).** Builds on v231 (replaces v232's
   dialog). When some lessons you're invoicing are already on an unpaid invoice, Send invoice goes straight to one
   invoice for all of them (plus that invoice's other unpaid lessons, so none is left uncovered) with a line above
