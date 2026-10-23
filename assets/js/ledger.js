@@ -641,7 +641,7 @@
     if(q.error)return null;
     var matches=(q.data||[]).filter(function(v){
       var lids=(v.data&&v.data.lesson_ids)||[];
-      return lids.length && lids.some(function(x){return ids.indexOf(x)>-1;});
+      return !isReplaced(v) && lids.length && lids.some(function(x){return ids.indexOf(x)>-1;});   // replaced ones stay as they were
     });
     var firstId=matches.length?matches[0].id:null;
     for(var i=0;i<matches.length;i++){
@@ -952,7 +952,7 @@
 
   // Show the built invoice in the overlay (shared by the PayNow and bank-transfer paths).
   function presentInvoice(data, qrUrl, meta){
-    window._invHTML=invoiceHTML(data,qrUrl); window._invSaved=false; window._invSavedId=null;
+    window._invHTML=invoiceHTML(data,qrUrl); window._invSaved=false; window._invSavedId=null; window._invSaving=null;
     window._invMeta=meta; window._invBillTo=data.student||null;   // kept on the saved invoice, so it survives the student being removed
     $("inv-body").innerHTML=window._invHTML;
     $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
@@ -1063,6 +1063,8 @@
       .sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
     if(!lessons.length)return;
     var total=Math.round(lessons.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
+    var same=await findSameInvoice(lessons,total);
+    if(same){ presentSaved(same,{studentId:studentId,month:monthsLabel(lessons)}); return; }
     var student=nameById[studentId]||"Student";
     var now=new Date();
     window._invTitle="Invoice_"+(student.replace(/[^A-Za-z0-9]+/g,"")||"Student")+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
@@ -1100,6 +1102,9 @@
     var total=Math.round(all.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
     var names=ids.map(function(id){return nameById[id]||"Student";});
     var billTo=names.length===2?names[0]+" & "+names[1]:names.join(", ");
+    var same=await findSameInvoice(all,total);
+    if(same){ presentSaved(same,{studentId:null,students:ids,name:billTo,month:monthsLabel(all),
+      recipient:(ids.map(function(id){return recipientById[id];}).filter(Boolean)[0]||"")}); return; }
     var now=new Date();
     var slug=names.map(function(n){return n.replace(/[^A-Za-z0-9]/g,"").slice(0,4);}).join("+").toUpperCase().slice(0,18)||"GROUP";
     window._invTitle="Invoice_"+slug+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
@@ -1124,7 +1129,51 @@
     }catch(e){ TL.alert("Invoice error: "+(e.message||e)); }
   }
 
-  async function saveInvoice(){
+  // ---- one invoice per set of lessons ----
+  // Same lessons, same total, still unpaid → reopen that invoice (same number) instead of making a copy.
+  // Lessons as a set, sorted, so the order they were billed in doesn't matter.
+  function lessonKey(ids){ return (ids||[]).map(String).sort().join(","); }
+  function isReplaced(v){ return !!(v&&v.data&&v.data.replaced_by); }
+  async function findSameInvoice(lessons,total){
+    var key=lessonKey(lessons.map(function(l){return l.id;}));
+    var q=await window.sb.from("invoices").select("id,invoice_no,issued_date,total,status,sent_at,student_id,data");
+    if(q.error) return null;
+    return (q.data||[]).filter(function(v){
+      return v.status!=="paid" && !isReplaced(v) && v.data && v.data.html &&
+        lessonKey(v.data.lesson_ids)===key && Math.abs(Number(v.total)-total)<0.005;
+    })[0]||null;
+  }
+  // Show a saved invoice exactly as it was sent (same number, date and QR); Send on WhatsApp re-sends it.
+  function presentSaved(v, meta){
+    window._invHTML=v.data.html; window._invSaved=true; window._invSavedId=v.id; window._invSaving=null;
+    window._invTitle=v.data.title||("Invoice_"+v.invoice_no); window._invBillTo=v.data.name||null;
+    window._invMeta=Object.assign({invoiceNo:v.invoice_no,total:Number(v.total),issuedDate:v.issued_date,lessonIds:v.data.lesson_ids},meta);
+    $("inv-body").innerHTML=v.data.html;
+    $("inv-save").textContent="Saved \u2713";$("inv-save").disabled=true;
+    $("inv-backdrop").classList.add("on");
+  }
+  // After saving a new invoice: older unpaid invoices whose lessons are all on the new one are marked
+  // "Replaced by …" (kept for reference, left out of every total and of paid/unpaid syncing).
+  async function markReplaced(newId,newNo,lessonIds){
+    var mine={}; (lessonIds||[]).forEach(function(id){mine[String(id)]=1;});
+    var q=await window.sb.from("invoices").select("id,status,data"); if(q.error) return;
+    var olds=(q.data||[]).filter(function(v){
+      var lids=(v.data&&v.data.lesson_ids)||[];
+      return v.id!==newId && v.status!=="paid" && !isReplaced(v) && lids.length && lids.every(function(x){return mine[String(x)];});
+    });
+    for(var i=0;i<olds.length;i++){
+      var d=Object.assign({},olds[i].data,{replaced_by:newNo,replaced_at:new Date().toISOString()});
+      await window.sb.from("invoices").update({data:d}).eq("id",olds[i].id);
+    }
+  }
+  // Save once per open invoice: a second tap, or Save and Send together, share the same save.
+  function saveInvoice(){
+    if(window._invSaved) return Promise.resolve();
+    if(window._invSaving) return window._invSaving;
+    window._invSaving=saveInvoiceNow().then(function(r){ window._invSaving=null; return r; },function(e){ window._invSaving=null; throw e; });
+    return window._invSaving;
+  }
+  async function saveInvoiceNow(){
     if(!window._invHTML||!window._invMeta)return;
     var m=window._invMeta,b=$("inv-save");
     b.disabled=true;b.textContent="Saving…";
@@ -1135,10 +1184,10 @@
         students:m.students||null,name:m.name||window._invBillTo||null,lesson_ids:m.lessonIds||null}
     }).select("id").single();
     if(!res.error&&res.data){window._invSavedId=res.data.id;noteInvNo(m.invoiceNo);}
-    b.disabled=false;
-    if(res.error){b.textContent="Save to app";TL.alert("Couldn't save invoice: "+res.error.message);return;}
-    window._invSaved=true;   // recorded in the Invoices tab
-    b.textContent="Saved ✓";setTimeout(function(){b.textContent="Save to app";},1600);
+    if(res.error){b.disabled=false;b.textContent="Save to app";TL.alert("Couldn't save invoice: "+res.error.message);return;}
+    window._invSaved=true;   // recorded in the Invoices tab; Save stays "Saved ✓" for this invoice
+    b.textContent="Saved \u2713";
+    try{ await markReplaced(res.data.id,m.invoiceNo,m.lessonIds); }catch(e){ console.warn("Replace check skipped:",e); }
   }
 
   // Lazily load html2canvas (self-hosted copy first, then CDNs) for rendering the invoice to an image.

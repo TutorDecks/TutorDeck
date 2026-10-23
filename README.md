@@ -261,6 +261,17 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-23 — No more duplicate invoices (v231).** Three ways a second copy of the same invoice was saved:
+  1. **Save to app tapped twice** (the button reset after 1.6s) → each open invoice now saves once; Save stays "Saved ✓".
+  2. **Save and Send on WhatsApp tapped together** → they share the one save.
+  3. **Send invoice again for the same lessons** (e.g. re-sending to a parent; how the Iffah copy happened) → if an
+     unpaid invoice already covers exactly these lessons for the same total, it's reopened as it was sent (same
+     number, date and QR) and Send just updates its Sent date.
+  - **New lessons since the last invoice:** the new invoice (e.g. INV-0002 for lessons 1–2) marks the older unpaid one
+    whose lessons are all on it (INV-0001 for lesson 1) as **"Replaced by INV-0002"** (`invoices.data.replaced_by`,
+    no migration). It stays in the Invoices list under All, greyed with its amount struck through, but is left out of
+    Paid / Awaiting / Not sent, the status filters, the CSV and paid/unpaid syncing. Paid invoices are never replaced.
+
 - **2026-10-22 — Glass made easier to read (v230).** UI pass over every page on phone and desktop (all ⋯ / dropdown
   menus open on top and are tappable; no sideways scrolling; no page errors). One fix: list text scrolling under the
   phone tab bar competed with the tab labels, so the bar is now 92% white with a stronger blur, and the floating eye
