@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Invoices · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=229">
+<link rel="stylesheet" href="assets/css/app.css?v=233">
 <style>
   /* ---- v169 Invoices: summary strip, simple filters, list + sheet ---- */
   .iv-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin-bottom:16px}
@@ -47,6 +47,10 @@
   .iv-st.wait{background:#FBEFEC;color:var(--owed)}
   .iv-st.unsent{background:#FEF3E2;color:#92400E}
   .iv-st.sent{background:#EEF0F4;color:var(--ink)}
+  .iv-st.repl{background:#F1EFEA;color:var(--muted)}
+  .iv-row.repl{opacity:.62}
+  .iv-row.repl .iv-amt{text-decoration:line-through;color:var(--muted)}
+  .ivs-note{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:#F1EFEA;color:var(--muted);font-size:13.5px;line-height:1.45}
   .ls-i.warn .ls-v{color:var(--warn)}
   .iv-clip{color:var(--muted);flex:none}
   /* sheet (same pattern as the Ledger's owe sheet) */
@@ -149,9 +153,9 @@
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=229"></script>
-<script src="assets/js/supabase.js?v=229"></script>
-<script src="assets/js/app.js?v=229"></script>
-<script src="assets/js/invoices.js?v=229"></script>
+<script src="assets/js/config.js?v=233"></script>
+<script src="assets/js/supabase.js?v=233"></script>
+<script src="assets/js/app.js?v=233"></script>
+<script src="assets/js/invoices.js?v=233"></script>
 </body>
 </html>

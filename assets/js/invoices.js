@@ -76,8 +76,11 @@
   }
   function inPeriod(){ return invoices.filter(inRange); }
   function isSent(v){ return !!v.sent_at; }
+  // Replaced by a newer invoice for the same lessons (Ledger marks it): shown under All, never counted.
+  function replacedBy(v){ return (v.data&&v.data.replaced_by)||""; }
   function filtered(){ return inPeriod().filter(function(v){
     if(!fStat) return true;
+    if(replacedBy(v)) return false;
     if(fStat==="paid") return v.status==="paid";
     if(fStat==="unsent") return v.status!=="paid" && !isSent(v);
     return v.status!=="paid";
@@ -114,7 +117,7 @@
   // ---- CSV export of the (filtered) income record ----
   function csvCell(s){ s=String(s==null?"":s); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
   function exportCSV(){
-    var list=filtered();
+    var list=filtered().filter(function(v){ return !replacedBy(v); });   // income record: replaced invoices aren't income
     var lines=[["Paid date","Issued date","Student","Invoice no.","Total","Status","Sent","Payment screenshot"].join(",")];
     list.forEach(function(v){
       lines.push([v.paid_date||"",v.issued_date||"",studentName(v),v.invoice_no,Number(v.total||0).toFixed(2),v.status,v.sent_at?String(v.sent_at).slice(0,10):"",v.proof_path?"yes":"no"].map(csvCell).join(","));
@@ -130,7 +133,7 @@
   function shortDate(s){if(!s)return"";var p=s.split("-");var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return (+p[2])+" "+mo[(+p[1])-1];}
 
   function render(){
-    var period=inPeriod(), list=filtered();
+    var period=inPeriod().filter(function(v){ return !replacedBy(v); }), list=filtered();
     var paid=period.filter(function(v){return v.status==="paid";}), wait=period.filter(function(v){return v.status!=="paid";});
     var sum=function(a){return a.reduce(function(t,v){return t+Number(v.total||0);},0);};
     $("iv-paid").textContent=TL.sgd(sum(paid)); $("iv-paid-n").textContent=paid.length+(paid.length===1?" invoice":" invoices");
@@ -150,11 +153,11 @@
     } else {
       empty.style.display="none"; box.style.display="";
       box.innerHTML=list.map(function(v){
-        var isPaid=v.status==="paid", nm=studentName(v);
-        var st=isPaid?'<span class="iv-st paid">Paid'+(v.paid_date?' '+shortDate(v.paid_date):'')+'</span>'
+        var isPaid=v.status==="paid", nm=studentName(v), rb=replacedBy(v);
+        var st=rb?'<span class="iv-st repl">Replaced by '+esc(rb)+'</span>':isPaid?'<span class="iv-st paid">Paid'+(v.paid_date?' '+shortDate(v.paid_date):'')+'</span>'
           :(!hasSent?'<span class="iv-st wait">Awaiting</span>'
           :(isSent(v)?'<span class="iv-st sent">Sent '+shortDate(String(v.sent_at).slice(0,10))+'</span>':'<span class="iv-st unsent">Not sent</span>'));
-        return '<button type="button" class="iv-row" data-open="'+v.id+'">'+
+        return '<button type="button" class="iv-row'+(rb?' repl':'')+'" data-open="'+v.id+'">'+
           '<span class="iv-av" aria-hidden="true">'+esc(nm==="Removed student"?"\u2013":initials(nm))+'</span>'+
           '<span class="iv-main"><span class="iv-name">'+esc(nm)+'</span><span class="iv-sub">'+esc(v.invoice_no)+' · issued '+shortDate(v.issued_date)+'</span></span>'+
           (v.proof_path?CLIP:'')+
@@ -172,24 +175,25 @@
   function renderSheet(){
     var v=find(openId); if(!v){ closeSheet(); return; }
     current=v;
-    var isPaid=v.status==="paid";
+    var isPaid=v.status==="paid", rb=replacedBy(v);
     $("iv-s-name").textContent=studentName(v);
     $("iv-s-meta").textContent=v.invoice_no+" · issued "+prettyDate(v.issued_date);
     $("iv-s-amt").textContent=TL.sgd(v.total);
-    $("iv-s-amt").style.color=isPaid?"var(--accent)":"var(--owed)";
+    $("iv-s-amt").style.color=rb?"var(--muted)":isPaid?"var(--accent)":"var(--owed)";
     var proof=v.proof_path
       ? '<span><button class="tact" data-vproof>View</button><button class="tact del" data-rproof>Remove</button></span>'
       : '<button class="tact" data-aproof>Attach screenshot</button>';
     $("iv-s-body").innerHTML=
+      (rb?'<p class="ivs-note">Replaced by <b>'+esc(rb)+'</b>, a newer invoice that includes these lessons. It isn\u2019t counted in your totals.</p>':'')+
       '<div class="ivs-acts">'+
-        (isPaid?'<button class="btn wide" data-paid>Mark as unpaid</button>'
+        (rb?'':isPaid?'<button class="btn wide" data-paid>Mark as unpaid</button>'
                :'<button class="btn btn-gold wide" data-paid>Mark as paid</button>')+
-        (!isPaid&&hasSent&&!isSent(v)?'<button class="btn wide" data-sent>Mark as sent</button>':'')+
+        (!rb&&!isPaid&&hasSent&&!isSent(v)?'<button class="btn wide" data-sent>Mark as sent</button>':'')+
         '<button class="btn" data-print>Print / Save PDF</button>'+
         '<a class="btn" href="ledger">Open Ledger</a>'+
       '</div>'+
       '<div class="ivs-box">'+
-        '<div class="ivs-line"><span class="k">Status</span>'+(isPaid?'<span class="iv-st paid">Paid</span>':'<span class="iv-st wait">Awaiting payment</span>')+'</div>'+
+        '<div class="ivs-line"><span class="k">Status</span>'+(rb?'<span class="iv-st repl">Replaced by '+esc(rb)+'</span>':isPaid?'<span class="iv-st paid">Paid</span>':'<span class="iv-st wait">Awaiting payment</span>')+'</div>'+
         (hasSent?'<div class="ivs-line"><span class="k">Sent to parent</span>'+(isSent(v)
           ?'<span>'+prettyDate(String(v.sent_at).slice(0,10))+' <button class="tact" data-unsent>Undo</button></span>'
           :'<span class="iv-st unsent">Not sent yet</span>')+'</div>':'')+
