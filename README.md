@@ -261,6 +261,20 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-23 — Family invoice link (v235, dev only for now).** **Needs `db/migration_family_link.sql` first**
+  (adds `invoices.share_token`, a random code on every invoice, and a read-only `invoice_by_token(t)` lookup; no row
+  data changes; nothing can be listed, searched or changed through it). Before it's run, everything works as before.
+  - **Send on WhatsApp** now sends a text message with a link instead of an image: "Hi Mrs Lim! Here's your invoice
+    INV-0001 from Alex Maths Tuition for $180.00. You can view it and pay by PayNow here: <link> Thank you!" (bank /
+    both variants; tutors' own templates get `{link}`, or the link is added at the end). No picture to attach, so it's
+    one tap per family — the base for month-end mass sending.
+  - **`pay.html`** (`/pay?t=<code>`, no login, `noindex`): the invoice exactly as saved, with "Amount due", the PayNow
+    QR, and **Save invoice to Photos** (to scan the QR from the gallery when paying on the same phone). Paid →
+    "✓ Paid on 24 Oct. Thank you!", QR hidden. Replaced → points to the newer invoice. Broken / unknown codes get a
+    plain message. No app menus.
+  - **Invoices tab:** "Copy family link" on each invoice.
+  - Previously tried in Aug (v82–v94, removed); this version is read-only (no parent "I've paid").
+
 - **2026-10-23 — Tips stay dismissed (v234).** Seen tips and "setup done" lived only in the browser, and browser storage
   is per website and per device: every Vercel preview link (a new address each push), the live site, a phone and a
   laptop each started fresh, so the Log / filter / swipe / Client view tips came back. They're now also saved on the

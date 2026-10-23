@@ -190,6 +190,7 @@
                :'<button class="btn btn-gold wide" data-paid>Mark as paid</button>')+
         (!rb&&!isPaid&&hasSent&&!isSent(v)?'<button class="btn wide" data-sent>Mark as sent</button>':'')+
         '<button class="btn" data-print>Print / Save PDF</button>'+
+        (v.share_token?'<button class="btn" data-link>Copy family link</button>':'')+
         '<a class="btn" href="ledger">Open Ledger</a>'+
       '</div>'+
       '<div class="ivs-box">'+
@@ -208,6 +209,12 @@
     on("[data-sent]",function(){setSent(v,true);});
     on("[data-unsent]",function(){setSent(v,false);});
     on("[data-print]",printInvoice);
+    on("[data-link]",function(){
+      var url=location.origin+"/pay?t="+v.share_token, b=$("iv-s-body").querySelector("[data-link]");
+      var done=function(){ b.textContent="Link copied \u2713"; setTimeout(function(){ b.textContent="Copy family link"; },1600); };
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done,function(){ TL.prompt({title:"Family link",message:"Copy this link:",placeholder:url}); });
+      else TL.alert({title:"Family link",message:url});
+    });
     on("[data-aproof]",function(){startAttach(v.id);});
     on("[data-vproof]",function(){viewProof(v);});
     on("[data-rproof]",function(){removeProof(v);});
@@ -237,7 +244,9 @@
     var st=await window.sb.from("students").select("id,name");
     nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
     var cols="id,student_id,invoice_no,issued_date,total,status,paid_date,proof_path,data";
-    var res=await window.sb.from("invoices").select(cols+",sent_at").order("issued_date",{ascending:false}).order("created_at",{ascending:false});
+    var res=await window.sb.from("invoices").select(cols+",sent_at,share_token").order("issued_date",{ascending:false}).order("created_at",{ascending:false});
+    if(res.error&&/share_token/.test(res.error.message||""))   // before db/migration_family_link.sql
+      res=await window.sb.from("invoices").select(cols+",sent_at").order("issued_date",{ascending:false}).order("created_at",{ascending:false});
     // Before db/migration_invoice_sent.sql is run there's no sent_at column — fall back and hide "Sent".
     if(res.error&&/sent_at/.test(res.error.message||"")){
       hasSent=false;

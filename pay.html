@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Invoice · TutorDeck</title>
+<link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/app.css?v=235">
+<style>
+  /* Public family invoice page (no login): one invoice, found by its secret link code. */
+  body{background:var(--bg)}
+  .pv-wrap{max-width:640px;margin:0 auto;padding:22px 16px 40px}
+  .pv-brand{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px;font-weight:700;margin:0 0 14px}
+  .pv-brand img{width:20px;height:20px;border-radius:5px}
+  .pv-status{border-radius:12px;padding:12px 14px;margin:0 0 14px;font-size:14.5px;line-height:1.45;font-weight:600}
+  .pv-status.paid{background:var(--accent-soft);color:var(--accent-ink)}
+  .pv-status.repl{background:#F1EFEA;color:var(--ink)}
+  .pv-status.due{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  .pv-status.due b{color:var(--owed)}
+  .pv-card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:20px 18px}
+  .pv-card.dim{opacity:.55}
+  .pv-card.paid .inv-pay,.pv-card.dim .inv-pay{display:none}   /* no QR once paid / replaced, so nobody pays twice */
+  .pv-acts{display:flex;flex-direction:column;gap:8px;margin:16px 0 0}
+  .pv-acts .btn{height:48px;justify-content:center;border-radius:12px;font-size:15px}
+  .pv-hint{color:var(--muted);font-size:13px;line-height:1.5;text-align:center;margin:8px 4px 0}
+  .pv-msg{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px 22px;text-align:center}
+  .pv-msg h1{font-size:19px;margin:0 0 6px;color:var(--ink)}
+  .pv-msg p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.5}
+  .pv-foot{margin-top:22px;text-align:center;font-size:12px;color:var(--muted)}
+  .pv-foot a{color:var(--muted)}
+  .pv-sk{height:420px;border-radius:16px}
+  @media(min-width:700px){ .pv-acts{flex-direction:row} .pv-acts .btn{flex:1} }
+</style>
+</head>
+<body>
+<main class="pv-wrap" id="pv">
+  <div class="pv-brand"><img src="assets/img/logo.svg" alt="">Invoice</div>
+  <div class="pv-sk sk" aria-hidden="true"></div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js?v=235"></script>
+<script src="assets/js/supabase.js?v=235"></script>
+<script>
+(function () {
+  var box = document.getElementById("pv");
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function sgd(n) { return "$" + Number(n || 0).toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function day(s) { if (!s) return ""; var p = String(s).slice(0, 10).split("-"); return (+p[2]) + " " + ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][(+p[1]) - 1]; }
+  var head = '<div class="pv-brand"><img src="assets/img/logo.svg" alt="">Invoice</div>';
+  function message(title, text) {
+    box.innerHTML = head + '<div class="pv-msg"><h1>' + esc(title) + '</h1><p>' + esc(text) + '</p></div>' + foot();
+  }
+  function foot() { return '<p class="pv-foot">Sent with <a href="/">TutorDeck</a></p>'; }
+
+  var t = new URLSearchParams(location.search).get("t") || "";
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t)) {
+    message("This link isn't complete", "Please open the link again from the message, or ask your tutor to send it again.");
+    return;
+  }
+  window.sb.rpc("invoice_by_token", { t: t }).then(function (r) {
+    var v = r && !r.error && r.data && (Array.isArray(r.data) ? r.data[0] : r.data);
+    if (!v || !v.html) { message("Invoice not found", "This invoice may have been removed. Please ask your tutor to send it again."); return; }
+    document.title = (v.invoice_no || "Invoice") + " · TutorDeck";
+    var paid = v.status === "paid", repl = !!v.replaced_by;
+    var status = repl
+      ? '<div class="pv-status repl">This invoice was replaced by <b>' + esc(v.replaced_by) + '</b>. Please use the newer one your tutor sent.</div>'
+      : paid
+        ? '<div class="pv-status paid">✓ Paid' + (v.paid_date ? " on " + day(v.paid_date) : "") + '. Thank you!</div>'
+        : '<div class="pv-status due">Amount due: <b>' + sgd(v.total) + '</b></div>';
+    var hasQR = !paid && !repl && /<img[^>]+data:image/.test(v.html);
+    box.innerHTML = head + status +
+      '<div class="pv-card' + (repl ? ' dim' : paid ? ' paid' : '') + '" id="pv-inv">' + v.html + '</div>' +
+      (paid || repl ? '' :
+        '<div class="pv-acts"><button class="btn btn-primary" id="pv-save" type="button">Save invoice to Photos</button></div>' +
+        (hasQR ? '<p class="pv-hint">Paying on this phone? Save it, then in your banking app tap Scan and pick the picture from your photos.</p>' : '')) +
+      foot();
+    if (paid) document.querySelectorAll("#pv-inv .inv-total span:first-child").forEach(function (e) { if (/due/i.test(e.textContent)) e.textContent = "Total paid"; });
+    var sv = document.getElementById("pv-save");
+    if (sv) sv.addEventListener("click", function () { saveImage(sv, v.invoice_no); });
+  }, function () { message("Couldn't load the invoice", "Please check your connection and try again."); });
+
+  // Save the invoice as a picture (so the PayNow QR can be scanned from the photo gallery).
+  function loadH2C() {
+    if (window.html2canvas) return Promise.resolve();
+    return new Promise(function (ok, no) {
+      var urls = ["assets/js/html2canvas.min.js", "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"], i = 0;
+      (function next() {
+        if (i >= urls.length) { no(new Error("blocked")); return; }
+        var s = document.createElement("script"); s.src = urls[i++];
+        s.onload = function () { window.html2canvas ? ok() : next(); }; s.onerror = next;
+        document.head.appendChild(s);
+      })();
+    });
+  }
+  function saveImage(btn, no) {
+    var label = btn.textContent; btn.disabled = true; btn.textContent = "Preparing…";
+    loadH2C().then(function () {
+      var node = document.getElementById("pv-inv");
+      return window.html2canvas(node, { backgroundColor: "#ffffff", scale: 2, useCORS: true });
+    }).then(function (canvas) {
+      canvas.toBlob(async function (blob) {
+        btn.disabled = false; btn.textContent = label;
+        if (!blob) return;
+        var file = new File([blob], (no || "Invoice") + ".png", { type: "image/png" });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try { await navigator.share({ files: [file] }); return; } catch (e) { if (e && e.name === "AbortError") return; }
+        }
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name;
+        document.body.appendChild(a); a.click(); a.remove();
+      }, "image/png");
+    }).catch(function () { btn.disabled = false; btn.textContent = label; alertBox(); });
+  }
+  function alertBox() {
+    var p = document.querySelector(".pv-hint") || document.createElement("p");
+    p.className = "pv-hint"; p.textContent = "Couldn't make the picture here. You can take a screenshot instead.";
+    document.querySelector(".pv-acts").after(p);
+  }
+})();
+</script>
+</body>
+</html>

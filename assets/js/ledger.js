@@ -952,7 +952,7 @@
 
   // Show the built invoice in the overlay (shared by the PayNow and bank-transfer paths).
   function presentInvoice(data, qrUrl, meta){
-    window._invHTML=invoiceHTML(data,qrUrl); window._invSaved=false; window._invSavedId=null; window._invSaving=null;
+    window._invHTML=invoiceHTML(data,qrUrl); window._invSaved=false; window._invSavedId=null; window._invSaving=null; window._invLink=null;
     window._invMeta=meta; window._invBillTo=data.student||null;   // kept on the saved invoice, so it survives the student being removed
     $("inv-body").innerHTML=window._invHTML; renderInvNote();
     $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
@@ -1146,6 +1146,11 @@
     }catch(e){ TL.alert("Invoice error: "+(e.message||e)); }
   }
 
+  // ---- family link: tutordeck…/pay?t=<code> opens this one invoice, no login (db/migration_family_link.sql) ----
+  function familyLink(token){ return token ? location.origin+"/pay?t="+token : null; }
+  var DEFAULT_INVOICE_LINK="Hi {name}! Here's your invoice {invoice} from {business} for {amount}. You can view it and pay by PayNow here: {link} Thank you!";
+  var DEFAULT_INVOICE_LINK_BANK="Hi {name}! Here's your invoice {invoice} from {business} for {amount}. You can view it and the bank transfer details here: {link} Thank you!";
+  var DEFAULT_INVOICE_LINK_BOTH="Hi {name}! Here's your invoice {invoice} from {business} for {amount}. You can view it and pay by PayNow or bank transfer here: {link} Thank you!";
   // ---- one invoice per set of lessons ----
   // Same lessons, same total, still unpaid → reopen that invoice (same number) instead of making a copy.
   // Lessons as a set, sorted, so the order they were billed in doesn't matter.
@@ -1153,7 +1158,7 @@
   function isReplaced(v){ return !!(v&&v.data&&v.data.replaced_by); }
   async function findSameInvoice(lessons,total){
     var key=lessonKey(lessons.map(function(l){return l.id;}));
-    var q=await window.sb.from("invoices").select("id,invoice_no,issued_date,total,status,sent_at,student_id,data");
+    var q=await window.sb.from("invoices").select("*");
     if(q.error) return null;
     return (q.data||[]).filter(function(v){
       return v.status!=="paid" && !isReplaced(v) && v.data && v.data.html &&
@@ -1167,7 +1172,7 @@
   // Returns null (no overlap), {reopen:invoice}, or {olds, fresh, union, extra}.
   async function findOverlap(lessons, stuIds){
     var mine={}; lessons.forEach(function(l){mine[String(l.id)]=1;});
-    var q=await window.sb.from("invoices").select("id,invoice_no,issued_date,total,status,sent_at,student_id,data");
+    var q=await window.sb.from("invoices").select("*");
     if(q.error) return null;
     var olds=(q.data||[]).filter(function(v){
       var lids=(v.data&&v.data.lesson_ids)||[];
@@ -1209,6 +1214,7 @@
   // Show a saved invoice exactly as it was sent (same number, date and QR); Send on WhatsApp re-sends it.
   function presentSaved(v, meta){
     window._invHTML=v.data.html; window._invSaved=true; window._invSavedId=v.id; window._invSaving=null;
+    window._invLink=familyLink(v.share_token);
     window._invTitle=v.data.title||("Invoice_"+v.invoice_no); window._invBillTo=v.data.name||null;
     window._invMeta=Object.assign({invoiceNo:v.invoice_no,total:Number(v.total),issuedDate:v.issued_date,lessonIds:v.data.lesson_ids},meta);
     $("inv-body").innerHTML=v.data.html; window._invNote=null; renderInvNote();
@@ -1246,7 +1252,8 @@
       data:{html:window._invHTML,title:window._invTitle||("Invoice_"+m.invoiceNo),
         students:m.students||null,name:m.name||window._invBillTo||null,lesson_ids:m.lessonIds||null}
     }).select("id").single();
-    if(!res.error&&res.data){window._invSavedId=res.data.id;noteInvNo(m.invoiceNo);}
+    if(!res.error&&res.data){window._invSavedId=res.data.id;noteInvNo(m.invoiceNo);
+      try{ var tk=await window.sb.from("invoices").select("*").eq("id",res.data.id).single(); window._invLink=familyLink(tk.data&&tk.data.share_token); }catch(e){} }
     if(res.error){b.disabled=false;b.textContent="Save to app";TL.alert("Couldn't save invoice: "+res.error.message);return;}
     window._invSaved=true;   // recorded in the Invoices tab; Save stays "Saved ✓" for this invoice
     b.textContent="Saved \u2713";
@@ -1279,7 +1286,17 @@
       month:m.month||"",date:prettyDate(m.issuedDate),year:(m.issuedDate||"").slice(0,4)};
     // Default message matches what's on the invoice: PayNow, bank transfer, or both.
     vars.student_s=possessive(vars.student);
-    var tpl=invoiceTpl(profile, po.pn, po.bk, isCombined ? !!m.recipient : !!recipientById[m.studentId]);
+    var hasParent=isCombined ? !!m.recipient : !!recipientById[m.studentId];
+    var link=window._invLink; vars.link=link||"";
+    if(link){
+      // With the family link the message carries the link instead of an attached picture.
+      if(profile&&profile.invoice_message){
+        var own=fillTemplate(profile.invoice_message,vars);
+        return /\{link\}/.test(profile.invoice_message) ? own : own+"\n"+link;
+      }
+      return fillTemplate(noParent(po.pn&&po.bk?DEFAULT_INVOICE_LINK_BOTH:(po.bk?DEFAULT_INVOICE_LINK_BANK:DEFAULT_INVOICE_LINK),hasParent),vars);
+    }
+    var tpl=invoiceTpl(profile, po.pn, po.bk, hasParent);
     return fillTemplate(tpl,vars);
   }
   // Two WhatsApp flows, picked by OS:
@@ -1309,12 +1326,25 @@
   }
   async function shareInvoice(){
     if(!window._invHTML||!window._invMeta)return;
-    var m=window._invMeta,b=$("inv-wa"),msg=invoiceMsg(m);
+    var m=window._invMeta,b=$("inv-wa");
+    var desk=!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    var pre=desk?window.open("","_blank"):null;   // open the tab now, while we still have the tap (pop-up blockers)
     b.disabled=true;b.textContent="Preparing…";
     if(!window._invSaved){ try{ await saveInvoice(); }catch(e){} }   // sending records the invoice in the Invoices tab
+    var msg=invoiceMsg(m);
     // …and marks it "Sent" (sent_at; ignored if db/migration_invoice_sent.sql hasn't been run yet)
     if(window._invSavedId){ try{ await window.sb.from("invoices").update({sent_at:new Date().toISOString()}).eq("id",window._invSavedId);
       await loadSentMap(); renderOutstanding(lastUnpaid); }catch(e){} }
+    if(window._invLink){
+      // Family link: plain text, so WhatsApp always keeps it (and it works for a whole month's sends).
+      b.disabled=false;b.textContent="Send on WhatsApp";
+      var num0=waNumber(contactById[m.studentId||(m.students&&m.students[0])]);
+      var url=num0?"https://wa.me/"+num0+"?text="+encodeURIComponent(msg):"https://api.whatsapp.com/send?text="+encodeURIComponent(msg);
+      copyText(msg);
+      if(pre){ pre.location.href=url; } else { location.href=url; }
+      return;
+    }
+    if(pre){ try{ pre.close(); }catch(e){} }
     // WhatsApp often drops the text when an image is shared/attached, so keep the message on the
     // clipboard — it can always be pasted into the chat even if it doesn't prefill.
     var copied=await copyText(msg);

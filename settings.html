@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Settings · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=234">
+<link rel="stylesheet" href="assets/css/app.css?v=235">
 <style>
   .field textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
     font:inherit;background:#FFFFFF;color:var(--ink);resize:vertical;line-height:1.45}
@@ -121,7 +121,7 @@
     <p class="set-sub">What Remind and Send on WhatsApp say. Leave blank to use the default shown.</p>
     <details class="set-more" id="msg-more">
       <summary>Edit message templates</summary>
-      <p class="set-sub">These fill in automatically: <b>{name}</b> (parent if set, else student) · <b>{student}</b> · <b>{business}</b> · <b>{amount}</b> · <b>{count}</b> · <b>{month}</b> · <b>{invoice}</b> · <b>{paynow}</b> · <b>{bank}</b> · <b>{date}</b> · <b>{year}</b></p>
+      <p class="set-sub">These fill in automatically: <b>{name}</b> (parent if set, else student) · <b>{student}</b> · <b>{business}</b> · <b>{amount}</b> · <b>{count}</b> · <b>{month}</b> · <b>{invoice}</b> · <b>{paynow}</b> · <b>{bank}</b> · <b>{link}</b> (the family invoice link) · <b>{date}</b> · <b>{year}</b></p>
       <div class="field">
         <label for="rmsg">Payment reminder</label>
         <textarea id="rmsg" rows="3" placeholder="Hi {name}! Just a gentle reminder from {business}: {student}'s fees for {month} come to {amount} ({count} lessons). You can PayNow to {paynow}. Thank you so much!"></textarea>
@@ -188,10 +188,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=234"></script>
-<script src="assets/js/supabase.js?v=234"></script>
-<script src="assets/js/app.js?v=234"></script>
-<script src="assets/js/paynow.js?v=234"></script>
-<script src="assets/js/settings.js?v=234"></script>
+<script src="assets/js/config.js?v=235"></script>
+<script src="assets/js/supabase.js?v=235"></script>
+<script src="assets/js/app.js?v=235"></script>
+<script src="assets/js/paynow.js?v=235"></script>
+<script src="assets/js/settings.js?v=235"></script>
 </body>
 </html>
