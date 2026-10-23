@@ -261,13 +261,14 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
-- **2026-10-23 — Ask before invoicing lessons that are already invoiced (v232).** Builds on v231. When you tap
-  Send invoice (or Invoice N selected) and any of those lessons is already on an unpaid invoice, an "Already
-  invoiced" dialog asks first: **Replace INV-0001** with one invoice for these lessons plus the rest of that
-  invoice's unpaid lessons (recommended; the old one is marked "Replaced"), **Invoice only the new lessons**, or —
-  when there's nothing new to bill — **Open INV-0001 instead**. Cancel makes nothing. So a lesson is never on two
-  active invoices, and nothing is deleted automatically. Re-sending exactly the same lessons still just reopens the
-  invoice, with no dialog.
+- **2026-10-23 — Already-invoiced lessons: one line instead of a dialog (v233).** Builds on v231 (replaces v232's
+  dialog). When some lessons you're invoicing are already on an unpaid invoice, Send invoice goes straight to one
+  invoice for all of them (plus that invoice's other unpaid lessons, so none is left uncovered) with a line above
+  the preview: "**Replaces INV-0001** (sent 15 Oct) · Only bill 12 Oct". Two dates are named, more are counted
+  ("Only bill the 3 new lessons"); two older invoices are named ("Replaces INV-0001 and INV-0003"), three or more
+  counted; "also adds 19 Oct from it" when it pulls in an unticked lesson. Saving or sending marks the old one
+  "Replaced"; "Only bill …" switches the preview to just the new lessons; closing without saving changes nothing.
+  Nothing new to bill → it reopens the existing invoice. The line isn't part of the invoice image or PDF.
 
 - **2026-10-23 — No more duplicate invoices (v231).** Three ways a second copy of the same invoice was saved:
   1. **Save to app tapped twice** (the button reset after 1.6s) → each open invoice now saves once; Save stays "Saved ✓".

@@ -1,5 +1,5 @@
-/* v232 */
-/* v232 */
+/* v233 */
+/* v233 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -757,13 +757,6 @@ body.td-dlg-open{overflow:hidden}
 .td-dlg-f summary{cursor:pointer;padding:11px 0;font-size:13.5px;font-weight:700;color:var(--ink)}
 .td-dlg-f summary span{font-weight:600;color:var(--muted);font-size:12px;margin-left:4px}
 .td-dlg-f details .field + .field{margin-top:10px}
-.td-dlg-opts{gap:8px}
-.td-dlg-f .td-dlg-opt{margin:0;font-weight:400}
-.td-dlg-f .td-dlg-opt,.td-dlg-opt{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);border-radius:11px;cursor:pointer;background:#fff}
-.td-dlg-opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
-.td-dlg-opt input{margin:3px 0 0;accent-color:var(--accent);width:16px;height:16px;flex:0 0 auto}
-.td-dlg-opt b{display:block;font-size:14.5px;color:var(--ink);line-height:1.35}
-.td-dlg-opt small{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.4}
 .td-dlg-wa{background:#E7F6EF;border-radius:12px 12px 12px 4px;padding:10px 12px;font-size:13.5px;line-height:1.5;color:var(--ink);white-space:pre-line;word-break:break-word}
 .td-dlg-wal{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}
 .td-dlg-acts.link{align-items:center;justify-content:space-between}
