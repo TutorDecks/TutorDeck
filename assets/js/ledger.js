@@ -1051,20 +1051,25 @@
       }});
   }
 
-  async function openInvoice(studentId, onlyIds){
+  async function openInvoice(studentId, onlyIds, picked){
     if(!profile){
       TL.alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");
       return;
     }
     var po=payOpts();
     if(!po.pn && !po.bk){ payCard("invoice",[studentId],onlyIds,function(){ openInvoice(studentId, onlyIds); }); return; }
-    var lessons=(outGroups[studentId]||[]).slice()
+    var lessons=picked||(outGroups[studentId]||[]).slice()
       .filter(function(l){ return !onlyIds || onlyIds.indexOf(String(l.id))>-1; })   // invoice only the picked lessons, if any
       .sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
     if(!lessons.length)return;
     var total=Math.round(lessons.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
     var same=await findSameInvoice(lessons,total);
     if(same){ presentSaved(same,{studentId:studentId,month:monthsLabel(lessons)}); return; }
+    if(!picked){   // some of these lessons already on an unpaid invoice? ask first
+      var ov=await resolveOverlap(lessons,[studentId]); if(!ov) return;
+      if(ov.saved){ presentSaved(ov.saved,{studentId:studentId,month:monthsLabel(lessons)}); return; }
+      if(ov.lessons){ openInvoice(studentId,null,ov.lessons); return; }
+    }
     var student=nameById[studentId]||"Student";
     var now=new Date();
     window._invTitle="Invoice_"+(student.replace(/[^A-Za-z0-9]+/g,"")||"Student")+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
@@ -1091,20 +1096,26 @@
     }catch(e){ TL.alert("Invoice error: "+(e.message||e)); }
   }
 
-  async function openInvoiceMany(ids, onlyIds){
+  async function openInvoiceMany(ids, onlyIds, picked){
     if(!profile){TL.alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");return;}
     var po=payOpts();
     if(!po.pn && !po.bk){ payCard("invoice",ids,onlyIds,function(){ openInvoiceMany(ids, onlyIds); }); return; }
-    var all=[];
-    ids.forEach(function(id){(outGroups[id]||[]).forEach(function(l){ if(!onlyIds||onlyIds.indexOf(String(l.id))>-1) all.push(Object.assign({_who:nameById[id]||"—"},l)); });});
+    var all=picked?picked.slice():[];
+    if(!picked) ids.forEach(function(id){(outGroups[id]||[]).forEach(function(l){ if(!onlyIds||onlyIds.indexOf(String(l.id))>-1) all.push(Object.assign({_who:nameById[id]||"—"},l)); });});
     all.sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date)||String(a._who).localeCompare(String(b._who));});
     if(!all.length)return;
     var total=Math.round(all.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
     var names=ids.map(function(id){return nameById[id]||"Student";});
     var billTo=names.length===2?names[0]+" & "+names[1]:names.join(", ");
     var same=await findSameInvoice(all,total);
-    if(same){ presentSaved(same,{studentId:null,students:ids,name:billTo,month:monthsLabel(all),
-      recipient:(ids.map(function(id){return recipientById[id];}).filter(Boolean)[0]||"")}); return; }
+    var hhMeta={studentId:null,students:ids,name:billTo,month:monthsLabel(all),
+      recipient:(ids.map(function(id){return recipientById[id];}).filter(Boolean)[0]||"")};
+    if(same){ presentSaved(same,hhMeta); return; }
+    if(!picked){
+      var ov=await resolveOverlap(all,ids); if(!ov) return;
+      if(ov.saved){ presentSaved(ov.saved,hhMeta); return; }
+      if(ov.lessons){ openInvoiceMany(ids,null,ov.lessons.map(function(l){return Object.assign({_who:nameById[l.student_id]||"—"},l);})); return; }
+    }
     var now=new Date();
     var slug=names.map(function(n){return n.replace(/[^A-Za-z0-9]/g,"").slice(0,4);}).join("+").toUpperCase().slice(0,18)||"GROUP";
     window._invTitle="Invoice_"+slug+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
@@ -1142,6 +1153,46 @@
       return v.status!=="paid" && !isReplaced(v) && v.data && v.data.html &&
         lessonKey(v.data.lesson_ids)===key && Math.abs(Number(v.total)-total)<0.005;
     })[0]||null;
+  }
+  // Lessons that are already on another unpaid invoice: ask once, before anything is made.
+  //   Replace  → one new invoice for these lessons plus the rest of that invoice's unpaid lessons; the old one
+  //              is then marked "Replaced by …" (markReplaced, on save).
+  //   Only new → invoice just the lessons that aren't on any invoice yet.
+  //   Open     → (nothing new to bill) show the existing invoice.
+  // Returns {} to carry on as is, {lessons:[…]} to bill those instead, {saved:invoice}, or null for Cancel.
+  async function resolveOverlap(lessons, stuIds){
+    var mine={}; lessons.forEach(function(l){mine[String(l.id)]=1;});
+    var q=await window.sb.from("invoices").select("id,invoice_no,issued_date,total,status,sent_at,student_id,data");
+    if(q.error) return {};
+    var olds=(q.data||[]).filter(function(v){
+      var lids=(v.data&&v.data.lesson_ids)||[];
+      return v.status!=="paid" && !isReplaced(v) && lids.some(function(x){return mine[String(x)];});
+    });
+    if(!olds.length) return {};
+    var onOld={}; olds.forEach(function(v){ v.data.lesson_ids.forEach(function(x){onOld[String(x)]=1;}); });
+    var fresh=lessons.filter(function(l){return !onOld[String(l.id)];});
+    var stu={}; stuIds.forEach(function(id){stu[String(id)]=1;});
+    var extra=allLessons.filter(function(l){ return onOld[String(l.id)] && !mine[String(l.id)] && !l.paid && stu[String(l.student_id)]; });
+    var union=lessons.concat(extra).sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
+    var dup=lessons.filter(function(l){return onOld[String(l.id)];});
+    var nos=olds.map(function(v){return v.invoice_no;});
+    var nosTxt=nos.length===1?nos[0]:nos.slice(0,-1).join(", ")+" and "+nos[nos.length-1];
+    var days=function(ls){return ls.map(function(l){return prettyDate(l.lesson_date);}).join(", ");};
+    var head=(dup.length===1?"The lesson on "+days(dup)+" is":TL.plural(dup.length,"lesson")+" ("+days(dup)+") are")+" already on "+nosTxt+
+      (olds.length===1&&olds[0].sent_at?" (sent "+prettyDate(String(olds[0].sent_at).slice(0,10))+")":"")+".";
+    var opts=[{v:"replace",t:"Replace "+nosTxt+" with one invoice for "+(union.length===1?"this lesson":"all "+union.length+" lessons"),d:"Recommended. "+nosTxt+" stays in Invoices, marked \u201CReplaced\u201D, and isn\u2019t counted."}];
+    if(fresh.length) opts.push({v:"fresh",t:"Invoice only the new "+(fresh.length===1?"lesson":TL.plural(fresh.length,"lesson").replace(/^\d+ /,""))+" ("+days(fresh)+")",d:nosTxt+" stays as it is."});
+    else if(olds.length===1) opts.push({v:"open",t:"Open "+nos[0]+" instead",d:"Nothing new to bill: show the invoice you already made."});
+    var body=document.createElement("div"); body.className="td-dlg-f td-dlg-opts";
+    body.innerHTML=opts.map(function(o,i){
+      return '<label class="td-dlg-opt"><input type="radio" name="ov-pick" value="'+o.v+'"'+(i===0?' checked':'')+'><span><b>'+esc(o.t)+'</b><small>'+esc(o.d)+'</small></span></label>';
+    }).join("");
+    var ok=await TL.dialog({title:"Already invoiced", message:head, body:body, confirmText:"Continue", cancelText:"Cancel", focus:"input:checked"});
+    if(!ok) return null;
+    var pick=(body.querySelector("input:checked")||{}).value;
+    if(pick==="fresh") return {lessons:fresh};
+    if(pick==="open") return (olds[0].data&&olds[0].data.html)?{saved:olds[0]}:{lessons:union};
+    return {lessons:union};
   }
   // Show a saved invoice exactly as it was sent (same number, date and QR); Send on WhatsApp re-sends it.
   function presentSaved(v, meta){
