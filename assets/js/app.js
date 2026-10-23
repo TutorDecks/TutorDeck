@@ -269,6 +269,42 @@ window.TL = (function () {
     } catch (e) {}
   })();
 
+  // ---- one-time tips and "setup done", remembered on the ACCOUNT ----
+  // Browser storage is per website and per device, so every Vercel preview link, the live site, a phone and a
+  // laptop each started fresh and the tips came back. The account's user metadata (Supabase Auth, no table or
+  // migration) keeps { td_onboarded, td_tips:{ "cal-log":1, … } }; the browser copy is just a fast cache.
+  var acctTips = {};
+  function seedFromAccount(user) {
+    var md = (user && user.user_metadata) || {};
+    acctTips = Object.assign({}, md.td_tips || {});
+    Object.keys(acctTips).forEach(function (k) { store.set("td_tip_" + k, "1"); });
+    if (md.td_onboarded) store.set("td_onboarded", "1");
+    // The session can hold an older copy (e.g. a tip dismissed on the phone a minute ago): refresh once quietly.
+    try { window.sb.auth.getUser().then(function (r) {
+      var m2 = (r && r.data && r.data.user && r.data.user.user_metadata) || {};
+      Object.keys(m2.td_tips || {}).forEach(function (k) {
+        acctTips[k] = 1; store.set("td_tip_" + k, "1");
+        var open = document.getElementById("td-tip-" + k); if (open) open.remove();
+      });
+      if (m2.td_onboarded) store.set("td_onboarded", "1");
+    }, function () {}); } catch (e) {}
+  }
+  var acctQ = null;
+  function saveToAccount(patch) {
+    if (!window.sb || !window.sb.auth || !window.sb.auth.updateUser) return;
+    acctQ = Object.assign(acctQ || {}, patch);
+    clearTimeout(saveToAccount.t);
+    saveToAccount.t = setTimeout(function () {
+      var p = acctQ; acctQ = null;
+      try { window.sb.auth.updateUser({ data: p }).then(function () {}, function () {}); } catch (e) {}
+    }, 400);
+  }
+  function tipSeen(key) {
+    store.set("td_tip_" + key, "1");
+    if (acctTips[key]) return;
+    acctTips[key] = 1; saveToAccount({ td_tips: Object.assign({}, acctTips) });
+  }
+
   function cvTip() {
     if (CLIENT) return;
     coach("client-view", document.getElementById("td-cv"),
@@ -306,6 +342,7 @@ window.TL = (function () {
     var session = res.data && res.data.session;
     if (!session) { location.replace("login"); return; }
     UID = session.user.id;
+    seedFromAccount(session.user);   // tips already seen / setup done on another device or link
     isOwner = session.user.id === OWNER_ID;
     window.TL_IS_OWNER = isOwner; window.TL_OWNER_ID = OWNER_ID;
     // If two-factor is enabled but not yet satisfied this session (e.g. after a
@@ -552,7 +589,7 @@ window.TL = (function () {
   // Until setup is finished (td_onboarded), the other one-time tips stay quiet.
   var GUIDE = /[?&]guide=1(&|$)/.test(location.search);
   function onboarded() { return store.get("td_onboarded") === "1"; }
-  function setOnboarded() { store.set("td_onboarded", "1"); }
+  function setOnboarded() { if (onboarded()) return; store.set("td_onboarded", "1"); saveToAccount({ td_onboarded: true }); }
   // o: { step:1-3, done:"✓ line", title, text, href, cta }
   function guideCard(o) {
     var c = document.getElementById("content"); if (!c) return;
@@ -582,6 +619,14 @@ window.TL = (function () {
     var k = "td_tip_" + key;
     if (store.get(k)) return;
     if (!anchor || !anchor.getBoundingClientRect || document.getElementById("td-tip-" + key)) return;
+    // One tip on screen at a time: wait for the open one to be dismissed, then show this one.
+    var openTip = document.querySelector(".td-tip");
+    if (openTip) {
+      openTip.querySelector(".td-tip-ok").addEventListener("click", function () {
+        setTimeout(function () { if (document.body.contains(anchor)) coach(key, anchor, html, opts); }, 250);
+      });
+      return;
+    }
     var tip = document.createElement("div");
     tip.className = "td-tip"; tip.id = "td-tip-" + key; tip.setAttribute("role", "status");
     tip.innerHTML = '<span class="td-tip-arrow" aria-hidden="true"></span><div class="td-tip-body">' + html +
@@ -604,10 +649,15 @@ window.TL = (function () {
       tip.querySelector(".td-tip-arrow").style.left = (r.left + r.width / 2 - left - 7) + "px";
     }
     place(); window.addEventListener("resize", place);
-    tip.querySelector(".td-tip-ok").addEventListener("click", function () {
-      store.set(k, "1");
-      window.removeEventListener("resize", place); tip.remove();
-    });
+    function dismiss() {
+      tipSeen(key);
+      window.removeEventListener("resize", place); document.removeEventListener("pointerdown", outside, true); tip.remove();
+    }
+    // Got it, or a tap anywhere else (incl. using the thing it points at): either way it's been seen.
+    // (Goes through the Got it button so anything waiting on it, like the Calendar's next tip, still runs.)
+    function outside(e) { if (!tip.contains(e.target)) setTimeout(function () { if (tip.isConnected) tip.querySelector(".td-tip-ok").click(); }, 0); }
+    tip.querySelector(".td-tip-ok").addEventListener("click", dismiss);
+    setTimeout(function () { document.addEventListener("pointerdown", outside, true); }, 400);
   }
 
   async function signOut() {
