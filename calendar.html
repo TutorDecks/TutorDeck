@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Calendar · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=235">
+<link rel="stylesheet" href="assets/css/app.css?v=236">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -26,6 +26,10 @@
   .btn-gcal.btn-sync .gicon{display:none}   /* Sync state: the ↻ label carries it, no Google mark */
   .gcal-hide{display:none !important}
   .gcal-status{font-size:12px;color:var(--muted);padding-right:2px}
+  .gsync-acct{font-size:12px;color:var(--muted);padding-right:2px;max-width:100%;overflow-wrap:anywhere}
+  .gsync-change{border:none;background:none;padding:0;font:inherit;font-weight:700;color:var(--navy);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+  .gsync-opt{display:flex;gap:9px;align-items:flex-start;font-size:14px;color:var(--navy);margin:2px 0 6px;cursor:pointer;line-height:1.4}
+  .gsync-opt input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--teal);flex:none}
   .gcal-status.err{color:var(--owed)} .gcal-status.ok{color:var(--teal)}
   .cal-range{min-width:150px;text-align:center;font-weight:700;font-size:14.5px;color:var(--navy)}
   .cal-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
@@ -308,6 +312,7 @@
     .cal-foot{flex-direction:column;align-items:stretch}
     .cal-gsync{margin-left:0;align-items:stretch}
     .cal-gsync .gsync-row{justify-content:center}
+    .cal-gsync .gsync-acct,.cal-gsync .gcal-status{text-align:center}
     .cal-mday{min-height:64px;padding:3px}
     .cal-chip{font-size:9.5px;padding:1px 3px}
     /* lesson details: bottom sheet */
@@ -375,6 +380,7 @@
         <select class="gsync-sel gcal-hide" id="gcal-cal" title="Which Google calendar to sync your lessons into"><option value="">Choose a calendar…</option></select>
         <button class="btn-gcal btn-connect" id="gcal-btn" style="display:none" title="Sync your lessons into your Google Calendar"><span class="gicon" aria-hidden="true"><svg viewBox="0 0 48 48" width="18" height="18"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span><span class="glabel">Connect Google Calendar</span></button>
       </div>
+      <span class="gsync-acct gcal-hide" id="gsync-acct"><span id="gsync-email"></span> · <button type="button" class="gsync-change" id="gsync-change">Change account</button></span>
       <span class="gcal-status" id="gcal-status"></span>
     </div>
   </div>
@@ -414,9 +420,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=235"></script>
-<script src="assets/js/supabase.js?v=235"></script>
-<script src="assets/js/app.js?v=235"></script>
-<script src="assets/js/calendar.js?v=235"></script>
+<script src="assets/js/config.js?v=236"></script>
+<script src="assets/js/supabase.js?v=236"></script>
+<script src="assets/js/app.js?v=236"></script>
+<script src="assets/js/calendar.js?v=236"></script>
 </body>
 </html>

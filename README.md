@@ -261,6 +261,15 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-25 — Google Calendar: Change account (v236).** Under the sync bar on Schedule there's now a quiet line
+  showing which Gmail your lessons sync to, with a **Change account** link. It asks once: "Remove my lessons from this
+  Google Calendar first" (ticked by default). If ticked, TutorDeck removes your lessons from the old calendar while it
+  can still reach it (only events that are provably yours: tagged with your id, or older untagged events whose lesson
+  is one of yours; another tutor's events and older events for deleted lessons are left alone). If that Google account
+  can't be reached, or you sign in as someone else, nothing is changed. It then forgets the old account and goes back to
+  **Connect Google Calendar**. Connecting with no linked account now always shows Google's account picker
+  (`prompt=select_account`), so it can't silently reuse whichever Gmail the browser is signed in to. Switching calendars
+  within one account now uses the same "provably yours" rule. No migration.
 - **2026-10-25 — Google Calendar: cancelled lessons now come off (v235).** Cancelling or deleting a lesson didn't always
   remove its Google event (e.g. Qiao's lessons last week). Older events made before the sync stamped each event with its
   tutor (`tlOwner`) were only matched against *non-cancelled* lessons, so events for cancelled ones were never deleted.
