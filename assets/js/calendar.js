@@ -1028,60 +1028,88 @@
   // Reconcile ONE month on the target calendar against the ledger (app is source of truth):
   // create missing lessons, update any that drifted (incl. Google-side edits), delete orphans.
   // Returns counts; throws on 401 so the caller stops.
+  //
+  // Ownership rules (several tutors can sync into one shared Google calendar):
+  //  • tagged with this tutor's id (tlOwner)  → ours: kept, updated or removed as the ledger says.
+  //  • tagged with ANOTHER tutor's id         → never touched.
+  //  • untagged "legacy" event (made before tlOwner existed) → ours ONLY if its tlLessonId is one of
+  //    this tutor's lessons (any status, any date — row-level security means we can only ever see our
+  //    own). Then it's adopted: kept + stamped with tlOwner if the lesson is live in this month,
+  //    removed if the lesson is cancelled or now sits in another month. Legacy events whose lesson
+  //    no longer exists can't be proven ours, so they're left alone and counted in `unknown`.
   async function syncMonth(when){
-    var cal=gcalTarget(), w=monthWindow(when);
+    var cal=gcalTarget(), w=monthWindow(when), calP="/calendars/"+encodeURIComponent(cal)+"/events";
+    var none={ created:0, updated:0, deleted:0, skipped:0, unknown:0, fail:1 };
     gStatus("Syncing "+w.label+"…");
     var events=await listAppEvents(cal, w.tmin, w.tmax);
-    // Only this tutor's events: tagged with their id, or untagged older events (adopted below only if they
-    // mirror one of this tutor's lessons — never deleted). Events tagged with another tutor are never touched.
     var mine=events.filter(function(ev){ return gOwnerOf(ev)===String(userId); });
-    var legacy=events.filter(function(ev){ return !gOwnerOf(ev); });
-    var byLesson={}, extra=[];                              // extra = duplicates of this tutor's own events
-    mine.forEach(function(ev){ var lid=evLessonId(ev); if(lid && !byLesson[lid]) byLesson[lid]=ev; else extra.push(ev); });
+    var legacy=events.filter(function(ev){ return !gOwnerOf(ev) && evLessonId(ev); });
+    // ALL of this tutor's lessons in the month, cancelled ones included — used to decide ownership.
     var ls=await window.sb.from("lessons")
       .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id,one_off")
-      .gte("lesson_date", w.firstISO).lte("lesson_date", w.lastISO);
-    if(ls.error) return { created:0, updated:0, deleted:0, skipped:0, fail:1 };
-    var rows=(ls.data||[]).filter(function(l){ return l.status!=="cancelled"; });
-    var mineIds={}; rows.forEach(function(l){ mineIds[String(l.id)]=1; });
-    legacy.forEach(function(ev){ var lid=evLessonId(ev); if(lid && mineIds[lid] && !byLesson[lid]) byLesson[lid]=Object.assign({_legacy:true},ev); });
+      .eq("tutor_id", userId).gte("lesson_date", w.firstISO).lte("lesson_date", w.lastISO);
+    if(ls.error) return none;
+    var all=ls.data||[], ownIds={};
+    all.forEach(function(l){ ownIds[String(l.id)]=1; });
+    // Legacy events pointing at a lesson outside this month: check whether that lesson is ours.
+    var ask=[]; legacy.forEach(function(ev){ var lid=evLessonId(ev); if(!ownIds[lid] && ask.indexOf(lid)<0) ask.push(lid); });
+    for(var a=0;a<ask.length;a+=100){
+      var chunk=ask.slice(a,a+100).filter(function(x){ return /^[0-9a-f-]{36}$/i.test(x); });
+      if(!chunk.length) continue;
+      var o=await window.sb.from("lessons").select("id").eq("tutor_id", userId).in("id", chunk);
+      if(o.error) return none;
+      (o.data||[]).forEach(function(r){ ownIds[String(r.id)]=1; });
+    }
+    var rows=all.filter(function(l){ return l.status!=="cancelled"; });   // what should be on the calendar
+    var byLesson={}, toDel=[], unknown=0;
+    mine.forEach(function(ev){ var lid=evLessonId(ev); if(lid && !byLesson[lid]) byLesson[lid]=ev; else toDel.push(ev); });  // dups of ours
+    legacy.forEach(function(ev){
+      var lid=evLessonId(ev);
+      if(!ownIds[lid]){ unknown++; return; }                // can't prove it's ours → leave it alone
+      if(!byLesson[lid]) byLesson[lid]=Object.assign({_legacy:true},ev); else toDel.push(ev);   // proven ours; extra copy = dup
+    });
     var created=0, updated=0, deleted=0, skipped=0, fail=0, keep={};
     for(var i=0;i<rows.length;i++){
       var l=rows[i], want=gEvent(l), ev=byLesson[String(l.id)]; keep[String(l.id)]=1;
       try{
-        if(!ev){ await gapi("POST","/calendars/"+encodeURIComponent(cal)+"/events", want); created++; }
-        else if(ev._legacy || gFP(ev)!==gFP(want)){ await gapi("PUT","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(ev.id), want); updated++; }
+        if(!ev){ await gapi("POST", calP, want); created++; }
+        // PUT replaces the event with `want`, which carries tlOwner — so an adopted legacy event stops being legacy.
+        else if(ev._legacy || gFP(ev)!==gFP(want)){ await gapi("PUT", calP+"/"+encodeURIComponent(ev.id), want); updated++; }
         else skipped++;
       }catch(e){ if(e&&e.code===401) throw e; fail++; }
     }
-    var toDel=extra.slice();                                // orphans: lesson gone/cancelled, plus dups/legacy
+    // Orphans: our events (tagged or proven legacy) whose lesson is cancelled, deleted, or moved out of this month.
     Object.keys(byLesson).forEach(function(lid){ if(!keep[lid]) toDel.push(byLesson[lid]); });
-    for(var k=0;k<toDel.length;k++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(toDel[k].id)); deleted++; }catch(e){ if(e&&e.code===401) throw e; } }
-    return { created:created, updated:updated, deleted:deleted, skipped:skipped, fail:fail };
+    for(var k=0;k<toDel.length;k++){ try{ await gapi("DELETE", calP+"/"+encodeURIComponent(toDel[k].id)); deleted++; }catch(e){ if(e&&e.code===401) throw e; fail++; } }
+    return { created:created, updated:updated, deleted:deleted, skipped:skipped, unknown:unknown, fail:fail };
   }
-  // Sync the current month through the last month that has a lesson (capped +6mo) — so lessons
-  // you've logged for future months go too, while past months are left untouched.
+  // Sync from the 1st of LAST month through the last month that has a lesson (capped +6mo) — so
+  // last week's cancellations are caught even across a month boundary, and lessons logged for
+  // future months go too. Older months are left untouched.
   async function syncNow(){
     if(!gToken) return;
     if(!(await gcalAccountOK())) return;
     if(!loadedStatic) await loadStatic();
-    var now=new Date(), fromM=new Date(now.getFullYear(), now.getMonth(), 1);
+    var now=new Date(), fromM=new Date(now.getFullYear(), now.getMonth()-1, 1);
     var q=await window.sb.from("lessons").select("lesson_date").gte("lesson_date", iso(fromM)).order("lesson_date",{ascending:false}).limit(1);
     var lastISO=(!q.error && q.data && q.data[0] && q.data[0].lesson_date) || iso(fromM);
     var lastM=new Date(+lastISO.slice(0,4), (+lastISO.slice(5,7))-1, 1);
     var capM=new Date(now.getFullYear(), now.getMonth()+6, 1);
     if(lastM>capM) lastM=capM;
-    var created=0, updated=0, deleted=0, skipped=0, fail=0, months=0, t0=Date.now();
+    var created=0, updated=0, deleted=0, skipped=0, unknown=0, fail=0, months=0, t0=Date.now();
     try{
       for(var cur=new Date(fromM); cur<=lastM; cur=new Date(cur.getFullYear(), cur.getMonth()+1, 1)){
         var r=await syncMonth(new Date(cur));
-        created+=r.created; updated+=r.updated; deleted+=r.deleted; skipped+=r.skipped; fail+=r.fail; months++;
+        created+=r.created; updated+=r.updated; deleted+=r.deleted; skipped+=r.skipped; unknown+=r.unknown||0; fail+=r.fail; months++;
       }
     }catch(e){ if(e&&e.code===401){ gStatus("Google session expired — click Connect again.","err"); return; } gStatus("Sync hit an error — try again.","err"); return; }
     var secs=Math.max(1, Math.round((Date.now()-t0)/1000)), total=created+updated+skipped;
-    var parts=[]; if(created)parts.push(created+" added"); if(updated)parts.push(updated+" updated"); if(deleted)parts.push(deleted+" removed");
-    var detail=parts.length?parts.join(", "):"already up to date";
-    gStatus("Synced ✓ "+total+" lesson"+(total===1?"":"s")+" in "+secs+"s · "+detail+(fail?" · "+fail+" failed":""), "ok");
+    var parts=[]; if(created)parts.push(created+" added"); if(updated)parts.push(updated+" updated");
+    if(!parts.length && !deleted) parts.push("already up to date");
+    if(deleted) parts.push(deleted+" removed");                // cancelled / deleted lessons taken off Google
+    if(fail) parts.push(fail+" failed");
+    gStatus("Synced ✓ "+total+" lesson"+(total===1?"":"s")+" in "+secs+"s · "+parts.join(" · "), "ok");
+    if(unknown) console.info("[TutorDeck] Google sync left "+unknown+" older event(s) alone: they can't be confirmed as yours (lesson deleted, or it belongs to another account).");
   }
   // Make sure the Google account behind the token is the one this tutor linked. If it changed (another
   // Google account is signed in on this browser), stop and ask before anything is written.
