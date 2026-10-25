@@ -261,6 +261,17 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-25 — Google Calendar: cancelled lessons now come off (v235).** Cancelling or deleting a lesson didn't always
+  remove its Google event (e.g. Qiao's lessons last week). Older events made before the sync stamped each event with its
+  tutor (`tlOwner`) were only matched against *non-cancelled* lessons, so events for cancelled ones were never deleted.
+  Sync (calendar.js `syncMonth`) now loads **all** of your lessons in the month, cancelled ones included, to decide
+  which older events are yours; an older event whose lesson is cancelled (or moved to another month) is removed, and
+  one that stays is rewritten with `tlOwner` so it's no longer "older". An older event whose lesson was deleted outright
+  can't be proven yours (it could be another tutor's on a shared calendar), so it's left alone; remove those by hand in
+  Google. Events tagged with another tutor are never touched, and the lesson queries are filtered to your `tutor_id`
+  as well as row-level security. Sync now starts on the **1st of the previous month** (still capped at +6 months), so
+  last week's cancellations across a month boundary are caught. The status reads e.g. "Synced ✓ 3 lessons in 1s · 1 added
+  · 2 updated · 3 removed". No migration.
 - **2026-10-23 — Tips stay dismissed (v234).** Seen tips and "setup done" lived only in the browser, and browser storage
   is per website and per device: every Vercel preview link (a new address each push), the live site, a phone and a
   laptop each started fresh, so the Log / filter / swipe / Client view tips came back. They're now also saved on the
