@@ -839,6 +839,7 @@
   var GCLIENT=(window.TLENG_CONFIG||{}).GOOGLE_CLIENT_ID||"";
   var GSCOPE="https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly", GTZ="Asia/Singapore";
   var gToken=null, gTokenExp=0, gTokenClient=null, gUserInit=false;
+  var gNext=null;      // one-off follow-up for the next token reply (Change account); replaces the default sync
   function gTokenValid(){ return !!gToken && Date.now()<gTokenExp; }   // reuse an unexpired token, no fresh Google popup
 
   function gcalConfigured(){ return !!GCLIENT; }
@@ -876,6 +877,11 @@
     if(brand) brand.classList.toggle("gcal-hide", !hasCals);
     if(sel) sel.classList.toggle("gcal-hide", !hasCals);
     if(row) row.classList.toggle("bare", !hasCals);
+    var acct=$("gsync-acct"), linked=gcalAccount();
+    if(acct){
+      acct.classList.toggle("gcal-hide", !(hasCals && linked));
+      var em=$("gsync-email"); if(em) em.textContent=linked;
+    }
     if(btn){
       var lbl=btn.querySelector(".glabel");
       function setLabel(t){ if(lbl) lbl.textContent=t; else btn.textContent=t; }
@@ -914,6 +920,9 @@
       gTokenClient=google.accounts.oauth2.initTokenClient({
         client_id:GCLIENT, scope:GSCOPE,
         callback:function(resp){
+          if(gNext){ var nx=gNext; gNext=null; gUserInit=false;
+            if(resp && resp.access_token){ gToken=resp.access_token; gTokenExp=Date.now()+(((+resp.expires_in||3600)*1000)-60000); gTokenAccount=null; }
+            nx(!!(resp && resp.access_token)); return; }
           if(resp && resp.access_token){
             gToken=resp.access_token;
             gTokenExp=Date.now()+(((+resp.expires_in||3600)*1000)-60000);   // reuse until ~1min before expiry
@@ -928,6 +937,7 @@
           else if(gUserInit){ gUserInit=false; gcalFail(); }           // deliberate attempt that returned no token → restart
         },
         error_callback:function(){                                     // popup closed / blocked / consent denied
+          if(gNext){ var nx=gNext; gNext=null; nx(false); return; }
           if(gUserInit){ gUserInit=false; gcalFail(); }                // only reset on a deliberate click, not a silent load
         }
       });
@@ -950,7 +960,9 @@
     // Force the consent screen only until the calendar-list permission is granted; after that,
     // an expired token refreshes silently where the browser allows it.
     var needConsent = !gcalListGranted();
-    gTokenClient.requestAccessToken({ prompt: needConsent?"consent":"" });
+    // No Google account linked yet (first connect, or after Change account) → always show Google's account
+    // picker, so it can't silently reuse whichever account this browser happens to be signed in to.
+    gTokenClient.requestAccessToken({ prompt: !gcalAccount() ? "select_account consent" : (needConsent?"consent":"") });
   }
   // Fill the calendar dropdown with the user's own+writable calendars.
   async function populateCalendars(){
@@ -1127,6 +1139,75 @@
     updateGcalUI(); gStatus("Now choose which calendar to sync into.");
     return false;
   }
+  // Events on a calendar that are provably this tutor's: tagged with their id, or older untagged events
+  // whose lesson is one of theirs (same rule as syncMonth). Another tutor's events are never included.
+  async function myEventsOn(cal){
+    var evs=await listAppEvents(cal), out=[], ask=[];
+    evs.forEach(function(ev){
+      var o=gOwnerOf(ev), lid=evLessonId(ev);
+      if(o===String(userId)) out.push(ev);
+      else if(!o && /^[0-9a-f-]{36}$/i.test(lid) && ask.indexOf(lid)<0) ask.push(lid);
+    });
+    var own={};
+    for(var a=0;a<ask.length;a+=100){
+      var q=await window.sb.from("lessons").select("id").eq("tutor_id", userId).in("id", ask.slice(a,a+100));
+      if(q.error) throw q.error;
+      (q.data||[]).forEach(function(r){ own[String(r.id)]=1; });
+    }
+    evs.forEach(function(ev){ if(!gOwnerOf(ev) && own[evLessonId(ev)]) out.push(ev); });
+    return out;
+  }
+  // Forget the linked Google account on this TutorDeck account and go back to the Connect step.
+  function gcalUnlink(){
+    try{ if(gToken && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(gToken, function(){}); }catch(e){}
+    gToken=null; gTokenExp=0; gTokenAccount=null;
+    ["tl_gcal_account","tl_gcal_chosen","tl_gcal_calendar","tl_gcal_cals","tl_gcal_list","tl_gcal_connected"].forEach(function(k){ try{ TL.store.remove(k); }catch(e){} });
+    updateGcalUI();
+  }
+  function calLabel(){ var t=gcalTarget(), c=gcalCals().filter(function(x){ return x.v===t; })[0]; return c?c.l:"your calendar"; }
+  // "Change account": optionally take this tutor's lessons off the old Google calendar (while we can still
+  // reach it), then unlink and open Google's account picker for the new one.
+  async function changeGcalAccount(){
+    var linked=gcalAccount(); if(!linked || !gTokenClient) return;
+    var cal=calLabel();
+    var body=document.createElement("label"); body.className="gsync-opt";
+    body.innerHTML='<input type="checkbox" checked> <span>Remove my lessons from <b></b> first</span>';
+    body.querySelector("b").textContent=(cal==="Main calendar"?"this Google Calendar":"“"+cal+"”");
+    var box=body.querySelector("input"), remove=true, needToken=false;
+    var ok=await TL.dialog({ title:"Change Google account",
+      message:"Your lessons sync to "+linked+". You'll pick a different Google account next.",
+      body:body, confirmText:"Change account", cancelText:"Cancel",
+      onClose:function(yes){                                   // runs inside the tap, so Google's pop-up isn't blocked
+        if(!yes) return;
+        remove=box.checked;
+        if(!remove){ gcalUnlink(); gStatus("Choose the Google account to sync into…"); gUserInit=true; gTokenClient.requestAccessToken({ prompt:"select_account consent" }); return; }
+        if(!(gTokenValid() && gTokenAccount===linked)){
+          needToken=true;
+          gNext=function(got){ removeThenUnlink(linked, got); };
+          gTokenClient.requestAccessToken({ prompt:"", login_hint:linked });
+        }
+      } });
+    if(ok && remove && !needToken) removeThenUnlink(linked, true);
+  }
+  async function removeThenUnlink(linked, got){
+    if(!got){ gStatus("Couldn't reach "+linked+", so nothing was changed. Try again, or untick “Remove my lessons”.","err"); return; }
+    if(!gTokenAccount) await populateCalendars();
+    if(gTokenAccount!==linked){
+      gStatus("To remove your lessons from "+linked+", sign in to Google as "+linked+". Nothing was changed.","err"); return;
+    }
+    var cal=gcalTarget(), n=0, failed=0;
+    gStatus("Removing your lessons from "+linked+"…");
+    try{
+      var evs=await myEventsOn(cal);
+      for(var i=0;i<evs.length;i++){
+        try{ await gapi("DELETE","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(evs[i].id)); n++; }
+        catch(e){ if(e&&e.code===401){ gStatus("Google session expired, so not every lesson was removed. Try Change account again.","err"); return; } failed++; }
+      }
+    }catch(e){ gStatus("Couldn't remove your lessons from "+linked+". Nothing else was changed.","err"); return; }
+    if(failed){ gStatus("Removed "+n+", but "+failed+" couldn't be removed. Try Change account again.","err"); return; }
+    gcalUnlink();
+    gStatus((n?"Removed "+n+" lesson"+(n===1?"":"s")+" from "+linked+".":"No lessons to remove from "+linked+".")+" Now connect the Google account you want.","ok");
+  }
   // Switch which calendar we sync into: wipe ALL our events off the old calendar, then rebuild
   // the current month on the new one.
   async function setGcalTarget(raw){
@@ -1141,7 +1222,7 @@
     }
     if(!first && newT!==oldT){
       gStatus("Moving to the new calendar…");
-      try{ var evs=(await listAppEvents(oldT)).filter(function(ev){ return gOwnerOf(ev)===String(userId); }); for(var i=0;i<evs.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(evs[i].id)); }catch(e){} } }catch(e){}
+      try{ var evs=await myEventsOn(oldT); for(var i=0;i<evs.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(evs[i].id)); }catch(e){} } }catch(e){}
     }
     try{ TL.store.set("tl_gcal_calendar", newT); TL.store.set("tl_gcal_chosen","1"); }catch(e){}
     updateGcalUI();
@@ -1237,6 +1318,7 @@
     if($("cal-log-btn")) $("cal-log-btn").addEventListener("click", logVisible);
     if($("gcal-btn")) $("gcal-btn").addEventListener("click", connectGcal);
     if($("gcal-cal")) $("gcal-cal").addEventListener("change", function(){ if(this.value) setGcalTarget(this.value); });
+    if($("gsync-change")) $("gsync-change").addEventListener("click", changeGcalAccount);
     initGcal();
     ["day","3day","week","list","month"].forEach(function(k){ var b=$("seg-"+k); if(b) b.addEventListener("click", function(){ setMode(k); }); });
     // phone: swipe left/right on the calendar to move a day / 3 days / week
