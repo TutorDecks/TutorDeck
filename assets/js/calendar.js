@@ -868,7 +868,7 @@
   // ---- "Connect once" (server mode): api/gcal keeps an encrypted long-lived Google key per tutor and hands
   // out fresh 1-hour passes, so there's no Google pop-up after the first connect, on any device.
   // gMode: "?" not checked yet · "server" api/gcal is set up · "legacy" it isn't (falls back to the pop-up flow).
-  var gMode="?", gLinked=false;
+  var gMode="?", gLinked=false, gProbe=null;   // gProbe: the first "token" check, so an early tap can wait for it
   async function gServer(action, extra){
     try{
       var s=await window.sb.auth.getSession(), jwt=s&&s.data&&s.data.session&&s.data.session.access_token;
@@ -934,8 +934,9 @@
   }
   // On opening Schedule: get a pass quietly and bring Google up to date (at most every 5 minutes).
   async function gcalBoot(){
-    if(await gServerFinish()) return;
-    var got=await gServerToken();
+    gProbe=gServerFinish().then(function(done){ return done ? null : gServerToken(); });
+    var got=await gProbe;
+    if(got===null) return;
     if(got){
       await populateCalendars();
       var last=+(TL.store.get("tl_gcal_last")||0);
@@ -1034,6 +1035,9 @@
     });
   }
   async function connectGcal(){
+    // Tapped before the quiet check came back (the server can take a second or two to wake up): wait for it,
+    // otherwise we'd fall back to the old pop-up flow by mistake.
+    if(gMode==="?" && gProbe){ gStatus("Connecting…"); await gProbe; }
     if(gMode==="server"){
       if(gTokenValid() || (gLinked && await gServerToken())){
         if(gcalChosen()) syncNow(); else if(gcalCals().length) gStatus("Choose a calendar to sync your lessons into."); else populateCalendars();
