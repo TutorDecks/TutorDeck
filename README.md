@@ -261,6 +261,19 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-27 — Google Calendar: connect once, then it just syncs (v237).** Before, TutorDeck only got a 1-hour pass
+  from Google that lived in the open page, so every visit (or every hour) needed a Google pop-up, and sync only ran when
+  you pressed the button. Now **Connect** goes to Google's own page once (full page, works on phones; asks for offline
+  access). Two small server functions on Vercel, `api/gcal.js` and `api/gcal-callback.js` (shared code in
+  `api/_gcal-lib.js`), keep the tutor's long-lived Google key **encrypted** in the new table `gcal_links` (migration
+  `db/migration_gcal_links.sql`, row-level security, no service-role key) and hand out fresh passes quietly. Schedule
+  syncs on open (at most every 5 minutes) and a moment after you add / log / cancel / move / remove a lesson there.
+  The chosen calendar is remembered on the account, so a new phone or laptop needs no setup. Connecting a different
+  Google account asks first; **Change account** revokes the key at Google and deletes the row. If access is removed in
+  Google, Schedule says so and Connect works again. Needs two Vercel environment variables (`GOOGLE_CLIENT_SECRET`,
+  `GCAL_TOKEN_KEY`, both Sensitive) and `<site>/api/gcal-callback` listed under the OAuth client's Authorised redirect
+  URIs. Until those exist (or before the migration is run), it falls back to the old pop-up flow automatically.
+  Privacy policy updated (v2) to say the encrypted key is stored.
 - **2026-10-25 — Google Calendar: Change account (v236).** Under the sync bar on Schedule there's now a quiet line
   showing which Gmail your lessons sync to, with a **Change account** link. It asks once: "Remove my lessons from this
   Google Calendar first" (ticked by default). If ticked, TutorDeck removes your lessons from the old calendar while it
