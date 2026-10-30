@@ -428,7 +428,13 @@
     $("x-del").style.display=e?"":"none";
     $("x-date").value=e?(e.exam_date||""):"";
     $("x-type").value=e?(e.assessment_type||""):"";
-    $("x-subject").value=e?(e.subject||""):"";
+    $("x-subject").value=e?(e.subject||""):(function(){
+      var last=exams.filter(function(x){return x.subject;}).sort(function(a,b){return (b.exam_date||"").localeCompare(a.exam_date||"");})[0];
+      if(last)return last.subject;
+      var sl=(slots||[]).filter(function(x){return x.subject;})[0]; if(sl)return sl.subject;
+      var ls=(lessons||[]).filter(function(x){return x.subject;}).sort(function(a,b){return (b.lesson_date||"").localeCompare(a.lesson_date||"");})[0];
+      return ls?ls.subject:"";
+    })();
     $("x-topics").value=e?(e.topics||""):"";
     $("x-remarks").value=e?(e.remarks||""):"";
     $("x-score").value=e&&e.score!=null?e.score:"";

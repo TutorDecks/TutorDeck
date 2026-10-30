@@ -3,10 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#13233F">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
 <meta name="robots" content="noindex,nofollow">
 <title>Ledger · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=238">
+<link rel="stylesheet" href="assets/css/app.css?v=239">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -318,7 +321,9 @@
       <div class="dd" id="more-dd">
         <button class="btn dd-dots" id="more-dd-btn" aria-label="More actions" aria-haspopup="true" aria-expanded="false">⋯</button>
         <div class="dd-menu right" role="menu">
-          <button class="dd-item" id="csv-btn">Export CSV</button>
+          <button class="dd-item" id="csv-btn">Export CSV (this period)</button>
+          <button class="dd-item" id="fy-btn">Export this financial year</button>
+          <button class="dd-item" id="fy-prev-btn">Export last financial year</button>
         </div>
       </div>
     </div>
@@ -460,10 +465,10 @@
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
 <script src="assets/js/qrlib.js"></script>
-<script src="assets/js/config.js?v=238"></script>
-<script src="assets/js/supabase.js?v=238"></script>
-<script src="assets/js/app.js?v=238"></script>
-<script src="assets/js/paynow.js?v=238"></script>
-<script src="assets/js/ledger.js?v=238"></script>
+<script src="assets/js/config.js?v=239"></script>
+<script src="assets/js/supabase.js?v=239"></script>
+<script src="assets/js/app.js?v=239"></script>
+<script src="assets/js/paynow.js?v=239"></script>
+<script src="assets/js/ledger.js?v=239"></script>
 </body>
 </html>

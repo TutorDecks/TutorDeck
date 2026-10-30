@@ -261,6 +261,20 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-30 — UX pass: offline banner, installable app, Copy last note, exam subject memory, FY export (v239).**
+  (1) **Offline**: when the connection drops, an amber banner says changes can't be saved and primary buttons are held
+  until it's back (`TL` offline handling in app.js; `html.is-offline` in app.css). (2) **Installable (PWA)**: new
+  `manifest.json` (icons 192/512 + maskable in `assets/img/`), `<link rel="manifest">` + theme-colour on every page, and a
+  minimal `sw.js` that only caches same-origin static files for offline fallback — never Supabase data or `/api/*`, so
+  nothing stale is ever shown. "Add to Home Screen" now gives a real app icon and a standalone window.
+  (3) **Copy last note** in the Home note sheet: one tap fills topics/homework/remarks from the previous noted lesson
+  of the same subject, then you edit what changed. (4) **Exam subject memory**: adding an exam (Exams page or student
+  profile) pre-fills the subject from the student's latest exam, else their weekly slot. (5) **Tax-ready export**:
+  Ledger → Records → ⋯ now has *Export this financial year* / *Export last financial year* — every lesson in the FY
+  (respects Settings → Financial year starts in) plus a per-month Collected / Still-owed summary and the total
+  collected, for IRAS Form B. Cancelled lessons count only their compensation. vercel.json: no-cache for sw.js,
+  correct type for manifest.json. Dark mode deliberately not done (low demand vs. effort).
+
 - **2026-10-30 — Landing page: open sign-up, real screenshots, testimonial.** The page no longer says "private
   testing" or collects a waitlist email: both calls-to-action are **Start free** → `login?mode=signup` (login.html now
   reads that parameter and opens the Create-account tab), with "Free while in early access · No card needed · Set up in
