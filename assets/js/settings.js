@@ -175,8 +175,42 @@
     }
   }
 
+  // ---- share / referral ----
+  var SHARE_URL="https://www.tutordeck.com.sg/";
+  var SHARE_TEXT="I run my tuition admin on TutorDeck — students, schedule, PayNow invoices and WhatsApp reminders in one place. Free while in early access: "+SHARE_URL;
+  function shareWA(){ window.open("https://wa.me/?text="+encodeURIComponent(SHARE_TEXT),"_blank"); }
+  async function shareCopy(){
+    var m=$("share-msg");
+    try{ await navigator.clipboard.writeText(SHARE_URL); m.textContent="Link copied."; m.className="msg ok"; }
+    catch(e){ m.textContent=SHARE_URL; m.className="msg"; }
+  }
+
+  // ---- PDPA retention review: discontinued students with no lesson in 2+ years ----
+  async function retentionReview(){
+    var box=$("retention"), list=$("retention-list"); if(!box||!list) return;
+    var st=await window.sb.from("students").select("id,name,active,end_date");
+    var today=TL.todayISO?TL.todayISO():new Date().toISOString().slice(0,10);
+    var gone=(st.data||[]).filter(function(s){ return s.active===false || (s.end_date && s.end_date<today); });
+    if(!gone.length) return;
+    var ls=await window.sb.from("lessons").select("student_id,lesson_date").in("student_id",gone.map(function(s){return s.id;}));
+    var last={}; (ls.data||[]).forEach(function(l){ if(!last[l.student_id]||l.lesson_date>last[l.student_id]) last[l.student_id]=l.lesson_date; });
+    var cut=new Date(); cut.setFullYear(cut.getFullYear()-2); var cutISO=cut.toISOString().slice(0,10);
+    var old=gone.filter(function(s){ var d=last[s.id]||s.end_date||""; return d && d<cutISO; })
+      .sort(function(a,b){ return (last[a.id]||"").localeCompare(last[b.id]||""); });
+    if(!old.length) return;
+    list.innerHTML=old.map(function(s){
+      var d=last[s.id]; var when=d?new Date(d+"T00:00:00").toLocaleDateString("en-SG",{month:"short",year:"numeric"}):"no lessons";
+      return '<a class="ret-row" href="student?id='+encodeURIComponent(s.id)+'"><b>'+esc(s.name)+'</b><span>last lesson '+esc(when)+'</span><span class="ret-go">Review ›</span></a>';
+    }).join("");
+    box.style.display="";
+  }
+  function esc(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
   function init(user) {
     userId = user.id;
+    if($("share-wa")) $("share-wa").addEventListener("click", shareWA);
+    if($("share-copy")) $("share-copy").addEventListener("click", shareCopy);
+    retentionReview().catch(function(){});
     $("save").addEventListener("click", save);
     ["ptype", "pid"].forEach(function (id) { $(id).addEventListener("input", preview); });
     $("mfa-enable").addEventListener("click", mfaEnable);
