@@ -165,6 +165,21 @@
     go();
   }
   function resetCaptcha() { captchaToken = ""; if (window.turnstile && captchaId !== null) { try { window.turnstile.reset(captchaId); } catch (e) {} } }
+  // Breached-password check (free alternative to Supabase's Pro-only one). Uses Have I Been Pwned's k-anonymity API:
+  // only the first 5 characters of the password's SHA-1 hash are sent, never the password or its full hash.
+  // Returns the number of breaches the password appears in, or 0 if clean / the check couldn't run (never blocks sign-up on a network hiccup).
+  async function pwnedCount(pw) {
+    try {
+      var buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(pw));
+      var hex = Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("").toUpperCase();
+      var ctrl = new AbortController(); setTimeout(function () { ctrl.abort(); }, 3000);
+      var res = await fetch("https://api.pwnedpasswords.com/range/" + hex.slice(0, 5), { signal: ctrl.signal, headers: { "Add-Padding": "true" } });
+      if (!res.ok) return 0;
+      var suffix = hex.slice(5), lines = (await res.text()).split("\n");
+      for (var i = 0; i < lines.length; i++) { var p = lines[i].trim().split(":"); if (p[0] === suffix) return parseInt(p[1], 10) || 0; }
+      return 0;
+    } catch (e) { return 0; }
+  }
   var PW_MIN = 8;   // keep in step with the Supabase project setting: Authentication → Sign In / Providers → Email → Minimum password length
 
   function show(text, ok) { msg.textContent = text; msg.className = "msg " + (ok ? "ok" : "err"); }
@@ -244,6 +259,8 @@
     try {
       if (mode === "up") {
         if (pw.length < PW_MIN) { show("Your password needs at least " + PW_MIN + " characters.", false); return; }
+        var leaked = await pwnedCount(pw);
+        if (leaked > 0) { show("That password has appeared in " + leaked.toLocaleString() + " known data breaches — please choose a different one.", false); return; }
         if (!$("consent").checked) { show("Please accept the Terms and Privacy Policy to create an account.", false); return; }
         // Name and tuition name are asked on the Welcome screen after the first sign-in (same as Google sign-up).
         if (CAPTCHA_KEY && !captchaToken) { show("Please complete the quick check above.", false); return; }

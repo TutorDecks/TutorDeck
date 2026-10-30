@@ -261,6 +261,13 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-30 — Breached-password check on sign-up (free alternative to Supabase's Pro-only one).** `login.html` now
+  checks a new password against Have I Been Pwned before calling `signUp`, using their k-anonymity API: only the first
+  5 characters of the password's SHA-1 hash leave the browser, never the password. A password seen in breaches is
+  refused with the count ("appeared in 251,682 known data breaches"). If the API is unreachable or slow (3 s) the check
+  fails open so sign-up is never blocked by a network blip. `api.pwnedpasswords.com` added to the CSP connect-src.
+  HTML-only, no version bump.
+
 - **2026-10-30 — Settings: Share TutorDeck + PDPA retention review (v241).** (1) New **Know another tutor?** card:
   *Share on WhatsApp* opens a ready-written message with the landing link; *Copy link* copies it. Tutors telling tutors is
   the cheapest channel we have. (2) Under **Your data**, an **Old records to review** list appears only when a
