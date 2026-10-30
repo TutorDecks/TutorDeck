@@ -261,6 +261,17 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-30 — Landing page: open sign-up, real screenshots, testimonial.** The page no longer says "private
+  testing" or collects a waitlist email: both calls-to-action are **Start free** → `login?mode=signup` (login.html now
+  reads that parameter and opens the Create-account tab), with "Free while in early access · No card needed · Set up in
+  5 minutes" under the hero. New **See it in action** section: three real phone screenshots of Home, Ledger and
+  Calendar (`assets/img/app-*.webp`, 30–50 KB each) rendered from the actual pages with **made-up students only**
+  (Wei Lin, Jun Jie, Siti, Daniel, Kai — the hero card and the share image use the same names; no real student
+  appears anywhere on the public page). New **testimonial** block from T-Leng, attributed as co-founder. Footer gains
+  Features / FAQ / Contact (tutordeckadmin@gmail.com). Formspree waitlist code removed. **Vercel Web Analytics**
+  script added (`/_vercel/insights/script.js`; already allowed by the CSP) — turn it on under Vercel → Project →
+  Analytics → Enable, otherwise it records nothing. HTML/images only, no version bump.
+
 - **2026-10-30 — Security hardening (v238).** (1) **Security headers** in `vercel.json` for every route: a
   Content-Security-Policy that only allows scripts from our own origin plus accounts.google.com (inline scripts stay
   allowed because several pages use them), connect-src limited to Supabase, Google auth/Calendar, Formspree, OneMap and
