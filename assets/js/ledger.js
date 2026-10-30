@@ -932,9 +932,7 @@
   function loadQR(){
     if(window.QRCode&&window.QRCode.toDataURL)return Promise.resolve();
     if(qrLoading)return qrLoading;
-    var urls=["assets/js/qrlib.js",
-              "https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js",
-              "https://unpkg.com/qrcode@1.4.4/build/qrcode.min.js"];
+    var urls=["assets/js/qrlib.js"];   // self-hosted only — no third-party script origins
     qrLoading=new Promise(function(resolve,reject){
       var i=0;
       (function next(){
@@ -1084,7 +1082,7 @@
     if(!po.pn){ data.payTo=data.bank.name; presentInvoice(data,"",meta); return; }   // bank only
     try{ await loadQR(); }
     catch(e){
-      TL.alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again.");
+      TL.alert("The QR code library is being blocked (ad-blocker or network). Please reload the page and try again.");
       return;
     }
     data.payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
@@ -1135,7 +1133,7 @@
     if(po.bk) data.bank=bankObj(profile);
     if(!po.pn){ data.payTo=data.bank.name; presentInvoice(data,"",meta); return; }   // bank only
     try{ await loadQR(); }
-    catch(e){ TL.alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again."); return; }
+    catch(e){ TL.alert("The QR code library is being blocked (ad-blocker or network). Please reload the page and try again."); return; }
     data.payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
     try{
       var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:TL.payeeName(profile,"Tuition"),reference:invoiceNo});
@@ -1256,10 +1254,7 @@
   // Lazily load html2canvas (self-hosted copy first, then CDNs) for rendering the invoice to an image.
   function loadH2C(){
     if(window.html2canvas)return Promise.resolve();
-    var urls=["assets/js/html2canvas.min.js",
-      "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
-      "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js",
-      "https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"];
+    var urls=["assets/vendor/html2canvas-1.4.1.min.js"];
     return new Promise(function(resolve,reject){
       (function tryNext(i){
         if(i>=urls.length){reject(new Error("could not load the image library"));return;}
