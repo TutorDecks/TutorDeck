@@ -136,6 +136,8 @@
   }
   $("tab-in").onclick = function () { setMode("in"); };
   $("tab-up").onclick = function () { setMode("up"); };
+  // Landing page "Start free" links here with ?mode=signup
+  try { if (new URLSearchParams(location.search).get("mode") === "signup") setMode("up"); } catch (e) {}
 
   // Show / hide password
   $("pw-eye").onclick = function () {
