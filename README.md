@@ -261,6 +261,23 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-30 — Security hardening (v238).** (1) **Security headers** in `vercel.json` for every route: a
+  Content-Security-Policy that only allows scripts from our own origin plus accounts.google.com (inline scripts stay
+  allowed because several pages use them), connect-src limited to Supabase, Google auth/Calendar, Formspree, OneMap and
+  fonts, `frame-ancestors 'none'`, `object-src 'none'`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+  Referrer-Policy, Permissions-Policy, HSTS (2 years, preload) and COOP `same-origin-allow-popups` (keeps the Google
+  sign-in popup working). Tested: all 17 pages served locally with these exact headers show zero CSP violations.
+  (2) **Third-party CDNs removed.** supabase-js 2.118.0, Chart.js 4.6.1 and html2canvas 1.4.1 are now self-hosted
+  under `assets/vendor/` (exact versions, immutable 1-year cache header); the QR library already lived in
+  `assets/js/qrlib.js`. The old `@2` / `@4` tags floated to whatever jsDelivr served next — a supply-chain risk for an
+  app holding student data. Lazy-loader CDN fallbacks (unpkg, cdnjs, jsDelivr) are gone too. To upgrade a library,
+  `npm pack` the new version and replace the file. (3) Sign-up password minimum raised 6 → 8 in `login.html`
+  (**also raise it in Supabase → Authentication → Providers → Email → Minimum password length**, and turn on the
+  leaked-password check under Password security). (4) The `delete-account` Edge Function source is back in the repo
+  at `supabase/functions/delete-account/index.ts` (it was deployed but uncommitted).
+  **Not done, needs an account:** Cloudflare Turnstile on sign-up (Supabase → Auth → Attack protection) — do this
+  before promoting the landing page widely.
+
 - **2026-10-25 — Google Calendar: Change account (v236).** Under the sync bar on Schedule there's now a quiet line
   showing which Gmail your lessons sync to, with a **Change account** link. It asks once: "Remove my lessons from this
   Google Calendar first" (ticked by default). If ticked, TutorDeck removes your lessons from the old calendar while it

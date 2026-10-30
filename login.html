@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Sign in · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=236">
+<link rel="stylesheet" href="assets/css/app.css?v=238">
 <style>
   .oauth-div{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--muted);font-size:12.5px}
   .oauth-div::before,.oauth-div::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -112,9 +112,9 @@
   <div class="lg-foot"><a href="/">← TutorDeck home</a> · <a href="privacy">Privacy</a> · <a href="terms">Terms</a></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=236"></script>
-<script src="assets/js/supabase.js?v=236"></script>
+<script src="assets/vendor/supabase-2.118.0.js"></script>
+<script src="assets/js/config.js?v=238"></script>
+<script src="assets/js/supabase.js?v=238"></script>
 <script>
 (function () {
   var mode = "in";
@@ -146,7 +146,7 @@
     $("pw-eye").setAttribute("aria-pressed", on ? "true" : "false");
     $("pw").focus();
   };
-  var PW_MIN = 6;   // Supabase project setting: Authentication → Sign In / Providers → Email → Minimum password length
+  var PW_MIN = 8;   // keep in step with the Supabase project setting: Authentication → Sign In / Providers → Email → Minimum password length
 
   function show(text, ok) { msg.textContent = text; msg.className = "msg " + (ok ? "ok" : "err"); }
 
