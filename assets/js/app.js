@@ -580,6 +580,32 @@ window.TL = (function () {
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", enhanceForms); else enhanceForms();
 
+  // ---- offline awareness ----
+  // Tutors use this between lessons, in lifts and basements. Without this, a save on a dead connection
+  // fails silently. A slim banner appears while offline and primary buttons are held until it's back.
+  function offlineBanner(on) {
+    var el = document.getElementById("td-offline");
+    if (on && !el) {
+      el = document.createElement("div"); el.id = "td-offline"; el.setAttribute("role", "status");
+      el.textContent = "You're offline — changes can't be saved until you reconnect.";
+      document.body.appendChild(el);
+    }
+    if (el) el.style.display = on ? "" : "none";
+    document.documentElement.classList.toggle("is-offline", !!on);
+  }
+  window.addEventListener("offline", function () { offlineBanner(true); });
+  window.addEventListener("online",  function () { offlineBanner(false); });
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { offlineBanner(!navigator.onLine); });
+  else offlineBanner(!navigator.onLine);
+
+  // ---- installable app (PWA) ----
+  // manifest.json + a minimal service worker make "Add to Home Screen" offer a real app icon and a
+  // standalone window. The worker only serves cached static assets when the network fails — it never
+  // caches Supabase data, so nothing stale is ever shown as live.
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js").catch(function () {}); });
+  }
+
   // ---- first-time tips ("coach marks") ----
   // TL.coach(key, anchorEl, html): shows a small tip under anchorEl ONCE per browser; "Got it" dismisses it
   // for good (localStorage "td_tip_<key>"). Use for new or non-obvious features instead of permanent banners.

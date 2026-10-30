@@ -1,0 +1,15 @@
+{
+  "name": "TutorDeck",
+  "short_name": "TutorDeck",
+  "description": "Students, schedule and payments in one place — for private tutors.",
+  "start_url": "/home",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAF9F6",
+  "theme_color": "#13233F",
+  "icons": [
+    { "src": "/assets/img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/img/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/assets/img/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

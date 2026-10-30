@@ -261,6 +261,48 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-30 — UX pass: offline banner, installable app, Copy last note, exam subject memory, FY export (v239).**
+  (1) **Offline**: when the connection drops, an amber banner says changes can't be saved and primary buttons are held
+  until it's back (`TL` offline handling in app.js; `html.is-offline` in app.css). (2) **Installable (PWA)**: new
+  `manifest.json` (icons 192/512 + maskable in `assets/img/`), `<link rel="manifest">` + theme-colour on every page, and a
+  minimal `sw.js` that only caches same-origin static files for offline fallback — never Supabase data or `/api/*`, so
+  nothing stale is ever shown. "Add to Home Screen" now gives a real app icon and a standalone window.
+  (3) **Copy last note** in the Home note sheet: one tap fills topics/homework/remarks from the previous noted lesson
+  of the same subject, then you edit what changed. (4) **Exam subject memory**: adding an exam (Exams page or student
+  profile) pre-fills the subject from the student's latest exam, else their weekly slot. (5) **Tax-ready export**:
+  Ledger → Records → ⋯ now has *Export this financial year* / *Export last financial year* — every lesson in the FY
+  (respects Settings → Financial year starts in) plus a per-month Collected / Still-owed summary and the total
+  collected, for IRAS Form B. Cancelled lessons count only their compensation. vercel.json: no-cache for sw.js,
+  correct type for manifest.json. Dark mode deliberately not done (low demand vs. effort).
+
+- **2026-10-30 — Landing page: open sign-up, real screenshots, testimonial.** The page no longer says "private
+  testing" or collects a waitlist email: both calls-to-action are **Start free** → `login?mode=signup` (login.html now
+  reads that parameter and opens the Create-account tab), with "Free while in early access · No card needed · Set up in
+  5 minutes" under the hero. New **See it in action** section: three real phone screenshots of Home, Ledger and
+  Calendar (`assets/img/app-*.webp`, 30–50 KB each) rendered from the actual pages with **made-up students only**
+  (Wei Lin, Jun Jie, Siti, Daniel, Kai — the hero card and the share image use the same names; no real student
+  appears anywhere on the public page). New **testimonial** block from T-Leng, attributed as co-founder. Footer gains
+  Features / FAQ / Contact (tutordeckadmin@gmail.com). Formspree waitlist code removed. **Vercel Web Analytics**
+  script added (`/_vercel/insights/script.js`; already allowed by the CSP) — turn it on under Vercel → Project →
+  Analytics → Enable, otherwise it records nothing. HTML/images only, no version bump.
+
+- **2026-10-30 — Security hardening (v238).** (1) **Security headers** in `vercel.json` for every route: a
+  Content-Security-Policy that only allows scripts from our own origin plus accounts.google.com (inline scripts stay
+  allowed because several pages use them), connect-src limited to Supabase, Google auth/Calendar, Formspree, OneMap and
+  fonts, `frame-ancestors 'none'`, `object-src 'none'`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+  Referrer-Policy, Permissions-Policy, HSTS (2 years, preload) and COOP `same-origin-allow-popups` (keeps the Google
+  sign-in popup working). Tested: all 17 pages served locally with these exact headers show zero CSP violations.
+  (2) **Third-party CDNs removed.** supabase-js 2.118.0, Chart.js 4.6.1 and html2canvas 1.4.1 are now self-hosted
+  under `assets/vendor/` (exact versions, immutable 1-year cache header); the QR library already lived in
+  `assets/js/qrlib.js`. The old `@2` / `@4` tags floated to whatever jsDelivr served next — a supply-chain risk for an
+  app holding student data. Lazy-loader CDN fallbacks (unpkg, cdnjs, jsDelivr) are gone too. To upgrade a library,
+  `npm pack` the new version and replace the file. (3) Sign-up password minimum raised 6 → 8 in `login.html`
+  (**also raise it in Supabase → Authentication → Providers → Email → Minimum password length**, and turn on the
+  leaked-password check under Password security). (4) The `delete-account` Edge Function source is back in the repo
+  at `supabase/functions/delete-account/index.ts` (it was deployed but uncommitted).
+  **Not done, needs an account:** Cloudflare Turnstile on sign-up (Supabase → Auth → Attack protection) — do this
+  before promoting the landing page widely.
+
 - **2026-10-25 — Google Calendar: Change account (v236).** Under the sync bar on Schedule there's now a quiet line
   showing which Gmail your lessons sync to, with a **Change account** link. It asks once: "Remove my lessons from this
   Google Calendar first" (ticked by default). If ticked, TutorDeck removes your lessons from the old calendar while it

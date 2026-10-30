@@ -1,6 +1,6 @@
 // Exams — manage assessments: add, edit, delete; upcoming (with countdown) vs past.
 (function () {
-  var userId=null, students=[], nameById={}, exams=[], editingId=null;
+  var userId=null, students=[], nameById={}, exams=[], editingId=null, slotSubj={};
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
   function pad(n){return (n<10?"0":"")+n;}
@@ -121,6 +121,8 @@
     students=st.data||[];nameById={};students.forEach(function(s){nameById[s.id]=s.name;});
     studentOptions();
 
+    var sl=await window.sb.from("recurring_slots").select("student_id,subject").eq("active",true);
+    slotSubj={}; (sl.data||[]).forEach(function(r){ if(r.subject&&!slotSubj[r.student_id]) slotSubj[r.student_id]=r.subject; });
     var res=await window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,remarks,score,max_score");
     if(res.error){$("x-count").textContent="Couldn't load exams: "+res.error.message;return;}
     exams=res.data||[];
@@ -144,6 +146,13 @@
   function init(user){
     userId=user.id;
     $("add-btn").addEventListener("click",function(){openModal(true,null);});
+    // Adding an exam: suggest the subject you last used for this student (their latest exam, else their weekly slot)
+    $("m-student").addEventListener("change",function(){
+      if(editingId||$("m-subject").value.trim())return;
+      var sid=$("m-student").value, last=exams.filter(function(e){return e.student_id===sid&&e.subject;})
+        .sort(function(a,b){return (b.exam_date||"").localeCompare(a.exam_date||"");})[0];
+      var guess=(last&&last.subject)||slotSubj[sid]||""; if(guess)$("m-subject").value=guess;
+    });
     $("m-cancel").addEventListener("click",function(){openModal(false);});
     $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openModal(false);});
     $("m-save").addEventListener("click",save);
