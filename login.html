@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Sign in · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=239">
+<link rel="stylesheet" href="assets/css/app.css?v=240">
 <style>
   .oauth-div{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--muted);font-size:12.5px}
   .oauth-div::before,.oauth-div::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -77,6 +77,7 @@
         </div>
         <div class="pw-hint" id="pw-hint" style="display:none">At least 6 characters</div>
       </div>
+      <div id="captcha" class="cf-turnstile" style="display:none;margin:0 0 12px"></div>
       <label id="consent-field" style="display:none;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--muted);margin:2px 0 14px;line-height:1.5;cursor:pointer">
         <input id="consent" type="checkbox" style="width:16px;height:16px;margin-top:1px;flex:0 0 auto;accent-color:var(--teal)">
         <span>I agree to the <a href="terms" target="_blank">Terms of Service</a> and <a href="privacy" target="_blank">Privacy Policy</a>, and consent to my data being handled as described (PDPA).</span>
@@ -116,8 +117,8 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=239"></script>
-<script src="assets/js/supabase.js?v=239"></script>
+<script src="assets/js/config.js?v=240"></script>
+<script src="assets/js/supabase.js?v=240"></script>
 <script>
 (function () {
   var mode = "in";
@@ -130,6 +131,7 @@
     $("tab-up").classList.toggle("on", m === "up");
     $("pw-hint").style.display = m === "up" ? "block" : "none";
     $("consent-field").style.display = m === "up" ? "flex" : "none";
+    if (CAPTCHA_KEY) { $("captcha").style.display = m === "up" ? "" : "none"; if (m === "up") renderCaptcha(); }
     if (m !== "up" && $("consent")) $("consent").checked = false;
     $("go").textContent = m === "up" ? "Create account" : "Sign in";
     if ($("lg-hello")) $("lg-hello").textContent = m === "up" ? "Set up your tuition business in a minute" : "Welcome back";
@@ -151,6 +153,18 @@
     $("pw-eye").setAttribute("aria-pressed", on ? "true" : "false");
     $("pw").focus();
   };
+  // ---- bot check on sign-up (Cloudflare Turnstile; active only when config has a site key) ----
+  var CAPTCHA_KEY = (window.TLENG_CONFIG && window.TLENG_CONFIG.TURNSTILE_SITE_KEY) || "", captchaToken = "", captchaId = null;
+  function renderCaptcha() {
+    if (!CAPTCHA_KEY || captchaId !== null) return;
+    function go() {
+      if (!window.turnstile) { setTimeout(go, 150); return; }
+      captchaId = window.turnstile.render("#captcha", { sitekey: CAPTCHA_KEY, theme: "light", callback: function (t) { captchaToken = t; }, "expired-callback": function () { captchaToken = ""; } });
+    }
+    if (!document.getElementById("cf-ts")) { var sc = document.createElement("script"); sc.id = "cf-ts"; sc.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"; sc.async = true; document.head.appendChild(sc); }
+    go();
+  }
+  function resetCaptcha() { captchaToken = ""; if (window.turnstile && captchaId !== null) { try { window.turnstile.reset(captchaId); } catch (e) {} } }
   var PW_MIN = 8;   // keep in step with the Supabase project setting: Authentication → Sign In / Providers → Email → Minimum password length
 
   function show(text, ok) { msg.textContent = text; msg.className = "msg " + (ok ? "ok" : "err"); }
@@ -232,11 +246,12 @@
         if (pw.length < PW_MIN) { show("Your password needs at least " + PW_MIN + " characters.", false); return; }
         if (!$("consent").checked) { show("Please accept the Terms and Privacy Policy to create an account.", false); return; }
         // Name and tuition name are asked on the Welcome screen after the first sign-in (same as Google sign-up).
-        var up = await window.sb.auth.signUp(
-          { email: email, password: pw, options: { data: {
-            consent_version: "v1", consent_accepted_at: new Date().toISOString() },
-            emailRedirectTo: new URL("/confirmed", location.origin).href } });
-        if (up.error) throw up.error;
+        if (CAPTCHA_KEY && !captchaToken) { show("Please complete the quick check above.", false); return; }
+        var upOpts = { data: { consent_version: "v1", consent_accepted_at: new Date().toISOString() },
+                       emailRedirectTo: new URL("/confirmed", location.origin).href };
+        if (captchaToken) upOpts.captchaToken = captchaToken;
+        var up = await window.sb.auth.signUp({ email: email, password: pw, options: upOpts });
+        if (up.error) { resetCaptcha(); throw up.error; }
         if (up.data.session) { location.replace("home"); return; }   // confirm-email off: straight in (Welcome screen next)
         showCreated(email, true);                                         // confirm on → success screen
       } else {
