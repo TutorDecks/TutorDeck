@@ -10,5 +10,9 @@ window.TLENG_CONFIG = {
   SUPABASE_URL:      "https://rnjvswkejbrhbaytutai.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_IKUtlGhnwJT0Hld5A8cglw_0iF6Y5J9",
   // Google OAuth client ID for Calendar sync (public, safe to commit — like the anon key).
-  GOOGLE_CLIENT_ID:  "560106211240-ip7sv5rrpc71f6jenmod34e13i94rdjg.apps.googleusercontent.com"
+  GOOGLE_CLIENT_ID:  "560106211240-ip7sv5rrpc71f6jenmod34e13i94rdjg.apps.googleusercontent.com",
+  // Cloudflare Turnstile SITE key (public). Leave "" to disable the bot check on sign-up.
+  // To enable: Cloudflare → Turnstile → Add widget (domain tutordeck.com.sg, "Managed") → copy the Site key here,
+  // then Supabase → Authentication → Attack protection → Enable Captcha → Turnstile → paste the SECRET key there.
+  TURNSTILE_SITE_KEY: ""
 };

@@ -261,6 +261,17 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-30 — Sign-up bot check (ready to switch on), public changelog, faster first load (v240).**
+  (1) **Cloudflare Turnstile on sign-up**, fully wired but dormant: the widget, the token passed to `signUp`, the CSP
+  allow-list and the "complete the quick check" message are all in place; it activates the moment
+  `TURNSTILE_SITE_KEY` in `assets/js/config.js` is filled (Cloudflare → Turnstile → Add widget → Site key) **and**
+  Supabase → Authentication → Attack protection → Captcha → Turnstile gets the matching Secret key. Do both or neither.
+  (2) **Public changelog at `/changelog`** — generated from this log by `python3 tools/build-changelog.py` (headline +
+  first sentence or two; bullet-list entries show headline only; file names and PR numbers are stripped). Re-run it after
+  adding an entry here. Linked from the landing footer as "What's new" and listed in the sitemap — fresh content is good
+  for search ranking and shows the app is actively built. (3) `<link rel="preconnect">` to Supabase on every signed-in
+  page, so the first data request skips the DNS + TLS handshake.
+
 - **2026-10-30 — UX pass: offline banner, installable app, Copy last note, exam subject memory, FY export (v239).**
   (1) **Offline**: when the connection drops, an amber banner says changes can't be saved and primary buttons are held
   until it's back (`TL` offline handling in app.js; `html.is-offline` in app.css). (2) **Installable (PWA)**: new
