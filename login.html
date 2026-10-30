@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Sign in · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=241">
+<link rel="stylesheet" href="assets/css/app.css?v=242">
 <style>
   .oauth-div{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--muted);font-size:12.5px}
   .oauth-div::before,.oauth-div::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -75,7 +75,7 @@
           <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••" aria-describedby="pw-hint">
           <button type="button" class="pw-eye" id="pw-eye" aria-label="Show password" aria-pressed="false">Show</button>
         </div>
-        <div class="pw-hint" id="pw-hint" style="display:none">At least 6 characters</div>
+        <div class="pw-hint" id="pw-hint" style="display:none">At least 8 characters</div>
       </div>
       <div id="captcha" class="cf-turnstile" style="display:none;margin:0 0 12px"></div>
       <label id="consent-field" style="display:none;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--muted);margin:2px 0 14px;line-height:1.5;cursor:pointer">
@@ -117,8 +117,8 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=241"></script>
-<script src="assets/js/supabase.js?v=241"></script>
+<script src="assets/js/config.js?v=242"></script>
+<script src="assets/js/supabase.js?v=242"></script>
 <script>
 (function () {
   var mode = "in";
@@ -131,7 +131,7 @@
     $("tab-up").classList.toggle("on", m === "up");
     $("pw-hint").style.display = m === "up" ? "block" : "none";
     $("consent-field").style.display = m === "up" ? "flex" : "none";
-    if (CAPTCHA_KEY) { $("captcha").style.display = m === "up" ? "" : "none"; if (m === "up") renderCaptcha(); }
+    if (CAPTCHA_KEY) { $("captcha").style.display = ""; renderCaptcha(); }
     if (m !== "up" && $("consent")) $("consent").checked = false;
     $("go").textContent = m === "up" ? "Create account" : "Sign in";
     if ($("lg-hello")) $("lg-hello").textContent = m === "up" ? "Set up your tuition business in a minute" : "Welcome back";
@@ -153,7 +153,9 @@
     $("pw-eye").setAttribute("aria-pressed", on ? "true" : "false");
     $("pw").focus();
   };
-  // ---- bot check on sign-up (Cloudflare Turnstile; active only when config has a site key) ----
+  // ---- bot check (Cloudflare Turnstile; active only when config has a site key) ----
+  // Supabase CAPTCHA protection covers sign-up, password sign-in AND password reset, so every one of those
+  // calls must carry a fresh token. Tokens are single-use: reset after each attempt.
   var CAPTCHA_KEY = (window.TLENG_CONFIG && window.TLENG_CONFIG.TURNSTILE_SITE_KEY) || "", captchaToken = "", captchaId = null;
   function renderCaptcha() {
     if (!CAPTCHA_KEY || captchaId !== null) return;
@@ -165,6 +167,7 @@
     go();
   }
   function resetCaptcha() { captchaToken = ""; if (window.turnstile && captchaId !== null) { try { window.turnstile.reset(captchaId); } catch (e) {} } }
+  if (CAPTCHA_KEY) { $("captcha").style.display = ""; renderCaptcha(); }
   // Breached-password check (free alternative to Supabase's Pro-only one). Uses Have I Been Pwned's k-anonymity API:
   // only the first 5 characters of the password's SHA-1 hash are sent, never the password or its full hash.
   // Returns the number of breaches the password appears in, or 0 if clean / the check couldn't run (never blocks sign-up on a network hiccup).
@@ -272,7 +275,9 @@
         if (up.data.session) { location.replace("home"); return; }   // confirm-email off: straight in (Welcome screen next)
         showCreated(email, true);                                         // confirm on → success screen
       } else {
-        var inn = await window.sb.auth.signInWithPassword({ email: email, password: pw });
+        if (CAPTCHA_KEY && !captchaToken) { show("Please complete the quick check above.", false); return; }
+        var inn = await window.sb.auth.signInWithPassword({ email: email, password: pw, options: captchaToken ? { captchaToken: captchaToken } : {} });
+        resetCaptcha();
         if (inn.error) throw inn.error;
         if (await needsMfa()) { startChallenge(); return; }
         location.replace("home");
@@ -308,10 +313,13 @@
     if (!window.TL_CONFIGURED) return;
     var email = $("email").value.trim();
     if (!email) { show("Enter your email above, then tap \u201CForgot password?\u201D again.", false); $("email").focus(); return; }
+    if (CAPTCHA_KEY && !captchaToken) { show("Please complete the quick check above first.", false); return; }
     $("forgot").disabled = true;
     try {
-      var r = await window.sb.auth.resetPasswordForEmail(email,
-        { redirectTo: new URL("/reset", location.origin).href });
+      var ro = { redirectTo: new URL("/reset", location.origin).href };
+      if (captchaToken) ro.captchaToken = captchaToken;
+      var r = await window.sb.auth.resetPasswordForEmail(email, ro);
+      resetCaptcha();
       if (r.error) throw r.error;
       show("Password reset link sent to " + email + ". Check your inbox (and spam).", true);
     } catch (e) {

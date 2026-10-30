@@ -14,5 +14,5 @@ window.TLENG_CONFIG = {
   // Cloudflare Turnstile SITE key (public). Leave "" to disable the bot check on sign-up.
   // To enable: Cloudflare → Turnstile → Add widget (domain tutordeck.com.sg, "Managed") → copy the Site key here,
   // then Supabase → Authentication → Attack protection → Enable Captcha → Turnstile → paste the SECRET key there.
-  TURNSTILE_SITE_KEY: ""
+  TURNSTILE_SITE_KEY: "0x4AAAAAAFsffjS_h2zuqSJa"
 };

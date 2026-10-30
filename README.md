@@ -261,6 +261,7 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-30 — Turnstile bot check switched on (v242).** `config.js` now carries the Cloudflare Turnstile site key (public, safe to commit). Because Supabase CAPTCHA protection covers sign-up, password sign-in and password reset, `login.html` now shows the widget in every mode and passes a fresh `captchaToken` to `signUp`, `signInWithPassword` and `resetPasswordForEmail` (tokens are single-use, so it resets after each attempt). Google sign-in is unaffected. Order matters: this code must be live on production **before** the secret key is entered in Supabase → Authentication → Attack protection, or email sign-in breaks. Also fixed the sign-up hint ("At least 8 characters", matching `PW_MIN`).
 - **2026-10-30 — Breached-password check on sign-up (free alternative to Supabase's Pro-only one).** `login.html` now
   checks a new password against Have I Been Pwned before calling `signUp`, using their k-anonymity API: only the first
   5 characters of the password's SHA-1 hash leave the browser, never the password. A password seen in breaches is
