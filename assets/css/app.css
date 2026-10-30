@@ -1,5 +1,5 @@
-/* v240 */
-/* v240 */
+/* v241 */
+/* v241 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -803,3 +803,9 @@ body .main{padding-bottom:96px}
 /* offline banner (TL offlineBanner in app.js) */
 #td-offline{position:fixed;left:0;right:0;top:0;z-index:300;background:var(--warn);color:#fff;font-weight:700;font-size:13px;text-align:center;padding:8px 14px}
 html.is-offline .btn-primary,html.is-offline .btn-gold,html.is-offline .cp-btn.primary{opacity:.55;pointer-events:none}
+
+/* Settings → Your data → old records to review */
+.ret-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;text-decoration:none;color:var(--ink)}
+.ret-row span{color:var(--muted);font-size:13px}
+.ret-row .ret-go{margin-left:auto;color:var(--accent);font-weight:700}
+.ret-row:hover{background:var(--cream)}

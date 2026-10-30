@@ -261,6 +261,13 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-30 — Settings: Share TutorDeck + PDPA retention review (v241).** (1) New **Know another tutor?** card:
+  *Share on WhatsApp* opens a ready-written message with the landing link; *Copy link* copies it. Tutors telling tutors is
+  the cheapest channel we have. (2) Under **Your data**, an **Old records to review** list appears only when a
+  discontinued student (inactive or past their end date) has had no lesson for over 2 years — each row opens their
+  profile, where *Remove* already exists. Nothing is deleted automatically; this is the PDPA "don't keep personal data
+  longer than needed" nudge, kept manual because there is one live database.
+
 - **2026-10-30 — Sign-up bot check (ready to switch on), public changelog, faster first load (v240).**
   (1) **Cloudflare Turnstile on sign-up**, fully wired but dormant: the widget, the token passed to `signUp`, the CSP
   allow-list and the "complete the quick check" message are all in place; it activates the moment

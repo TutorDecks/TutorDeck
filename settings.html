@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Settings · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=240">
+<link rel="stylesheet" href="assets/css/app.css?v=241">
 <style>
   .field textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
     font:inherit;background:#FFFFFF;color:var(--ink);resize:vertical;line-height:1.45}
@@ -187,15 +187,31 @@
       <button class="btn set-danger" id="delete-btn">Delete my account &amp; data</button>
     </div>
     <div class="msg" id="data-msg" style="margin-top:10px"></div>
+    <div id="retention" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+      <h3 style="font-size:14.5px;font-weight:800;margin:0 0 4px">Old records to review</h3>
+      <p class="muted" style="font-size:13px;margin:0 0 10px">PDPA says personal data shouldn't be kept longer than needed.
+        These discontinued students have had no lesson for over 2 years — open each one and use <b>Remove</b> if you no longer need their records.</p>
+      <div id="retention-list"></div>
+    </div>
+  </section>
+
+  <section class="card set-card" id="share">
+    <h2>Know another tutor?</h2>
+    <p class="muted" style="font-size:13.5px;margin-bottom:14px">TutorDeck grows when tutors tell tutors. Send a friend the link — it's free while in early access.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+      <button class="btn btn-primary" id="share-wa">Share on WhatsApp</button>
+      <button class="btn" id="share-copy">Copy link</button>
+    </div>
+    <div class="msg" id="share-msg" style="margin-top:10px"></div>
   </section>
  </div>
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=240"></script>
-<script src="assets/js/supabase.js?v=240"></script>
-<script src="assets/js/app.js?v=240"></script>
-<script src="assets/js/paynow.js?v=240"></script>
-<script src="assets/js/settings.js?v=240"></script>
+<script src="assets/js/config.js?v=241"></script>
+<script src="assets/js/supabase.js?v=241"></script>
+<script src="assets/js/app.js?v=241"></script>
+<script src="assets/js/paynow.js?v=241"></script>
+<script src="assets/js/settings.js?v=241"></script>
 </body>
 </html>
