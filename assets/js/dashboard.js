@@ -14,7 +14,7 @@
   var MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   var chartObj=null, yearChartObj=null, allLessons=[], nameByIdM={}, selY=null, selM=null, dmWired=false;
   var fyStart=1, fyAnchor=null, finSub="month", finSubWired=false;
-  var userId=null, tnWired=false, lessonsById={}, noteLes=null;
+  var userId=null, tnWired=false, lessonsById={}, noteLes=null, prevNoteFor=null;  // prevNoteFor(lesson) → last noted lesson of same subject
 
   function drawStacked(canvasId, labels, collected, pending, upcoming, prev){
     var r2=function(v){return Math.round(v*100)/100;};
@@ -125,6 +125,17 @@
       }
       return null;
     }
+    // For "Copy last note": the most recent earlier lesson (same subject) that actually has notes.
+    prevNoteFor=function(les){
+      if(!les)return null;
+      var a=doneByStu[les.student_id]||[], subj=(les.subject||"").trim().toLowerCase();
+      for(var i=0;i<a.length;i++){
+        var x=a[i]; if(x.id===les.id||x.lesson_date>=les.lesson_date)continue;
+        if(subj&&(x.subject||"").trim().toLowerCase()!==subj)continue;
+        if(x.topics||x.homework||x.remarks)return x;
+      }
+      return null;
+    };
     // upcoming exams by student
     var examsByStu={};
     (exams||[]).forEach(function(e){ if(e.exam_date&&e.exam_date>=todayISOv){ (examsByStu[e.student_id]=examsByStu[e.student_id]||[]).push(e); } });
@@ -225,6 +236,19 @@
     $("tn-homework").value=les?(les.homework||""):"";
     $("tn-remarks").value=les?(les.remarks||""):"";
     $("tn-msg").textContent=""; $("tn-msg").className="msg";
+    // Copy last note: one tap fills the fields from the previous lesson of this subject (then edit as needed)
+    var prev=prevNoteFor?prevNoteFor(les):null, cp=$("tn-copy");
+    if(cp){
+      if(prev){
+        cp.style.display="";
+        cp.textContent="Copy last note · "+new Date(prev.lesson_date+"T00:00:00").toLocaleDateString("en-SG",{day:"numeric",month:"short"});
+        cp.onclick=function(){
+          $("tn-topics").value=prev.topics||""; $("tn-homework").value=prev.homework||""; $("tn-remarks").value=prev.remarks||"";
+          $("tn-msg").textContent="Copied — edit anything that changed, then save."; $("tn-msg").className="msg";
+          $("tn-topics").focus();
+        };
+      } else { cp.style.display="none"; cp.onclick=null; }
+    }
     $("tn-modal").classList.add("on");
   }
   function closeNote(){$("tn-modal").classList.remove("on");}

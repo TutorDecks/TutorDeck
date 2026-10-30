@@ -539,6 +539,34 @@
   }
 
   function csvCell(v){v=String(v==null?"":v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+  // Financial-year window (respects Settings → Financial year starts in): the FY containing today (back=0) or the one before (back=1).
+  function fyWindow(back){
+    var fm=(profile&&profile.fy_start_month)||1, now=new Date(), y=now.getFullYear();
+    if(now.getMonth()+1<fm)y--; y-=back||0;
+    var from=new Date(y,fm-1,1), to=new Date(y+1,fm-1,0);
+    return {from:iso(from),to:iso(to),label:"FY"+(fm===1?String(y):(y+"/"+String(y+1).slice(2)))};
+  }
+  // Tax-ready export: every lesson in the financial year plus a per-month summary (collected / still owed) so the
+  // income figure for IRAS Form B is one glance away. Cancelled lessons count only their compensation amount.
+  function exportFY(back){
+    var w=fyWindow(back);
+    var rows=allLessons.filter(function(l){return l.lesson_date>=w.from&&l.lesson_date<=w.to;})
+      .sort(function(a,b){return (a.lesson_date+(a.start_time||"")).localeCompare(b.lesson_date+(b.start_time||""));});
+    if(!rows.length){TL.alert("No lessons in "+w.label+" ("+w.from+" to "+w.to+").");return;}
+    var lines=[["Date","Student","Subject","Level","Amount (S$)","Status","Paid","Paid date"].join(",")], months={}, tot={paid:0,owed:0};
+    rows.forEach(function(l){
+      var amt=Number(l.amount)||0, m=l.lesson_date.slice(0,7); months[m]=months[m]||{paid:0,owed:0,n:0}; months[m].n++;
+      var billable=l.status==="cancelled"?amt>0:l.status==="done";
+      if(l.paid){months[m].paid+=amt;tot.paid+=amt;} else if(billable){months[m].owed+=amt;tot.owed+=amt;}
+      lines.push([l.lesson_date,nameById[l.student_id]||"",l.subject||"",l.level||"",amt.toFixed(2),l.status,l.paid?"Yes":"No",l.paid_date||""].map(csvCell).join(","));
+    });
+    lines.push("","Monthly summary","Month,Lessons,Collected (S$),Still owed (S$)");
+    Object.keys(months).sort().forEach(function(m){lines.push([m,months[m].n,months[m].paid.toFixed(2),months[m].owed.toFixed(2)].join(","));});
+    lines.push(["Total",rows.length,tot.paid.toFixed(2),tot.owed.toFixed(2)].join(","),"","Income received in "+w.label+" (collected): "+tot.paid.toFixed(2));
+    var blob=new Blob(["\ufeff"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"}), url=URL.createObjectURL(blob), a=document.createElement("a");
+    a.href=url; a.download="TutorDeck_"+w.label.replace("/","-")+"_"+w.from+"_to_"+w.to+".csv";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},4000);
+  }
   function exportCSV(){
     var rows=allLessons.filter(function(l){
       if(period.mode==="all")return true;
@@ -1363,7 +1391,7 @@
   async function load(){
     var seqP=loadInvSeq();
     await TL.promotePastLessons();
-    var PCOLS="business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,bank_account_name,bank_name,bank_account_no,bank_swift";
+    var PCOLS="business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,bank_account_name,bank_name,bank_account_no,bank_swift,fy_start_month";
     var pr=await window.sb.from("profiles").select(PCOLS+",full_name").eq("id",userId).single();
     if(pr.error) pr=await window.sb.from("profiles").select(PCOLS).eq("id",userId).single();   // older DB without full_name
     profile=pr.error?null:pr.data;
@@ -1475,6 +1503,8 @@
     on("inv-save","click",saveInvoice);
     // period nav is the shared header control (p-prev/p-next/p-today/p-all), wired above
     on("csv-btn","click",function(){closeMenus();exportCSV();});
+    on("fy-btn","click",function(){closeMenus();exportFY(0);});
+    on("fy-prev-btn","click",function(){closeMenus();exportFY(1);});
     // dropdown menus (Log lessons, ⋯): toggle on tap, close on outside tap / Esc
     function closeMenus(except){document.querySelectorAll(".dd.open").forEach(function(d){if(d!==except){d.classList.remove("open");var b=d.querySelector("[aria-expanded]");if(b)b.setAttribute("aria-expanded","false");}});}
     ["log-dd","more-dd"].forEach(function(id){var d=$(id);if(!d)return;var b=d.querySelector("button");

@@ -3,10 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#13233F">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
 <meta name="robots" content="noindex,nofollow">
 <title>Home · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=238">
+<link rel="stylesheet" href="assets/css/app.css?v=239">
 <style>
   #onboard{display:none;margin-bottom:20px}
   /* v218: first-run setup card — 3 short steps, one button */
@@ -246,7 +249,8 @@
   <div class="modal-backdrop" id="tn-modal">
     <div class="modal card">
       <h2 id="tn-title">Lesson note</h2>
-      <p class="muted" id="tn-sub" style="font-size:13px;margin-bottom:14px"></p>
+      <p class="muted" id="tn-sub" style="font-size:13px;margin-bottom:10px"></p>
+      <button type="button" class="btn tn-copy" id="tn-copy" style="display:none;margin-bottom:12px;font-size:13px;padding:7px 12px">Copy last note</button>
       <div class="field"><label for="tn-topics">Topics covered</label><input id="tn-topics" type="text" placeholder="e.g. Quadratic equations"></div>
       <div class="field"><label for="tn-homework">Homework</label><input id="tn-homework" type="text" placeholder="e.g. Worksheet 3, Q1–10"></div>
       <div class="field"><label for="tn-remarks">Remarks</label><input id="tn-remarks" type="text" placeholder="e.g. needs more practice on factorising"></div>
@@ -262,9 +266,9 @@
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
 <script src="assets/vendor/chart-4.6.1.umd.js"></script>
-<script src="assets/js/config.js?v=238"></script>
-<script src="assets/js/supabase.js?v=238"></script>
-<script src="assets/js/app.js?v=238"></script>
-<script src="assets/js/dashboard.js?v=238"></script>
+<script src="assets/js/config.js?v=239"></script>
+<script src="assets/js/supabase.js?v=239"></script>
+<script src="assets/js/app.js?v=239"></script>
+<script src="assets/js/dashboard.js?v=239"></script>
 </body>
 </html>
