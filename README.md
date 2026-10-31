@@ -261,6 +261,11 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-31 — Student page "Paid" tick keeps the invoice in step (v244).** Ticking or unticking Paid on a lesson
+  on the student page only changed the lesson, so a sent invoice could stay "unpaid" while all its lessons were
+  paid (or the reverse). It now does what the Ledger's edit form does: new shared helper
+  `TL.syncInvoicesForLessons` (app.js) marks the invoice Paid (with that date) once all its lessons are paid and
+  puts it back to unpaid if one is unticked. It never creates an invoice; replaced invoices are left alone.
 - **2026-10-31 — Print asks "Did you send this invoice?"; $0 lessons are settled (v243).**
   - *PDF → "Did you send this invoice?":* a downloaded PDF used to leave the row "Not invoiced" even after it was
     emailed. Now an in-app dialog asks **Yes, mark as sent** / **Not yet**. Yes sets `sent_at` on the same invoice
