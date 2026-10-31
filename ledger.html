@@ -463,7 +463,8 @@
           <div class="inv-bubble" id="inv-bubble" role="dialog" aria-label="Message to parent" hidden>
             <div class="inv-bubble-h"><span>Message to parent</span><span class="inv-msg-hint" id="inv-msg-hint"></span>
               <button type="button" class="inv-msg-copy" id="inv-msg-copy" aria-label="Copy message" title="Copy message"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><svg data-x="1" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button></div>
-            <div class="inv-msg-text" id="inv-msg-text"></div>
+            <textarea class="inv-msg-text" id="inv-msg-text" rows="4" aria-label="Message to parent (you can edit it for this invoice)"></textarea>
+            <div class="inv-msg-foot"><span id="inv-msg-note">You can edit it for this invoice only.</span><a href="settings#imsg">Edit template</a></div>
           </div>
         </div>
         <button type="button" class="inv-ib" id="inv-pdf" title="Download PDF"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>PDF</span></button>

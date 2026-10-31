@@ -836,8 +836,11 @@ html.is-offline .btn-primary,html.is-offline .btn-gold,html.is-offline .cp-btn.p
 .inv-msg-copy:hover{background:var(--bg)}
 .inv-msg-copy svg[data-x]{display:none}
 .inv-msg-copy.done{color:var(--teal)} .inv-msg-copy.done svg{display:none} .inv-msg-copy.done svg[data-x]{display:block}
+.inv-msg-text:focus{border-color:var(--teal);background:#fff}
+.inv-msg-foot{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted);padding:8px 4px 0}
+.inv-msg-foot a{color:var(--navy);font-weight:700;white-space:nowrap}
 @media (max-width:820px){ .inv-bubble{right:auto;left:0} }
-.inv-msg-text{margin:0;max-height:40vh;overflow:auto;background:#E7F6EF;border-radius:12px 12px 12px 4px;padding:10px 12px;font-size:13.5px;line-height:1.5;color:var(--ink);white-space:pre-line;word-break:break-word}
+.inv-msg-text{display:block;width:100%;box-sizing:border-box;border:1px solid transparent;resize:vertical;font-family:inherit;outline:none;margin:0;max-height:40vh;overflow:auto;background:#E7F6EF;border-radius:12px 12px 12px 4px;padding:10px 12px;font-size:13.5px;line-height:1.5;color:var(--ink);white-space:pre-line;word-break:break-word}
 @media (max-width:820px){
   .td-form .modal-actions.inv-bar{flex-wrap:wrap}
   .td-form .modal-actions.inv-bar .inv-state{flex:1 1 100%;justify-content:center;margin:0 0 4px}

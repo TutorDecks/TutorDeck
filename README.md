@@ -269,6 +269,9 @@ A running log of Raphael's changes, newest first.
     Print / Save PDF) are replaced by an **×** to close, a status line ("Not sent yet · **Mark as sent**" /
     "Sent 31 Oct ✓"), two icon buttons and one main action. **💬 Message** opens a bubble above the bar with the
     exact text that goes with the invoice and a copy icon (for email / SMS); it's never part of the invoice image.
+    The text can be edited there **for this invoice only** (Send on WhatsApp and copy use the edit; the saved
+    template in Settings is untouched, and reopening starts from the template again); "Edit template" links to
+    `settings#imsg`.
     **⬇ PDF** downloads a real PDF straight away (`INV-0001_Ze_Cheng.pdf`, A4 layout even on a phone; html2canvas
     + self-hosted jsPDF 2.5.2 in `assets/vendor/`), then asks "Did you send this invoice?"; **Send on WhatsApp**
     (teal) marks it sent automatically. TutorDeck can't see whether you actually pressed send in WhatsApp, so once

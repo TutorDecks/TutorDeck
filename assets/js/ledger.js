@@ -1325,13 +1325,15 @@
   }
   function renderInvMsg(){
     var t=$("inv-msg-text"); if(!t) return;
-    t.textContent=window._invMeta ? invoiceMsg(window._invMeta) : "";
+    t.value=window._invMeta ? invoiceMsg(window._invMeta) : ""; window._invMsgEdited=null;   // fresh from the template
+    $("inv-msg-note").textContent="You can edit it for this invoice only.";
+    if(!t._td){ t._td=1; t.addEventListener("input",function(){ window._invMsgEdited=t.value; $("inv-msg-note").textContent="Edited for this invoice only."; }); }
     var c=$("inv-msg-copy"); if(c){ c.classList.remove("done"); c.setAttribute("aria-label","Copy message"); }
     toggleMsg(false);
   }
   async function copyInvMsg(e){
     if(!window._invMeta) return;
-    var ok=await copyText(invoiceMsg(window._invMeta)), c=$("inv-msg-copy");
+    var ok=await copyText(currentMsg(window._invMeta)), c=$("inv-msg-copy");
     if(c){ c.classList.toggle("done",ok); c.setAttribute("aria-label", ok?"Copied":"Copy message"); setTimeout(function(){ c.classList.remove("done"); },1800); }
     $("inv-msg-hint").textContent=ok?"Copied":"Couldn't copy";
     setTimeout(function(){ $("inv-msg-hint").textContent=""; },1800);
@@ -1373,6 +1375,11 @@
       })(0);
     });
   }
+  // The message that actually goes out: the tutor's edit in the Message bubble (this invoice only), else the template.
+  function currentMsg(m){
+    var e=window._invMsgEdited;
+    return (e!=null && e.trim() && m===window._invMeta) ? e.trim() : invoiceMsg(m);
+  }
   function invoiceMsg(m){
     var isCombined=!m.studentId;
     var po=payOpts();
@@ -1412,7 +1419,7 @@
   }
   async function shareInvoice(){
     if(!window._invHTML||!window._invMeta)return;
-    var m=window._invMeta,b=$("inv-wa"),msg=invoiceMsg(m);
+    var m=window._invMeta,b=$("inv-wa"),msg=currentMsg(m);
     b.disabled=true;waLabel("Preparing…");
     if(!window._invSaved){ try{ await saveInvoice(); }catch(e){} }   // sending records the invoice in the Invoices tab
     // …and marks it "Sent" (sent_at; ignored if db/migration_invoice_sent.sql hasn't been run yet)
