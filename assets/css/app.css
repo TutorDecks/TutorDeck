@@ -1,5 +1,5 @@
-/* v242 */
-/* v242 */
+/* v243 */
+/* v243 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -108,6 +108,7 @@ body:has(#view)::after{content:"";position:fixed;z-index:9999;left:max(24px,calc
 .badge{display:inline-flex;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700}
 .badge.paid{background:rgba(15,118,110,.12);color:var(--teal)}
 .badge.owed{background:rgba(180,67,47,.12);color:var(--owed)}
+.badge.nocharge{background:#F1EFEA;color:var(--muted);font-weight:600}
 .empty{padding:48px 24px;text-align:center;color:var(--muted)}
 .empty h3{color:var(--ink);margin-bottom:6px;font-size:18px}
 .empty .empty-hint{max-width:340px;margin:6px auto 0;font-size:14px;line-height:1.5;color:var(--muted)}

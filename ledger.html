@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Ledger · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=242">
+<link rel="stylesheet" href="assets/css/app.css?v=243">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -369,6 +369,7 @@
         <div class="field"><label for="m-rate">Rate per hour (S$)</label><input id="m-rate" data-req type="number" min="0" step="0.5" placeholder="e.g. 50"></div>
         <div class="field"><label for="m-cost">Lesson fee</label><input id="m-cost" type="text" disabled></div>
       </div>
+      <div class="field" id="m-note-f" style="display:none"><label for="m-note">Why no charge? <span class="opt">Optional</span></label><input id="m-note" list="dl-nocharge" type="text" maxlength="60" placeholder="e.g. Agent commission"><datalist id="dl-nocharge"><option value="Agent commission"><option value="Free trial"><option value="Make-up lesson"></datalist></div>
       <div class="field"><label for="m-subject">Subject <span class="opt">Optional</span></label><input id="m-subject" list="dl-subject" type="text" placeholder="e.g. A-Math"><datalist id="dl-subject"></datalist></div>
       <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:2px 0 6px">
         <input type="checkbox" id="m-paid"> Already paid
@@ -466,10 +467,10 @@
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
 <script src="assets/js/qrlib.js"></script>
-<script src="assets/js/config.js?v=242"></script>
-<script src="assets/js/supabase.js?v=242"></script>
-<script src="assets/js/app.js?v=242"></script>
-<script src="assets/js/paynow.js?v=242"></script>
-<script src="assets/js/ledger.js?v=242"></script>
+<script src="assets/js/config.js?v=243"></script>
+<script src="assets/js/supabase.js?v=243"></script>
+<script src="assets/js/app.js?v=243"></script>
+<script src="assets/js/paynow.js?v=243"></script>
+<script src="assets/js/ledger.js?v=243"></script>
 </body>
 </html>

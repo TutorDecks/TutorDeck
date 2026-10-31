@@ -10,6 +10,7 @@
     return x[2]+"\u2013"+y[2]+" "+M[y[1]-1];
   }
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
+  var hasChargeNote = false;
   var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, levelById = {}, endById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   // Payment options on invoices: PayNow QR (if set up) and bank transfer (if bank details are filled in), or both.
   function hasBank(p){ return !!(p && p.bank_account_no); }
@@ -122,6 +123,8 @@
     for(var i=0;i<rows.length;i++){ var d=sentByLesson[rows[i].id]; if(!d) return null; if(!latest||d>latest) latest=d; }
     return latest;
   }
+  // "No charge" (+ the reason, e.g. "Agent commission") for a $0 lesson: settled, so a neutral grey tag.
+  function noChargeBadge(l){ return '<span class="badge nocharge">No charge'+(l.charge_note?' · '+esc(l.charge_note):'')+'</span>'; }
   function fmtSent(d){ return new Date(d).toLocaleDateString("en-SG",{day:"numeric",month:"short"}); }
 
   function renderOutstanding(unpaidAll){
@@ -397,7 +400,7 @@
     if(fSub)rows=rows.filter(function(l){return (l.subject||"")===fSub;});
     if(fLvl)rows=rows.filter(function(l){return (l.level||"")===fLvl;});
     if(stat)rows=rows.filter(function(l){
-      if(stat==="unpaid")return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));
+      if(stat==="unpaid")return TL.isOwed(l);
       if(stat==="paid")return l.paid;
       if(stat==="postponed")return !!l.postponed;
       return l.status===stat; // scheduled / cancelled
@@ -435,7 +438,7 @@
       var attrs=(isToday&&!placed?(placed=true,' id="rec-today"'):"")+(cls.length?' class="'+cls.join(" ")+'"':"");
       var badge=l.status==="cancelled"
         ?'<span class="kind-tag">cancelled</span>'+(l.amount>0?(l.paid?' <span class="badge paid">Paid</span>':' <span class="badge owed">Unpaid</span>'):'')
-        :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
+        :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':(TL.noCharge(l)?noChargeBadge(l):'<span class="badge owed">Unpaid</span>')));
       if(l.postponed)badge+=' <span class="kind-tag" style="background:#B45309;color:#fff">postponed</span>';
       var cancelBtn=l.status==="cancelled"
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
@@ -468,7 +471,7 @@
   function openRecDetail(id){
     var l=monthById[id]; if(!l)return;
     var canc=l.status==="cancelled", sched=l.status==="scheduled";
-    var tag=canc?'<span class="rd-tag">Cancelled</span>':(l.paid?'<span class="rd-tag paid">Paid</span>':(sched?'<span class="rd-tag">Upcoming</span>':'<span class="rd-tag owed">Unpaid</span>'));
+    var tag=canc?'<span class="rd-tag">Cancelled</span>':(l.paid?'<span class="rd-tag paid">Paid</span>':(sched?'<span class="rd-tag">Upcoming</span>':(TL.noCharge(l)?'<span class="rd-tag">No charge</span>':'<span class="rd-tag owed">Unpaid</span>')));
     if(l.postponed)tag+=' <span class="rd-tag post">Postponed</span>';
     if(l.one_off)tag+=' <span class="rd-tag">✦ One-off</span>';
     var time=(l.start_time&&l.end_time)?(hm(l.start_time)+"–"+hm(l.end_time)):"";
@@ -479,6 +482,7 @@
     var items=[["Subject",l.subject?esc(l.subject):"—"],["Level",l.level?esc(l.level):"—"]];
     if(canc)items.push(["Compensation",TL.sgd(l.amount)]);
     items.push(["Status",tag]);
+    if(l.charge_note && !(Number(l.amount)>0)) items.push(["Why no charge",esc(l.charge_note)]);
     $("rd-body").innerHTML='<div class="rd-list">'+items.map(function(r){return '<div class="rd-row"><span class="rd-k">'+r[0]+'</span><span class="rd-v">'+r[1]+'</span></div>';}).join("")+'</div>';
     var canPay=!l.paid&&!canc&&l.amount>0;
     $("rd-actions").innerHTML=(canPay?'<button class="btn rd-primary" id="rd-pay">Mark '+TL.sgd(l.amount)+' as paid</button>':'')+
@@ -558,7 +562,7 @@
       var amt=Number(l.amount)||0, m=l.lesson_date.slice(0,7); months[m]=months[m]||{paid:0,owed:0,n:0}; months[m].n++;
       var billable=l.status==="cancelled"?amt>0:l.status==="done";
       if(l.paid){months[m].paid+=amt;tot.paid+=amt;} else if(billable){months[m].owed+=amt;tot.owed+=amt;}
-      lines.push([l.lesson_date,nameById[l.student_id]||"",l.subject||"",l.level||"",amt.toFixed(2),l.status,l.paid?"Yes":"No",l.paid_date||""].map(csvCell).join(","));
+      lines.push([l.lesson_date,nameById[l.student_id]||"",l.subject||"",l.level||"",amt.toFixed(2),l.status,l.paid?"Yes":(TL.noCharge(l)?"No charge":"No"),l.paid_date||""].map(csvCell).join(","));
     });
     lines.push("","Monthly summary","Month,Lessons,Collected (S$),Still owed (S$)");
     Object.keys(months).sort().forEach(function(m){lines.push([m,months[m].n,months[m].paid.toFixed(2),months[m].owed.toFixed(2)].join(","));});
@@ -577,7 +581,7 @@
     var lines=[head.join(",")];
     rows.forEach(function(l){
       lines.push([l.lesson_date,hm(l.start_time),hm(l.end_time),nameById[l.student_id]||"",l.subject||"",l.level||"",
-        Number(l.amount).toFixed(2),l.status,l.paid?"Yes":"No",l.paid_date||""].map(csvCell).join(","));
+        Number(l.amount).toFixed(2),l.status,l.paid?"Yes":(TL.noCharge(l)?"No charge":"No"),l.paid_date||""].map(csvCell).join(","));
     });
     var csv="\ufeff"+lines.join("\r\n");
     var blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
@@ -759,6 +763,7 @@
   function recalcCost(){
     var r=parseFloat($("m-rate").value),s=$("m-start").value,e=$("m-end").value;
     $("m-cost").value=(r>=0&&s&&e&&e>s)?TL.sgd(splitAmt(r,s,e,mSplit())):"";
+    if($("m-note-f")) $("m-note-f").style.display=(hasChargeNote && $("m-rate").value!=="" && r===0)?"":"none";   // $0 lesson: say why
   }
   function prefillFromSlot(){
     var sid=$("m-student").value;
@@ -787,12 +792,13 @@
       $("m-subject").value=lesson.subject||"";$("m-level").value=lesson.level||"";
       $("m-start").value=hm(lesson.start_time);$("m-end").value=hm(lesson.end_time);
       $("m-rate").value=lesson.rate;$("m-split").value=lesson.split||1;$("m-paid").checked=!!lesson.paid;
+      $("m-note").value=lesson.charge_note||"";
       recalcCost();
     }else{
       editLessonId=null;
       $("m-title").textContent="Add lesson";$("m-save").textContent="Save lesson";
       $("m-date").value=todayISO();$("m-paid").checked=false;
-      ["m-subject","m-level","m-start","m-end","m-rate","m-cost"].forEach(function(id){$(id).value="";});
+      ["m-subject","m-level","m-start","m-end","m-rate","m-cost","m-note"].forEach(function(id){$(id).value="";});
       $("m-split").value="1";
       prefillFromSlot();
     }
@@ -810,6 +816,7 @@
     var fields={student_id:sid,lesson_date:date,start_time:start,end_time:end,
       subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,split:split,amount:splitAmt(rate,start,end,split),
       status:statusFor(date,end),paid:paid,paid_date:paid?date:null,compensation:null};
+    if(hasChargeNote) fields.charge_note=(fields.amount>0)?null:($("m-note").value.trim().slice(0,60)||null);   // only a $0 lesson keeps a reason
     // Postponing lives on the Calendar (tap a lesson → Postpone). Editing here keeps a lesson's ↻ as it was;
     // a brand-new lesson starts not postponed.
     if(!editLessonId) fields.postponed=false;
@@ -1203,7 +1210,7 @@
     var onOld={}; olds.forEach(function(v){ v.data.lesson_ids.forEach(function(x){onOld[String(x)]=1;}); });
     var fresh=lessons.filter(function(l){return !onOld[String(l.id)];});
     var stu={}; stuIds.forEach(function(id){stu[String(id)]=1;});
-    var extra=allLessons.filter(function(l){ return onOld[String(l.id)] && !mine[String(l.id)] && !l.paid && stu[String(l.student_id)]; });
+    var extra=allLessons.filter(function(l){ return onOld[String(l.id)] && !mine[String(l.id)] && TL.isOwed(l) && stu[String(l.student_id)]; });
     if(!fresh.length && olds.length===1 && olds[0].data.html) return {reopen:olds[0]};
     var union=lessons.concat(extra).sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
     return {olds:olds, fresh:fresh, extra:extra, union:union, dup:lessons.length-fresh.length};
@@ -1385,6 +1392,36 @@
       '<body>'+window._invHTML+'</body></html>');
     w.document.close();
     w.onload=function(){ setTimeout(function(){ w.focus(); w.print(); }, 250); };
+    askIfSent(w);
+  }
+  // Print / Save PDF doesn't know whether the tutor then emailed the PDF, so once the print dialog is done
+  // (afterprint in the print window, or that window closing / this tab getting focus back, whichever comes
+  // first) ask in the app: "Did you send this invoice?". Yes = Save to app (same record, same number) +
+  // mark it sent, exactly as Send on WhatsApp does, so the Ledger row shows "Invoice sent <date>".
+  function askIfSent(w){
+    var meta=window._invMeta, asked=false, t0=Date.now(), poll=null;
+    if(!meta) return;
+    function ask(){
+      if(asked) return; asked=true;
+      clearInterval(poll); window.removeEventListener("focus", onFocus);
+      if(window._invMeta!==meta) return;                       // another invoice was opened meanwhile
+      var who=meta.name||window._invBillTo||nameById[meta.studentId]||"";
+      TL.confirm({ title:"Did you send this invoice?",
+        message:meta.invoiceNo+(who?" for "+who:"")+" ("+TL.sgd(meta.total)+"). If you've emailed or sent the PDF, mark it as sent so the Ledger shows it's been invoiced.",
+        confirmText:"Yes, mark as sent", cancelText:"Not yet" }).then(function(yes){ if(yes && window._invMeta===meta) markSent(); });
+    }
+    function onFocus(){ if(Date.now()-t0>1500) setTimeout(ask, 400); }   // back from the print tab / dialog
+    try{ w.addEventListener("afterprint", function(){ setTimeout(ask, 300); }); }catch(e){}
+    poll=setInterval(function(){ if(w.closed) ask(); }, 600);
+    window.addEventListener("focus", onFocus);
+  }
+  // Save to app (no-op if already saved: same invoice, same number) + record when it went out.
+  async function markSent(){
+    try{ await saveInvoice(); }catch(e){}
+    if(!window._invSavedId) return;                            // save failed (it already showed why)
+    var r=await window.sb.from("invoices").update({sent_at:new Date().toISOString()}).eq("id",window._invSavedId);
+    if(r && r.error){ TL.alert("Saved, but couldn't mark it as sent: "+r.error.message); return; }
+    await loadSentMap(); renderOutstanding(lastUnpaid);
   }
 
   // ---------- load ----------
@@ -1403,7 +1440,10 @@
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
     slots=sl.data||[];
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,level,rate,split,amount,paid,paid_date,status,postponed,compensation");
+    var LCOLS="id,student_id,lesson_date,start_time,end_time,subject,level,rate,split,amount,paid,paid_date,status,postponed,compensation";
+    var ls=await window.sb.from("lessons").select(LCOLS+",charge_note");
+    hasChargeNote=!ls.error;
+    if(ls.error) ls=await window.sb.from("lessons").select(LCOLS);   // db/migration_lesson_charge_note.sql not run yet
     if(ls.error){$("k-pending").textContent="—";$("out-hint").textContent="Couldn't load: "+ls.error.message;return;}
     var lessons=ls.data||[];
     // A cancelled lesson's billable amount is its compensation (0 if none) — everything
@@ -1413,7 +1453,7 @@
 
     allLessons=lessons;
     await loadSentMap(); await seqP;
-    var unpaid=lessons.filter(function(l){return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));});
+    var unpaid=lessons.filter(function(l){return TL.isOwed(l);});
     lastUnpaid=unpaid;
     renderPendingKpi();   // pending follows the month picker (All = all-time total)
     renderMonthKpis();    // collected/projected follow the picked month (All = current month)

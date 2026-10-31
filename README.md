@@ -261,6 +261,23 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-31 — Print asks "Did you send this invoice?"; $0 lessons are settled (v243).**
+  - *Print / Save PDF:* only Save to app and Send on WhatsApp recorded an invoice as sent, so an invoice printed
+    and emailed stayed "Not invoiced". Now, when the print dialog is done (`afterprint`, or the print window
+    closing / the tab getting focus back, whichever comes first, asked once), an in-app dialog asks **Did you
+    send this invoice?** · **Yes, mark as sent** / **Not yet**. Yes saves it exactly like Save to app (no copy if
+    it's already saved; same invoice number as the PDF) and sets `sent_at`, like Send on WhatsApp, so the row shows
+    "Invoice sent <date>". Not yet changes nothing.
+  - *$0 lessons* (e.g. the first lessons from an agency that go to the agent as commission, a free trial) count as
+    settled: new shared helpers `TL.isOwed(l)` / `TL.noCharge(l)` (app.js) are used by the Ledger, Home, the
+    student page and Schedule. They're never "unpaid", a student with only $0 lessons isn't in Who owes you, and
+    they're left out of invoices and reminders entirely (not shown as $0 lines). Lists show a grey **No charge**
+    tag; Schedule shows them as settled. Collected and Booked are unchanged.
+  - *Why no charge (optional):* new column `lessons.charge_note` (migration `db/migration_lesson_charge_note.sql`).
+    The Ledger's Add/Edit lesson form shows "Why no charge?" (Agent commission / Free trial / Make-up lesson, or
+    anything) only when the rate is $0, and clears it if the rate goes back above $0. Shown as "No charge · Agent
+    commission" in the Ledger, the lesson sheet and the student page. Pages still work before the migration is
+    run, just without the reason.
 - **2026-10-30 — Turnstile bot check switched on (v242).** `config.js` now carries the Cloudflare Turnstile site key (public, safe to commit). Because Supabase CAPTCHA protection covers sign-up, password sign-in and password reset, `login.html` now shows the widget in every mode and passes a fresh `captchaToken` to `signUp`, `signInWithPassword` and `resetPasswordForEmail` (tokens are single-use, so it resets after each attempt). Google sign-in is unaffected. Order matters: this code must be live on production **before** the secret key is entered in Supabase → Authentication → Attack protection, or email sign-in breaks. Also fixed the sign-up hint ("At least 8 characters", matching `PW_MIN`).
 - **2026-10-30 — Breached-password check on sign-up (free alternative to Supabase's Pro-only one).** `login.html` now
   checks a new password against Have I Been Pwned before calling `signUp`, using their k-anonymity API: only the first
