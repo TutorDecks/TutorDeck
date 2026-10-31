@@ -190,6 +190,15 @@
   }
 
   // ---- lesson edit ----
+  // Payment on the lesson sheet: "Paid 21 Oct" / "No charge" / a Mark paid button that opens the Ledger's pay window
+  // (payment date + optional screenshot, invoice kept in step) and comes straight back here.
+  function renderLessonPay(l){
+    var box=$("l-pay"); if(!box) return;
+    if(l.paid){ box.innerHTML='<span class="badge paid">Paid'+(l.paid_date?' '+esc(prettyDate(l.paid_date)):'')+'</span>'; return; }
+    if(TL.noCharge(l)){ box.innerHTML='<span class="badge nocharge">No charge</span>'; return; }
+    if(!TL.isOwed(l)){ box.innerHTML='<span class="muted">Not due yet</span>'; return; }
+    box.innerHTML='<a class="btn" id="l-markpaid" href="ledger?pay='+encodeURIComponent(l.id)+'&back='+encodeURIComponent("student?id="+sid)+'">Mark paid</a>';
+  }
   function openLesson(id){
     var l=lessons.filter(function(x){return x.id===id;})[0];if(!l)return;
     lessonId=id;
@@ -198,7 +207,7 @@
     $("l-date").value=l.lesson_date||"";$("l-subject").value=l.subject||"";
     // l.amount is already normalized to the compensation for a cancelled lesson, so this
     // field doubles as the compensation editor here — no separate UI needed.
-    $("l-amount").value=(l.amount!=null?l.amount:"");$("l-paid").checked=!!l.paid;
+    $("l-amount").value=(l.amount!=null?l.amount:"");renderLessonPay(l);
     var lbl=$("l-amount-lbl");if(lbl)lbl.textContent=cancelled?"Compensation (S$)":"Amount (S$)";
     $("l-toggle").textContent=cancelled?"Restore lesson":"Cancel lesson";
     $("l-toggle").classList.remove("btn-danger");
@@ -209,18 +218,16 @@
   function closeLesson(){$("l-modal").classList.remove("on");lessonId=null;}
   async function saveLesson(){
     var l=lessons.filter(function(x){return x.id===lessonId;})[0];if(!l)return;
-    var date=$("l-date").value,paid=$("l-paid").checked,msg=$("l-msg");
+    var date=$("l-date").value,msg=$("l-msg");
     if(!date){msg.textContent="Set a date.";msg.className="msg err";return;}
     var val=Number($("l-amount").value)||0;
-    var fields={lesson_date:date,subject:$("l-subject").value.trim()||null,paid:paid,paid_date:paid?date:null};
+    var fields={lesson_date:date,subject:$("l-subject").value.trim()||null};   // payment is recorded with Mark paid
     if(l.status==="cancelled") fields.compensation=val>0?val:null;
     else fields.amount=val;
     var b=$("l-save");b.disabled=true;
     var res=await window.sb.from("lessons").update(fields).eq("id",lessonId);
     b.disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
-    // Ticking / unticking Paid here must flow through to any invoice covering this lesson (as in the Ledger).
-    if(!!l.paid!==paid){ try{ await TL.syncInvoicesForLessons([lessonId], fields.paid_date); }catch(e){ console.warn("Invoice sync skipped:",e); } }
     closeLesson();load();
   }
   function abortCancel(){

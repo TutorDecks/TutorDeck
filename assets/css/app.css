@@ -1,5 +1,5 @@
-/* v244 */
-/* v244 */
+/* v245 */
+/* v245 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -847,3 +847,7 @@ html.is-offline .btn-primary,html.is-offline .btn-gold,html.is-offline .cp-btn.p
   .td-form .modal-actions.inv-bar .inv-ib{flex:0 0 auto;min-height:52px}
   .td-form .modal-actions.inv-bar .inv-send{flex:1 1 auto;justify-content:center;min-height:52px}
 }
+
+/* student page lesson sheet: payment status / Mark paid */
+.l-pay{display:flex;align-items:center;min-height:44px}
+.l-pay .btn{text-decoration:none}
