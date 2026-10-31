@@ -261,6 +261,17 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-31 — Remind: everything owed, names the invoice, "Reminded 31 Oct" (v244).**
+  - Remind used the Ledger's month picker, so with October selected a parent who also owed for September was only
+    reminded about October. It now always covers **everything the student owes** ("fees for September & October
+    come to $270.00 (3 lessons)"). The month picker still scopes what the list shows.
+  - When those lessons are all on invoices that went out, the default message names them: "(3 lessons, invoice
+    INV-0012)". Custom templates can use `{invoice}`.
+  - Tapping Remind records it (`students.reminded_at`, migration `db/migration_reminded_at.sql`; siblings in a
+    household all get it). The row shows "Reminded 31 Oct" when it's newer than the invoice: desktop
+    "Invoice sent 25 Oct · Reminded 31 Oct", phone just the latest ("Reminded 31 Oct", or "Not invoiced" while
+    that's still the next step). Like Send on WhatsApp, TutorDeck records the tap; it can't see the message go.
+    Works as before until the migration is run.
 - **2026-10-31 — Print asks "Did you send this invoice?"; $0 lessons are settled (v243).**
   - *PDF → "Did you send this invoice?":* a downloaded PDF used to leave the row "Not invoiced" even after it was
     emailed. Now an in-app dialog asks **Yes, mark as sent** / **Not yet**. Yes sets `sent_at` on the same invoice

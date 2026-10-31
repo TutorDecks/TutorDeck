@@ -10,7 +10,7 @@
     return x[2]+"\u2013"+y[2]+" "+M[y[1]-1];
   }
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
-  var hasChargeNote = false;
+  var hasChargeNote = false, remindedById = {}, hasReminded = false, invNoByLesson = {};
   var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, levelById = {}, endById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   // Payment options on invoices: PayNow QR (if set up) and bank transfer (if bank details are filled in), or both.
   function hasBank(p){ return !!(p && p.bank_account_no); }
@@ -106,13 +106,13 @@
   // ---- invoice "sent" status per lesson (needs db/migration_invoice_sent.sql; quietly off without it) ----
   var sentByLesson={}, sentKnown=false;
   async function loadSentMap(){
-    sentByLesson={}; sentKnown=false;
+    sentByLesson={}; sentKnown=false; invNoByLesson={};
     try{
-      var r=await window.sb.from("invoices").select("data,sent_at").not("sent_at","is",null);
+      var r=await window.sb.from("invoices").select("invoice_no,data,sent_at").not("sent_at","is",null);
       if(r.error) return;
-      sentKnown=true;
+      sentKnown=true; invNoByLesson={};
       (r.data||[]).forEach(function(v){ var ids=(v.data&&v.data.lesson_ids)||[]; ids.forEach(function(id){
-        if(!sentByLesson[id]||v.sent_at>sentByLesson[id]) sentByLesson[id]=v.sent_at; }); });
+        if(!sentByLesson[id]||v.sent_at>sentByLesson[id]){ sentByLesson[id]=v.sent_at; invNoByLesson[id]=v.invoice_no; } }); });
     }catch(e){}
   }
   // A set of unpaid lessons is "sent" only when every one of them is on an invoice that went out;
@@ -187,22 +187,27 @@
         var hhRows=members.reduce(function(a,m){return a.concat(groups[m]);},[]), hhSent=sentFor(hhRows);
         var hhHtml='<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all lessons in this household"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span>'+ageTag(daysSince(hhOldest))+'</span>'+
           '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+' <small>total</small></span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite'+(sentKnown&&!hhSent?' need':'')+'" data-hhinv="'+members.join(",")+'">'+(!sentKnown?'Invoice together':(hhSent?'Resend invoice':'Send invoice'))+'</button>'+hhSelBtns+'<button class="mark" data-hhpayall="'+hhLessonIds.join(",")+'">Mark all paid</button></span></div>'+members.map(studentCard).join("")+'</div>';
-        blocks.push({key:'hh:'+h,html:hhHtml,name:hhLabel,sub:members.map(function(m){return (nameById[m]||'').split(' ')[0];}).join(', ')+' · '+nLes+' lesson'+(nLes===1?'':'s'),sum:hhSum,oldest:hhOldest,hh:true,sent:hhSent});
+        blocks.push({key:'hh:'+h,html:hhHtml,name:hhLabel,sub:members.map(function(m){return (nameById[m]||'').split(' ')[0];}).join(', ')+' · '+nLes+' lesson'+(nLes===1?'':'s'),sum:hhSum,oldest:hhOldest,hh:true,sent:hhSent,rem:members.reduce(function(m,id){var r=remindedById[id];return (r&&(!m||r>m))?r:m;},null)});
         return;
       }
       var sum1=groups[id].reduce(function(t,l){return t+Number(l.amount);},0);
-      blocks.push({key:id,html:studentCard(id),name:nameById[id]||"—",sub:groups[id].length+' lesson'+(groups[id].length===1?'':'s'),sum:sum1,oldest:oldestOf(id),sent:sentFor(groups[id])});
+      blocks.push({key:id,html:studentCard(id),name:nameById[id]||"—",sub:groups[id].length+' lesson'+(groups[id].length===1?'':'s'),sum:sum1,oldest:oldestOf(id),sent:sentFor(groups[id]),rem:remindedById[id]||null});
     });
     outBlocks={};blocks.forEach(function(bk){outBlocks[bk.key]=bk;});
     function initials(n){var w=String(n||"").replace(/[^A-Za-z0-9 ]/g," ").split(/\s+/).filter(Boolean);return ((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();}
     $("outstanding").innerHTML='<div class="card owe-list">'+blocks.map(function(bk){
       var d=daysSince(bk.oldest), cls=d>=30?"bad":"";
       var since='<span class="lw">unpaid </span>since '+prettyDate(bk.oldest), need=sentKnown&&!bk.sent, sub;
+      // Reminded after the invoice went out (or with no invoice): desktop shows both; a phone shows just the latest
+      // ("Reminded 31 Oct"), or "Not invoiced" when that's still the next step.
+      var remTxt=(bk.rem && (!bk.sent || bk.rem>bk.sent)) ? 'Reminded '+fmtSent(bk.rem) : '', dot='<span class="inv-dot"> · </span>';
       if(bk.sent){
         // sent: lead with the invoice; the age only shows on phone once it's overdue (30+ days)
-        sub='Invoice sent '+fmtSent(bk.sent)+'<span class="'+(cls?'':'lc')+'"> · <span class="'+cls+'"><span class="lc">'+esc(bk.sub)+' · </span>'+since+'</span></span>';
+        var lead=remTxt ? '<span class="lc">Invoice sent '+fmtSent(bk.sent)+' · </span>'+remTxt : 'Invoice sent '+fmtSent(bk.sent);
+        sub=lead+'<span class="'+(cls?'':'lc')+'"> · <span class="'+cls+'"><span class="lc">'+esc(bk.sub)+' · </span>'+since+'</span></span>';
       } else {
-        sub=(need?'<span class="inv-need">Not invoiced</span><span class="inv-dot"> · </span>':'')+'<span class="'+cls+'"><span class="lc">'+esc(bk.sub)+' · </span>'+since+'</span>';
+        sub=(need ? '<span class="inv-need">Not invoiced</span>'+(remTxt?'<span class="lc"> · '+remTxt+'</span>':'')+dot : (remTxt?remTxt+dot:''))+
+          '<span class="'+cls+'"><span class="lc">'+esc(bk.sub)+' · </span>'+since+'</span>';
       }
       return '<button type="button" class="owe-row'+(sentKnown&&!bk.sent?' need':'')+'" data-owe="'+esc(bk.key)+'">'+
         '<span class="owe-av'+(bk.hh?' hh':'')+'">'+(bk.hh?'⌂':esc(initials(bk.name)))+'</span>'+
@@ -329,17 +334,41 @@
     if(waNumber(contactById[id]) && needPayCard("reminder")){ payCard("reminder",[id],null,function(){ remindNow(id); }); return; }
     remindNow(id);
   }
+  // Remind covers EVERYTHING the student owes, whatever month the Ledger is showing (the month picker is for
+  // looking, not for chasing). If the lessons are all on invoices that went out, the message names them.
+  function owedFor(ids){ var want={}; ids.forEach(function(id){want[id]=1;}); return (lastUnpaid||[]).filter(function(l){return want[l.student_id];}); }
+  function invoicesFor(rows){
+    var nos=[]; for(var i=0;i<rows.length;i++){ var n=invNoByLesson[rows[i].id]; if(!n) return ""; if(nos.indexOf(n)<0) nos.push(n); }
+    return nos.length<=1 ? (nos[0]||"") : nos.slice(0,-1).join(", ")+" & "+nos[nos.length-1];
+  }
+  // Default templates only: "({count} lessons)" → "({count} lessons, invoice INV-0012)". Tutors' own templates can use {invoice}.
+  function withInvoice(tpl, invs){
+    if(!invs || (profile&&profile.reminder_message)) return tpl;
+    return tpl.replace("({count} lessons)","({count} lessons, "+(/[,&]/.test(invs)?"invoices":"invoice")+" {invoice})");
+  }
+  function sendReminder(ids, num, targetId, who, possessiveOf){
+    var rows=owedFor(ids); if(!rows.length) return;
+    var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0), invs=invoicesFor(rows);
+    var vars={name:recipientById[targetId]||nameById[targetId]||"",student:who,business:TL.payeeName(profile,"your tutor"),
+      amount:TL.sgd(sum),count:rows.length,invoice:invs,paynow:(profile&&profile.paynow_id)||"",
+      month:monthsLabel(rows),date:prettyDate(iso(new Date())),year:String(new Date().getFullYear())};
+    var tpl=withInvoice(reminderTpl(profile, !!recipientById[targetId]), invs); vars.student_s=possessive(possessiveOf); vars.bank=bankLine(profile);
+    window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
+    noteReminded(ids);
+  }
+  // Remember when each student was last reminded (shown as "Reminded 3 Nov" on their row). Like Send on WhatsApp,
+  // TutorDeck can't see whether the message was actually sent, so this records the tap.
+  async function noteReminded(ids){
+    if(!hasReminded) return;
+    var at=new Date().toISOString();
+    ids.forEach(function(id){ remindedById[id]=at; });
+    renderOutstanding(lastUnpaid);
+    try{ await window.sb.from("students").update({reminded_at:at}).in("id",ids); }catch(e){}
+  }
   function remindNow(id){
     var num=waNumber(contactById[id]);
     if(!num){TL.alert({title:"No WhatsApp number",message:"There\u2019s no WhatsApp number saved for "+(nameById[id]||"this student")+".\n\nAdd one on the Students page (Edit \u2192 WhatsApp number), then try again."});return;}
-    var rows=outGroups[id]||[];
-    if(!rows.length)return;
-    var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
-    var vars={name:recipientById[id]||nameById[id]||"",student:nameById[id]||"",business:TL.payeeName(profile,"your tutor"),
-      amount:TL.sgd(sum),count:rows.length,invoice:"",paynow:(profile&&profile.paynow_id)||"",
-      month:monthsLabel(rows),date:prettyDate(iso(new Date())),year:String(new Date().getFullYear())};
-    var tpl=reminderTpl(profile, !!recipientById[id]); vars.student_s=possessive(vars.student); vars.bank=bankLine(profile);
-    window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
+    sendReminder([id], num, id, nameById[id]||"", nameById[id]||"");
   }
 
   function remindMany(ids){
@@ -350,16 +379,9 @@
     var num="", targetId=null;
     ids.some(function(id){var n=waNumber(contactById[id]);if(n){num=n;targetId=id;return true;}return false;});
     if(!num){TL.alert({title:"No WhatsApp number",message:"None of these students has a WhatsApp number saved.\n\nAdd one on the Students page (Edit \u2192 WhatsApp number), then try again."});return;}
-    var all=[]; ids.forEach(function(id){(outGroups[id]||[]).forEach(function(l){all.push(l);});});
-    if(!all.length)return;
-    var sum=all.reduce(function(t,l){return t+Number(l.amount);},0);
     var names=ids.map(function(id){return nameById[id]||"";}).filter(Boolean);
     var who=names.length===2?names[0]+" & "+names[1]:names.join(", ");
-    var vars={name:recipientById[targetId]||nameById[targetId]||"",student:who,business:TL.payeeName(profile,"your tutor"),
-      amount:TL.sgd(sum),count:all.length,invoice:"",paynow:(profile&&profile.paynow_id)||"",
-      month:monthsLabel(all),date:prettyDate(iso(new Date())),year:String(new Date().getFullYear())};
-    var tpl=reminderTpl(profile, !!recipientById[targetId]); vars.student_s=possessive(firstNames(ids)); vars.bank=bankLine(profile);
-    window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
+    sendReminder(ids, num, targetId, who, firstNames(ids));
   }
   function periodLabel(){return period.mode==="all"?"All time":new Date(period.y,period.m,1).toLocaleString("en-SG",{month:"long",year:"numeric"});}
   function fillOpt(id,pairs,label){
@@ -1021,7 +1043,8 @@
   }
   function payCard(kind, ids, onlyIds, resume){
     var p=profile||{}, isInv=kind==="invoice";
-    var rows=[]; ids.forEach(function(id){ (outGroups[id]||[]).forEach(function(l){ if(!onlyIds||onlyIds.indexOf(String(l.id))>-1) rows.push(l); }); });
+    var rows=[]; (kind==="reminder" ? owedFor(ids) : ids.reduce(function(a,id){ return a.concat(outGroups[id]||[]); },[]))   // reminders: everything owed
+      .forEach(function(l){ if(!onlyIds||onlyIds.indexOf(String(l.id))>-1) rows.push(l); });
     var sum=Math.round(rows.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
     var names=ids.map(function(id){return nameById[id]||"";}).filter(Boolean);
     var who=names.length===2?names[0]+" & "+names[1]:names.join(", ");
@@ -1496,7 +1519,11 @@
     if(pr.error) pr=await window.sb.from("profiles").select(PCOLS).eq("id",userId).single();   // older DB without full_name
     profile=pr.error?null:pr.data;
 
-    var st=await window.sb.from("students").select("id,name,active,contact,recipient_name,pay_by_bank,level,end_date").order("name");
+    var SCOLS="id,name,active,contact,recipient_name,pay_by_bank,level,end_date";
+    var st=await window.sb.from("students").select(SCOLS+",reminded_at").order("name");
+    hasReminded=!st.error;
+    if(st.error) st=await window.sb.from("students").select(SCOLS).order("name");   // db/migration_reminded_at.sql not run yet
+    remindedById={}; (st.data||[]).forEach(function(s){ if(s.reminded_at) remindedById[s.id]=s.reminded_at; });
     students=st.data||[];nameById={};contactById={};recipientById={};payByBankById={};levelById={};endById={};householdBy={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;payByBankById[s.id]=!!s.pay_by_bank;levelById[s.id]=s.level||"";endById[s.id]=s.end_date||null;householdBy[s.id]=(function(c){var d=(c||"").replace(/\D/g,"");if(d.length===10&&d.slice(0,2)==="65")d=d.slice(2);return d||null;})(s.contact);});
     studentOptions();
 
