@@ -231,10 +231,10 @@
   // settings#paid / settings#messages (from Home's Get paid faster card): scroll there and open the right part.
   function jumpTo() {
     var h = location.hash.slice(1), sec = h && document.getElementById(h);
-    if (!sec || (h !== "paid" && h !== "messages")) return;
-    if (h === "messages") $("msg-more").open = true;
-    sec.scrollIntoView({ block: "start" });
-    var f = h === "paid" ? $("pid") : $("rmsg");
+    if (!sec || (h !== "paid" && h !== "messages" && h !== "imsg")) return;   // #imsg: from the invoice's Message bubble
+    if (h !== "paid") $("msg-more").open = true;
+    (h === "imsg" ? $("messages") : sec).scrollIntoView({ block: "start" });
+    var f = h === "paid" ? $("pid") : (h === "imsg" ? $("imsg") : $("rmsg"));
     setTimeout(function () { try { f.focus({ preventScroll: true }); } catch (e) {} }, 80);
   }
   TL.requireAuth("settings", init);

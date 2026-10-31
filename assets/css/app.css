@@ -1,5 +1,5 @@
-/* v242 */
-/* v242 */
+/* v243 */
+/* v243 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -108,6 +108,7 @@ body:has(#view)::after{content:"";position:fixed;z-index:9999;left:max(24px,calc
 .badge{display:inline-flex;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700}
 .badge.paid{background:rgba(15,118,110,.12);color:var(--teal)}
 .badge.owed{background:rgba(180,67,47,.12);color:var(--owed)}
+.badge.nocharge{background:#F1EFEA;color:var(--muted);font-weight:600}
 .empty{padding:48px 24px;text-align:center;color:var(--muted)}
 .empty h3{color:var(--ink);margin-bottom:6px;font-size:18px}
 .empty .empty-hint{max-width:340px;margin:6px auto 0;font-size:14px;line-height:1.5;color:var(--muted)}
@@ -809,3 +810,40 @@ html.is-offline .btn-primary,html.is-offline .btn-gold,html.is-offline .cp-btn.p
 .ret-row span{color:var(--muted);font-size:13px}
 .ret-row .ret-go{margin-left:auto;color:var(--accent);font-weight:700}
 .ret-row:hover{background:var(--cream)}
+
+/* invoice window: × to close, status line, icon buttons + one main action */
+#inv-backdrop .modal{position:relative}
+.inv-x{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:50%;border:none;background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3}
+.inv-x:hover{background:var(--bg);color:var(--ink)}
+#inv-body{padding-top:30px}
+.inv-bar{align-items:center;gap:8px;margin-top:16px}
+.inv-state{margin-right:auto;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:2px;min-width:0}
+.inv-sent{color:var(--teal);font-weight:700}
+.inv-link{border:none;background:none;padding:0;font:inherit;font-weight:700;color:var(--navy);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.inv-ib{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:56px;height:52px;padding:0 8px;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--navy);font:inherit;font-size:11.5px;font-weight:700;cursor:pointer}
+.inv-ib:hover{background:var(--bg)}
+.inv-ib:disabled{opacity:.55;cursor:wait}
+.inv-send{display:inline-flex;align-items:center;gap:8px;height:52px;padding:0 20px;border-radius:12px}
+/* "Message" button: the text that goes with the invoice, in a bubble above the bar (not part of the invoice) */
+.inv-msg-w{position:relative}
+.inv-ib[aria-expanded="true"]{background:var(--bg);border-color:var(--navy)}
+.inv-bubble{position:absolute;bottom:calc(100% + 10px);right:0;width:min(360px,calc(100vw - 32px));background:var(--paper);border:1px solid var(--line);border-radius:16px;box-shadow:0 14px 34px rgba(19,35,63,.18);padding:10px 10px 12px;z-index:6}
+.inv-bubble[hidden]{display:none}
+.inv-bubble-h{display:flex;align-items:center;gap:8px;padding:0 0 6px 4px;font-size:13px;font-weight:700;color:var(--navy)}
+.inv-bubble-h>span:first-child{margin-right:auto}
+.inv-msg-hint{font-size:12.5px;color:var(--teal);font-weight:700}
+.inv-msg-copy{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--navy);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.inv-msg-copy:hover{background:var(--bg)}
+.inv-msg-copy svg[data-x]{display:none}
+.inv-msg-copy.done{color:var(--teal)} .inv-msg-copy.done svg{display:none} .inv-msg-copy.done svg[data-x]{display:block}
+.inv-msg-text:focus{border-color:var(--teal);background:#fff}
+.inv-msg-foot{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted);padding:8px 4px 0}
+.inv-msg-foot a{color:var(--navy);font-weight:700;white-space:nowrap}
+@media (max-width:820px){ .inv-bubble{right:auto;left:0} }
+.inv-msg-text{display:block;width:100%;box-sizing:border-box;border:1px solid transparent;resize:vertical;font-family:inherit;outline:none;margin:0;max-height:40vh;overflow:auto;background:#E7F6EF;border-radius:12px 12px 12px 4px;padding:10px 12px;font-size:13.5px;line-height:1.5;color:var(--ink);white-space:pre-line;word-break:break-word}
+@media (max-width:820px){
+  .td-form .modal-actions.inv-bar{flex-wrap:wrap}
+  .td-form .modal-actions.inv-bar .inv-state{flex:1 1 100%;justify-content:center;margin:0 0 4px}
+  .td-form .modal-actions.inv-bar .inv-ib{flex:0 0 auto;min-height:52px}
+  .td-form .modal-actions.inv-bar .inv-send{flex:1 1 auto;justify-content:center;min-height:52px}
+}

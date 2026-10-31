@@ -1,0 +1,11 @@
+-- =====================================================================
+-- Reason for a $0 lesson (v243), e.g. "Agent commission" or "Free trial".
+-- Run once in the Supabase SQL editor BEFORE the v243 code reaches dev or main
+-- (previews use the same database). Safe to re-run.
+--
+-- Only ADDS one optional column. It does not change any existing row: it starts empty (null) for
+-- every lesson. The Ledger's Add/Edit lesson form fills it only when the lesson fee is $0, and clears
+-- it if the fee goes back above $0. Until this is run, pages work as before, just without the reason.
+-- lessons already has row-level security (tutor_id = auth.uid()).
+-- =====================================================================
+alter table public.lessons add column if not exists charge_note text;

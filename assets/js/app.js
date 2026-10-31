@@ -815,6 +815,11 @@ window.TL = (function () {
   }
   // Has the student's end date already passed? (so they belong in Discontinued)
   function isEnded(endDate) { return !!endDate && endDate < todayISO(); }
+  // Money owed for a lesson: it happened (or was cancelled with compensation), isn't paid, and costs more than $0.
+  // A $0 lesson (e.g. the first lessons from an agency go to the agent as commission, a free trial) is settled
+  // by itself: never "unpaid", never in Who owes you, invoices or reminders.
+  function isOwed(l) { return !!l && !l.paid && Number(l.amount) > 0 && (l.status === "done" || l.status === "cancelled"); }
+  function noCharge(l) { return !!l && l.status !== "cancelled" && l.status !== "scheduled" && !l.paid && !(Number(l.amount) > 0); }
   // Is a given lesson date beyond the student's end date? (so don't project/generate it)
   function pastEnd(endDate, dateISO) { return !!endDate && dateISO > endDate; }
 
@@ -860,7 +865,7 @@ window.TL = (function () {
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,
-           todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd,
+           todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd, isOwed: isOwed, noCharge: noCharge,
            dialog: dialog, firstName: firstName, subLevel: subLevel, yearLevel: yearLevel, cvTip: function () { cvTip(); },
            setHello: function (f, full) { setHello(f, full); }, setBrand: function (b) { setBrand(b); },
            // Name parents see (invoices, PayNow, WhatsApp): tuition name, else the tutor's own name, else generic.

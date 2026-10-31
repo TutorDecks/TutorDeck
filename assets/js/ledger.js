@@ -10,6 +10,7 @@
     return x[2]+"\u2013"+y[2]+" "+M[y[1]-1];
   }
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
+  var hasChargeNote = false;
   var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, levelById = {}, endById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   // Payment options on invoices: PayNow QR (if set up) and bank transfer (if bank details are filled in), or both.
   function hasBank(p){ return !!(p && p.bank_account_no); }
@@ -122,6 +123,8 @@
     for(var i=0;i<rows.length;i++){ var d=sentByLesson[rows[i].id]; if(!d) return null; if(!latest||d>latest) latest=d; }
     return latest;
   }
+  // "No charge" (+ the reason, e.g. "Agent commission") for a $0 lesson: settled, so a neutral grey tag.
+  function noChargeBadge(l){ return '<span class="badge nocharge">No charge'+(l.charge_note?' · '+esc(l.charge_note):'')+'</span>'; }
   function fmtSent(d){ return new Date(d).toLocaleDateString("en-SG",{day:"numeric",month:"short"}); }
 
   function renderOutstanding(unpaidAll){
@@ -397,7 +400,7 @@
     if(fSub)rows=rows.filter(function(l){return (l.subject||"")===fSub;});
     if(fLvl)rows=rows.filter(function(l){return (l.level||"")===fLvl;});
     if(stat)rows=rows.filter(function(l){
-      if(stat==="unpaid")return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));
+      if(stat==="unpaid")return TL.isOwed(l);
       if(stat==="paid")return l.paid;
       if(stat==="postponed")return !!l.postponed;
       return l.status===stat; // scheduled / cancelled
@@ -435,7 +438,7 @@
       var attrs=(isToday&&!placed?(placed=true,' id="rec-today"'):"")+(cls.length?' class="'+cls.join(" ")+'"':"");
       var badge=l.status==="cancelled"
         ?'<span class="kind-tag">cancelled</span>'+(l.amount>0?(l.paid?' <span class="badge paid">Paid</span>':' <span class="badge owed">Unpaid</span>'):'')
-        :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
+        :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':(TL.noCharge(l)?noChargeBadge(l):'<span class="badge owed">Unpaid</span>')));
       if(l.postponed)badge+=' <span class="kind-tag" style="background:#B45309;color:#fff">postponed</span>';
       var cancelBtn=l.status==="cancelled"
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
@@ -468,7 +471,7 @@
   function openRecDetail(id){
     var l=monthById[id]; if(!l)return;
     var canc=l.status==="cancelled", sched=l.status==="scheduled";
-    var tag=canc?'<span class="rd-tag">Cancelled</span>':(l.paid?'<span class="rd-tag paid">Paid</span>':(sched?'<span class="rd-tag">Upcoming</span>':'<span class="rd-tag owed">Unpaid</span>'));
+    var tag=canc?'<span class="rd-tag">Cancelled</span>':(l.paid?'<span class="rd-tag paid">Paid</span>':(sched?'<span class="rd-tag">Upcoming</span>':(TL.noCharge(l)?'<span class="rd-tag">No charge</span>':'<span class="rd-tag owed">Unpaid</span>')));
     if(l.postponed)tag+=' <span class="rd-tag post">Postponed</span>';
     if(l.one_off)tag+=' <span class="rd-tag">✦ One-off</span>';
     var time=(l.start_time&&l.end_time)?(hm(l.start_time)+"–"+hm(l.end_time)):"";
@@ -479,6 +482,7 @@
     var items=[["Subject",l.subject?esc(l.subject):"—"],["Level",l.level?esc(l.level):"—"]];
     if(canc)items.push(["Compensation",TL.sgd(l.amount)]);
     items.push(["Status",tag]);
+    if(l.charge_note && !(Number(l.amount)>0)) items.push(["Why no charge",esc(l.charge_note)]);
     $("rd-body").innerHTML='<div class="rd-list">'+items.map(function(r){return '<div class="rd-row"><span class="rd-k">'+r[0]+'</span><span class="rd-v">'+r[1]+'</span></div>';}).join("")+'</div>';
     var canPay=!l.paid&&!canc&&l.amount>0;
     $("rd-actions").innerHTML=(canPay?'<button class="btn rd-primary" id="rd-pay">Mark '+TL.sgd(l.amount)+' as paid</button>':'')+
@@ -558,7 +562,7 @@
       var amt=Number(l.amount)||0, m=l.lesson_date.slice(0,7); months[m]=months[m]||{paid:0,owed:0,n:0}; months[m].n++;
       var billable=l.status==="cancelled"?amt>0:l.status==="done";
       if(l.paid){months[m].paid+=amt;tot.paid+=amt;} else if(billable){months[m].owed+=amt;tot.owed+=amt;}
-      lines.push([l.lesson_date,nameById[l.student_id]||"",l.subject||"",l.level||"",amt.toFixed(2),l.status,l.paid?"Yes":"No",l.paid_date||""].map(csvCell).join(","));
+      lines.push([l.lesson_date,nameById[l.student_id]||"",l.subject||"",l.level||"",amt.toFixed(2),l.status,l.paid?"Yes":(TL.noCharge(l)?"No charge":"No"),l.paid_date||""].map(csvCell).join(","));
     });
     lines.push("","Monthly summary","Month,Lessons,Collected (S$),Still owed (S$)");
     Object.keys(months).sort().forEach(function(m){lines.push([m,months[m].n,months[m].paid.toFixed(2),months[m].owed.toFixed(2)].join(","));});
@@ -577,7 +581,7 @@
     var lines=[head.join(",")];
     rows.forEach(function(l){
       lines.push([l.lesson_date,hm(l.start_time),hm(l.end_time),nameById[l.student_id]||"",l.subject||"",l.level||"",
-        Number(l.amount).toFixed(2),l.status,l.paid?"Yes":"No",l.paid_date||""].map(csvCell).join(","));
+        Number(l.amount).toFixed(2),l.status,l.paid?"Yes":(TL.noCharge(l)?"No charge":"No"),l.paid_date||""].map(csvCell).join(","));
     });
     var csv="\ufeff"+lines.join("\r\n");
     var blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
@@ -759,6 +763,7 @@
   function recalcCost(){
     var r=parseFloat($("m-rate").value),s=$("m-start").value,e=$("m-end").value;
     $("m-cost").value=(r>=0&&s&&e&&e>s)?TL.sgd(splitAmt(r,s,e,mSplit())):"";
+    if($("m-note-f")) $("m-note-f").style.display=(hasChargeNote && $("m-rate").value!=="" && r===0)?"":"none";   // $0 lesson: say why
   }
   function prefillFromSlot(){
     var sid=$("m-student").value;
@@ -787,12 +792,13 @@
       $("m-subject").value=lesson.subject||"";$("m-level").value=lesson.level||"";
       $("m-start").value=hm(lesson.start_time);$("m-end").value=hm(lesson.end_time);
       $("m-rate").value=lesson.rate;$("m-split").value=lesson.split||1;$("m-paid").checked=!!lesson.paid;
+      $("m-note").value=lesson.charge_note||"";
       recalcCost();
     }else{
       editLessonId=null;
       $("m-title").textContent="Add lesson";$("m-save").textContent="Save lesson";
       $("m-date").value=todayISO();$("m-paid").checked=false;
-      ["m-subject","m-level","m-start","m-end","m-rate","m-cost"].forEach(function(id){$(id).value="";});
+      ["m-subject","m-level","m-start","m-end","m-rate","m-cost","m-note"].forEach(function(id){$(id).value="";});
       $("m-split").value="1";
       prefillFromSlot();
     }
@@ -810,6 +816,7 @@
     var fields={student_id:sid,lesson_date:date,start_time:start,end_time:end,
       subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,split:split,amount:splitAmt(rate,start,end,split),
       status:statusFor(date,end),paid:paid,paid_date:paid?date:null,compensation:null};
+    if(hasChargeNote) fields.charge_note=(fields.amount>0)?null:($("m-note").value.trim().slice(0,60)||null);   // only a $0 lesson keeps a reason
     // Postponing lives on the Calendar (tap a lesson → Postpone). Editing here keeps a lesson's ↻ as it was;
     // a brand-new lesson starts not postponed.
     if(!editLessonId) fields.postponed=false;
@@ -980,8 +987,9 @@
   function presentInvoice(data, qrUrl, meta){
     window._invHTML=invoiceHTML(data,qrUrl); window._invSaved=false; window._invSavedId=null; window._invSaving=null;
     window._invMeta=meta; window._invBillTo=data.student||null;   // kept on the saved invoice, so it survives the student being removed
+    window._invSentAt=null;
     $("inv-body").innerHTML=window._invHTML; renderInvNote();
-    $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
+    renderInvState(); renderInvMsg();
     $("inv-backdrop").classList.add("on");
   }
   // Which payment options this tutor has set up. Every invoice shows all of them.
@@ -1203,7 +1211,7 @@
     var onOld={}; olds.forEach(function(v){ v.data.lesson_ids.forEach(function(x){onOld[String(x)]=1;}); });
     var fresh=lessons.filter(function(l){return !onOld[String(l.id)];});
     var stu={}; stuIds.forEach(function(id){stu[String(id)]=1;});
-    var extra=allLessons.filter(function(l){ return onOld[String(l.id)] && !mine[String(l.id)] && !l.paid && stu[String(l.student_id)]; });
+    var extra=allLessons.filter(function(l){ return onOld[String(l.id)] && !mine[String(l.id)] && TL.isOwed(l) && stu[String(l.student_id)]; });
     if(!fresh.length && olds.length===1 && olds[0].data.html) return {reopen:olds[0]};
     var union=lessons.concat(extra).sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
     return {olds:olds, fresh:fresh, extra:extra, union:union, dup:lessons.length-fresh.length};
@@ -1237,8 +1245,9 @@
     window._invHTML=v.data.html; window._invSaved=true; window._invSavedId=v.id; window._invSaving=null;
     window._invTitle=v.data.title||("Invoice_"+v.invoice_no); window._invBillTo=v.data.name||null;
     window._invMeta=Object.assign({invoiceNo:v.invoice_no,total:Number(v.total),issuedDate:v.issued_date,lessonIds:v.data.lesson_ids},meta);
+    window._invSentAt=v.sent_at||null;
     $("inv-body").innerHTML=v.data.html; window._invNote=null; renderInvNote();
-    $("inv-save").textContent="Saved \u2713";$("inv-save").disabled=true;
+    renderInvState(); renderInvMsg();
     $("inv-backdrop").classList.add("on");
   }
   // After saving a new invoice: older unpaid invoices whose lessons are all on the new one are marked
@@ -1255,6 +1264,80 @@
       await window.sb.from("invoices").update({data:d}).eq("id",olds[i].id);
     }
   }
+  // Where this invoice stands, in one line above the buttons: "Not sent yet · Mark as sent" or "Sent 31 Oct ✓".
+  // It saves itself the first time it's sent, downloaded or marked as sent (same number, never a copy).
+  function renderInvState(){
+    var st=$("inv-state"); if(!st) return;
+    var sent=window._invSentAt;
+    // Sent is TutorDeck's assumption for WhatsApp (it can't see whether you pressed send there), so it can be undone.
+    st.innerHTML=sent ? '<span class="inv-sent">Sent '+esc(fmtSent(sent))+' \u2713</span><span class="inv-dot"> \u00b7 </span><button type="button" class="inv-link" id="inv-unsend">Undo</button>'
+      : '<span>Not sent yet</span><span class="inv-dot"> \u00b7 </span><button type="button" class="inv-link" id="inv-mark">Mark as sent</button>';
+    var mk=$("inv-mark"); if(mk) mk.onclick=function(){ mk.disabled=true; markSent(); };
+    var un=$("inv-unsend"); if(un) un.onclick=function(){ un.disabled=true; unmarkSent(); };
+  }
+  function waLabel(t){ var l=$("inv-wa")&&$("inv-wa").querySelector(".lbl"); if(l) l.textContent=t; }
+  function flashState(t){ var st=$("inv-state"); if(!st) return; st.innerHTML='<span class="inv-sent">'+esc(t)+'</span>'; setTimeout(renderInvState, 1800); }
+  // ⬇ PDF: a real PDF file, straight to Downloads (no print dialog), named after the invoice and student.
+  function loadJsPDF(){
+    if(window.jspdf&&window.jspdf.jsPDF) return Promise.resolve();
+    return new Promise(function(resolve,reject){
+      var sc=document.createElement("script"); sc.src="assets/vendor/jspdf-2.5.2.umd.min.js";
+      sc.onload=function(){ (window.jspdf&&window.jspdf.jsPDF)?resolve():reject(new Error("PDF library didn't load")); };
+      sc.onerror=function(){ reject(new Error("PDF library didn't load")); };
+      document.head.appendChild(sc);
+    });
+  }
+  function invFileName(m){
+    var who=m.name||window._invBillTo||nameById[m.studentId]||"";
+    return (m.invoiceNo+(who?"_"+who:"")).replace(/[^\w-]+/g,"_").replace(/_+/g,"_");
+  }
+  async function downloadPdf(){
+    if(!window._invHTML||!window._invMeta) return;
+    var m=window._invMeta, b=$("inv-pdf"); b.disabled=true;
+    try{
+      if(!window._invSaved){ try{ await saveInvoice(); }catch(e){} }
+      await loadH2C(); await loadJsPDF();
+      // Render a desktop-width copy off screen, so a PDF made on a phone looks like an A4 invoice, not a phone screen.
+      var box=document.createElement("div");
+      box.style.cssText="position:fixed;left:-10000px;top:0;width:640px;background:#fff;padding:0";
+      box.innerHTML=window._invHTML; document.body.appendChild(box);
+      var canvas;
+      try{ canvas=await window.html2canvas(box.firstElementChild||box,{backgroundColor:"#ffffff",scale:2,useCORS:true,windowWidth:1100}); }
+      finally{ box.remove(); }
+      var pdf=new window.jspdf.jsPDF({unit:"mm",format:"a4"});
+      var pw=210, ph=297, mg=14, w=pw-2*mg, h=canvas.height*w/canvas.width;
+      if(h>ph-2*mg){ h=ph-2*mg; w=canvas.width*h/canvas.height; }      // very long invoice: shrink to one page
+      pdf.addImage(canvas.toDataURL("image/jpeg",0.92),"JPEG",(pw-w)/2,mg,w,h);
+      pdf.save(invFileName(m)+".pdf");
+    }catch(e){
+      b.disabled=false;
+      TL.alert("Couldn't make the PDF: "+(e.message||e));
+      return;
+    }
+    b.disabled=false;
+    if(!window._invSentAt) setTimeout(function(){ askSent(m); }, 700);   // we can't see if it gets emailed, so ask
+  }
+  // "Message" in the bar: the text that goes with the invoice (same as Send on WhatsApp uses), in a bubble above
+  // the bar with a copy icon, for pasting into an email or SMS. Never part of the invoice image or PDF.
+  function toggleMsg(open){
+    var bb=$("inv-bubble"), bt=$("inv-msgbtn"); if(!bb) return;
+    var on=open==null ? bb.hidden : open; bb.hidden=!on; bt.setAttribute("aria-expanded", on?"true":"false");
+  }
+  function renderInvMsg(){
+    var t=$("inv-msg-text"); if(!t) return;
+    t.value=window._invMeta ? invoiceMsg(window._invMeta) : ""; window._invMsgEdited=null;   // fresh from the template
+    $("inv-msg-note").textContent="You can edit it for this invoice only.";
+    if(!t._td){ t._td=1; t.addEventListener("input",function(){ window._invMsgEdited=t.value; $("inv-msg-note").textContent="Edited for this invoice only."; }); }
+    var c=$("inv-msg-copy"); if(c){ c.classList.remove("done"); c.setAttribute("aria-label","Copy message"); }
+    toggleMsg(false);
+  }
+  async function copyInvMsg(e){
+    if(!window._invMeta) return;
+    var ok=await copyText(currentMsg(window._invMeta)), c=$("inv-msg-copy");
+    if(c){ c.classList.toggle("done",ok); c.setAttribute("aria-label", ok?"Copied":"Copy message"); setTimeout(function(){ c.classList.remove("done"); },1800); }
+    $("inv-msg-hint").textContent=ok?"Copied":"Couldn't copy";
+    setTimeout(function(){ $("inv-msg-hint").textContent=""; },1800);
+  }
   // Save once per open invoice: a second tap, or Save and Send together, share the same save.
   function saveInvoice(){
     if(window._invSaved) return Promise.resolve();
@@ -1264,8 +1347,7 @@
   }
   async function saveInvoiceNow(){
     if(!window._invHTML||!window._invMeta)return;
-    var m=window._invMeta,b=$("inv-save");
-    b.disabled=true;b.textContent="Saving…";
+    var m=window._invMeta;
     var res=await window.sb.from("invoices").insert({
       tutor_id:userId,student_id:m.studentId,invoice_no:m.invoiceNo,
       issued_date:m.issuedDate,total:m.total,status:"issued",
@@ -1273,9 +1355,9 @@
         students:m.students||null,name:m.name||window._invBillTo||null,lesson_ids:m.lessonIds||null}
     }).select("id").single();
     if(!res.error&&res.data){window._invSavedId=res.data.id;noteInvNo(m.invoiceNo);}
-    if(res.error){b.disabled=false;b.textContent="Save to app";TL.alert("Couldn't save invoice: "+res.error.message);return;}
-    window._invSaved=true;   // recorded in the Invoices tab; Save stays "Saved ✓" for this invoice
-    b.textContent="Saved \u2713";
+    if(res.error){TL.alert("Couldn't save invoice: "+res.error.message);return;}
+    window._invSaved=true;   // recorded in the Invoices tab
+    renderInvState();
     try{ await markReplaced(res.data.id,m.invoiceNo,m.lessonIds); }catch(e){ console.warn("Replace check skipped:",e); }
   }
 
@@ -1292,6 +1374,11 @@
         document.head.appendChild(s);
       })(0);
     });
+  }
+  // The message that actually goes out: the tutor's edit in the Message bubble (this invoice only), else the template.
+  function currentMsg(m){
+    var e=window._invMsgEdited;
+    return (e!=null && e.trim() && m===window._invMeta) ? e.trim() : invoiceMsg(m);
   }
   function invoiceMsg(m){
     var isCombined=!m.studentId;
@@ -1332,11 +1419,11 @@
   }
   async function shareInvoice(){
     if(!window._invHTML||!window._invMeta)return;
-    var m=window._invMeta,b=$("inv-wa"),msg=invoiceMsg(m);
-    b.disabled=true;b.textContent="Preparing…";
+    var m=window._invMeta,b=$("inv-wa"),msg=currentMsg(m);
+    b.disabled=true;waLabel("Preparing…");
     if(!window._invSaved){ try{ await saveInvoice(); }catch(e){} }   // sending records the invoice in the Invoices tab
     // …and marks it "Sent" (sent_at; ignored if db/migration_invoice_sent.sql hasn't been run yet)
-    if(window._invSavedId){ try{ await window.sb.from("invoices").update({sent_at:new Date().toISOString()}).eq("id",window._invSavedId);
+    if(window._invSavedId){ try{ window._invSentAt=new Date().toISOString(); renderInvState(); await window.sb.from("invoices").update({sent_at:window._invSentAt}).eq("id",window._invSavedId);
       await loadSentMap(); renderOutstanding(lastUnpaid); }catch(e){} }
     // WhatsApp often drops the text when an image is shared/attached, so keep the message on the
     // clipboard — it can always be pasted into the chat even if it doesn't prefill.
@@ -1346,7 +1433,7 @@
       var node=$("inv-body").firstElementChild||$("inv-body");
       var canvas=await window.html2canvas(node,{backgroundColor:"#ffffff",scale:2,useCORS:true});
       canvas.toBlob(async function(blob){
-        b.disabled=false;b.textContent="Send on WhatsApp";
+        b.disabled=false;waLabel("Send on WhatsApp");
         if(!blob){TL.alert("Couldn't render the invoice image.");return;}
         var file=new File([blob],(window._invTitle||("Invoice_"+m.invoiceNo))+".png",{type:"image/png"});
         // Original flow (Windows/Linux/Android/iOS): native share sheet, image attached. Skipped
@@ -1369,22 +1456,35 @@
         TL.alert((copied?"Your message has been copied — paste it into the chat if it doesn't prefill.\n\n":"")+"The invoice image was just downloaded — attach it in the WhatsApp chat that opened.");
       },"image/png");
     }catch(e){
-      b.disabled=false;b.textContent="Send on WhatsApp";
+      b.disabled=false;waLabel("Send on WhatsApp");
       TL.alert("Couldn't prepare the invoice image: "+(e.message||e)+"\n\nIf this keeps happening, the image library may be blocked — tell me and I'll set up a self-hosted copy.");
     }
   }
 
-  function printInvoice(){
-    if(!window._invHTML)return;
-    var css=document.querySelector('link[rel="stylesheet"]').href;
-    var w=window.open("","_blank","width=720,height=900");
-    if(!w){TL.alert("Allow pop-ups to print, or use your browser's print on this page.");return;}
-    var title=esc(window._invTitle||"Invoice");
-    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
-      '<link rel="stylesheet" href="'+css+'"><style>body{background:#fff;padding:28px;max-width:640px;margin:auto}</style></head>'+
-      '<body>'+window._invHTML+'</body></html>');
-    w.document.close();
-    w.onload=function(){ setTimeout(function(){ w.focus(); w.print(); }, 250); };
+  function askSent(meta){
+    if(window._invMeta!==meta || window._invSentAt) return;    // another invoice opened meanwhile / already sent
+    var who=meta.name||window._invBillTo||nameById[meta.studentId]||"";
+    TL.confirm({ title:"Did you send this invoice?",
+      message:meta.invoiceNo+(who?" for "+who:"")+" ("+TL.sgd(meta.total)+"). If you've emailed or sent the PDF, mark it as sent so the Ledger shows it's been invoiced.",
+      confirmText:"Yes, mark as sent", cancelText:"Not yet" }).then(function(yes){ if(yes && window._invMeta===meta) markSent(); });
+  }
+  // Undo "sent" (e.g. backed out of WhatsApp without sending): the invoice stays saved, just "Not sent yet" again.
+  async function unmarkSent(){
+    if(!window._invSavedId) return;
+    var r=await window.sb.from("invoices").update({sent_at:null}).eq("id",window._invSavedId);
+    if(r && r.error){ TL.alert("Couldn't undo: "+r.error.message); renderInvState(); return; }
+    window._invSentAt=null; renderInvState();
+    await loadSentMap(); renderOutstanding(lastUnpaid);
+  }
+  // Save (no-op if already saved: same invoice, same number) + record when it went out.
+  async function markSent(){
+    try{ await saveInvoice(); }catch(e){}
+    if(!window._invSavedId) return;                            // save failed (it already showed why)
+    var at=new Date().toISOString();
+    var r=await window.sb.from("invoices").update({sent_at:at}).eq("id",window._invSavedId);
+    if(r && r.error){ TL.alert("Saved, but couldn't mark it as sent: "+r.error.message); return; }
+    window._invSentAt=at; renderInvState();
+    await loadSentMap(); renderOutstanding(lastUnpaid);
   }
 
   // ---------- load ----------
@@ -1403,7 +1503,10 @@
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
     slots=sl.data||[];
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,level,rate,split,amount,paid,paid_date,status,postponed,compensation");
+    var LCOLS="id,student_id,lesson_date,start_time,end_time,subject,level,rate,split,amount,paid,paid_date,status,postponed,compensation";
+    var ls=await window.sb.from("lessons").select(LCOLS+",charge_note");
+    hasChargeNote=!ls.error;
+    if(ls.error) ls=await window.sb.from("lessons").select(LCOLS);   // db/migration_lesson_charge_note.sql not run yet
     if(ls.error){$("k-pending").textContent="—";$("out-hint").textContent="Couldn't load: "+ls.error.message;return;}
     var lessons=ls.data||[];
     // A cancelled lesson's billable amount is its compensation (0 if none) — everything
@@ -1413,7 +1516,7 @@
 
     allLessons=lessons;
     await loadSentMap(); await seqP;
-    var unpaid=lessons.filter(function(l){return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));});
+    var unpaid=lessons.filter(function(l){return TL.isOwed(l);});
     lastUnpaid=unpaid;
     renderPendingKpi();   // pending follows the month picker (All = all-time total)
     renderMonthKpis();    // collected/projected follow the picked month (All = current month)
@@ -1498,9 +1601,11 @@
     ["m-rate","m-split","m-start","m-end"].forEach(function(id){on(id,"input",recalcCost);});
     on("inv-close","click",function(){$("inv-backdrop").classList.remove("on");});
     on("inv-backdrop","click",function(e){if(e.target===$("inv-backdrop"))$("inv-backdrop").classList.remove("on");});
-    on("inv-print","click",printInvoice);
     on("inv-wa","click",shareInvoice);
-    on("inv-save","click",saveInvoice);
+    on("inv-pdf","click",downloadPdf);
+    on("inv-msg-copy","click",copyInvMsg);
+    on("inv-msgbtn","click",function(e){ e.stopPropagation(); toggleMsg(); });
+    document.addEventListener("click",function(e){ if(!e.target.closest||!e.target.closest(".inv-msg-w")) toggleMsg(false); });
     // period nav is the shared header control (p-prev/p-next/p-today/p-all), wired above
     on("csv-btn","click",function(){closeMenus();exportCSV();});
     on("fy-btn","click",function(){closeMenus();exportFY(0);});
