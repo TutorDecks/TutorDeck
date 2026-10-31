@@ -819,6 +819,24 @@ window.TL = (function () {
   // A $0 lesson (e.g. the first lessons from an agency go to the agent as commission, a free trial) is settled
   // by itself: never "unpaid", never in Who owes you, invoices or reminders.
   function isOwed(l) { return !!l && !l.paid && Number(l.amount) > 0 && (l.status === "done" || l.status === "cancelled"); }
+  // A lesson's paid tick changed outside the Ledger's pay window (e.g. on the student page): bring any saved
+  // invoice covering it in line. All its lessons paid → invoice Paid (with that date); any unpaid → back to
+  // unpaid. Never creates an invoice; invoices replaced by a newer one are left as they were (same as the Ledger).
+  async function syncInvoicesForLessons(ids, paidDate) {
+    ids = (ids || []).map(String);
+    var q = await window.sb.from("invoices").select("id,data,status");
+    if (q.error) return;
+    var hits = (q.data || []).filter(function (v) {
+      var lids = (v.data && v.data.lesson_ids) || [];
+      return !(v.data && v.data.replaced_by) && lids.some(function (x) { return ids.indexOf(String(x)) > -1; });
+    });
+    for (var i = 0; i < hits.length; i++) {
+      var v = hits[i], chk = await window.sb.from("lessons").select("id,paid").in("id", v.data.lesson_ids);
+      var got = chk.data || [], allPaid = got.length > 0 && got.every(function (l) { return l.paid; });
+      if (allPaid && v.status !== "paid") await window.sb.from("invoices").update({ status: "paid", paid_date: paidDate || todayISO() }).eq("id", v.id);
+      else if (!allPaid && v.status === "paid") await window.sb.from("invoices").update({ status: "issued", paid_date: null }).eq("id", v.id);
+    }
+  }
   function noCharge(l) { return !!l && l.status !== "cancelled" && l.status !== "scheduled" && !l.paid && !(Number(l.amount) > 0); }
   // Is a given lesson date beyond the student's end date? (so don't project/generate it)
   function pastEnd(endDate, dateISO) { return !!endDate && dateISO > endDate; }
@@ -865,7 +883,7 @@ window.TL = (function () {
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,
-           todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd, isOwed: isOwed, noCharge: noCharge,
+           todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd, isOwed: isOwed, noCharge: noCharge, syncInvoicesForLessons: syncInvoicesForLessons,
            dialog: dialog, firstName: firstName, subLevel: subLevel, yearLevel: yearLevel, cvTip: function () { cvTip(); },
            setHello: function (f, full) { setHello(f, full); }, setBrand: function (b) { setBrand(b); },
            // Name parents see (invoices, PayNow, WhatsApp): tuition name, else the tutor's own name, else generic.

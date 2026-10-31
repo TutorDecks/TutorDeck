@@ -219,6 +219,8 @@
     var res=await window.sb.from("lessons").update(fields).eq("id",lessonId);
     b.disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
+    // Ticking / unticking Paid here must flow through to any invoice covering this lesson (as in the Ledger).
+    if(!!l.paid!==paid){ try{ await TL.syncInvoicesForLessons([lessonId], fields.paid_date); }catch(e){ console.warn("Invoice sync skipped:",e); } }
     closeLesson();load();
   }
   function abortCancel(){
