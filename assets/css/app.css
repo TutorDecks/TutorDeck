@@ -810,3 +810,7 @@ html.is-offline .btn-primary,html.is-offline .btn-gold,html.is-offline .cp-btn.p
 .ret-row span{color:var(--muted);font-size:13px}
 .ret-row .ret-go{margin-left:auto;color:var(--accent);font-weight:700}
 .ret-row:hover{background:var(--cream)}
+
+/* invoice window: where this invoice stands (saved / sent) */
+.inv-state{margin-top:14px;font-size:13px;color:var(--muted);text-align:right}
+@media (max-width:820px){.inv-state{text-align:center}}

@@ -987,8 +987,9 @@
   function presentInvoice(data, qrUrl, meta){
     window._invHTML=invoiceHTML(data,qrUrl); window._invSaved=false; window._invSavedId=null; window._invSaving=null;
     window._invMeta=meta; window._invBillTo=data.student||null;   // kept on the saved invoice, so it survives the student being removed
+    window._invSentAt=null;
     $("inv-body").innerHTML=window._invHTML; renderInvNote();
-    $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
+    renderInvState();
     $("inv-backdrop").classList.add("on");
   }
   // Which payment options this tutor has set up. Every invoice shows all of them.
@@ -1244,8 +1245,9 @@
     window._invHTML=v.data.html; window._invSaved=true; window._invSavedId=v.id; window._invSaving=null;
     window._invTitle=v.data.title||("Invoice_"+v.invoice_no); window._invBillTo=v.data.name||null;
     window._invMeta=Object.assign({invoiceNo:v.invoice_no,total:Number(v.total),issuedDate:v.issued_date,lessonIds:v.data.lesson_ids},meta);
+    window._invSentAt=v.sent_at||null;
     $("inv-body").innerHTML=v.data.html; window._invNote=null; renderInvNote();
-    $("inv-save").textContent="Saved \u2713";$("inv-save").disabled=true;
+    renderInvState();
     $("inv-backdrop").classList.add("on");
   }
   // After saving a new invoice: older unpaid invoices whose lessons are all on the new one are marked
@@ -1262,6 +1264,20 @@
       await window.sb.from("invoices").update({data:d}).eq("id",olds[i].id);
     }
   }
+  // The second button follows the invoice: "Save to app" → (saved, not sent) "Mark as sent" → "Sent ✓".
+  // A line above the buttons says where it stands, so saved-but-not-sent is never a surprise in the Ledger.
+  function renderInvState(){
+    var b=$("inv-save"), st=$("inv-state"), saved=!!window._invSaved, sent=window._invSentAt;
+    if(!b) return;
+    if(!saved){ b.textContent="Save to app"; b.disabled=false; }
+    else if(!sent){ b.textContent="Mark as sent"; b.disabled=false; }
+    else { b.textContent="Sent \u2713"; b.disabled=true; }
+    if(st){
+      st.textContent=!saved?"":(sent?"Saved \u2713 \u00b7 sent "+fmtSent(sent):"Saved \u2713 \u00b7 not sent yet");
+      st.style.display=saved?"":"none";
+    }
+  }
+  function onInvSave(){ if(!window._invSaved) return saveInvoice(); if(!window._invSentAt) return markSent(); }
   // Save once per open invoice: a second tap, or Save and Send together, share the same save.
   function saveInvoice(){
     if(window._invSaved) return Promise.resolve();
@@ -1281,8 +1297,8 @@
     }).select("id").single();
     if(!res.error&&res.data){window._invSavedId=res.data.id;noteInvNo(m.invoiceNo);}
     if(res.error){b.disabled=false;b.textContent="Save to app";TL.alert("Couldn't save invoice: "+res.error.message);return;}
-    window._invSaved=true;   // recorded in the Invoices tab; Save stays "Saved ✓" for this invoice
-    b.textContent="Saved \u2713";
+    window._invSaved=true;   // recorded in the Invoices tab
+    renderInvState();
     try{ await markReplaced(res.data.id,m.invoiceNo,m.lessonIds); }catch(e){ console.warn("Replace check skipped:",e); }
   }
 
@@ -1343,7 +1359,7 @@
     b.disabled=true;b.textContent="Preparing…";
     if(!window._invSaved){ try{ await saveInvoice(); }catch(e){} }   // sending records the invoice in the Invoices tab
     // …and marks it "Sent" (sent_at; ignored if db/migration_invoice_sent.sql hasn't been run yet)
-    if(window._invSavedId){ try{ await window.sb.from("invoices").update({sent_at:new Date().toISOString()}).eq("id",window._invSavedId);
+    if(window._invSavedId){ try{ window._invSentAt=new Date().toISOString(); renderInvState(); await window.sb.from("invoices").update({sent_at:window._invSentAt}).eq("id",window._invSavedId);
       await loadSentMap(); renderOutstanding(lastUnpaid); }catch(e){} }
     // WhatsApp often drops the text when an image is shared/attached, so keep the message on the
     // clipboard — it can always be pasted into the chat even if it doesn't prefill.
@@ -1419,8 +1435,10 @@
   async function markSent(){
     try{ await saveInvoice(); }catch(e){}
     if(!window._invSavedId) return;                            // save failed (it already showed why)
-    var r=await window.sb.from("invoices").update({sent_at:new Date().toISOString()}).eq("id",window._invSavedId);
+    var at=new Date().toISOString();
+    var r=await window.sb.from("invoices").update({sent_at:at}).eq("id",window._invSavedId);
     if(r && r.error){ TL.alert("Saved, but couldn't mark it as sent: "+r.error.message); return; }
+    window._invSentAt=at; renderInvState();
     await loadSentMap(); renderOutstanding(lastUnpaid);
   }
 
@@ -1540,7 +1558,7 @@
     on("inv-backdrop","click",function(e){if(e.target===$("inv-backdrop"))$("inv-backdrop").classList.remove("on");});
     on("inv-print","click",printInvoice);
     on("inv-wa","click",shareInvoice);
-    on("inv-save","click",saveInvoice);
+    on("inv-save","click",onInvSave);
     // period nav is the shared header control (p-prev/p-next/p-today/p-all), wired above
     on("csv-btn","click",function(){closeMenus();exportCSV();});
     on("fy-btn","click",function(){closeMenus();exportFY(0);});
