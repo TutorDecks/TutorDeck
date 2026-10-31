@@ -178,7 +178,7 @@
   function buildBlocks(range, all){
     var blocks=[], claimed=loggedOccurrences(), lessons=lessonsForRange(range);
     lessons.forEach(function(l){
-      var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : (l.paid?"paid":"unpaid");
+      var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : ((l.paid||!(Number(l.amount)>0))?"paid":"unpaid");   // $0 = settled
       blocks.push({ id:l.id, dateISO:l.lesson_date, day:dayIdx(l.lesson_date), startMin:toMin(l.start_time), endMin:toMin(l.end_time),
         name:nameById[l.student_id]||"—", subject:l.subject||"", level:l.level||"", location:locById[l.student_id]||"", amount:l.amount,
         rate:l.rate, split:l.split,
@@ -517,6 +517,7 @@
     var label={paid:["Paid","rgba(15,118,110,.14)","#0B5D57"], unpaid:["Unpaid","rgba(180,67,47,.12)","#8a2f22"],
       sched:["Scheduled","rgba(19,35,63,.10)","var(--navy)"], cancel:["Cancelled","#F1EFEA","var(--muted)"],
       proj:["Not logged yet","rgba(15,118,110,.12)","#0B5D57"]}[b.state];
+    if(b.state==="paid" && b.kind==="lesson" && !(Number(b.amount)>0)) label=["No charge","#F1EFEA","var(--muted)"];
     var dt=new Date(b.dateISO+"T00:00:00");
     var when=DAY[(dt.getDay()+6)%7]+" "+dt.getDate()+" "+MON[dt.getMonth()]+" · "+hhmm2(b.startMin)+"–"+hhmm2(b.endMin);
     var sub=[b.subject,b.level].filter(Boolean).join(" · "), cv=!!(window.TL&&TL.isClient&&TL.isClient());
@@ -992,7 +993,7 @@
     var sym=(l.postponed?"↻":"")+(l.one_off?"✦":"");     // ↻ postponed, ✦ one-off — same keys as the app
     var summary=(sym?sym+" ":"")+[nameById[l.student_id]||"Lesson", l.subject].filter(Boolean).join(" · ");
     var d=[]; if(l.level)d.push("Level: "+l.level); if(l.amount!=null)d.push("Amount: S$"+l.amount);
-    d.push(l.status==="scheduled"?"Scheduled":(l.paid?"Paid":"Unpaid"));
+    d.push(l.status==="scheduled"?"Scheduled":(l.paid?"Paid":(Number(l.amount)>0?"Unpaid":"No charge")));
     if(l.postponed)d.push("Postponed (↻)"); if(l.one_off)d.push("One-off (✦)");
     var e={ summary:summary, description:d.join("\n"),
       start:{ dateTime:l.lesson_date+"T"+hhmm(l.start_time)+":00", timeZone:GTZ },

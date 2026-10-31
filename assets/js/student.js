@@ -22,7 +22,9 @@
     if(sres.error||!sres.data){$("p-head").innerHTML='<div class="card"><p>Couldn\'t load this student. <a href="students">Back to students</a>.</p></div>';return;}
     student=sres.data;setTitle(student.name);
 
-    var lres=await window.sb.from("lessons").select("id,slot_id,slot_date,lesson_date,start_time,end_time,subject,amount,paid,status,topics,homework,remarks,compensation").eq("student_id",sid);
+    var LCOLS="id,slot_id,slot_date,lesson_date,start_time,end_time,subject,amount,paid,status,topics,homework,remarks,compensation";
+    var lres=await window.sb.from("lessons").select(LCOLS+",charge_note").eq("student_id",sid);
+    if(lres.error) lres=await window.sb.from("lessons").select(LCOLS).eq("student_id",sid);   // charge_note migration not run yet
     lessons=lres.data||[];
     // A cancelled lesson's billable amount is its compensation (0 if none) — every KPI/
     // table below reads plain l.amount, so normalizing it once here keeps that code simple.
@@ -113,7 +115,7 @@
     var live=lessons.filter(function(l){return l.status!=="cancelled"||l.amount>0;});
     var billed=live.reduce(function(t,l){return t+Number(l.amount);},0);
     var paid=live.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
-    var outstanding=live.filter(function(l){return !l.paid&&l.status!=="scheduled";}).reduce(function(t,l){return t+Number(l.amount);},0);
+    var outstanding=live.filter(function(l){return TL.isOwed(l);}).reduce(function(t,l){return t+Number(l.amount);},0);
     var done=lessons.filter(function(l){return l.status==="done";}).length;
     function kpi(label,val,cls){return '<div class="kpi"><div class="lbl">'+label+'</div><div class="val'+(cls?" "+cls:"")+'">'+val+'</div></div>';}
     $("p-kpis").innerHTML=
@@ -132,7 +134,7 @@
     $("p-lbody").innerHTML=lessons.map(function(l){
       var badge=l.status==="cancelled"
         ?'<span class="kind-tag">cancelled</span>'+(l.amount>0?(l.paid?' <span class="badge paid">Paid</span>':' <span class="badge owed">Unpaid</span>'):'')
-        :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
+        :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':(TL.noCharge(l)?'<span class="badge nocharge">No charge'+(l.charge_note?' · '+esc(l.charge_note):'')+'</span>':'<span class="badge owed">Unpaid</span>')));
       return '<tr data-lid="'+l.id+'"><td data-label="Date">'+prettyDate(l.lesson_date)+'</td>'+
         '<td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td>'+
         '<td data-label="Amount">'+TL.sgd(l.amount)+'</td>'+

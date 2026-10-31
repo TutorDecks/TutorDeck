@@ -50,7 +50,7 @@
     setText("k-projected",TL.sgd(projected)); setText("mc-booked",TL.sgd(projected));
     setText("k-collected",TL.sgd(collected));
     // collection progress: collected (teal) + owed (red) + upcoming (grey remainder)
-    var owed=month.filter(function(l){return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));}).reduce(function(t,l){return t+Number(l.amount);},0);
+    var owed=month.filter(function(l){return TL.isOwed(l);}).reduce(function(t,l){return t+Number(l.amount);},0);
     var upcoming=Math.max(0,projected-collected-owed);
     var pct=projected>0?Math.round(collected/projected*100):0;
     var owedPct=projected>0?Math.round(owed/projected*100):0;
@@ -415,7 +415,7 @@
     var now=new Date(),y=now.getFullYear(),m=now.getMonth();
     if(selY===null){selY=y;selM=m;}
 
-    var unpaid=lessons.filter(function(l){return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));});
+    var unpaid=lessons.filter(function(l){return TL.isOwed(l);});
     setText("k-pending",TL.sgd(unpaid.reduce(function(t,l){return t+Number(l.amount);},0)));
     setText("k-pending-n",unpaid.length===1?"1 unpaid lesson":unpaid.length+" unpaid lessons");
 

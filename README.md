@@ -261,6 +261,32 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-31 — Print asks "Did you send this invoice?"; $0 lessons are settled (v243).**
+  - *PDF → "Did you send this invoice?":* a downloaded PDF used to leave the row "Not invoiced" even after it was
+    emailed. Now an in-app dialog asks **Yes, mark as sent** / **Not yet**. Yes sets `sent_at` on the same invoice
+    (same number as the PDF, never a copy), so the row shows "Invoice sent <date>"; Not yet changes nothing.
+  - *Invoice window, redesigned:* the four equal text buttons (Close · Save to app · Send on WhatsApp ·
+    Print / Save PDF) are replaced by an **×** to close, a status line ("Not sent yet · **Mark as sent**" /
+    "Sent 31 Oct ✓"), two icon buttons and one main action. **💬 Message** opens a bubble above the bar with the
+    exact text that goes with the invoice and a copy icon (for email / SMS); it's never part of the invoice image.
+    The text can be edited there **for this invoice only** (Send on WhatsApp and copy use the edit; the saved
+    template in Settings is untouched, and reopening starts from the template again); "Edit template" links to
+    `settings#imsg`.
+    **⬇ PDF** downloads a real PDF straight away (`INV-0001_Ze_Cheng.pdf`, A4 layout even on a phone; html2canvas
+    + self-hosted jsPDF 2.5.2 in `assets/vendor/`), then asks "Did you send this invoice?"; **Send on WhatsApp**
+    (teal) marks it sent automatically. TutorDeck can't see whether you actually pressed send in WhatsApp, so once
+    sent the status line reads "Sent 31 Oct ✓ · **Undo**"; Undo keeps the invoice but puts it back to "Not sent yet". Print is gone (print the PDF). No "Save to app" button: the invoice saves
+    itself the first time it's downloaded, sent or marked as sent (same number, never a copy).
+  - *$0 lessons* (e.g. the first lessons from an agency that go to the agent as commission, a free trial) count as
+    settled: new shared helpers `TL.isOwed(l)` / `TL.noCharge(l)` (app.js) are used by the Ledger, Home, the
+    student page and Schedule. They're never "unpaid", a student with only $0 lessons isn't in Who owes you, and
+    they're left out of invoices and reminders entirely (not shown as $0 lines). Lists show a grey **No charge**
+    tag; Schedule shows them as settled. Collected and Booked are unchanged.
+  - *Why no charge (optional):* new column `lessons.charge_note` (migration `db/migration_lesson_charge_note.sql`).
+    The Ledger's Add/Edit lesson form shows "Why no charge?" (Agent commission / Free trial / Make-up lesson, or
+    anything) only when the rate is $0, and clears it if the rate goes back above $0. Shown as "No charge · Agent
+    commission" in the Ledger, the lesson sheet and the student page. Pages still work before the migration is
+    run, just without the reason.
 - **2026-10-30 — Turnstile bot check switched on (v242).** `config.js` now carries the Cloudflare Turnstile site key (public, safe to commit). Because Supabase CAPTCHA protection covers sign-up, password sign-in and password reset, `login.html` now shows the widget in every mode and passes a fresh `captchaToken` to `signUp`, `signInWithPassword` and `resetPasswordForEmail` (tokens are single-use, so it resets after each attempt). Google sign-in is unaffected. Order matters: this code must be live on production **before** the secret key is entered in Supabase → Authentication → Attack protection, or email sign-in breaks. Also fixed the sign-up hint ("At least 8 characters", matching `PW_MIN`).
 - **2026-10-30 — Breached-password check on sign-up (free alternative to Supabase's Pro-only one).** `login.html` now
   checks a new password against Have I Been Pwned before calling `signUp`, using their k-anonymity API: only the first
