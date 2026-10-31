@@ -743,14 +743,29 @@
       }
     }catch(e){ /* non-blocking: the field still works without the hint */ }
   }
-  function closePay(){ $("pay-modal").classList.remove("on"); payIds=[]; }
+  function closePay(){ $("pay-modal").classList.remove("on"); payIds=[]; goBack(); }
+  // One pay window for the whole app: the student page and the Invoices tab link here
+  // (ledger?pay=<lesson ids>&back=<page>), so every payment gets a date (and optional screenshot) the same way,
+  // then you're taken back to where you started.
+  var payBack=null;
+  function payFromLink(){
+    var q=new URLSearchParams(location.search), ids=(q.get("pay")||"").split(",").filter(Boolean);
+    if(!ids.length) return;
+    var back=q.get("back")||"";
+    payBack=/^(invoices|student\?id=[\w-]+)$/.test(back) ? back : null;   // only our own pages
+    try{ history.replaceState(null,"",location.pathname); }catch(e){}
+    var owed=allLessons.filter(function(l){ return ids.indexOf(String(l.id))>-1 && TL.isOwed(l); }).map(function(l){return l.id;});
+    if(!owed.length){ TL.alert("Those lessons are already marked paid.").then(goBack); return; }
+    openPayModal(owed);
+  }
+  function goBack(){ if(payBack){ var b=payBack; payBack=null; location.href=b; } }
   async function confirmPay(){
     if(!payIds.length){closePay();return;}
     var date=$("pay-date").value||todayISO(), file=$("pay-shot").files[0]||null, ids=payIds.slice();
     $("pay-save").disabled=true; $("pay-msg").textContent=file?"Saving + uploading…":"Saving…";
     ids.forEach(function(id){delete selectedLessons[id];});
     var ok=await doMarkPaid(ids, date, file);
-    if(ok){ closePay(); load(); }
+    if(ok){ if(payBack){ closePay(); return; } closePay(); load(); }
     else { $("pay-save").disabled=false; $("pay-msg").textContent=""; }
   }
 
@@ -792,12 +807,14 @@
       $("m-subject").value=lesson.subject||"";$("m-level").value=lesson.level||"";
       $("m-start").value=hm(lesson.start_time);$("m-end").value=hm(lesson.end_time);
       $("m-rate").value=lesson.rate;$("m-split").value=lesson.split||1;$("m-paid").checked=!!lesson.paid;
+      $("m-paid-row").style.display="none";   // payments go through Mark paid (date + screenshot), not this form
       $("m-note").value=lesson.charge_note||"";
       recalcCost();
     }else{
       editLessonId=null;
       $("m-title").textContent="Add lesson";$("m-save").textContent="Save lesson";
       $("m-date").value=todayISO();$("m-paid").checked=false;
+      $("m-paid-row").style.display="";        // adding an old lesson that was paid at the time
       ["m-subject","m-level","m-start","m-end","m-rate","m-cost","m-note"].forEach(function(id){$(id).value="";});
       $("m-split").value="1";
       prefillFromSlot();
@@ -815,7 +832,8 @@
     // always un-cancels, so any compensation from a prior cancellation no longer applies.
     var fields={student_id:sid,lesson_date:date,start_time:start,end_time:end,
       subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,split:split,amount:splitAmt(rate,start,end,split),
-      status:statusFor(date,end),paid:paid,paid_date:paid?date:null,compensation:null};
+      status:statusFor(date,end),compensation:null};
+    if(!editLessonId){ fields.paid=paid; fields.paid_date=paid?date:null; }   // editing leaves payment as it was
     if(hasChargeNote) fields.charge_note=(fields.amount>0)?null:($("m-note").value.trim().slice(0,60)||null);   // only a $0 lesson keeps a reason
     // Postponing lives on the Calendar (tap a lesson → Postpone). Editing here keeps a lesson's ↻ as it was;
     // a brand-new lesson starts not postponed.
@@ -1522,6 +1540,7 @@
     renderMonthKpis();    // collected/projected follow the picked month (All = current month)
 
     renderOutstanding(unpaid);
+    payFromLink();
     fillSubjects(allLessons.map(function(l){return l.subject;}).concat(slots.map(function(s){return s.subject;})));fillRecFilters();
     renderRecords();
   }

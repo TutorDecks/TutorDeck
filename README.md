@@ -261,6 +261,15 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-10-31 — One way to record a payment (v245).** Payments used to be recordable four ways, and only the
+  Ledger's pay window asked for the payment date (and a screenshot); the tickboxes used the lesson date. Now:
+  - the Ledger's **Mark paid** (Who owes you / Records) is the one pay window;
+  - the **Invoices tab's Mark as paid** opens that same window for the invoice's lessons
+    (`ledger?pay=<ids>&back=invoices`) and comes back; Mark as unpaid still works in place;
+  - the **student page** lesson sheet has no Paid tickbox any more: it shows "Paid 29 Oct" / "No charge" /
+    "Not due yet", or a **Mark paid** button that opens the same window and comes back (`&back=student?id=…`);
+  - the Ledger's **Edit lesson** form no longer has "Already paid" (editing never changes payment); **Add lesson**
+    keeps it for logging an old lesson that was paid at the time.
 - **2026-10-31 — Student page "Paid" tick keeps the invoice in step (v244).** Ticking or unticking Paid on a lesson
   on the student page only changed the lesson, so a sent invoice could stay "unpaid" while all its lessons were
   paid (or the reverse). It now does what the Ledger's edit form does: new shared helper

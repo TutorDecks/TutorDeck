@@ -37,6 +37,9 @@
 
   function todayISO(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
   async function togglePaid(inv){
+    // Paying goes through the Ledger's one pay window (payment date + optional screenshot), then back here.
+    var payIds=(inv.data&&inv.data.lesson_ids)||[];
+    if(inv.status!=="paid" && payIds.length){ location.href="ledger?pay="+encodeURIComponent(payIds.join(","))+"&back=invoices"; return; }
     var next=inv.status==="paid"?"issued":"paid", pd=next==="paid"?todayISO():null;
     var res=await window.sb.from("invoices").update({status:next,paid_date:pd}).eq("id",inv.id);
     if(res.error){TL.alert("Couldn't update: "+res.error.message);return;}
