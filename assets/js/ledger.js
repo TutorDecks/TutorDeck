@@ -1264,20 +1264,68 @@
       await window.sb.from("invoices").update({data:d}).eq("id",olds[i].id);
     }
   }
-  // The second button follows the invoice: "Save to app" → (saved, not sent) "Mark as sent" → "Sent ✓".
-  // A line above the buttons says where it stands, so saved-but-not-sent is never a surprise in the Ledger.
+  // Where this invoice stands, in one line above the buttons: "Not sent yet · Mark as sent" or "Sent 31 Oct ✓".
+  // It saves itself the first time it's sent, downloaded or marked as sent (same number, never a copy).
   function renderInvState(){
-    var b=$("inv-save"), st=$("inv-state"), saved=!!window._invSaved, sent=window._invSentAt;
-    if(!b) return;
-    if(!saved){ b.textContent="Save to app"; b.disabled=false; }
-    else if(!sent){ b.textContent="Mark as sent"; b.disabled=false; }
-    else { b.textContent="Sent \u2713"; b.disabled=true; }
-    if(st){
-      st.textContent=!saved?"":(sent?"Saved \u2713 \u00b7 sent "+fmtSent(sent):"Saved \u2713 \u00b7 not sent yet");
-      st.style.display=saved?"":"none";
-    }
+    var st=$("inv-state"); if(!st) return;
+    var sent=window._invSentAt;
+    st.innerHTML=sent ? '<span class="inv-sent">Sent '+esc(fmtSent(sent))+' \u2713</span>'
+      : '<span>Not sent yet</span><span class="inv-dot"> \u00b7 </span><button type="button" class="inv-link" id="inv-mark">Mark as sent</button>';
+    var mk=$("inv-mark"); if(mk) mk.onclick=function(){ mk.disabled=true; markSent(); };
   }
-  function onInvSave(){ if(!window._invSaved) return saveInvoice(); if(!window._invSentAt) return markSent(); }
+  function waLabel(t){ var l=$("inv-wa")&&$("inv-wa").querySelector(".lbl"); if(l) l.textContent=t; }
+  function flashState(t){ var st=$("inv-state"); if(!st) return; st.innerHTML='<span class="inv-sent">'+esc(t)+'</span>'; setTimeout(renderInvState, 1800); }
+  // ⬇ PDF: a real PDF file, straight to Downloads (no print dialog), named after the invoice and student.
+  function loadJsPDF(){
+    if(window.jspdf&&window.jspdf.jsPDF) return Promise.resolve();
+    return new Promise(function(resolve,reject){
+      var sc=document.createElement("script"); sc.src="assets/vendor/jspdf-2.5.2.umd.min.js";
+      sc.onload=function(){ (window.jspdf&&window.jspdf.jsPDF)?resolve():reject(new Error("PDF library didn't load")); };
+      sc.onerror=function(){ reject(new Error("PDF library didn't load")); };
+      document.head.appendChild(sc);
+    });
+  }
+  function invFileName(m){
+    var who=m.name||window._invBillTo||nameById[m.studentId]||"";
+    return (m.invoiceNo+(who?"_"+who:"")).replace(/[^\w-]+/g,"_").replace(/_+/g,"_");
+  }
+  async function downloadPdf(){
+    if(!window._invHTML||!window._invMeta) return;
+    var m=window._invMeta, b=$("inv-pdf"); b.disabled=true;
+    try{
+      if(!window._invSaved){ try{ await saveInvoice(); }catch(e){} }
+      await loadH2C(); await loadJsPDF();
+      // Render a desktop-width copy off screen, so a PDF made on a phone looks like an A4 invoice, not a phone screen.
+      var box=document.createElement("div");
+      box.style.cssText="position:fixed;left:-10000px;top:0;width:640px;background:#fff;padding:0";
+      box.innerHTML=window._invHTML; document.body.appendChild(box);
+      var canvas;
+      try{ canvas=await window.html2canvas(box.firstElementChild||box,{backgroundColor:"#ffffff",scale:2,useCORS:true,windowWidth:1100}); }
+      finally{ box.remove(); }
+      var pdf=new window.jspdf.jsPDF({unit:"mm",format:"a4"});
+      var pw=210, ph=297, mg=14, w=pw-2*mg, h=canvas.height*w/canvas.width;
+      if(h>ph-2*mg){ h=ph-2*mg; w=canvas.width*h/canvas.height; }      // very long invoice: shrink to one page
+      pdf.addImage(canvas.toDataURL("image/jpeg",0.92),"JPEG",(pw-w)/2,mg,w,h);
+      pdf.save(invFileName(m)+".pdf");
+    }catch(e){
+      b.disabled=false;
+      TL.alert("Couldn't make the PDF: "+(e.message||e)+"\n\nYou can still use More \u2192 Print, then choose Save as PDF.");
+      return;
+    }
+    b.disabled=false;
+    if(!window._invSentAt) setTimeout(function(){ askSent(m); }, 700);   // we can't see if it gets emailed, so ask
+  }
+  // ⋯ More: Print, Copy message.
+  function toggleInvMenu(open){
+    var mn=$("inv-menu"); if(!mn) return;
+    var on=open==null ? mn.hidden : open; mn.hidden=!on; $("inv-more").setAttribute("aria-expanded", on?"true":"false");
+  }
+  async function copyInvMsg(){
+    toggleInvMenu(false);
+    if(!window._invMeta) return;
+    var ok=await copyText(invoiceMsg(window._invMeta));
+    flashState(ok ? "Message copied \u2713" : "Couldn't copy the message");
+  }
   // Save once per open invoice: a second tap, or Save and Send together, share the same save.
   function saveInvoice(){
     if(window._invSaved) return Promise.resolve();
@@ -1287,8 +1335,7 @@
   }
   async function saveInvoiceNow(){
     if(!window._invHTML||!window._invMeta)return;
-    var m=window._invMeta,b=$("inv-save");
-    b.disabled=true;b.textContent="Saving…";
+    var m=window._invMeta;
     var res=await window.sb.from("invoices").insert({
       tutor_id:userId,student_id:m.studentId,invoice_no:m.invoiceNo,
       issued_date:m.issuedDate,total:m.total,status:"issued",
@@ -1296,7 +1343,7 @@
         students:m.students||null,name:m.name||window._invBillTo||null,lesson_ids:m.lessonIds||null}
     }).select("id").single();
     if(!res.error&&res.data){window._invSavedId=res.data.id;noteInvNo(m.invoiceNo);}
-    if(res.error){b.disabled=false;b.textContent="Save to app";TL.alert("Couldn't save invoice: "+res.error.message);return;}
+    if(res.error){TL.alert("Couldn't save invoice: "+res.error.message);return;}
     window._invSaved=true;   // recorded in the Invoices tab
     renderInvState();
     try{ await markReplaced(res.data.id,m.invoiceNo,m.lessonIds); }catch(e){ console.warn("Replace check skipped:",e); }
@@ -1356,7 +1403,7 @@
   async function shareInvoice(){
     if(!window._invHTML||!window._invMeta)return;
     var m=window._invMeta,b=$("inv-wa"),msg=invoiceMsg(m);
-    b.disabled=true;b.textContent="Preparing…";
+    b.disabled=true;waLabel("Preparing…");
     if(!window._invSaved){ try{ await saveInvoice(); }catch(e){} }   // sending records the invoice in the Invoices tab
     // …and marks it "Sent" (sent_at; ignored if db/migration_invoice_sent.sql hasn't been run yet)
     if(window._invSavedId){ try{ window._invSentAt=new Date().toISOString(); renderInvState(); await window.sb.from("invoices").update({sent_at:window._invSentAt}).eq("id",window._invSavedId);
@@ -1369,7 +1416,7 @@
       var node=$("inv-body").firstElementChild||$("inv-body");
       var canvas=await window.html2canvas(node,{backgroundColor:"#ffffff",scale:2,useCORS:true});
       canvas.toBlob(async function(blob){
-        b.disabled=false;b.textContent="Send on WhatsApp";
+        b.disabled=false;waLabel("Send on WhatsApp");
         if(!blob){TL.alert("Couldn't render the invoice image.");return;}
         var file=new File([blob],(window._invTitle||("Invoice_"+m.invoiceNo))+".png",{type:"image/png"});
         // Original flow (Windows/Linux/Android/iOS): native share sheet, image attached. Skipped
@@ -1392,7 +1439,7 @@
         TL.alert((copied?"Your message has been copied — paste it into the chat if it doesn't prefill.\n\n":"")+"The invoice image was just downloaded — attach it in the WhatsApp chat that opened.");
       },"image/png");
     }catch(e){
-      b.disabled=false;b.textContent="Send on WhatsApp";
+      b.disabled=false;waLabel("Send on WhatsApp");
       TL.alert("Couldn't prepare the invoice image: "+(e.message||e)+"\n\nIf this keeps happening, the image library may be blocked — tell me and I'll set up a self-hosted copy.");
     }
   }
@@ -1420,18 +1467,21 @@
     function ask(){
       if(asked) return; asked=true;
       clearInterval(poll); window.removeEventListener("focus", onFocus);
-      if(window._invMeta!==meta) return;                       // another invoice was opened meanwhile
-      var who=meta.name||window._invBillTo||nameById[meta.studentId]||"";
-      TL.confirm({ title:"Did you send this invoice?",
-        message:meta.invoiceNo+(who?" for "+who:"")+" ("+TL.sgd(meta.total)+"). If you've emailed or sent the PDF, mark it as sent so the Ledger shows it's been invoiced.",
-        confirmText:"Yes, mark as sent", cancelText:"Not yet" }).then(function(yes){ if(yes && window._invMeta===meta) markSent(); });
+      askSent(meta);
     }
     function onFocus(){ if(Date.now()-t0>1500) setTimeout(ask, 400); }   // back from the print tab / dialog
     try{ w.addEventListener("afterprint", function(){ setTimeout(ask, 300); }); }catch(e){}
     poll=setInterval(function(){ if(w.closed) ask(); }, 600);
     window.addEventListener("focus", onFocus);
   }
-  // Save to app (no-op if already saved: same invoice, same number) + record when it went out.
+  function askSent(meta){
+    if(window._invMeta!==meta || window._invSentAt) return;    // another invoice opened meanwhile / already sent
+    var who=meta.name||window._invBillTo||nameById[meta.studentId]||"";
+    TL.confirm({ title:"Did you send this invoice?",
+      message:meta.invoiceNo+(who?" for "+who:"")+" ("+TL.sgd(meta.total)+"). If you've emailed or sent the PDF, mark it as sent so the Ledger shows it's been invoiced.",
+      confirmText:"Yes, mark as sent", cancelText:"Not yet" }).then(function(yes){ if(yes && window._invMeta===meta) markSent(); });
+  }
+  // Save (no-op if already saved: same invoice, same number) + record when it went out.
   async function markSent(){
     try{ await saveInvoice(); }catch(e){}
     if(!window._invSavedId) return;                            // save failed (it already showed why)
@@ -1556,9 +1606,12 @@
     ["m-rate","m-split","m-start","m-end"].forEach(function(id){on(id,"input",recalcCost);});
     on("inv-close","click",function(){$("inv-backdrop").classList.remove("on");});
     on("inv-backdrop","click",function(e){if(e.target===$("inv-backdrop"))$("inv-backdrop").classList.remove("on");});
-    on("inv-print","click",printInvoice);
+    on("inv-print","click",function(){ toggleInvMenu(false); printInvoice(); });
     on("inv-wa","click",shareInvoice);
-    on("inv-save","click",onInvSave);
+    on("inv-pdf","click",downloadPdf);
+    on("inv-more","click",function(e){ e.stopPropagation(); toggleInvMenu(); });
+    on("inv-copy","click",copyInvMsg);
+    document.addEventListener("click",function(e){ if(!e.target.closest||!e.target.closest(".inv-more-w")) toggleInvMenu(false); });
     // period nav is the shared header control (p-prev/p-next/p-today/p-all), wired above
     on("csv-btn","click",function(){closeMenus();exportCSV();});
     on("fy-btn","click",function(){closeMenus();exportFY(0);});

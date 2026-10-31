@@ -268,9 +268,14 @@ A running log of Raphael's changes, newest first.
     send this invoice?** · **Yes, mark as sent** / **Not yet**. Yes saves it exactly like Save to app (no copy if
     it's already saved; same invoice number as the PDF) and sets `sent_at`, like Send on WhatsApp, so the row shows
     "Invoice sent <date>". Not yet changes nothing.
-  - *Invoice window buttons, standardised:* Send on WhatsApp = sent (automatic), Print = asks, Save to app = draft.
-    Once saved, the Save button becomes **Mark as sent** (then **Sent ✓**), with a line above the buttons saying
-    "Saved ✓ · not sent yet" / "Saved ✓ · sent 31 Oct", so a saved-but-unsent invoice is never a surprise.
+  - *Invoice window, redesigned:* the four equal text buttons (Close · Save to app · Send on WhatsApp ·
+    Print / Save PDF) are replaced by an **×** to close, a status line ("Not sent yet · **Mark as sent**" /
+    "Sent 31 Oct ✓"), two icon buttons and one main action:
+    **⬇ PDF** downloads a real PDF straight away (`INV-0001_Ze_Cheng.pdf`, A4 layout even on a phone; html2canvas
+    + self-hosted jsPDF 2.5.2 in `assets/vendor/`), then asks "Did you send this invoice?";
+    **⋯ More** has Print (also asks) and Copy message; **Send on WhatsApp** (teal) marks it sent automatically.
+    No "Save to app" button any more: the invoice saves itself the first time it's downloaded, sent or marked as
+    sent (same number, never a copy).
   - *$0 lessons* (e.g. the first lessons from an agency that go to the agent as commission, a free trial) count as
     settled: new shared helpers `TL.isOwed(l)` / `TL.noCharge(l)` (app.js) are used by the Ledger, Home, the
     student page and Schedule. They're never "unpaid", a student with only $0 lessons isn't in Who owes you, and
