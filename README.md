@@ -271,7 +271,8 @@ A running log of Raphael's changes, newest first.
     exact text that goes with the invoice and a copy icon (for email / SMS); it's never part of the invoice image.
     **⬇ PDF** downloads a real PDF straight away (`INV-0001_Ze_Cheng.pdf`, A4 layout even on a phone; html2canvas
     + self-hosted jsPDF 2.5.2 in `assets/vendor/`), then asks "Did you send this invoice?"; **Send on WhatsApp**
-    (teal) marks it sent automatically. Print is gone (print the PDF). No "Save to app" button: the invoice saves
+    (teal) marks it sent automatically. TutorDeck can't see whether you actually pressed send in WhatsApp, so once
+    sent the status line reads "Sent 31 Oct ✓ · **Undo**"; Undo keeps the invoice but puts it back to "Not sent yet". Print is gone (print the PDF). No "Save to app" button: the invoice saves
     itself the first time it's downloaded, sent or marked as sent (same number, never a copy).
   - *$0 lessons* (e.g. the first lessons from an agency that go to the agent as commission, a free trial) count as
     settled: new shared helpers `TL.isOwed(l)` / `TL.noCharge(l)` (app.js) are used by the Ledger, Home, the

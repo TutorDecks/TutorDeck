@@ -1269,9 +1269,11 @@
   function renderInvState(){
     var st=$("inv-state"); if(!st) return;
     var sent=window._invSentAt;
-    st.innerHTML=sent ? '<span class="inv-sent">Sent '+esc(fmtSent(sent))+' \u2713</span>'
+    // Sent is TutorDeck's assumption for WhatsApp (it can't see whether you pressed send there), so it can be undone.
+    st.innerHTML=sent ? '<span class="inv-sent">Sent '+esc(fmtSent(sent))+' \u2713</span><span class="inv-dot"> \u00b7 </span><button type="button" class="inv-link" id="inv-unsend">Undo</button>'
       : '<span>Not sent yet</span><span class="inv-dot"> \u00b7 </span><button type="button" class="inv-link" id="inv-mark">Mark as sent</button>';
     var mk=$("inv-mark"); if(mk) mk.onclick=function(){ mk.disabled=true; markSent(); };
+    var un=$("inv-unsend"); if(un) un.onclick=function(){ un.disabled=true; unmarkSent(); };
   }
   function waLabel(t){ var l=$("inv-wa")&&$("inv-wa").querySelector(".lbl"); if(l) l.textContent=t; }
   function flashState(t){ var st=$("inv-state"); if(!st) return; st.innerHTML='<span class="inv-sent">'+esc(t)+'</span>'; setTimeout(renderInvState, 1800); }
@@ -1458,6 +1460,14 @@
     TL.confirm({ title:"Did you send this invoice?",
       message:meta.invoiceNo+(who?" for "+who:"")+" ("+TL.sgd(meta.total)+"). If you've emailed or sent the PDF, mark it as sent so the Ledger shows it's been invoiced.",
       confirmText:"Yes, mark as sent", cancelText:"Not yet" }).then(function(yes){ if(yes && window._invMeta===meta) markSent(); });
+  }
+  // Undo "sent" (e.g. backed out of WhatsApp without sending): the invoice stays saved, just "Not sent yet" again.
+  async function unmarkSent(){
+    if(!window._invSavedId) return;
+    var r=await window.sb.from("invoices").update({sent_at:null}).eq("id",window._invSavedId);
+    if(r && r.error){ TL.alert("Couldn't undo: "+r.error.message); renderInvState(); return; }
+    window._invSentAt=null; renderInvState();
+    await loadSentMap(); renderOutstanding(lastUnpaid);
   }
   // Save (no-op if already saved: same invoice, same number) + record when it went out.
   async function markSent(){
