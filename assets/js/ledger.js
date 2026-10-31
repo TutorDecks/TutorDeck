@@ -989,7 +989,7 @@
     window._invMeta=meta; window._invBillTo=data.student||null;   // kept on the saved invoice, so it survives the student being removed
     window._invSentAt=null;
     $("inv-body").innerHTML=window._invHTML; renderInvNote();
-    renderInvState();
+    renderInvState(); renderInvMsg();
     $("inv-backdrop").classList.add("on");
   }
   // Which payment options this tutor has set up. Every invoice shows all of them.
@@ -1247,7 +1247,7 @@
     window._invMeta=Object.assign({invoiceNo:v.invoice_no,total:Number(v.total),issuedDate:v.issued_date,lessonIds:v.data.lesson_ids},meta);
     window._invSentAt=v.sent_at||null;
     $("inv-body").innerHTML=v.data.html; window._invNote=null; renderInvNote();
-    renderInvState();
+    renderInvState(); renderInvMsg();
     $("inv-backdrop").classList.add("on");
   }
   // After saving a new invoice: older unpaid invoices whose lessons are all on the new one are marked
@@ -1309,22 +1309,26 @@
       pdf.save(invFileName(m)+".pdf");
     }catch(e){
       b.disabled=false;
-      TL.alert("Couldn't make the PDF: "+(e.message||e)+"\n\nYou can still use More \u2192 Print, then choose Save as PDF.");
+      TL.alert("Couldn't make the PDF: "+(e.message||e));
       return;
     }
     b.disabled=false;
     if(!window._invSentAt) setTimeout(function(){ askSent(m); }, 700);   // we can't see if it gets emailed, so ask
   }
-  // ⋯ More: Print, Copy message.
-  function toggleInvMenu(open){
-    var mn=$("inv-menu"); if(!mn) return;
-    var on=open==null ? mn.hidden : open; mn.hidden=!on; $("inv-more").setAttribute("aria-expanded", on?"true":"false");
+  // The message that goes with the invoice, folded under it: tap to read it, copy icon to paste it anywhere
+  // (email, SMS). Same text Send on WhatsApp uses.
+  function renderInvMsg(){
+    var t=$("inv-msg-text"); if(!t) return;
+    t.textContent=window._invMeta ? invoiceMsg(window._invMeta) : "";
+    var c=$("inv-msg-copy"); if(c){ c.classList.remove("done"); c.setAttribute("aria-label","Copy message"); }
   }
-  async function copyInvMsg(){
-    toggleInvMenu(false);
+  async function copyInvMsg(e){
+    if(e){ e.preventDefault(); e.stopPropagation(); }          // the icon sits on the fold's header: don't toggle it
     if(!window._invMeta) return;
-    var ok=await copyText(invoiceMsg(window._invMeta));
-    flashState(ok ? "Message copied \u2713" : "Couldn't copy the message");
+    var ok=await copyText(invoiceMsg(window._invMeta)), c=$("inv-msg-copy");
+    if(c){ c.classList.toggle("done",ok); c.setAttribute("aria-label", ok?"Copied":"Copy message"); setTimeout(function(){ c.classList.remove("done"); },1800); }
+    $("inv-msg-hint").textContent=ok?"Copied":"Couldn't copy";
+    setTimeout(function(){ $("inv-msg-hint").textContent=""; },1800);
   }
   // Save once per open invoice: a second tap, or Save and Send together, share the same save.
   function saveInvoice(){
@@ -1444,36 +1448,6 @@
     }
   }
 
-  function printInvoice(){
-    if(!window._invHTML)return;
-    var css=document.querySelector('link[rel="stylesheet"]').href;
-    var w=window.open("","_blank","width=720,height=900");
-    if(!w){TL.alert("Allow pop-ups to print, or use your browser's print on this page.");return;}
-    var title=esc(window._invTitle||"Invoice");
-    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
-      '<link rel="stylesheet" href="'+css+'"><style>body{background:#fff;padding:28px;max-width:640px;margin:auto}</style></head>'+
-      '<body>'+window._invHTML+'</body></html>');
-    w.document.close();
-    w.onload=function(){ setTimeout(function(){ w.focus(); w.print(); }, 250); };
-    askIfSent(w);
-  }
-  // Print / Save PDF doesn't know whether the tutor then emailed the PDF, so once the print dialog is done
-  // (afterprint in the print window, or that window closing / this tab getting focus back, whichever comes
-  // first) ask in the app: "Did you send this invoice?". Yes = Save to app (same record, same number) +
-  // mark it sent, exactly as Send on WhatsApp does, so the Ledger row shows "Invoice sent <date>".
-  function askIfSent(w){
-    var meta=window._invMeta, asked=false, t0=Date.now(), poll=null;
-    if(!meta) return;
-    function ask(){
-      if(asked) return; asked=true;
-      clearInterval(poll); window.removeEventListener("focus", onFocus);
-      askSent(meta);
-    }
-    function onFocus(){ if(Date.now()-t0>1500) setTimeout(ask, 400); }   // back from the print tab / dialog
-    try{ w.addEventListener("afterprint", function(){ setTimeout(ask, 300); }); }catch(e){}
-    poll=setInterval(function(){ if(w.closed) ask(); }, 600);
-    window.addEventListener("focus", onFocus);
-  }
   function askSent(meta){
     if(window._invMeta!==meta || window._invSentAt) return;    // another invoice opened meanwhile / already sent
     var who=meta.name||window._invBillTo||nameById[meta.studentId]||"";
@@ -1606,12 +1580,9 @@
     ["m-rate","m-split","m-start","m-end"].forEach(function(id){on(id,"input",recalcCost);});
     on("inv-close","click",function(){$("inv-backdrop").classList.remove("on");});
     on("inv-backdrop","click",function(e){if(e.target===$("inv-backdrop"))$("inv-backdrop").classList.remove("on");});
-    on("inv-print","click",function(){ toggleInvMenu(false); printInvoice(); });
     on("inv-wa","click",shareInvoice);
     on("inv-pdf","click",downloadPdf);
-    on("inv-more","click",function(e){ e.stopPropagation(); toggleInvMenu(); });
-    on("inv-copy","click",copyInvMsg);
-    document.addEventListener("click",function(e){ if(!e.target.closest||!e.target.closest(".inv-more-w")) toggleInvMenu(false); });
+    on("inv-msg-copy","click",copyInvMsg);
     // period nav is the shared header control (p-prev/p-next/p-today/p-all), wired above
     on("csv-btn","click",function(){closeMenus();exportCSV();});
     on("fy-btn","click",function(){closeMenus();exportFY(0);});

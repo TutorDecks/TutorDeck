@@ -262,20 +262,17 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 A running log of Raphael's changes, newest first.
 
 - **2026-10-31 — Print asks "Did you send this invoice?"; $0 lessons are settled (v243).**
-  - *Print / Save PDF:* only Save to app and Send on WhatsApp recorded an invoice as sent, so an invoice printed
-    and emailed stayed "Not invoiced". Now, when the print dialog is done (`afterprint`, or the print window
-    closing / the tab getting focus back, whichever comes first, asked once), an in-app dialog asks **Did you
-    send this invoice?** · **Yes, mark as sent** / **Not yet**. Yes saves it exactly like Save to app (no copy if
-    it's already saved; same invoice number as the PDF) and sets `sent_at`, like Send on WhatsApp, so the row shows
-    "Invoice sent <date>". Not yet changes nothing.
+  - *PDF → "Did you send this invoice?":* a downloaded PDF used to leave the row "Not invoiced" even after it was
+    emailed. Now an in-app dialog asks **Yes, mark as sent** / **Not yet**. Yes sets `sent_at` on the same invoice
+    (same number as the PDF, never a copy), so the row shows "Invoice sent <date>"; Not yet changes nothing.
   - *Invoice window, redesigned:* the four equal text buttons (Close · Save to app · Send on WhatsApp ·
-    Print / Save PDF) are replaced by an **×** to close, a status line ("Not sent yet · **Mark as sent**" /
-    "Sent 31 Oct ✓"), two icon buttons and one main action:
+    Print / Save PDF) are replaced by an **×** to close, a folded **Message to parent** section under the invoice
+    (tap to read the exact text that goes out; copy icon to paste it into an email or SMS), a status line
+    ("Not sent yet · **Mark as sent**" / "Sent 31 Oct ✓"), one icon button and one main action:
     **⬇ PDF** downloads a real PDF straight away (`INV-0001_Ze_Cheng.pdf`, A4 layout even on a phone; html2canvas
-    + self-hosted jsPDF 2.5.2 in `assets/vendor/`), then asks "Did you send this invoice?";
-    **⋯ More** has Print (also asks) and Copy message; **Send on WhatsApp** (teal) marks it sent automatically.
-    No "Save to app" button any more: the invoice saves itself the first time it's downloaded, sent or marked as
-    sent (same number, never a copy).
+    + self-hosted jsPDF 2.5.2 in `assets/vendor/`), then asks "Did you send this invoice?"; **Send on WhatsApp**
+    (teal) marks it sent automatically. Print is gone (print the PDF). No "Save to app" button: the invoice saves
+    itself the first time it's downloaded, sent or marked as sent (same number, never a copy).
   - *$0 lessons* (e.g. the first lessons from an agency that go to the agent as commission, a free trial) count as
     settled: new shared helpers `TL.isOwed(l)` / `TL.noCharge(l)` (app.js) are used by the Ledger, Home, the
     student page and Schedule. They're never "unpaid", a student with only $0 lessons isn't in Who owes you, and
