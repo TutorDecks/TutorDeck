@@ -266,9 +266,9 @@ A running log of Raphael's changes, newest first.
     emailed. Now an in-app dialog asks **Yes, mark as sent** / **Not yet**. Yes sets `sent_at` on the same invoice
     (same number as the PDF, never a copy), so the row shows "Invoice sent <date>"; Not yet changes nothing.
   - *Invoice window, redesigned:* the four equal text buttons (Close · Save to app · Send on WhatsApp ·
-    Print / Save PDF) are replaced by an **×** to close, a folded **Message to parent** section under the invoice
-    (tap to read the exact text that goes out; copy icon to paste it into an email or SMS), a status line
-    ("Not sent yet · **Mark as sent**" / "Sent 31 Oct ✓"), one icon button and one main action:
+    Print / Save PDF) are replaced by an **×** to close, a status line ("Not sent yet · **Mark as sent**" /
+    "Sent 31 Oct ✓"), two icon buttons and one main action. **💬 Message** opens a bubble above the bar with the
+    exact text that goes with the invoice and a copy icon (for email / SMS); it's never part of the invoice image.
     **⬇ PDF** downloads a real PDF straight away (`INV-0001_Ze_Cheng.pdf`, A4 layout even on a phone; html2canvas
     + self-hosted jsPDF 2.5.2 in `assets/vendor/`), then asks "Did you send this invoice?"; **Send on WhatsApp**
     (teal) marks it sent automatically. Print is gone (print the PDF). No "Save to app" button: the invoice saves

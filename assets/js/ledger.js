@@ -1315,15 +1315,19 @@
     b.disabled=false;
     if(!window._invSentAt) setTimeout(function(){ askSent(m); }, 700);   // we can't see if it gets emailed, so ask
   }
-  // The message that goes with the invoice, folded under it: tap to read it, copy icon to paste it anywhere
-  // (email, SMS). Same text Send on WhatsApp uses.
+  // "Message" in the bar: the text that goes with the invoice (same as Send on WhatsApp uses), in a bubble above
+  // the bar with a copy icon, for pasting into an email or SMS. Never part of the invoice image or PDF.
+  function toggleMsg(open){
+    var bb=$("inv-bubble"), bt=$("inv-msgbtn"); if(!bb) return;
+    var on=open==null ? bb.hidden : open; bb.hidden=!on; bt.setAttribute("aria-expanded", on?"true":"false");
+  }
   function renderInvMsg(){
     var t=$("inv-msg-text"); if(!t) return;
     t.textContent=window._invMeta ? invoiceMsg(window._invMeta) : "";
     var c=$("inv-msg-copy"); if(c){ c.classList.remove("done"); c.setAttribute("aria-label","Copy message"); }
+    toggleMsg(false);
   }
   async function copyInvMsg(e){
-    if(e){ e.preventDefault(); e.stopPropagation(); }          // the icon sits on the fold's header: don't toggle it
     if(!window._invMeta) return;
     var ok=await copyText(invoiceMsg(window._invMeta)), c=$("inv-msg-copy");
     if(c){ c.classList.toggle("done",ok); c.setAttribute("aria-label", ok?"Copied":"Copy message"); setTimeout(function(){ c.classList.remove("done"); },1800); }
@@ -1583,6 +1587,8 @@
     on("inv-wa","click",shareInvoice);
     on("inv-pdf","click",downloadPdf);
     on("inv-msg-copy","click",copyInvMsg);
+    on("inv-msgbtn","click",function(e){ e.stopPropagation(); toggleMsg(); });
+    document.addEventListener("click",function(e){ if(!e.target.closest||!e.target.closest(".inv-msg-w")) toggleMsg(false); });
     // period nav is the shared header control (p-prev/p-next/p-today/p-all), wired above
     on("csv-btn","click",function(){closeMenus();exportCSV();});
     on("fy-btn","click",function(){closeMenus();exportFY(0);});
