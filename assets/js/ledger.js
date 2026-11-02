@@ -1320,7 +1320,7 @@
       box.style.cssText="position:fixed;left:-10000px;top:0;width:640px;background:#fff;padding:0";
       box.innerHTML=window._invHTML; document.body.appendChild(box);
       var canvas;
-      try{ canvas=await window.html2canvas(box.firstElementChild||box,{backgroundColor:"#ffffff",scale:2,useCORS:true,windowWidth:1100}); }
+      try{ canvas=await window.html2canvas(box.firstElementChild||box,{backgroundColor:"#ffffff",scale:2,useCORS:true,windowWidth:1100,onclone:function(d){d.documentElement.removeAttribute("data-theme");}}); }
       finally{ box.remove(); }
       var pdf=new window.jspdf.jsPDF({unit:"mm",format:"a4"});
       var pw=210, ph=297, mg=14, w=pw-2*mg, h=canvas.height*w/canvas.width;
@@ -1449,7 +1449,7 @@
     try{
       await loadH2C();
       var node=$("inv-body").firstElementChild||$("inv-body");
-      var canvas=await window.html2canvas(node,{backgroundColor:"#ffffff",scale:2,useCORS:true});
+      var canvas=await window.html2canvas(node,{backgroundColor:"#ffffff",scale:2,useCORS:true,onclone:function(d){d.documentElement.removeAttribute("data-theme");}});
       canvas.toBlob(async function(blob){
         b.disabled=false;waLabel("Send on WhatsApp");
         if(!blob){TL.alert("Couldn't render the invoice image.");return;}
