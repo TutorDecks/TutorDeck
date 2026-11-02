@@ -21,6 +21,16 @@
       "source": "/landing.html",
       "destination": "/",
       "permanent": true
+    },
+    {
+      "source": "/materials",
+      "destination": "https://mugcornersg.com",
+      "permanent": false
+    },
+    {
+      "source": "/materials.html",
+      "destination": "https://mugcornersg.com",
+      "permanent": false
     }
   ],
   "headers": [

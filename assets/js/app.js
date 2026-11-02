@@ -35,9 +35,11 @@ window.TL = (function () {
   ];
   // Secondary destinations: sidebar footer on desktop, "More" sheet on phones.
   var EXTRA = [
-    { id: "materials", label: "Materials", href: "materials", ic: "materials", ownerOnly: true },
+    { id: "materials", label: "Materials", href: "https://mugcornersg.com", ic: "materials", ext: true, hint: "Materials on MugCorner (opens in a new tab)" },
     { id: "settings",  label: "Settings",  href: "settings",  ic: "settings" }
   ];
+  // External destinations (e.g. Materials → MugCorner) open in a new tab.
+  function extAttr(n) { return n.ext ? ' target="_blank" rel="noopener"' : ""; }
   function groupOf(active) {
     for (var i = 0; i < GROUPS.length; i++) {
       var g = GROUPS[i];
@@ -102,8 +104,8 @@ window.TL = (function () {
              (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 18) + '<span>' + g.label + '</span></a>';
     }).join("");
     var sideExtra = extras.map(function (n) {
-      return '<a href="' + n.href + '" class="tn-ic' + (n.id === active ? " active" : "") + '" title="' + n.label +
-             '" aria-label="' + n.label + '">' + icon(n.ic, 19) + '</a>';
+      return '<a href="' + n.href + '" class="tn-ic' + (n.id === active ? " active" : "") + '" title="' + (n.hint || n.label) +
+             '" aria-label="' + (n.hint || n.label) + '"' + extAttr(n) + '>' + icon(n.ic, 19) + '</a>';
     }).join("");
     var initials = acctInitials();
 
@@ -128,7 +130,7 @@ window.TL = (function () {
       '<div class="ms-grab"></div>' +
       '<div class="ms-brand">' + LOGO + '<span><b>' + esc(brandName) + '</b><small>TutorDeck</small></span></div>' +
       extras.map(function (n) {
-        return '<a href="' + n.href + '" class="' + (n.id === active ? "on" : "") + '">' + icon(n.ic) + '<span>' + n.label + '</span></a>';
+        return '<a href="' + n.href + '" class="' + (n.id === active ? "on" : "") + '"' + extAttr(n) + '>' + icon(n.ic) + '<span>' + n.label + (n.ext ? ' <small class="ms-ext">MugCorner ↗</small>' : '') + '</span></a>';
       }).join("") +
       '<div class="ms-who">' + esc(email || "") + '</div>' +
       '<button type="button" class="ms-out" id="tl-signout-m">' + icon("signout") + '<span>Sign out</span></button>' +
@@ -190,6 +192,14 @@ window.TL = (function () {
       cvb.addEventListener("click", function (e) { e.stopPropagation(); setClient(!CLIENT); });
     }
     applyClient();
+    // Dark mode: a second floating button above the eye. Per device (like Client view); light is the default.
+    if (!document.getElementById("td-theme")) {
+      var thb = document.createElement("button");
+      thb.type = "button"; thb.id = "td-theme"; thb.className = "cv-fab th-fab";
+      document.body.appendChild(thb);
+      thb.addEventListener("click", function (e) { e.stopPropagation(); setTheme(!isDark()); });
+    }
+    applyThemeBtn();
     // First-time tip on whichever page a new user opens first (not over the Calendar's own first tip).
     var calTipsPending = active === "calendar" && !store.get("td_tip_cal-filters");
     // Home decides for itself once its cards are drawn (not alongside the setup or Get paid faster card).
@@ -765,6 +775,50 @@ window.TL = (function () {
       }
     }
   }
+  // ---- Dark mode (opt-in, per device). The <head> of each app page sets data-theme before first paint;
+  // assets/css/dark.css only matches html[data-theme="dark"], so light mode is never affected.
+  function isDark() { return document.documentElement.getAttribute("data-theme") === "dark"; }
+  function setTheme(dark) {
+    try { if (dark) localStorage.setItem("td_theme", "dark"); else localStorage.removeItem("td_theme"); } catch (e) {}
+    if (dark) document.documentElement.setAttribute("data-theme", "dark");
+    else document.documentElement.removeAttribute("data-theme");
+    applyThemeBtn();
+    if (window.Chart && window.Chart.instances) Object.keys(window.Chart.instances).forEach(function (k) { try { window.Chart.instances[k].update("none"); } catch (e) {} });
+    window.dispatchEvent(new CustomEvent("td:theme", { detail: { dark: dark } }));
+  }
+  function applyThemeBtn() {
+    var dark = isDark();
+    var m = document.querySelector('meta[name="theme-color"]');
+    if (m) { if (!m.hasAttribute("data-light")) m.setAttribute("data-light", m.content); m.content = dark ? "#0F1726" : m.getAttribute("data-light"); }
+    var b = document.getElementById("td-theme");
+    if (!b) return;
+    b.innerHTML = dark ? SUN : MOON;
+    b.setAttribute("aria-pressed", dark ? "true" : "false");
+    b.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+    b.title = dark ? "Light mode" : "Dark mode";
+  }
+  // Charts: recolour grid/ticks/legend for dark, put the original colours back for light.
+  if (window.Chart && window.Chart.register) {
+    var CH_DARK = { grid: "#26324A", tick: "#9AA4B6", proj: "#56607A" };
+    window.Chart.register({ id: "tdTheme", beforeUpdate: function (chart) {
+      var dark = isDark(), o = chart.config.options || (chart.config.options = {}), sv = chart.$td || (chart.$td = { sc: {}, ds: [] });
+      if (dark && !sv.def) sv.def = window.Chart.defaults.color;
+      window.Chart.defaults.color = dark ? CH_DARK.tick : (sv.def || window.Chart.defaults.color);
+      Object.keys(o.scales || {}).forEach(function (k) {
+        var sc = o.scales[k]; sc.grid = sc.grid || {}; sc.ticks = sc.ticks || {};
+        if (!(k in sv.sc)) sv.sc[k] = { g: sc.grid.color, t: sc.ticks.color };
+        sc.grid.color = dark ? CH_DARK.grid : sv.sc[k].g; sc.ticks.color = dark ? CH_DARK.tick : sv.sc[k].t;
+      });
+      var lg = o.plugins && o.plugins.legend;
+      if (lg) { lg.labels = lg.labels || {}; if (!("lg" in sv)) sv.lg = lg.labels.color; lg.labels.color = dark ? "#C3CBD8" : sv.lg; }
+      (chart.config.data.datasets || []).forEach(function (d, i) {
+        if (sv.ds[i] === undefined) sv.ds[i] = d.backgroundColor;
+        if (sv.ds[i] === "#C9C5BC") d.backgroundColor = dark ? CH_DARK.proj : sv.ds[i];
+      });
+    } });
+  }
+  var SUN = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+  var MOON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z"/></svg>';
   var EYE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
   var EYE_OFF = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.5 8 10 8a10 10 0 0 0 5.4-1.6"/><path d="M2 2l20 20"/></svg>';
 

@@ -261,6 +261,7 @@ restore into a throwaway Supabase project once the first backup exists, so we kn
 
 A running log of Raphael's changes, newest first.
 
+- **2026-11-02 — Dark mode switch + Materials → MugCorner (v246).** A sun/moon button sits next to the Client-view eye on every signed-in page; it's per device (`localStorage td_theme`, same as `td_client`) and light stays the default. Light mode is untouched: every dark rule lives in `assets/css/dark.css`, scoped to `html[data-theme="dark"]` and `@media screen`, and a one-line script in each app page's `<head>` sets the attribute before first paint (no flash). `dark.css` is **generated** — run `python3 tools/build-dark.py` after changing colours in `app.css` or a page's `<style>`; it maps every hard-coded colour (surfaces → navy-slate, text → light, solid fills kept) and keeps the invoice paper light. Charts recolour via a small Chart.js plugin in `app.js`; html2canvas invoice snapshots drop the theme in `onclone`. Pixel-diffed all 10 app pages in light mode against `dev`: identical. Materials now links to https://mugcornersg.com for every tutor (new tab), and `/materials` redirects there.
 - **2026-10-31 — One way to record a payment (v245).** Payments used to be recordable four ways, and only the
   Ledger's pay window asked for the payment date (and a screenshot); the tickboxes used the lesson date. Now:
   - the Ledger's **Mark paid** (Who owes you / Records) is the one pay window;
