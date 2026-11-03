@@ -388,21 +388,23 @@
   </div>
 </footer>
 
-<script>
-</script>
-<!-- If you're already signed in, point the header at the dashboard instead of login. -->
-<script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js"></script>
-<script src="assets/js/supabase.js"></script>
+<!-- If you're already signed in, point the header at the dashboard instead of login.
+     Reads the session Supabase saves in this browser (sb-<project>-auth-token) instead of loading the
+     whole Supabase library (~220 KB) on the landing page. A saved refresh token means /home will let you in. -->
 <script>
   (function(){
-    if(!window.sb)return;
-    window.sb.auth.getSession().then(function(r){
-      if(r&&r.data&&r.data.session){
-        var a=document.getElementById("sign-link");
-        if(a){a.href="home";a.textContent="Go to dashboard";}
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(!/^sb-.+-auth-token$/.test(k))continue;
+        var v=JSON.parse(localStorage.getItem(k)||"null");
+        if(v&&(v.refresh_token||(v.currentSession&&v.currentSession.refresh_token))){
+          var a=document.getElementById("sign-link");
+          if(a){a.href="home";a.textContent="Go to dashboard";}
+          return;
+        }
       }
-    }).catch(function(){});
+    }catch(e){}
   })();
 </script>
 <script defer src="/_vercel/insights/script.js"></script>
