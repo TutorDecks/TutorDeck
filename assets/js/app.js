@@ -157,7 +157,7 @@ window.TL = (function () {
           </div>
         </div>
       </header>
-      <div class="main">
+      <div class="main" role="main">
         <div class="topbar">
           <div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div>
         </div>

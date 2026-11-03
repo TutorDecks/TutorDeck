@@ -168,6 +168,10 @@ def build():
                 imp=' !important' if '!important' in val else ''
                 val=val.replace('!important','').strip()
                 nv=conv_decl(prop,val)
+                # Re-emit every colour declaration (converted or not) in source order: a later rule that resets
+                # a colour (var(--muted), transparent…) must still beat an earlier rule's dark override,
+                # exactly as it does in light mode.
+                if not nv and role_of(prop) and not prop.startswith('border-radius') and not prop.startswith('border-width') and prop!='border-style': nv=val
                 if nv: decls.append('%s:%s%s'%(prop,nv,imp))
             if decls:
                 r=scope(sel)+'{'+';'.join(decls)+'}'
