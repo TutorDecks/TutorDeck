@@ -2,3 +2,7 @@
 *.dump
 *.dump.gpg
 *.sql.gz
+
+# Test-only dependencies (tests/package.json)
+tests/node_modules/
+__pycache__/
