@@ -9,7 +9,7 @@
     if(x[1]!==y[1]) return x[2]+" "+M[x[1]-1]+" \u2013 "+y[2]+" "+M[y[1]-1];
     return x[2]+"\u2013"+y[2]+" "+M[y[1]-1];
   }
-  function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
+  function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(t){TL.subjectsOf({subject:t}).forEach(function(x){var s=x.name;if(s&&u.indexOf(s)<0)u.push(s);});});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
   var hasChargeNote = false;
   var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, levelById = {}, endById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   // Payment options on invoices: PayNow QR (if set up) and bank transfer (if bank details are filled in), or both.
@@ -780,11 +780,13 @@
     $("m-cost").value=(r>=0&&s&&e&&e>s)?TL.sgd(splitAmt(r,s,e,mSplit())):"";
     if($("m-note-f")) $("m-note-f").style.display=(hasChargeNote && $("m-rate").value!=="" && r===0)?"":"none";   // $0 lesson: say why
   }
+  var subjPick=null;   // TL.subjectPicker on the add/edit lesson form
   function prefillFromSlot(){
     var sid=$("m-student").value;
     var slot=slots.find(function(x){return x.student_id===sid;});
     if(!slot){ // no recurring slot for this student — clear slot-derived fields
       ["m-start","m-end","m-rate","m-subject","m-level"].forEach(function(id){$(id).value="";});
+      if(subjPick)subjPick.reset();
       $("m-split").value="1"; recalcCost(); return;
     }
     $("m-rate").value=slot.rate!=null?slot.rate:"";
@@ -793,6 +795,7 @@
     $("m-end").value=hm(slot.end_time);
     $("m-subject").value=slot.subject||"";
     $("m-level").value=slot.level||"";
+    if(subjPick)subjPick.load(slot.subject,slot.level);
     recalcCost();
   }
   function openAdd(open, lesson){
@@ -805,6 +808,7 @@
       $("m-student").value=lesson.student_id;
       $("m-date").value=lesson.lesson_date;
       $("m-subject").value=lesson.subject||"";$("m-level").value=lesson.level||"";
+      if(subjPick)subjPick.load(lesson.subject,lesson.level);
       $("m-start").value=hm(lesson.start_time);$("m-end").value=hm(lesson.end_time);
       $("m-rate").value=lesson.rate;$("m-split").value=lesson.split||1;$("m-paid").checked=!!lesson.paid;
       $("m-paid-row").style.display="none";   // payments go through Mark paid (date + screenshot), not this form
@@ -833,6 +837,7 @@
     var fields={student_id:sid,lesson_date:date,start_time:start,end_time:end,
       subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,split:split,amount:splitAmt(rate,start,end,split),
       status:statusFor(date,end),compensation:null};
+    if(subjPick) Object.assign(fields,subjPick.fields());   // one or several subjects
     if(!editLessonId){ fields.paid=paid; fields.paid_date=paid?date:null; }   // editing leaves payment as it was
     if(hasChargeNote) fields.charge_note=(fields.amount>0)?null:($("m-note").value.trim().slice(0,60)||null);   // only a $0 lesson keeps a reason
     // Postponing lives on the Calendar (tap a lesson → Postpone). Editing here keeps a lesson's ↻ as it was;
@@ -1584,6 +1589,7 @@
     $("k-projected").textContent=TL.sgd(projected);  if($("k-projected-n"))$("k-projected-n").textContent=period.mode==="all"?r.label:"lessons this month";
   }
   function init(user){
+    if($("m-subject")&&$("m-level"))subjPick=TL.subjectPicker($("m-subject"),$("m-level"));
     userId=user.id;
     var on=function(id,evt,fn){var el=$(id);if(el)el.addEventListener(evt,fn);};
     try{var sp=TL.store.get("tl_period"); if(sp)period=JSON.parse(sp);}catch(e){}
