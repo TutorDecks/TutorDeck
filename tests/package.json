@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "description": "Test-only dependencies for tests/smoke.py (not part of the site).",
+  "dependencies": { "axe-core": "4.10.2" }
+}
