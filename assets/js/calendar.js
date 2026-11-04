@@ -715,6 +715,7 @@
   function studentById(sid){ return students.filter(function(s){return String(s.id)===String(sid);})[0]; }
   // Fill the form from the chosen student — subject/rate/split from their recurring slot, level from
   // the slot or the student record. Overwrites (not just-if-blank) so switching students updates it.
+  var caPick=null;   // TL.subjectPicker on Add lesson
   function applyStudentDefaults(){
     var id=$("ca-student").value, sl=slotFor(id), stu=studentById(id);
     if(sl){
@@ -722,10 +723,12 @@
       $("ca-rate").value=(sl.rate!=null?sl.rate:"");
       $("ca-split").value=sl.split||1;
       $("ca-level").value=sl.level||(stu&&stu.level)||"";
+      if(caPick)caPick.load(sl.subject,sl.level);
     } else {
       // no recurring slot → no subject/rate default; still offer the student's level
       $("ca-subject").value=""; $("ca-rate").value=""; $("ca-split").value="1";
       $("ca-level").value=(stu&&stu.level)||"";
+      if(caPick)caPick.reset();
     }
   }
   function openAdd(prefill){
@@ -753,6 +756,7 @@
       subject:$("ca-subject").value.trim()||null, level:$("ca-level").value.trim()||null,
       rate:rate, split:split, amount:splitAmt(rate,start,end,split), status:statusFor(date,end),
       paid:paid, paid_date:paid?date:null, one_off:true };   // manual add from the calendar = one-off
+    if(caPick) Object.assign(row,caPick.fields());   // one or several subjects
     var b=$("ca-save"); b.disabled=true;
     var res=await window.sb.from("lessons").insert(row);
     b.disabled=false;
@@ -1308,6 +1312,7 @@
   }
 
   function init(user){
+    if($("ca-subject")&&$("ca-level"))caPick=TL.subjectPicker($("ca-subject"),$("ca-level"));
     userId=user.id; anchor=new Date();
     try{ mode=TL.store.get("tl_cal_mode")||""; }catch(e){ mode=""; }
     if(!mode) mode="week";   // default everywhere; the user's last choice is remembered (tl_cal_mode)

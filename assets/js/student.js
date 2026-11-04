@@ -1,6 +1,6 @@
 // Per-student profile: header, totals, lesson history, slots, exams.
 (function () {
-  var userId=null, sid=null, student=null, lessons=[], exams=[], slots=[], noteId=null, lessonId=null, examId=null, cancelConfirming=false;
+  var userId=null, sid=null, student=null, lessons=[], exams=[], slots=[], noteId=null, noteEd=null, xr=null, lessonId=null, examId=null, cancelConfirming=false;
   var schY=null, schM=null;   // month shown in the "Monthly schedule" card
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -22,7 +22,7 @@
     if(sres.error||!sres.data){$("p-head").innerHTML='<div class="card"><p>Couldn\'t load this student. <a href="students">Back to students</a>.</p></div>';return;}
     student=sres.data;setTitle(student.name);
 
-    var LCOLS="id,slot_id,slot_date,lesson_date,start_time,end_time,subject,amount,paid,status,topics,homework,remarks,compensation";
+    var LCOLS="id,slot_id,slot_date,lesson_date,start_time,end_time,subject,level,amount,paid,status,topics,homework,remarks,subject_notes,compensation";
     var lres=await window.sb.from("lessons").select(LCOLS+",charge_note").eq("student_id",sid);
     if(lres.error) lres=await window.sb.from("lessons").select(LCOLS).eq("student_id",sid);   // charge_note migration not run yet
     lessons=lres.data||[];
@@ -181,9 +181,7 @@
     $("p-lhint2").textContent=TL.plural(live.length,"lesson");
     box.innerHTML='<div class="nlist">'+live.map(function(l){
       var has=l.topics||l.homework||l.remarks,bits="";
-      if(l.topics)bits+='<div class="nbits"><span class="nk">Topics</span>'+esc(l.topics)+'</div>';
-      if(l.homework)bits+='<div class="nbits"><span class="nk">Homework</span>'+esc(l.homework)+'</div>';
-      if(l.remarks)bits+='<div class="nbits"><span class="nk">Next</span>'+esc(l.remarks)+'</div>';
+      bits=noteBits(l);
       if(!has)bits='<div class="nempty">No notes recorded</div>';
       return '<div class="nrow"><div class="nhead"><span class="nd">'+prettyDate(l.lesson_date)+(l.subject?' · '+esc(l.subject):"")+'</span></div>'+bits+'</div>';
     }).join("")+'</div>';
@@ -261,6 +259,18 @@
     closeLesson();load();
   }
 
+  // A lesson's notes as rows; a several-subject lesson gets a small heading per subject.
+  function noteBits(l){
+    var all=TL.notesOf(l), multi=all.length>1, out="";
+    all.forEach(function(n){
+      var b="";
+      if(n.topics)b+='<div class="nbits"><span class="nk">Topics</span>'+esc(n.topics)+'</div>';
+      if(n.homework)b+='<div class="nbits"><span class="nk">Homework</span>'+esc(n.homework)+'</div>';
+      if(n.remarks)b+='<div class="nbits"><span class="nk">Next</span>'+esc(n.remarks)+'</div>';
+      if(b)out+=(multi?'<div class="tr-sn">'+esc(n.name)+'</div>':'')+b;
+    });
+    return out;
+  }
   function renderNotes(rows){
     var live=rows.filter(function(l){return l.status!=="cancelled";});
     live.sort(function(a,b){return (b.lesson_date+(b.start_time||"")).localeCompare(a.lesson_date+(a.start_time||""));});
@@ -268,9 +278,7 @@
     $("p-nhint").textContent=live.filter(function(l){return l.topics||l.homework||l.remarks;}).length+" of "+live.length;
     $("p-notes").innerHTML='<div class="nlist">'+live.map(function(l){
       var has=l.topics||l.homework||l.remarks,bits="";
-      if(l.topics)bits+='<div class="nbits"><span class="nk">Topics</span>'+esc(l.topics)+'</div>';
-      if(l.homework)bits+='<div class="nbits"><span class="nk">Homework</span>'+esc(l.homework)+'</div>';
-      if(l.remarks)bits+='<div class="nbits"><span class="nk">Next</span>'+esc(l.remarks)+'</div>';
+      bits=noteBits(l);
       if(!has)bits='<div class="nempty">No notes yet</div>';
       return '<div class="nrow"><div class="nhead"><span class="nd">'+prettyDate(l.lesson_date)+(l.subject?' · '+esc(l.subject):"")+'</span>'+
         '<button class="tact" data-note="'+l.id+'">'+(has?"Edit":"Add notes")+'</button></div>'+bits+'</div>';
@@ -281,7 +289,10 @@
     var l=lessons.filter(function(x){return x.id===id;})[0];if(!l)return;
     noteId=id;
     $("n-title").textContent="Lesson notes · "+prettyDate(l.lesson_date);
-    $("n-topics").value=l.topics||"";$("n-homework").value=l.homework||"";$("n-remarks").value=l.remarks||"";
+    var multi=TL.subjectsOf(l).length>1;
+    $("n-single").style.display=multi?"none":""; $("n-multi").style.display=multi?"":"none";
+    if(multi){ noteEd=TL.noteEditor($("n-multi"), l, function(nm){ return TL.prevNote(lessons, l, nm); }); }
+    else { noteEd=null; $("n-multi").innerHTML=""; $("n-topics").value=l.topics||"";$("n-homework").value=l.homework||"";$("n-remarks").value=l.remarks||""; }
     $("n-msg").textContent="";$("n-msg").className="msg";
     $("n-modal").classList.add("on");
   }
@@ -289,7 +300,8 @@
   async function saveNotes(){
     if(!noteId)return;
     var b=$("n-save");b.disabled=true;
-    var res=await window.sb.from("lessons").update({
+    var cur=lessons.filter(function(x){return x.id===noteId;})[0]||{};
+    var res=await window.sb.from("lessons").update(noteEd ? TL.notesPayload(cur, noteEd.read()) : {
       topics:$("n-topics").value.trim()||null,
       homework:$("n-homework").value.trim()||null,
       remarks:$("n-remarks").value.trim()||null
@@ -451,11 +463,31 @@
     $("x-score").value=e&&e.score!=null?e.score:"";
     $("x-maxscore").value=e&&e.max_score!=null?e.max_score:"";
     $("x-msg").textContent="";$("x-msg").className="msg";
+    // Takes several subjects → one row per subject (own date + topics) when adding
+    var subs=e?[]:TL.studentSubjects(slots,lessons), multi=subs.length>=2;
+    $("xr-box").style.display=multi?"":"none";
+    ["x-date","x-subject","x-topics"].forEach(function(id){ var f=$(id).closest(".field"); if(f)f.style.display=multi?"none":""; });
+    xr=multi?TL.examRows($("xr-box"),subs):null;
     $("x-modal").classList.add("on");
   }
   function closeExam(){$("x-modal").classList.remove("on");examId=null;}
   async function saveExam(){
     var date=$("x-date").value,msg=$("x-msg");
+    if(xr&&!examId){   // several subjects → one exam each, on its own date
+      var picks=xr.read();
+      if(!picks.length){msg.textContent="Tick at least one subject.";msg.className="msg err";return;}
+      var noDate=picks.filter(function(p){return !p.exam_date;})[0];
+      if(noDate){msg.textContent="Set a date for "+noDate.subject+" (or untick it).";msg.className="msg err";return;}
+      var shared={assessment_type:$("x-type").value.trim()||null,remarks:$("x-remarks").value.trim()||null,
+        score:null,max_score:$("x-maxscore").value!==""?parseFloat($("x-maxscore").value):null};
+      var bb=$("x-save");bb.disabled=true;
+      var ins=await window.sb.from("exams").insert(picks.map(function(p){
+        return Object.assign({tutor_id:userId,student_id:sid,exam_date:p.exam_date,subject:p.subject,topics:p.topics},shared);
+      }));
+      bb.disabled=false;
+      if(ins.error){msg.textContent=ins.error.message;msg.className="msg err";return;}
+      closeExam();load();return;
+    }
     if(!date){msg.textContent="Set an exam date.";msg.className="msg err";return;}
     var fields={exam_date:date,assessment_type:$("x-type").value.trim()||null,
       subject:$("x-subject").value.trim()||null,topics:$("x-topics").value.trim()||null,

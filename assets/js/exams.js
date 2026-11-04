@@ -1,6 +1,6 @@
 // Exams — manage assessments: add, edit, delete; upcoming (with countdown) vs past.
 (function () {
-  var userId=null, students=[], nameById={}, exams=[], editingId=null, slotSubj={};
+  var userId=null, students=[], nameById={}, exams=[], editingId=null, slotSubj={}, slotRows={}, xr=null;
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
   function pad(n){return (n<10?"0":"")+n;}
@@ -29,12 +29,36 @@
       ["m-type","m-subject","m-topics","m-remarks","m-score","m-maxscore"].forEach(function(id){$(id).value="";});
       $("m-date").value="";
     }
+    examMode();
+  }
+  // A student who takes several subjects gets one row per subject (own date + topics) when adding.
+  function examMode(){
+    var subs=editingId?[]:TL.studentSubjects(slotRows[$("m-student").value]);
+    var multi=subs.length>=2;
+    $("xr-box").style.display=multi?"":"none";
+    ["m-date","m-subject","m-topics"].forEach(function(id){ var f=$(id).closest(".field"); if(f)f.style.display=multi?"none":""; });
+    xr=multi?TL.examRows($("xr-box"),subs):null;
   }
 
   async function save(){
     var msg=$("m-msg");
     var sid=$("m-student").value,date=$("m-date").value;
     if(!sid){msg.textContent="Pick a student.";msg.className="msg err";return;}
+    if(xr&&!editingId){   // several subjects → one exam each, on its own date
+      var picks=xr.read();
+      if(!picks.length){msg.textContent="Tick at least one subject.";msg.className="msg err";return;}
+      var noDate=picks.filter(function(p){return !p.exam_date;})[0];
+      if(noDate){msg.textContent="Set a date for "+noDate.subject+" (or untick it).";msg.className="msg err";return;}
+      var shared={assessment_type:$("m-type").value.trim()||null,remarks:$("m-remarks").value.trim()||null,
+        score:null,max_score:$("m-maxscore").value!==""?parseFloat($("m-maxscore").value):null};
+      $("m-save").disabled=true;
+      var ins=await window.sb.from("exams").insert(picks.map(function(p){
+        return Object.assign({tutor_id:userId,student_id:sid,exam_date:p.exam_date,subject:p.subject,topics:p.topics},shared);
+      }));
+      $("m-save").disabled=false;
+      if(ins.error){msg.textContent=ins.error.message;msg.className="msg err";return;}
+      openModal(false);load();return;
+    }
     if(!date){msg.textContent="Set an exam date.";msg.className="msg err";return;}
     var fields={student_id:sid,exam_date:date,
       assessment_type:$("m-type").value.trim()||null,
@@ -122,7 +146,11 @@
     studentOptions();
 
     var sl=await window.sb.from("recurring_slots").select("student_id,subject").eq("active",true);
-    slotSubj={}; (sl.data||[]).forEach(function(r){ if(r.subject&&!slotSubj[r.student_id]) slotSubj[r.student_id]=r.subject; });
+    slotSubj={}; slotRows={};
+    (sl.data||[]).forEach(function(r){
+      (slotRows[r.student_id]=slotRows[r.student_id]||[]).push(r);
+      var first=TL.subjectsOf(r)[0]; if(first&&!slotSubj[r.student_id]) slotSubj[r.student_id]=first.name;
+    });
     var res=await window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,remarks,score,max_score");
     if(res.error){$("x-count").textContent="Couldn't load exams: "+res.error.message;return;}
     exams=res.data||[];
@@ -148,6 +176,7 @@
     $("add-btn").addEventListener("click",function(){openModal(true,null);});
     // Adding an exam: suggest the subject you last used for this student (their latest exam, else their weekly slot)
     $("m-student").addEventListener("change",function(){
+      examMode();
       if(editingId||$("m-subject").value.trim())return;
       var sid=$("m-student").value, last=exams.filter(function(e){return e.student_id===sid&&e.subject;})
         .sort(function(a,b){return (b.exam_date||"").localeCompare(a.exam_date||"");})[0];

@@ -14,7 +14,7 @@
   var MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   var chartObj=null, yearChartObj=null, allLessons=[], nameByIdM={}, selY=null, selM=null, dmWired=false;
   var fyStart=1, fyAnchor=null, finSub="month", finSubWired=false;
-  var userId=null, tnWired=false, lessonsById={}, noteLes=null, prevNoteFor=null;  // prevNoteFor(lesson) → last noted lesson of same subject
+  var userId=null, tnWired=false, lessonsById={}, noteLes=null, prevNoteFor=null, noteEd=null;  // prevNoteFor(lesson) → last noted lesson of same subject
 
   function drawStacked(canvasId, labels, collected, pending, upcoming, prev){
     var r2=function(v){return Math.round(v*100)/100;};
@@ -91,22 +91,27 @@
   }
 
   function shortDate(d){return new Date(d+"T00:00:00").toLocaleDateString("en-SG",{day:"numeric",month:"short"});}
-  function summarizeOne(l, subjLabel){
-    if(!l) return '<div class="tr-empty">No previous '+(subjLabel?esc(subjLabel)+' ':'')+'lesson recorded.</div>';
-    var head="Last "+(l.subject?esc(l.subject)+" ":"")+"lesson · "+shortDate(l.lesson_date);
+  function noteParts(n){
     var parts=[];
-    if(l.topics)   parts.push('<div class="tr-note"><b>Topics:</b> '+esc(l.topics)+'</div>');
-    if(l.homework) parts.push('<div class="tr-note"><b>Homework:</b> '+esc(l.homework)+'</div>');
-    if(l.remarks)  parts.push('<div class="tr-note"><b>Remarks:</b> '+esc(l.remarks)+'</div>');
+    if(n&&n.topics)   parts.push('<div class="tr-note"><b>Topics:</b> '+esc(n.topics)+'</div>');
+    if(n&&n.homework) parts.push('<div class="tr-note"><b>Homework:</b> '+esc(n.homework)+'</div>');
+    if(n&&n.remarks)  parts.push('<div class="tr-note"><b>Remarks:</b> '+esc(n.remarks)+'</div>');
+    return parts;
+  }
+  // Recap of the last lesson for one subject (rec = {lesson, note} or null); multi = part of a several-subject row
+  function summarizeOne(rec, subjLabel, multi){
+    if(!rec) return multi?'<div class="tr-sn">'+esc(subjLabel)+'</div><div class="tr-empty">No previous '+esc(subjLabel)+' lesson recorded.</div>'
+                         :'<div class="tr-empty">No previous '+(subjLabel?esc(subjLabel)+' ':'')+'lesson recorded.</div>';
+    var head="Last "+(subjLabel?esc(subjLabel)+" ":"")+"lesson · "+shortDate(rec.lesson.lesson_date);
+    var parts=noteParts(rec.note);
     return '<div class="tr-when">'+head+'</div>'+(parts.length?parts.join(""):'<div class="tr-empty">No notes from that lesson.</div>');
   }
-  // This lesson's own note (once one is written, it replaces the "last lesson" recap on the row)
+  // This lesson's own note (once one is written, it replaces the "last lesson" recap on the row);
+  // a several-subject lesson lists each subject's note under its name.
   function ownNote(l, label){
-    var parts=[];
-    if(l.topics)   parts.push('<div class="tr-note"><b>Topics:</b> '+esc(l.topics)+'</div>');
-    if(l.homework) parts.push('<div class="tr-note"><b>Homework:</b> '+esc(l.homework)+'</div>');
-    if(l.remarks)  parts.push('<div class="tr-note"><b>Remarks:</b> '+esc(l.remarks)+'</div>');
-    return parts.length?'<div class="tr-when">'+label+'</div>'+parts.join(""):"";
+    var all=TL.notesOf(l), multi=all.length>1, html="";
+    all.forEach(function(n){ var p=noteParts(n); if(p.length) html+=(multi?'<div class="tr-sn">'+esc(n.name)+'</div>':'')+p.join(""); });
+    return html?'<div class="tr-when">'+label+'</div>'+html:"";
   }
   function renderTeaching(lessons, nameById, exams){
     var doneByStu={};
@@ -115,27 +120,24 @@
     var today=new Date(); today.setHours(0,0,0,0);
     var tmr=new Date(today); tmr.setDate(today.getDate()+1);
     var todayISOv=iso(today);
-    // last done lesson before a date, matching subject when the upcoming lesson has one
-    function lastBeforeSubject(stu, beforeISO, subject){
-      var a=doneByStu[stu]||[], subj=(subject||"").trim().toLowerCase();
+    // last done lesson before a date that included this subject (any lesson when there's no subject) → {lesson, note}
+    function lastBeforeSubject(stu, beforeISO, name){
+      var a=doneByStu[stu]||[];
       for(var i=0;i<a.length;i++){
         if(a[i].lesson_date>=beforeISO)continue;
-        if(!subj)return a[i];
-        if((a[i].subject||"").trim().toLowerCase()===subj)return a[i];
+        if(!name) return {lesson:a[i], note:{topics:a[i].topics, homework:a[i].homework, remarks:a[i].remarks}};
+        if(TL.hasSubject(a[i],name)) return {lesson:a[i], note:TL.noteFor(a[i],name)};
       }
       return null;
     }
-    // For "Copy last note": the most recent earlier lesson (same subject) that actually has notes.
-    prevNoteFor=function(les){
-      if(!les)return null;
-      var a=doneByStu[les.student_id]||[], subj=(les.subject||"").trim().toLowerCase();
-      for(var i=0;i<a.length;i++){
-        var x=a[i]; if(x.id===les.id||x.lesson_date>=les.lesson_date)continue;
-        if(subj&&(x.subject||"").trim().toLowerCase()!==subj)continue;
-        if(x.topics||x.homework||x.remarks)return x;
-      }
-      return null;
-    };
+    // Recap shown before a lesson: the last lesson's note, one block per subject for a several-subject lesson
+    function recapFor(l, dISO){
+      var subs=TL.subjectsOf(l);
+      if(subs.length<2) return summarizeOne(lastBeforeSubject(l.student_id,dISO,subs[0]?subs[0].name:""), l.subject);
+      return subs.map(function(s){ return summarizeOne(lastBeforeSubject(l.student_id,dISO,s.name), s.name, true); }).join("");
+    }
+    // For "Copy last note": the most recent earlier lesson with notes for that subject → {date, note}
+    prevNoteFor=function(les, name){ return TL.prevNote(lessons, les, name); };
     // upcoming exams by student
     var examsByStu={};
     (exams||[]).forEach(function(e){ if(e.exam_date&&e.exam_date>=todayISOv){ (examsByStu[e.student_id]=examsByStu[e.student_id]||[]).push(e); } });
@@ -175,7 +177,7 @@
           '<div class="tr-body">'+
           '<div class="tr-head"><div class="tr-name"><a class="snl" href="student?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a>'+
           (l.subject?'<span class="tr-subj">'+esc(l.subject)+'</span>':'')+'</div>'+btn+'</div>'+
-          '<div class="tr-cols"><div class="tr-notes">'+(ownNote(l,label+"\u2019s note")||summarizeOne(lastBeforeSubject(l.student_id,dISO,l.subject),l.subject))+'</div>'+examChips(l.student_id)+'</div>'+
+          '<div class="tr-cols"><div class="tr-notes">'+(ownNote(l,label+"\u2019s note")||recapFor(l,dISO))+'</div>'+examChips(l.student_id)+'</div>'+
           '</div></div>';
       }).join("");
       if(withNote)$(listId).querySelectorAll("[data-note-id]").forEach(function(b){b.addEventListener("click",function(){openNote(b.dataset.noteId);});});
@@ -232,22 +234,33 @@
     var subj=les&&les.subject?les.subject:"";
     $("tn-title").textContent=(isToday?"Today's note · ":"Note · ")+name;
     $("tn-sub").textContent=when+(subj?" · "+subj:"");
-    $("tn-topics").value=les?(les.topics||""):"";
-    $("tn-homework").value=les?(les.homework||""):"";
-    $("tn-remarks").value=les?(les.remarks||""):"";
+    var multi=les&&TL.subjectsOf(les).length>1;
+    $("tn-single").style.display=multi?"none":""; $("tn-multi").style.display=multi?"":"none";
     $("tn-msg").textContent=""; $("tn-msg").className="msg";
-    // Copy last note: one tap fills the fields from the previous lesson of this subject (then edit as needed)
-    var prev=prevNoteFor?prevNoteFor(les):null, cp=$("tn-copy");
-    if(cp){
-      if(prev){
-        cp.style.display="";
-        cp.textContent="Copy last note · "+new Date(prev.lesson_date+"T00:00:00").toLocaleDateString("en-SG",{day:"numeric",month:"short"});
-        cp.onclick=function(){
-          $("tn-topics").value=prev.topics||""; $("tn-homework").value=prev.homework||""; $("tn-remarks").value=prev.remarks||"";
-          $("tn-msg").textContent="Copied — edit anything that changed, then save."; $("tn-msg").className="msg";
-          $("tn-topics").focus();
-        };
-      } else { cp.style.display="none"; cp.onclick=null; }
+    var cp=$("tn-copy");
+    if(multi){
+      // one set of Topics / Homework / Remarks per subject, each with its own Copy last note
+      noteEd=TL.noteEditor($("tn-multi"), les, function(nm){ return prevNoteFor?prevNoteFor(les,nm):null; });
+      if(cp){ cp.style.display="none"; cp.onclick=null; }
+    } else {
+      noteEd=null; $("tn-multi").innerHTML="";
+      var subj1=TL.subjectsOf(les||{})[0];
+      $("tn-topics").value=les?(les.topics||""):"";
+      $("tn-homework").value=les?(les.homework||""):"";
+      $("tn-remarks").value=les?(les.remarks||""):"";
+      // Copy last note: one tap fills the fields from the previous lesson of this subject (then edit as needed)
+      var prev=prevNoteFor?prevNoteFor(les, subj1?subj1.name:""):null;
+      if(cp){
+        if(prev){
+          cp.style.display="";
+          cp.textContent="Copy last note · "+new Date(prev.date+"T00:00:00").toLocaleDateString("en-SG",{day:"numeric",month:"short"});
+          cp.onclick=function(){
+            $("tn-topics").value=prev.note.topics||""; $("tn-homework").value=prev.note.homework||""; $("tn-remarks").value=prev.note.remarks||"";
+            $("tn-msg").textContent="Copied — edit anything that changed, then save."; $("tn-msg").className="msg";
+            $("tn-topics").focus();
+          };
+        } else { cp.style.display="none"; cp.onclick=null; }
+      }
     }
     $("tn-modal").classList.add("on");
   }
@@ -255,7 +268,8 @@
   async function saveNote(){
     var msg=$("tn-msg");
     if(!noteLes){msg.textContent="Couldn't find that lesson."; msg.className="msg err"; return;}
-    var fields={topics:$("tn-topics").value.trim()||null,homework:$("tn-homework").value.trim()||null,remarks:$("tn-remarks").value.trim()||null};
+    var fields=noteEd ? TL.notesPayload(noteLes, noteEd.read())
+      : {topics:$("tn-topics").value.trim()||null,homework:$("tn-homework").value.trim()||null,remarks:$("tn-remarks").value.trim()||null};
     $("tn-save").disabled=true;
     var res=await window.sb.from("lessons").update(fields).eq("id",noteLes.id);
     $("tn-save").disabled=false;
@@ -306,8 +320,11 @@
       if(l.status==="done"){doneCount++; doneBilled+=amt;}
       var s=perStudent[l.student_id]||(perStudent[l.student_id]={c:0,owe:0,n:0});
       s.n++; if(l.paid)s.c+=amt; else if(l.status==="done")s.owe+=amt;
-      var subj=[l.subject,l.level].filter(Boolean).join(" · ")||"Unspecified", ps=perSubject[subj]||(perSubject[subj]={c:0,n:0});
-      ps.n++; if(l.paid)ps.c+=amt;
+      // A several-subject lesson counts once under each subject, its fee split evenly between them
+      var subs=TL.subjectsOf(l);
+      var keys=subs.length>1 ? subs.map(function(x){return [x.name,x.g].filter(Boolean).join(" · ");})
+                             : [[l.subject,l.level].filter(Boolean).join(" · ")||"Unspecified"];
+      keys.forEach(function(k){ var ps=perSubject[k]||(perSubject[k]={c:0,n:0}); ps.n++; if(l.paid)ps.c+=amt/keys.length; });
     });
     var billed=collected+owed+upc, due=collected+owed;
     var rate=due>0?Math.round(collected/due*100):0;
@@ -396,7 +413,7 @@
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,amount,paid,status,subject,level,topics,homework,remarks,compensation");
+    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,amount,paid,status,subject,level,topics,homework,remarks,subject_notes,compensation");
     var lessons=ls.data||[];
     // A cancelled lesson's billable amount is its compensation (0 if none) — every KPI/
     // chart below reads plain l.amount, so normalizing it once here keeps that code simple.

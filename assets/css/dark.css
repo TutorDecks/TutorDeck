@@ -308,6 +308,23 @@ html[data-theme="dark"] .inv-msg-text:focus{border-color:var(--teal);background:
 html[data-theme="dark"] .inv-msg-foot{color:var(--muted)}
 html[data-theme="dark"] .inv-msg-foot a{color:var(--navy)}
 html[data-theme="dark"] .inv-msg-text{border:1px solid transparent;outline:none;background:#252D39;color:var(--ink)}
+html[data-theme="dark"] .msub-x{color:var(--muted)}
+html[data-theme="dark"] .msub-x:hover{background:var(--bg);color:var(--owed)}
+html[data-theme="dark"] .ns-group{border:1px solid var(--line)}
+html[data-theme="dark"] .ns-head b{color:var(--ink)}
+html[data-theme="dark"] .tr-sn{color:var(--muted)}
+html[data-theme="dark"] .xr-h{color:var(--muted)}
+html[data-theme="dark"] .xr-row{border-top:1px solid var(--line)}
+html[data-theme="dark"] .xr-pick input{accent-color:var(--accent)}
+html[data-theme="dark"] .msub-row input,
+html[data-theme="dark"] .msub-row select,
+html[data-theme="dark"] .xr-row input[type=date],
+html[data-theme="dark"] .xr-row input[type=text]{border:1px solid var(--line);background:#172235;color:var(--ink)}
+html[data-theme="dark"] .msub-row input:focus,
+html[data-theme="dark"] .msub-row select:focus,
+html[data-theme="dark"] .xr-row input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(15,118,110,0.342)}
+html[data-theme="dark"] .msub-lbl{color:var(--ink)}
+html[data-theme="dark"] .msub-lbl span{color:var(--muted)}
 /* from home.html */
 html[data-theme="dark"] .ob-card{background:#172235;border:1px solid var(--line);box-shadow:var(--shadow)}
 html[data-theme="dark"] .ob-h{color:var(--ink)}
