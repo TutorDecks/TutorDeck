@@ -1,0 +1,37 @@
+# Smoke tests on every pull request into dev or main (see tests/smoke.py for what is checked).
+# Uses made-up data only: the Supabase library is replaced by tests/supabase-stub-*.js and all
+# outside requests are blocked, so no secrets are needed and the real database is never touched.
+name: Checks
+
+on:
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04   # pinned: Playwright 1.56 has no browser build for newer Ubuntu yet
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Install Playwright + Chromium
+        run: |
+          pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Install axe-core (accessibility checker)
+        run: npm install --prefix tests --no-audit --no-fund
+      - name: Run smoke tests
+        run: python3 tests/smoke.py

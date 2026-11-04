@@ -10,7 +10,8 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Students · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=244">
+<link rel="stylesheet" href="assets/css/app.css?v=249">
+<script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   a.slink{color:var(--navy);font-weight:700;text-decoration:none}
   a.slink:hover{text-decoration:underline}
@@ -72,6 +73,7 @@
   }
   .ro-sub{display:none;font-size:12.5px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
+<link rel="stylesheet" href="assets/css/dark.css?v=249">
 </head>
 <body>
 <div id="view">
@@ -87,8 +89,8 @@
   <div class="filters ro-filters">
     <input id="s-search" type="search" placeholder="Search name, parent or contact…">
     <button class="btn" id="ro-ftoggle" type="button" aria-expanded="false">Filter</button>
-    <select id="s-level"><option value="">All levels</option></select>
-    <select id="s-parent"><option value="">All parents</option></select>
+    <select id="s-level" aria-label="Filter by level"><option value="">All levels</option></select>
+    <select id="s-parent" aria-label="Filter by parent"><option value="">All parents</option></select>
     <select id="s-status" hidden>
       <option value="">Active &amp; discontinued</option>
       <option value="active" selected>Active only</option>
@@ -195,9 +197,9 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=244"></script>
-<script src="assets/js/supabase.js?v=244"></script>
-<script src="assets/js/app.js?v=244"></script>
-<script src="assets/js/students.js?v=244"></script>
+<script src="assets/js/config.js?v=249"></script>
+<script src="assets/js/supabase.js?v=249"></script>
+<script src="assets/js/app.js?v=249"></script>
+<script src="assets/js/students.js?v=249"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 // Weekly planner — Mon–Sun grid from recurring_slots; add, EDIT, remove slots.
 (function () {
-  function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
+  function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(t){TL.subjectsOf({subject:t}).forEach(function(x){var s=x.name;if(s&&u.indexOf(s)<0)u.push(s);});});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
   var DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   var SHORT=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   var userId=null, students=[], allStudents=[], allSlots=[], editingId=null, hhById={};
@@ -14,8 +14,9 @@
   function studentOptions(){
     $("m-student").innerHTML=students.length?students.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+"</option>";}).join(""):'<option value="">— no students yet —</option>';
   }
+  var subjPick=null;
   function clearForm(){
-    $("m-subject").value="";$("m-level").value="";$("m-start").value="";$("m-end").value="";$("m-rate").value="";$("m-split").value="1";splitHint();
+    $("m-subject").value="";$("m-level").value="";if(subjPick)subjPick.reset();$("m-start").value="";$("m-end").value="";$("m-rate").value="";$("m-split").value="1";splitHint();
     $("m-day").value="0";if(students.length)$("m-student").value=students[0].id;
   }
 
@@ -50,8 +51,10 @@
     if(!slot)return;                     // no existing slot to copy from
     $("m-rate").value=slot.rate!=null?slot.rate:"";
     $("m-split").value=slot.split||1;
-    if(!$("m-subject").value)$("m-subject").value=slot.subject||"";
-    if(!$("m-level").value)$("m-level").value=slot.level||"";
+    if(!$("m-subject").value&&!(subjPick&&subjPick.isMulti())){
+      $("m-subject").value=slot.subject||""; if(!$("m-level").value)$("m-level").value=slot.level||"";
+      if(subjPick)subjPick.load(slot.subject,slot.level);
+    }
     splitHint();
   }
 
@@ -64,7 +67,7 @@
       $("m-title").textContent="Edit slot";$("m-save").textContent="Save changes";
       if($("m-remove")) $("m-remove").style.display="";
       $("m-student").value=slot.student_id;$("m-day").value=slot.weekday;
-      $("m-subject").value=slot.subject||"";$("m-level").value=slot.level||"";$("m-start").value=hhmm(slot.start_time);
+      $("m-subject").value=slot.subject||"";$("m-level").value=slot.level||"";if(subjPick)subjPick.load(slot.subject,slot.level);$("m-start").value=hhmm(slot.start_time);
       $("m-end").value=hhmm(slot.end_time);$("m-rate").value=slot.rate;$("m-split").value=slot.split||1;splitHint();
     }else{
       editingId=null;clearForm();
@@ -182,7 +185,8 @@
     if(end<=start){msg.textContent="End time must be after start.";msg.className="msg err";return;}
     if(!(rate>=0)){msg.textContent="Enter an hourly rate.";msg.className="msg err";return;}
     var payload={tutor_id:userId,student_id:sid,weekday:parseInt($("m-day").value,10),
-      start_time:start,end_time:end,subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,split:Math.max(1,parseInt($("m-split").value,10)||1)};
+      start_time:start,end_time:end,subject:null,level:null,rate:rate,split:Math.max(1,parseInt($("m-split").value,10)||1)};
+    Object.assign(payload,subjPick?subjPick.fields():{subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null});
     $("m-save").disabled=true;
     var res=editingId
       ? await window.sb.from("recurring_slots").update(payload).eq("id",editingId)
@@ -218,6 +222,7 @@
   }
 
   function init(user){
+    subjPick=TL.subjectPicker($("m-subject"),$("m-level"));   // one or several subjects, each with its own G-level
     userId=user.id;
     $("add-btn").addEventListener("click",function(){openModal(true,null);});
     $("m-cancel").addEventListener("click",function(){openModal(false);});

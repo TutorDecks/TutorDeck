@@ -35,9 +35,11 @@ window.TL = (function () {
   ];
   // Secondary destinations: sidebar footer on desktop, "More" sheet on phones.
   var EXTRA = [
-    { id: "materials", label: "Materials", href: "materials", ic: "materials", ownerOnly: true },
+    { id: "materials", label: "Materials", href: "https://mugcornersg.com", ic: "materials", ext: true, hint: "Materials on MugCorner (opens in a new tab)" },
     { id: "settings",  label: "Settings",  href: "settings",  ic: "settings" }
   ];
+  // External destinations (e.g. Materials → MugCorner) open in a new tab.
+  function extAttr(n) { return n.ext ? ' target="_blank" rel="noopener"' : ""; }
   function groupOf(active) {
     for (var i = 0; i < GROUPS.length; i++) {
       var g = GROUPS[i];
@@ -102,8 +104,8 @@ window.TL = (function () {
              (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 18) + '<span>' + g.label + '</span></a>';
     }).join("");
     var sideExtra = extras.map(function (n) {
-      return '<a href="' + n.href + '" class="tn-ic' + (n.id === active ? " active" : "") + '" title="' + n.label +
-             '" aria-label="' + n.label + '">' + icon(n.ic, 19) + '</a>';
+      return '<a href="' + n.href + '" class="tn-ic' + (n.id === active ? " active" : "") + '" title="' + (n.hint || n.label) +
+             '" aria-label="' + (n.hint || n.label) + '"' + extAttr(n) + '>' + icon(n.ic, 19) + '</a>';
     }).join("");
     var initials = acctInitials();
 
@@ -128,7 +130,7 @@ window.TL = (function () {
       '<div class="ms-grab"></div>' +
       '<div class="ms-brand">' + LOGO + '<span><b>' + esc(brandName) + '</b><small>TutorDeck</small></span></div>' +
       extras.map(function (n) {
-        return '<a href="' + n.href + '" class="' + (n.id === active ? "on" : "") + '">' + icon(n.ic) + '<span>' + n.label + '</span></a>';
+        return '<a href="' + n.href + '" class="' + (n.id === active ? "on" : "") + '"' + extAttr(n) + '>' + icon(n.ic) + '<span>' + n.label + (n.ext ? ' <small class="ms-ext">MugCorner ↗</small>' : '') + '</span></a>';
       }).join("") +
       '<div class="ms-who">' + esc(email || "") + '</div>' +
       '<button type="button" class="ms-out" id="tl-signout-m">' + icon("signout") + '<span>Sign out</span></button>' +
@@ -155,7 +157,7 @@ window.TL = (function () {
           </div>
         </div>
       </header>
-      <div class="main">
+      <div class="main" role="main">
         <div class="topbar">
           <div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div>
         </div>
@@ -190,6 +192,14 @@ window.TL = (function () {
       cvb.addEventListener("click", function (e) { e.stopPropagation(); setClient(!CLIENT); });
     }
     applyClient();
+    // Dark mode: a second floating button above the eye. Per device (like Client view); light is the default.
+    if (!document.getElementById("td-theme")) {
+      var thb = document.createElement("button");
+      thb.type = "button"; thb.id = "td-theme"; thb.className = "cv-fab th-fab";
+      document.body.appendChild(thb);
+      thb.addEventListener("click", function (e) { e.stopPropagation(); setTheme(!isDark()); });
+    }
+    applyThemeBtn();
     // First-time tip on whichever page a new user opens first (not over the Calendar's own first tip).
     var calTipsPending = active === "calendar" && !store.get("td_tip_cal-filters");
     // Home decides for itself once its cards are drawn (not alongside the setup or Get paid faster card).
@@ -315,6 +325,191 @@ window.TL = (function () {
   var SUBLVL_RE = /\b(G[1-3]|HL|SL)\b/i;
   function subLevel(s) { var m = SUBLVL_RE.exec(String(s || "")); return m ? m[1].toUpperCase() : ""; }
   function yearLevel(s) { return String(s || "").replace(new RegExp(SUBLVL_RE.source, "gi"), "").replace(/\s{2,}/g, " ").trim(); }
+  // ---- Several subjects in one slot / lesson ----
+  // Stored in the existing subject text as "A-Math G3 + Physics G2" with the level column left empty, so
+  // every screen that just shows [subject, level] stays right and lessons generated from a slot copy it as is.
+  // A single subject keeps the old shape: subject "A-Math", level "G3".
+  var SUBJ_TAIL = /\s+(G[1-3]|HL|SL)$/i;
+  function subjectsOf(row) {
+    var txt = String((row && row.subject) || "").trim(); if (!txt) return [];
+    var parts = txt.split(/\s+\+\s+/).map(function (p) { return p.trim(); }).filter(Boolean);
+    return parts.map(function (p) {
+      var m = SUBJ_TAIL.exec(p), name = m ? p.slice(0, m.index).trim() : p, g = m ? m[1].toUpperCase() : "";
+      if (parts.length === 1 && !g) g = subLevel(row && row.level);
+      return { name: name || p, g: g };
+    });
+  }
+  function subjectText(list) {
+    return (list || []).map(function (s) { return s.name + (s.g ? " " + s.g : ""); }).join(" + ");
+  }
+  // Columns to save for a list of {name, g}.
+  function subjectFields(list) {
+    list = (list || []).map(function (s) { return { name: String(s.name || "").trim(), g: String(s.g || "").trim().toUpperCase() }; })
+      .filter(function (s) { return s.name; });
+    if (!list.length) return { subject: null, level: null };
+    if (list.length === 1) return { subject: list[0].name, level: list[0].g || null };
+    return { subject: subjectText(list), level: null };
+  }
+  function subjKey(n) { return String(n || "").trim().toLowerCase(); }
+  function hasSubject(row, name) {
+    var k = subjKey(name); return subjectsOf(row).some(function (s) { return subjKey(s.name) === k; });
+  }
+  // Notes per subject: [{name, g, topics, homework, remarks}]. A multi-subject lesson keeps them in
+  // lessons.subject_notes {"A-Math": {topics, homework, remarks}, …}; its topics/homework/remarks columns hold a
+  // combined copy ("A-Math: …\nPhysics: …") so exports and anything older still read sensibly.
+  function notesOf(l) {
+    l = l || {}; var subs = subjectsOf(l);
+    if (subs.length < 2) {
+      var s0 = subs[0] || { name: "", g: "" };
+      return [{ name: s0.name, g: s0.g, topics: l.topics || "", homework: l.homework || "", remarks: l.remarks || "" }];
+    }
+    var sn = l.subject_notes && typeof l.subject_notes === "object" ? l.subject_notes : null, byKey = {};
+    if (sn) Object.keys(sn).forEach(function (k) { byKey[subjKey(k)] = sn[k] || {}; });
+    return subs.map(function (s, i) {
+      var n = byKey[subjKey(s.name)] || (!sn && i === 0 ? { topics: l.topics, homework: l.homework, remarks: l.remarks } : {});
+      return { name: s.name, g: s.g, topics: n.topics || "", homework: n.homework || "", remarks: n.remarks || "" };
+    });
+  }
+  function noteFor(l, name) {
+    var all = notesOf(l); if (!name) return all.length === 1 ? all[0] : null;
+    var k = subjKey(name); return all.filter(function (n) { return subjKey(n.name) === k; })[0] || null;
+  }
+  function hasNote(n) { return !!(n && (n.topics || n.homework || n.remarks)); }
+  // Columns to save for edited notes (arr from notesOf / noteEditor.read()).
+  function notesPayload(l, arr) {
+    if (!arr || arr.length < 2) {
+      var a = (arr && arr[0]) || {}, out = { topics: a.topics || null, homework: a.homework || null, remarks: a.remarks || null };
+      if (l && l.subject_notes) out.subject_notes = null;
+      return out;
+    }
+    var sn = {}, comb = { topics: [], homework: [], remarks: [] };
+    arr.forEach(function (n) {
+      sn[n.name] = { topics: n.topics || null, homework: n.homework || null, remarks: n.remarks || null };
+      ["topics", "homework", "remarks"].forEach(function (k) { if (n[k]) comb[k].push(n.name + ": " + n[k]); });
+    });
+    return { subject_notes: sn, topics: comb.topics.join("\n") || null, homework: comb.homework.join("\n") || null, remarks: comb.remarks.join("\n") || null };
+  }
+  // The most recent earlier lesson of this student with notes for this subject → {date, note} or null.
+  function prevNote(lessons, les, name) {
+    if (!les) return null;
+    var best = null;
+    (lessons || []).forEach(function (x) {
+      if (x.student_id !== les.student_id || x.id === les.id || !x.lesson_date || x.lesson_date >= les.lesson_date) return;
+      if (x.status === "cancelled") return;
+      var n = name ? noteFor(x, name) : noteFor(x, ""); if (!hasNote(n)) return;
+      if (!best || x.lesson_date > best.date) best = { date: x.lesson_date, note: n };
+    });
+    return best;
+  }
+  function shortD(iso) { return new Date(iso + "T00:00:00").toLocaleDateString("en-SG", { day: "numeric", month: "short" }); }
+  // Per-subject note fields inside `box` (one group per subject, each with Copy last note).
+  // prevFor(name) → {date, note} | null. Returns { read() → arr for notesPayload }.
+  function noteEditor(box, les, prevFor) {
+    var arr = notesOf(les), id = box.id || "ne";
+    box.innerHTML = arr.map(function (n, i) {
+      var p = prevFor ? prevFor(n.name) : null;
+      return '<div class="ns-group" data-i="' + i + '"><div class="ns-head"><b>' + esc(n.name + (n.g ? " " + n.g : "")) + '</b>' +
+        (p ? '<button type="button" class="btn ns-copy" data-i="' + i + '">Copy last · ' + shortD(p.date) + '</button>' : '') + '</div>' +
+        '<div class="field"><label for="' + id + '-' + i + '-t">Topics covered</label><input id="' + id + '-' + i + '-t" type="text" value="' + esc(n.topics) + '"></div>' +
+        '<div class="field"><label for="' + id + '-' + i + '-h">Homework</label><input id="' + id + '-' + i + '-h" type="text" value="' + esc(n.homework) + '"></div>' +
+        '<div class="field"><label for="' + id + '-' + i + '-r">Remarks</label><input id="' + id + '-' + i + '-r" type="text" value="' + esc(n.remarks) + '"></div></div>';
+    }).join("");
+    box.querySelectorAll(".ns-copy").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var i = +b.dataset.i, p = prevFor(arr[i].name); if (!p) return;
+        document.getElementById(id + "-" + i + "-t").value = p.note.topics || "";
+        document.getElementById(id + "-" + i + "-h").value = p.note.homework || "";
+        document.getElementById(id + "-" + i + "-r").value = p.note.remarks || "";
+        b.textContent = "Copied"; document.getElementById(id + "-" + i + "-t").focus();
+      });
+    });
+    return { read: function () {
+      return arr.map(function (n, i) {
+        function v(k) { var el = document.getElementById(id + "-" + i + "-" + k); return el ? el.value.trim() : ""; }
+        return { name: n.name, g: n.g, topics: v("t"), homework: v("h"), remarks: v("r") };
+      });
+    } };
+  }
+  // Subject field that can hold several subjects, each with its own G1/G2/G3. Wraps a page's existing
+  // subject + level inputs: with one subject they behave exactly as before; "+ Add another subject" switches
+  // to a list of rows (and hides the single inputs). fields() → {subject, level} to save.
+  var GOPTS = ["", "G1", "G2", "G3", "HL", "SL"];
+  function subjectPicker(subjInput, levelInput) {
+    var subjField = subjInput.closest(".field") || subjInput.parentNode;
+    var levelField = levelInput ? (levelInput.closest(".field") || null) : null;
+    var wrap = document.createElement("div"); wrap.className = "msub";
+    wrap.innerHTML = '<div class="msub-lbl" style="display:none">Subjects <span>each with its own level</span></div><div class="msub-rows"></div><button type="button" class="link-btn msub-add">+ Add another subject</button>';
+    subjField.parentNode.insertBefore(wrap, subjField.nextSibling);
+    var rowsEl = wrap.querySelector(".msub-rows"), addBtn = wrap.querySelector(".msub-add"), multi = false;
+    var dl = subjInput.getAttribute("list");
+    function rowHtml(s) {
+      return '<div class="msub-row"><input type="text" class="msub-name" placeholder="Subject" aria-label="Subject"' + (dl ? ' list="' + dl + '"' : '') + ' value="' + esc(s.name || "") + '">' +
+        '<select class="msub-g" aria-label="Level for this subject">' + GOPTS.map(function (g) { return '<option value="' + g + '"' + (g === (s.g || "") ? " selected" : "") + '>' + (g || "Level") + '</option>'; }).join("") + '</select>' +
+        '<button type="button" class="msub-x" aria-label="Remove subject">×</button></div>';
+    }
+    function rows() {
+      return Array.prototype.map.call(rowsEl.querySelectorAll(".msub-row"), function (r) {
+        return { name: r.querySelector(".msub-name").value.trim(), g: r.querySelector(".msub-g").value };
+      });
+    }
+    function setMulti(list) {
+      multi = true; subjField.style.display = "none"; if (levelField) levelField.style.display = "none"; wrap.querySelector(".msub-lbl").style.display = "";
+      rowsEl.innerHTML = list.map(rowHtml).join(""); wire();
+    }
+    function setSingle(s) {
+      multi = false; rowsEl.innerHTML = ""; subjField.style.display = ""; if (levelField) levelField.style.display = ""; wrap.querySelector(".msub-lbl").style.display = "none";
+      if (s) { subjInput.value = s.name || ""; if (levelInput) levelInput.value = s.g || ""; }
+    }
+    function wire() {
+      rowsEl.querySelectorAll(".msub-x").forEach(function (b) {
+        b.onclick = function () {
+          b.closest(".msub-row").remove();
+          var left = rows(); if (left.length <= 1) setSingle(left[0] || { name: "", g: "" });
+        };
+      });
+    }
+    addBtn.addEventListener("click", function () {
+      var cur = multi ? rows() : [{ name: subjInput.value.trim(), g: subLevel(levelInput ? levelInput.value : "") }];
+      cur.push({ name: "", g: "" }); setMulti(cur);
+      var names = rowsEl.querySelectorAll(".msub-name"); names[names.length - 1].focus();
+    });
+    return {
+      // Fill from a saved slot / lesson (call after the page has set its own inputs).
+      load: function (subject, level) {
+        var list = subjectsOf({ subject: subject, level: level });
+        if (list.length >= 2) setMulti(list); else setSingle(null);
+      },
+      reset: function () { setSingle(null); },
+      isMulti: function () { return multi; },
+      list: function () { return multi ? rows().filter(function (s) { return s.name; }) : subjectsOf({ subject: subjInput.value, level: levelInput ? levelInput.value : "" }); },
+      fields: function () {
+        if (!multi) return { subject: subjInput.value.trim() || null, level: levelInput ? (levelInput.value.trim() || null) : null };
+        return subjectFields(rows());
+      }
+    };
+  }
+  // Adding exams for a student who takes several subjects: one row per subject, each with its own date
+  // and topics; untick a subject to skip it. Returns { read() → [{subject, exam_date, topics}] }.
+  function examRows(box, names) {
+    box.innerHTML = '<div class="xr-h">One exam per subject — set each date, untick any you don’t need.</div>' + names.map(function (n, i) {
+      return '<div class="xr-row"><label class="xr-pick"><input type="checkbox" class="xr-on" checked> <b>' + esc(n) + '</b></label>' +
+        '<input type="date" class="xr-date" aria-label="' + esc(n) + ' exam date">' +
+        '<input type="text" class="xr-topics" placeholder="Topics (optional)" aria-label="' + esc(n) + ' topics"></div>';
+    }).join("");
+    return { read: function () {
+      return Array.prototype.map.call(box.querySelectorAll(".xr-row"), function (r, i) {
+        return { on: r.querySelector(".xr-on").checked, subject: names[i], exam_date: r.querySelector(".xr-date").value, topics: r.querySelector(".xr-topics").value.trim() || null };
+      }).filter(function (x) { return x.on; });
+    } };
+  }
+  // Distinct subject names a student takes, across their weekly slots (falls back to recent lessons).
+  function studentSubjects(slots, lessons) {
+    var seen = {}, out = [];
+    function add(row) { subjectsOf(row).forEach(function (s) { var k = subjKey(s.name); if (k && !seen[k]) { seen[k] = 1; out.push(s.name); } }); }
+    (slots || []).forEach(add);
+    if (!out.length) (lessons || []).slice().sort(function (a, b) { return (b.lesson_date || "").localeCompare(a.lesson_date || ""); }).slice(0, 8).forEach(add);
+    return out;
+  }
   // First word of a full name ("Raphael Long" → "Raphael").
   function firstName(n) { return String(n || "").trim().split(/\s+/)[0] || ""; }
   var helloFirst = "", helloFull = "", setHello = function () {}, setBrand = function () {};
@@ -765,6 +960,50 @@ window.TL = (function () {
       }
     }
   }
+  // ---- Dark mode (opt-in, per device). The <head> of each app page sets data-theme before first paint;
+  // assets/css/dark.css only matches html[data-theme="dark"], so light mode is never affected.
+  function isDark() { return document.documentElement.getAttribute("data-theme") === "dark"; }
+  function setTheme(dark) {
+    try { if (dark) localStorage.setItem("td_theme", "dark"); else localStorage.removeItem("td_theme"); } catch (e) {}
+    if (dark) document.documentElement.setAttribute("data-theme", "dark");
+    else document.documentElement.removeAttribute("data-theme");
+    applyThemeBtn();
+    if (window.Chart && window.Chart.instances) Object.keys(window.Chart.instances).forEach(function (k) { try { window.Chart.instances[k].update("none"); } catch (e) {} });
+    window.dispatchEvent(new CustomEvent("td:theme", { detail: { dark: dark } }));
+  }
+  function applyThemeBtn() {
+    var dark = isDark();
+    var m = document.querySelector('meta[name="theme-color"]');
+    if (m) { if (!m.hasAttribute("data-light")) m.setAttribute("data-light", m.content); m.content = dark ? "#0F1726" : m.getAttribute("data-light"); }
+    var b = document.getElementById("td-theme");
+    if (!b) return;
+    b.innerHTML = dark ? SUN : MOON;
+    b.setAttribute("aria-pressed", dark ? "true" : "false");
+    b.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+    b.title = dark ? "Light mode" : "Dark mode";
+  }
+  // Charts: recolour grid/ticks/legend for dark, put the original colours back for light.
+  if (window.Chart && window.Chart.register) {
+    var CH_DARK = { grid: "#26324A", tick: "#9AA4B6", proj: "#56607A" };
+    window.Chart.register({ id: "tdTheme", beforeUpdate: function (chart) {
+      var dark = isDark(), o = chart.config.options || (chart.config.options = {}), sv = chart.$td || (chart.$td = { sc: {}, ds: [] });
+      if (dark && !sv.def) sv.def = window.Chart.defaults.color;
+      window.Chart.defaults.color = dark ? CH_DARK.tick : (sv.def || window.Chart.defaults.color);
+      Object.keys(o.scales || {}).forEach(function (k) {
+        var sc = o.scales[k]; sc.grid = sc.grid || {}; sc.ticks = sc.ticks || {};
+        if (!(k in sv.sc)) sv.sc[k] = { g: sc.grid.color, t: sc.ticks.color };
+        sc.grid.color = dark ? CH_DARK.grid : sv.sc[k].g; sc.ticks.color = dark ? CH_DARK.tick : sv.sc[k].t;
+      });
+      var lg = o.plugins && o.plugins.legend;
+      if (lg) { lg.labels = lg.labels || {}; if (!("lg" in sv)) sv.lg = lg.labels.color; lg.labels.color = dark ? "#C3CBD8" : sv.lg; }
+      (chart.config.data.datasets || []).forEach(function (d, i) {
+        if (sv.ds[i] === undefined) sv.ds[i] = d.backgroundColor;
+        if (sv.ds[i] === "#C9C5BC") d.backgroundColor = dark ? CH_DARK.proj : sv.ds[i];
+      });
+    } });
+  }
+  var SUN = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+  var MOON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z"/></svg>';
   var EYE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
   var EYE_OFF = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.5 8 10 8a10 10 0 0 0 5.4-1.6"/><path d="M2 2l20 20"/></svg>';
 
@@ -884,7 +1123,10 @@ window.TL = (function () {
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,
            todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd, isOwed: isOwed, noCharge: noCharge, syncInvoicesForLessons: syncInvoicesForLessons,
-           dialog: dialog, firstName: firstName, subLevel: subLevel, yearLevel: yearLevel, cvTip: function () { cvTip(); },
+           dialog: dialog, firstName: firstName, subLevel: subLevel, yearLevel: yearLevel,
+           subjectsOf: subjectsOf, subjectText: subjectText, subjectFields: subjectFields, hasSubject: hasSubject, notesOf: notesOf, noteFor: noteFor,
+           hasNote: hasNote, notesPayload: notesPayload, prevNote: prevNote, noteEditor: noteEditor, subjectPicker: subjectPicker,
+           examRows: examRows, studentSubjects: studentSubjects, cvTip: function () { cvTip(); },
            setHello: function (f, full) { setHello(f, full); }, setBrand: function (b) { setBrand(b); },
            // Name parents see (invoices, PayNow, WhatsApp): tuition name, else the tutor's own name, else generic.
            payeeName: function (p, generic) { p = p || {}; return (p.business_name || "").trim() || (p.full_name || "").trim() || generic; } };

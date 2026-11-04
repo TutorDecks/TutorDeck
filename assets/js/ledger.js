@@ -9,7 +9,7 @@
     if(x[1]!==y[1]) return x[2]+" "+M[x[1]-1]+" \u2013 "+y[2]+" "+M[y[1]-1];
     return x[2]+"\u2013"+y[2]+" "+M[y[1]-1];
   }
-  function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
+  function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(t){TL.subjectsOf({subject:t}).forEach(function(x){var s=x.name;if(s&&u.indexOf(s)<0)u.push(s);});});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
   var hasChargeNote = false;
   var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, levelById = {}, endById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   // Payment options on invoices: PayNow QR (if set up) and bank transfer (if bank details are filled in), or both.
@@ -743,14 +743,29 @@
       }
     }catch(e){ /* non-blocking: the field still works without the hint */ }
   }
-  function closePay(){ $("pay-modal").classList.remove("on"); payIds=[]; }
+  function closePay(){ $("pay-modal").classList.remove("on"); payIds=[]; goBack(); }
+  // One pay window for the whole app: the student page and the Invoices tab link here
+  // (ledger?pay=<lesson ids>&back=<page>), so every payment gets a date (and optional screenshot) the same way,
+  // then you're taken back to where you started.
+  var payBack=null;
+  function payFromLink(){
+    var q=new URLSearchParams(location.search), ids=(q.get("pay")||"").split(",").filter(Boolean);
+    if(!ids.length) return;
+    var back=q.get("back")||"";
+    payBack=/^(invoices|student\?id=[\w-]+)$/.test(back) ? back : null;   // only our own pages
+    try{ history.replaceState(null,"",location.pathname); }catch(e){}
+    var owed=allLessons.filter(function(l){ return ids.indexOf(String(l.id))>-1 && TL.isOwed(l); }).map(function(l){return l.id;});
+    if(!owed.length){ TL.alert("Those lessons are already marked paid.").then(goBack); return; }
+    openPayModal(owed);
+  }
+  function goBack(){ if(payBack){ var b=payBack; payBack=null; location.href=b; } }
   async function confirmPay(){
     if(!payIds.length){closePay();return;}
     var date=$("pay-date").value||todayISO(), file=$("pay-shot").files[0]||null, ids=payIds.slice();
     $("pay-save").disabled=true; $("pay-msg").textContent=file?"Saving + uploading…":"Saving…";
     ids.forEach(function(id){delete selectedLessons[id];});
     var ok=await doMarkPaid(ids, date, file);
-    if(ok){ closePay(); load(); }
+    if(ok){ if(payBack){ closePay(); return; } closePay(); load(); }
     else { $("pay-save").disabled=false; $("pay-msg").textContent=""; }
   }
 
@@ -765,11 +780,13 @@
     $("m-cost").value=(r>=0&&s&&e&&e>s)?TL.sgd(splitAmt(r,s,e,mSplit())):"";
     if($("m-note-f")) $("m-note-f").style.display=(hasChargeNote && $("m-rate").value!=="" && r===0)?"":"none";   // $0 lesson: say why
   }
+  var subjPick=null;   // TL.subjectPicker on the add/edit lesson form
   function prefillFromSlot(){
     var sid=$("m-student").value;
     var slot=slots.find(function(x){return x.student_id===sid;});
     if(!slot){ // no recurring slot for this student — clear slot-derived fields
       ["m-start","m-end","m-rate","m-subject","m-level"].forEach(function(id){$(id).value="";});
+      if(subjPick)subjPick.reset();
       $("m-split").value="1"; recalcCost(); return;
     }
     $("m-rate").value=slot.rate!=null?slot.rate:"";
@@ -778,6 +795,7 @@
     $("m-end").value=hm(slot.end_time);
     $("m-subject").value=slot.subject||"";
     $("m-level").value=slot.level||"";
+    if(subjPick)subjPick.load(slot.subject,slot.level);
     recalcCost();
   }
   function openAdd(open, lesson){
@@ -790,14 +808,17 @@
       $("m-student").value=lesson.student_id;
       $("m-date").value=lesson.lesson_date;
       $("m-subject").value=lesson.subject||"";$("m-level").value=lesson.level||"";
+      if(subjPick)subjPick.load(lesson.subject,lesson.level);
       $("m-start").value=hm(lesson.start_time);$("m-end").value=hm(lesson.end_time);
       $("m-rate").value=lesson.rate;$("m-split").value=lesson.split||1;$("m-paid").checked=!!lesson.paid;
+      $("m-paid-row").style.display="none";   // payments go through Mark paid (date + screenshot), not this form
       $("m-note").value=lesson.charge_note||"";
       recalcCost();
     }else{
       editLessonId=null;
       $("m-title").textContent="Add lesson";$("m-save").textContent="Save lesson";
       $("m-date").value=todayISO();$("m-paid").checked=false;
+      $("m-paid-row").style.display="";        // adding an old lesson that was paid at the time
       ["m-subject","m-level","m-start","m-end","m-rate","m-cost","m-note"].forEach(function(id){$(id).value="";});
       $("m-split").value="1";
       prefillFromSlot();
@@ -815,7 +836,9 @@
     // always un-cancels, so any compensation from a prior cancellation no longer applies.
     var fields={student_id:sid,lesson_date:date,start_time:start,end_time:end,
       subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,split:split,amount:splitAmt(rate,start,end,split),
-      status:statusFor(date,end),paid:paid,paid_date:paid?date:null,compensation:null};
+      status:statusFor(date,end),compensation:null};
+    if(subjPick) Object.assign(fields,subjPick.fields());   // one or several subjects
+    if(!editLessonId){ fields.paid=paid; fields.paid_date=paid?date:null; }   // editing leaves payment as it was
     if(hasChargeNote) fields.charge_note=(fields.amount>0)?null:($("m-note").value.trim().slice(0,60)||null);   // only a $0 lesson keeps a reason
     // Postponing lives on the Calendar (tap a lesson → Postpone). Editing here keeps a lesson's ↻ as it was;
     // a brand-new lesson starts not postponed.
@@ -1302,7 +1325,7 @@
       box.style.cssText="position:fixed;left:-10000px;top:0;width:640px;background:#fff;padding:0";
       box.innerHTML=window._invHTML; document.body.appendChild(box);
       var canvas;
-      try{ canvas=await window.html2canvas(box.firstElementChild||box,{backgroundColor:"#ffffff",scale:2,useCORS:true,windowWidth:1100}); }
+      try{ canvas=await window.html2canvas(box.firstElementChild||box,{backgroundColor:"#ffffff",scale:2,useCORS:true,windowWidth:1100,onclone:function(d){d.documentElement.removeAttribute("data-theme");}}); }
       finally{ box.remove(); }
       var pdf=new window.jspdf.jsPDF({unit:"mm",format:"a4"});
       var pw=210, ph=297, mg=14, w=pw-2*mg, h=canvas.height*w/canvas.width;
@@ -1431,7 +1454,7 @@
     try{
       await loadH2C();
       var node=$("inv-body").firstElementChild||$("inv-body");
-      var canvas=await window.html2canvas(node,{backgroundColor:"#ffffff",scale:2,useCORS:true});
+      var canvas=await window.html2canvas(node,{backgroundColor:"#ffffff",scale:2,useCORS:true,onclone:function(d){d.documentElement.removeAttribute("data-theme");}});
       canvas.toBlob(async function(blob){
         b.disabled=false;waLabel("Send on WhatsApp");
         if(!blob){TL.alert("Couldn't render the invoice image.");return;}
@@ -1522,6 +1545,7 @@
     renderMonthKpis();    // collected/projected follow the picked month (All = current month)
 
     renderOutstanding(unpaid);
+    payFromLink();
     fillSubjects(allLessons.map(function(l){return l.subject;}).concat(slots.map(function(s){return s.subject;})));fillRecFilters();
     renderRecords();
   }
@@ -1565,6 +1589,7 @@
     $("k-projected").textContent=TL.sgd(projected);  if($("k-projected-n"))$("k-projected-n").textContent=period.mode==="all"?r.label:"lessons this month";
   }
   function init(user){
+    if($("m-subject")&&$("m-level"))subjPick=TL.subjectPicker($("m-subject"),$("m-level"));
     userId=user.id;
     var on=function(id,evt,fn){var el=$(id);if(el)el.addEventListener(evt,fn);};
     try{var sp=TL.store.get("tl_period"); if(sp)period=JSON.parse(sp);}catch(e){}
