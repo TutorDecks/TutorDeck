@@ -513,6 +513,34 @@ window.TL = (function () {
   // First word of a full name ("Raphael Long" → "Raphael").
   function firstName(n) { return String(n || "").trim().split(/\s+/)[0] || ""; }
   var helloFirst = "", helloFull = "", setHello = function () {}, setBrand = function () {};
+  // Google Calendar sync runs on the server (api/gcal "sync"), so the tutor can leave the Schedule page.
+  // On any other page, keep an eye on it and say when it's done. Only while one was started from this
+  // browser in the last 6 minutes (tl_gcal_bg), so most page loads make no extra request.
+  function toast(text, kind) {
+    var t = document.getElementById("td-toast");
+    if (!t) { t = document.createElement("div"); t.id = "td-toast"; t.className = "td-toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+    t.textContent = text; t.className = "td-toast on" + (kind ? " " + kind : "");
+    clearTimeout(t._h); t._h = setTimeout(function () { t.className = "td-toast"; }, 6000);
+    t.onclick = function () { t.className = "td-toast"; };
+  }
+  async function gcalBgWatch() {
+    var since = +(store.get("tl_gcal_bg") || 0);
+    if (!since) return;
+    if (Date.now() - since > 6 * 60e3) { store.remove("tl_gcal_bg"); return; }
+    try {
+      var s = await window.sb.auth.getSession(), jwt = s && s.data && s.data.session && s.data.session.access_token;
+      if (!jwt) return;
+      var r = await fetch("/api/gcal", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + jwt }, body: JSON.stringify({ action: "status" }) });
+      if (!r.ok) { store.remove("tl_gcal_bg"); return; }
+      var d = await r.json();
+      if (d.state === "running") { setTimeout(gcalBgWatch, 3000); return; }
+      store.remove("tl_gcal_bg");
+      if (d.state === "ok") { store.set("tl_gcal_last", String(Date.parse(d.at) || Date.now())); var what = String(d.note || "").replace(/^Synced ✓ \d+ lessons? in \d+s · /, "");
+        toast(/already up to date/.test(what) || !what ? "Google Calendar is up to date ✓" : "Google Calendar synced ✓ " + what, "ok"); }
+      else if (d.state === "error") toast(d.note || "Google Calendar sync hit an error. Press Sync again on Schedule.", "err");
+    } catch (e) { /* offline — try again on the next page */ }
+  }
+
   async function requireAuth(active, init) {
     var hr = new Date().getHours();
     var meta = { dashboard: [hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening",
@@ -540,6 +568,7 @@ window.TL = (function () {
     seedFromAccount(session.user);   // tips already seen / setup done on another device or link
     isOwner = session.user.id === OWNER_ID;
     window.TL_IS_OWNER = isOwner; window.TL_OWNER_ID = OWNER_ID;
+    if (active !== "calendar") setTimeout(gcalBgWatch, 800);   // a Google Calendar sync still running on the server?
     // If two-factor is enabled but not yet satisfied this session (e.g. after a
     // Google sign-in), send the user to complete the challenge first.
     try {

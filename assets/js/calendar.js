@@ -614,7 +614,7 @@
     var row={ tutor_id:userId, student_id:b.studentId, slot_id:b.slotId, lesson_date:b.dateISO, slot_date:b.dateISO,
       start_time:b.startHM, end_time:b.endHM, subject:b.subject, level:b.level, rate:b.rate, split:b.split||1,
       amount:splitAmt(b.rate,b.startHM,b.endHM,b.split), status:statusFor(b.dateISO,b.endHM), paid:false };
-    var res=await window.sb.from("lessons").insert(row);
+    var res=await window.sb.from("lessons").insert(row); if(!res.error) gAuto();
     if(res.error){TL.alert("Couldn't log: "+res.error.message);return;}
     refreshAfterMutation();
   }
@@ -698,7 +698,7 @@
       start_time:b.startHM, end_time:b.endHM, subject:b.subject, level:b.level, rate:b.rate, split:b.split||1,
       amount:splitAmt(b.rate,b.startHM,b.endHM,b.split), status:statusFor(b.dateISO,b.endHM), paid:false }; });
     btn.disabled=true;
-    var res=await window.sb.from("lessons").insert(rows);
+    var res=await window.sb.from("lessons").insert(rows); if(!res.error) gAuto();
     btn.disabled=false;
     if(res.error){ TL.alert("Couldn't log: "+res.error.message); return; }
     refreshAfterMutation();
@@ -758,7 +758,7 @@
       paid:paid, paid_date:paid?date:null, one_off:true };   // manual add from the calendar = one-off
     if(caPick) Object.assign(row,caPick.fields());   // one or several subjects
     var b=$("ca-save"); b.disabled=true;
-    var res=await window.sb.from("lessons").insert(row);
+    var res=await window.sb.from("lessons").insert(row); if(!res.error) gAuto();
     b.disabled=false;
     if(res.error){ err(res.error.message); return; }
     closeAdd(); refreshAfterMutation();
@@ -778,18 +778,18 @@
   }
   async function saveCancelForm(b){
     var comp=Math.max(0,parseFloat($("cp-comp").value)||0), msg=$("cp-cmsg");
-    var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null,compensation:comp>0?comp:null}).eq("id",b.id);
+    var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null,compensation:comp>0?comp:null}).eq("id",b.id); if(!res.error) gAuto();
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
     refreshAfterMutation();
   }
   async function doRestore(b){
-    var res=await window.sb.from("lessons").update({status:statusFor(b.dateISO,hhmm2(b.endMin)),compensation:null}).eq("id",b.id);
+    var res=await window.sb.from("lessons").update({status:statusFor(b.dateISO,hhmm2(b.endMin)),compensation:null}).eq("id",b.id); if(!res.error) gAuto();
     if(res.error){TL.alert("Couldn't restore: "+res.error.message);return;}
     refreshAfterMutation();
   }
   async function doDelete(id){
     if(!(await confirmBox("Delete this lesson permanently? Use Cancel instead if you just want to void it.", {title:"Delete lesson", yes:"Delete", danger:true}))) return;
-    var res=await window.sb.from("lessons").delete().eq("id",id);
+    var res=await window.sb.from("lessons").delete().eq("id",id); if(!res.error) gAuto();
     if(res.error){TL.alert("Couldn't delete: "+res.error.message);return;}
     refreshAfterMutation();
   }
@@ -826,7 +826,7 @@
     }
     if(!(await confirmBox("Revert this lesson to its original slot — "+date+", "+start+"–"+end+"?", {title:"Revert to slot", yes:"Revert"}))) return;
     var amount=amtFor(slot?slot.rate:b.rate, slot?slot.split:b.split, b.amount, b.startMin, b.endMin, start, end);
-    var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,amount:amount,status:statusFor(date,end),postponed:false}).eq("id",b.id);
+    var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,amount:amount,status:statusFor(date,end),postponed:false}).eq("id",b.id); if(!res.error) gAuto();
     if(res.error){ TL.alert("Couldn't revert: "+res.error.message); return; }
     refreshAfterMutation();
   }
@@ -835,7 +835,7 @@
     if(!date||!start||!end){msg.textContent="Pick a date, start and end time.";msg.className="msg err";return;}
     if(end<=start){msg.textContent="End time must be after start time.";msg.className="msg err";return;}
     var amount=amtFor(b.rate, b.split, b.amount, b.startMin, b.endMin, start, end);   // keep earnings in step with the new duration
-    var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,amount:amount,status:statusFor(date,end),postponed:true}).eq("id",b.id);
+    var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,amount:amount,status:statusFor(date,end),postponed:true}).eq("id",b.id); if(!res.error) gAuto();
     if(res.error){msg.textContent="Couldn't postpone: "+res.error.message;msg.className="msg err";return;}
     refreshAfterMutation();
   }
@@ -861,7 +861,7 @@
   function gcalAccount(){ return TL.store.get("tl_gcal_account")||""; }
   function gOwnerOf(ev){ try{ return ev.extendedProperties.private.tlOwner||""; }catch(e){ return ""; } }
   // Revoke the live token on sign-out (app.js calls this).
-  window.TD_GCAL_REVOKE=function(){ try{ if(gToken && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(gToken, function(){}); }catch(e){} gToken=null; gTokenExp=0; };
+  window.TD_GCAL_REVOKE=function(){ if(gMode==="server"){ gToken=null; gTokenExp=0; return; } try{ if(gToken && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(gToken, function(){}); }catch(e){} gToken=null; gTokenExp=0; };
   // A connection attempt failed — drop back to the Connect step (clear the loaded list so the
   // dropdown gives way to the Connect button). Keep the chosen calendar so reconnect resumes it.
   function gcalFail(msg){
@@ -869,6 +869,101 @@
     try{ TL.store.remove("tl_gcal_connected"); TL.store.remove("tl_gcal_list"); TL.store.remove("tl_gcal_cals"); }catch(e){}
     updateGcalUI();
     gStatus(msg||"Couldn't connect to Google — click Connect to try again.","err");
+  }
+  // ---- "Connect once" (server mode): api/gcal keeps an encrypted long-lived Google key per tutor and hands
+  // out fresh 1-hour passes, so there's no Google pop-up after the first connect, on any device.
+  // gMode: "?" not checked yet · "server" api/gcal is set up · "legacy" it isn't (falls back to the pop-up flow).
+  var gMode="?", gLinked=false, gProbe=null;   // gProbe: the first "token" check, so an early tap can wait for it
+  async function gServer(action, extra){
+    try{
+      var s=await window.sb.auth.getSession(), jwt=s&&s.data&&s.data.session&&s.data.session.access_token;
+      if(!jwt) return { status:401, data:{} };
+      var r=await fetch("/api/gcal", { method:"POST", headers:{ "Content-Type":"application/json", Authorization:"Bearer "+jwt },
+        body:JSON.stringify(Object.assign({ action:action }, extra||{})) });
+      var d={}; try{ d=await r.json(); }catch(e){}
+      return { status:r.status, data:d||{} };
+    }catch(e){ return { status:0, data:{} }; }
+  }
+  function gTake(d){                                         // a pass from the server → use it like a pop-up token
+    gToken=d.access_token; gTokenExp=Date.now()+(((+d.expires_in||3600)*1000)-60000);
+    gTokenAccount=d.email||null; gLinked=true; gMode="server";
+    try{ TL.store.set("tl_gcal_connected","1"); TL.store.set("tl_gcal_list","1"); }catch(e){}
+    if(gTokenAccount && !gcalAccount()) TL.store.set("tl_gcal_account", gTokenAccount);
+    if(d.calendar && !gcalChosen()){ try{ TL.store.set("tl_gcal_calendar", d.calendar); TL.store.set("tl_gcal_chosen","1"); }catch(e){} }   // chosen on another device
+  }
+  // Fresh pass without any pop-up. true = got one; false = not linked / not available (gMode says which).
+  async function gServerToken(){
+    var r=await gServer("token");
+    if(r.status===200 && r.data.access_token){ gTake(r.data); return true; }
+    if(r.status===404 && r.data.error==="not_linked"){ gMode="server"; gLinked=false; return false; }
+    if(r.status===401 && r.data.error==="revoked"){ gMode="server"; gLinked=false;
+      gStatus("Google Calendar access was removed in your Google account. Tap Connect to link it again.","err"); return false; }
+    if(r.status===401){ return false; }                       // TutorDeck session problem; leave the mode alone
+    if(r.status===502){ gMode="server"; gLinked=true; return false; }   // Google hiccup; we're still linked
+    gMode="legacy"; return false;                             // 503 not set up yet / 404 no function → pop-up flow
+  }
+  // Send the browser to Google's consent page (a full page, not a pop-up: works the same on phones).
+  async function gServerConnect(){
+    gStatus("Opening Google…");
+    var r=await gServer("start", { ret:"/calendar" });
+    if(r.status===200 && r.data.url){ location.href=r.data.url; return; }
+    gStatus(r.data.error==="host" ? "Google Calendar can't be connected from this address. Use tutordeck.vercel.app." : "Couldn't reach Google — try again.","err");
+  }
+  var G_ERR={ access_denied:"Google Calendar wasn't connected (you cancelled on Google's page).",
+    scope:"Google Calendar wasn't connected: please leave both permission boxes ticked so lessons can sync.",
+    expired:"That took a while, so Google Calendar wasn't connected. Tap Connect to try again.",
+    no_refresh:"Google didn't finish connecting. Tap Connect to try again." };
+  // Back from Google's page: the address ends in #gcal=<sealed key> (or #gcal_error=…). Save it to this tutor.
+  async function gServerFinish(){
+    var h=location.hash||"", m=h.match(/[#&]gcal=([A-Za-z0-9_-]+)/), e=h.match(/[#&]gcal_error=([a-z_]+)/);
+    if(!m && !e) return false;
+    try{ history.replaceState(null, "", location.pathname+location.search); }catch(x){}
+    if(e){ gMode="server"; gStatus(G_ERR[e[1]]||"Google Calendar wasn't connected. Tap Connect to try again.","err"); return true; }
+    gStatus("Finishing the Google Calendar connection…");
+    var blob=m[1], r=await gServer("finish", { blob:blob, expect:gcalAccount() });
+    if(r.status===409 && r.data.error==="other_account"){
+      var ok=await confirmBox("You connected "+r.data.email+", but this TutorDeck account syncs to "+r.data.linked+". Sync to "+r.data.email+" from now on? Lessons already on "+r.data.linked+" stay there.",
+        { title:"Different Google account", yes:"Use "+r.data.email, no:"Cancel" });
+      if(!ok){ await gServer("finish", { blob:blob, decline:true }); gMode="server"; gStatus("Nothing changed. Lessons still sync to "+r.data.linked+".","ok"); return true; }
+      r=await gServer("finish", { blob:blob, replace:true });
+      if(r.status===200){ TL.store.set("tl_gcal_account", r.data.email); TL.store.remove("tl_gcal_chosen"); TL.store.remove("tl_gcal_calendar"); }
+    }
+    if(r.status!==200 || !r.data.access_token){
+      gStatus(r.data.error==="no_table" ? "Google Calendar connect isn't switched on yet (database update pending)." : "Couldn't finish connecting Google Calendar. Tap Connect to try again.","err");
+      return true;
+    }
+    gTake(r.data);
+    await populateCalendars();
+    if(gcalChosen()) syncNow(); else { updateGcalUI(); gStatus("Connected ✓ Now choose which calendar to sync into.","ok"); }
+    return true;
+  }
+  // On opening Schedule: get a pass quietly and bring Google up to date (at most every 5 minutes).
+  async function gcalBoot(){
+    gProbe=gServerFinish().then(function(done){ return done ? null : gServerToken(); });
+    var got=await gProbe;
+    if(got===null) return;
+    if(got){
+      await populateCalendars();
+      var last=+(TL.store.get("tl_gcal_last")||0);
+      var st=await gServer("status");                         // a server sync may be running, or just finished
+      if(st.status===200 && st.data.state==="running"){ gWatch(); return; }
+      if(st.status===200 && st.data.at){
+        last=Math.max(last, Date.parse(st.data.at)||0);
+        if(st.data.state==="ok" && Date.now()-last<=5*60e3) gStatus(st.data.note+gAgo(st.data.at),"ok");
+        if(st.data.state==="error") gStatus(st.data.note,"err");
+      }
+      try{ TL.store.remove("tl_gcal_bg"); }catch(e){}
+      if(gcalChosen() && Date.now()-last>5*60e3) syncNow();
+      return;
+    }
+    if(gMode==="server" && !gLinked && gcalChosen() && !($("gcal-status")||{}).textContent)
+      gStatus("Tap Sync now once to switch on automatic Google Calendar sync.");
+  }
+  // After a lesson is added / changed / cancelled / removed on this page: sync a moment later.
+  var gAutoT=null;
+  function gAuto(){
+    if(!(gMode==="server" && gLinked && gcalChosen())) return;
+    clearTimeout(gAutoT); gAutoT=setTimeout(function(){ syncNow(); }, 1500);
   }
   // The Connect button and the calendar dropdown are mutually exclusive:
   //  - no calendars loaded yet → show "Connect Google Calendar", hide the dropdown
@@ -952,7 +1047,18 @@
       // Syncing happens when you press Sync.
     });
   }
-  function connectGcal(){
+  async function connectGcal(){
+    // Tapped before the quiet check came back (the server can take a second or two to wake up): wait for it,
+    // otherwise we'd fall back to the old pop-up flow by mistake.
+    if(gMode==="?" && gProbe){ gStatus("Connecting…"); await gProbe; }
+    if(gMode==="server"){
+      if(gTokenValid() || (gLinked && await gServerToken())){
+        if(gcalChosen()) syncNow(); else if(gcalCals().length) gStatus("Choose a calendar to sync your lessons into."); else populateCalendars();
+        return;
+      }
+      if(gMode==="server" && !gLinked){ gServerConnect(); return; }
+      if(gMode==="server"){ gStatus("Google isn't responding — try again in a minute.","err"); return; }
+    }
     if(!gTokenClient){ gStatus("Google isn't ready yet — try again in a second.","err"); return; }
     // Token still good? Just act — no fresh Google popup on every click.
     if(gTokenValid()){
@@ -993,25 +1099,8 @@
     }catch(e){}
   }
 
-  function gEvent(l){
-    var sym=(l.postponed?"↻":"")+(l.one_off?"✦":"");     // ↻ postponed, ✦ one-off — same keys as the app
-    var summary=(sym?sym+" ":"")+[nameById[l.student_id]||"Lesson", l.subject].filter(Boolean).join(" · ");
-    var d=[]; if(l.level)d.push("Level: "+l.level); if(l.amount!=null)d.push("Amount: S$"+l.amount);
-    d.push(l.status==="scheduled"?"Scheduled":(l.paid?"Paid":(Number(l.amount)>0?"Unpaid":"No charge")));
-    if(l.postponed)d.push("Postponed (↻)"); if(l.one_off)d.push("One-off (✦)");
-    var e={ summary:summary, description:d.join("\n"),
-      start:{ dateTime:l.lesson_date+"T"+hhmm(l.start_time)+":00", timeZone:GTZ },
-      end:{ dateTime:l.lesson_date+"T"+hhmm(l.end_time)+":00", timeZone:GTZ },
-      reminders:{ useDefault:false },                      // no notification spam on re-create
-      extendedProperties:{ private:{ tlengSync:"1", tlLessonId:String(l.id), tlOwner:String(userId) } } };  // tag + lesson + which TutorDeck tutor
-    var loc=locById[l.student_id]; if(loc) e.location=loc;
-    return e;
-  }
-  // Comparable fingerprint of the fields we sync — used to detect drift (incl. Google-side edits).
-  function gFP(x){
-    return [ x.summary||"", ((x.start&&x.start.dateTime)||"").slice(0,19),
-      ((x.end&&x.end.dateTime)||"").slice(0,19), x.location||"", x.description||"" ].join("|");
-  }
+  // Event building + the month-by-month reconcile live in gcal-core.js, shared with the server (api/gcal.js),
+  // so a browser sync and a server sync always produce identical events.
   async function gapi(method, path, body){
     var res=await fetch("https://www.googleapis.com/calendar/v3"+path, {
       method:method, headers:{ "Authorization":"Bearer "+gToken, "Content-Type":"application/json" },
@@ -1020,113 +1109,67 @@
     if(!res.ok && res.status!==410) throw new Error("Google API "+res.status);   // 410 = already gone
     return (res.status===204||res.status===410) ? null : res.json();
   }
-  // The month around a date, both as lesson-date bounds (YYYY-MM-DD) and RFC3339 SGT times.
-  function monthWindow(when){
-    var y=when.getFullYear(), m=when.getMonth(), lastDay=new Date(y,m+1,0).getDate();
-    var ny=(m===11)?y+1:y, nm=(m===11)?0:m+1;
-    return { firstISO:y+"-"+pad(m+1)+"-01", lastISO:y+"-"+pad(m+1)+"-"+pad(lastDay),
-      tmin:y+"-"+pad(m+1)+"-01T00:00:00+08:00", tmax:ny+"-"+pad(nm+1)+"-01T00:00:00+08:00", label:MONF[m]+" "+y };
+  function gCtx(cal){
+    return { owner:userId, cal:cal||gcalTarget(), today:TDGcalCore.sgToday(), names:nameById, locs:locById, google:gapi,
+      lessons:async function(a,b){ var r=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id,one_off").eq("tutor_id", userId).gte("lesson_date", a).lte("lesson_date", b); return r.error?null:(r.data||[]); },
+      ownLessonIds:async function(ids){ var r=await window.sb.from("lessons").select("id").eq("tutor_id", userId).in("id", ids); return r.error?null:(r.data||[]).map(function(x){ return x.id; }); },
+      lastLessonDate:async function(from){ var r=await window.sb.from("lessons").select("lesson_date").eq("tutor_id", userId).gte("lesson_date", from).order("lesson_date",{ascending:false}).limit(1); return (!r.error && r.data && r.data[0] && r.data[0].lesson_date)||null; },
+      progress:function(label){ gStatus("Syncing "+label+"…"); } };
   }
-  // All app-created events on a calendar (optionally within a time window), following pages.
-  async function listAppEvents(cal, tmin, tmax){
-    var out=[], page=null;
-    do{
-      var q="/calendars/"+encodeURIComponent(cal)+"/events?privateExtendedProperty="+encodeURIComponent("tlengSync=1")+"&maxResults=250&singleEvents=true";
-      if(tmin) q+="&timeMin="+encodeURIComponent(tmin);
-      if(tmax) q+="&timeMax="+encodeURIComponent(tmax);
-      if(page) q+="&pageToken="+encodeURIComponent(page);
-      var d=await gapi("GET", q);
-      (d && d.items || []).forEach(function(e){ if(e.id) out.push(e); });
-      page = d && d.nextPageToken;
-    } while(page);
-    return out;
-  }
-  function evLessonId(ev){ try{ return ev.extendedProperties.private.tlLessonId||""; }catch(e){ return ""; } }
-  // Reconcile ONE month on the target calendar against the ledger (app is source of truth):
-  // create missing lessons, update any that drifted (incl. Google-side edits), delete orphans.
-  // Returns counts; throws on 401 so the caller stops.
-  //
-  // Ownership rules (several tutors can sync into one shared Google calendar):
-  //  • tagged with this tutor's id (tlOwner)  → ours: kept, updated or removed as the ledger says.
-  //  • tagged with ANOTHER tutor's id         → never touched.
-  //  • untagged "legacy" event (made before tlOwner existed) → ours ONLY if its tlLessonId is one of
-  //    this tutor's lessons (any status, any date — row-level security means we can only ever see our
-  //    own). Then it's adopted: kept + stamped with tlOwner if the lesson is live in this month,
-  //    removed if the lesson is cancelled or now sits in another month. Legacy events whose lesson
-  //    no longer exists can't be proven ours, so they're left alone and counted in `unknown`.
-  async function syncMonth(when){
-    var cal=gcalTarget(), w=monthWindow(when), calP="/calendars/"+encodeURIComponent(cal)+"/events";
-    var none={ created:0, updated:0, deleted:0, skipped:0, unknown:0, fail:1 };
-    gStatus("Syncing "+w.label+"…");
-    var events=await listAppEvents(cal, w.tmin, w.tmax);
-    var mine=events.filter(function(ev){ return gOwnerOf(ev)===String(userId); });
-    var legacy=events.filter(function(ev){ return !gOwnerOf(ev) && evLessonId(ev); });
-    // ALL of this tutor's lessons in the month, cancelled ones included — used to decide ownership.
-    var ls=await window.sb.from("lessons")
-      .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id,one_off")
-      .eq("tutor_id", userId).gte("lesson_date", w.firstISO).lte("lesson_date", w.lastISO);
-    if(ls.error) return none;
-    var all=ls.data||[], ownIds={};
-    all.forEach(function(l){ ownIds[String(l.id)]=1; });
-    // Legacy events pointing at a lesson outside this month: check whether that lesson is ours.
-    var ask=[]; legacy.forEach(function(ev){ var lid=evLessonId(ev); if(!ownIds[lid] && ask.indexOf(lid)<0) ask.push(lid); });
-    for(var a=0;a<ask.length;a+=100){
-      var chunk=ask.slice(a,a+100).filter(function(x){ return /^[0-9a-f-]{36}$/i.test(x); });
-      if(!chunk.length) continue;
-      var o=await window.sb.from("lessons").select("id").eq("tutor_id", userId).in("id", chunk);
-      if(o.error) return none;
-      (o.data||[]).forEach(function(r){ ownIds[String(r.id)]=1; });
-    }
-    var rows=all.filter(function(l){ return l.status!=="cancelled"; });   // what should be on the calendar
-    var byLesson={}, toDel=[], unknown=0;
-    mine.forEach(function(ev){ var lid=evLessonId(ev); if(lid && !byLesson[lid]) byLesson[lid]=ev; else toDel.push(ev); });  // dups of ours
-    legacy.forEach(function(ev){
-      var lid=evLessonId(ev);
-      if(!ownIds[lid]){ unknown++; return; }                // can't prove it's ours → leave it alone
-      if(!byLesson[lid]) byLesson[lid]=Object.assign({_legacy:true},ev); else toDel.push(ev);   // proven ours; extra copy = dup
-    });
-    var created=0, updated=0, deleted=0, skipped=0, fail=0, keep={};
-    for(var i=0;i<rows.length;i++){
-      var l=rows[i], want=gEvent(l), ev=byLesson[String(l.id)]; keep[String(l.id)]=1;
-      try{
-        if(!ev){ await gapi("POST", calP, want); created++; }
-        // PUT replaces the event with `want`, which carries tlOwner — so an adopted legacy event stops being legacy.
-        else if(ev._legacy || gFP(ev)!==gFP(want)){ await gapi("PUT", calP+"/"+encodeURIComponent(ev.id), want); updated++; }
-        else skipped++;
-      }catch(e){ if(e&&e.code===401) throw e; fail++; }
-    }
-    // Orphans: our events (tagged or proven legacy) whose lesson is cancelled, deleted, or moved out of this month.
-    Object.keys(byLesson).forEach(function(lid){ if(!keep[lid]) toDel.push(byLesson[lid]); });
-    for(var k=0;k<toDel.length;k++){ try{ await gapi("DELETE", calP+"/"+encodeURIComponent(toDel[k].id)); deleted++; }catch(e){ if(e&&e.code===401) throw e; fail++; } }
-    return { created:created, updated:updated, deleted:deleted, skipped:skipped, unknown:unknown, fail:fail };
-  }
-  // Sync from the 1st of LAST month through the last month that has a lesson (capped +6mo) — so
-  // last week's cancellations are caught even across a month boundary, and lessons logged for
-  // future months go too. Older months are left untouched.
+  function listAppEvents(cal, tmin, tmax){ return TDGcalCore.listAppEvents(gCtx(cal), tmin, tmax); }
+  function evLessonId(ev){ return TDGcalCore.lessonOf(ev); }
+
+  // Press Sync. When "connect once" is on, the SERVER does the work (api/gcal "sync"), so you can open other
+  // pages meanwhile; this page (and any other TutorDeck page, via app.js) just watches its progress.
+  // Otherwise (older pop-up mode, or the server isn't set up yet) the browser syncs, as before.
+  var gSyncing=false, gAgain=false;     // gAgain: a lesson changed mid-sync → run once more after
   async function syncNow(){
+    if(gSyncing){ gAgain=true; return; }
+    if(gMode==="server" && gLinked){
+      var r=await gServer("sync", { calendar:gcalTarget() });
+      if(r.status===202 || r.status===200){
+        try{ TL.store.set("tl_gcal_bg", String(Date.now())); }catch(e){}
+        gStatus("Syncing on TutorDeck's server — you can open other pages.");
+        gWatch(); return;
+      }
+      if(r.status===401 && r.data.error==="revoked"){ gLinked=false; gStatus("Google Calendar access was removed in your Google account. Tap Connect to link it again.","err"); return; }
+      if(r.status===502){ gStatus("Google isn't responding — try again in a minute.","err"); return; }
+      // 503 (database update not run yet) or anything else → do it here in the browser instead.
+    }
+    gSyncing=true;
+    try{ await syncHere(); } finally { gSyncing=false; }
+    if(gAgain){ gAgain=false; syncNow(); }
+  }
+  async function syncHere(){
+    if(!gTokenValid() && gMode==="server" && gLinked) await gServerToken();
     if(!gToken) return;
     if(!(await gcalAccountOK())) return;
     if(!loadedStatic) await loadStatic();
-    var now=new Date(), fromM=new Date(now.getFullYear(), now.getMonth()-1, 1);
-    var q=await window.sb.from("lessons").select("lesson_date").gte("lesson_date", iso(fromM)).order("lesson_date",{ascending:false}).limit(1);
-    var lastISO=(!q.error && q.data && q.data[0] && q.data[0].lesson_date) || iso(fromM);
-    var lastM=new Date(+lastISO.slice(0,4), (+lastISO.slice(5,7))-1, 1);
-    var capM=new Date(now.getFullYear(), now.getMonth()+6, 1);
-    if(lastM>capM) lastM=capM;
-    var created=0, updated=0, deleted=0, skipped=0, unknown=0, fail=0, months=0, t0=Date.now();
-    try{
-      for(var cur=new Date(fromM); cur<=lastM; cur=new Date(cur.getFullYear(), cur.getMonth()+1, 1)){
-        var r=await syncMonth(new Date(cur));
-        created+=r.created; updated+=r.updated; deleted+=r.deleted; skipped+=r.skipped; unknown+=r.unknown||0; fail+=r.fail; months++;
-      }
-    }catch(e){ if(e&&e.code===401){ gStatus("Google session expired — click Connect again.","err"); return; } gStatus("Sync hit an error — try again.","err"); return; }
-    var secs=Math.max(1, Math.round((Date.now()-t0)/1000)), total=created+updated+skipped;
-    var parts=[]; if(created)parts.push(created+" added"); if(updated)parts.push(updated+" updated");
-    if(!parts.length && !deleted) parts.push("already up to date");
-    if(deleted) parts.push(deleted+" removed");                // cancelled / deleted lessons taken off Google
-    if(fail) parts.push(fail+" failed");
-    gStatus("Synced ✓ "+total+" lesson"+(total===1?"":"s")+" in "+secs+"s · "+parts.join(" · "), "ok");
-    if(unknown) console.info("[TutorDeck] Google sync left "+unknown+" older event(s) alone: they can't be confirmed as yours (lesson deleted, or it belongs to another account).");
+    var res;
+    try{ res=await TDGcalCore.syncAll(gCtx()); }
+    catch(e){ if(e&&e.code===401){ gStatus("Google session expired — click Connect again.","err"); return; } gStatus("Sync hit an error — try again.","err"); return; }
+    try{ TL.store.set("tl_gcal_last", String(Date.now())); }catch(e){}
+    gStatus(res.text, "ok");
+    if(res.unknown) console.info("[TutorDeck] Google sync left "+res.unknown+" older event(s) alone: they can't be confirmed as yours (lesson deleted, or it belongs to another account).");
+  }
+  // Watch a server sync until it finishes (every 2 seconds while this page is open).
+  var gWatchT=null;
+  async function gWatch(){
+    clearTimeout(gWatchT);
+    var r=await gServer("status");
+    if(r.status!==200){ return; }
+    var d=r.data;
+    if(d.state==="running"){ gSyncing=true; gStatus((d.note||"Syncing…")+" You can open other pages."); gWatchT=setTimeout(gWatch, 2000); return; }
+    gSyncing=false;
+    try{ TL.store.remove("tl_gcal_bg"); }catch(e){}
+    if(d.state==="ok"){ try{ TL.store.set("tl_gcal_last", String(Date.parse(d.at)||Date.now())); }catch(e){} gStatus(d.note+gAgo(d.at), "ok"); }
+    else if(d.state==="error") gStatus(d.note||"Sync hit an error — press Sync again.", "err");
+    if(gAgain){ gAgain=false; syncNow(); }
+  }
+  function gAgo(at){
+    var t=Date.parse(at||""); if(!t) return "";
+    var m=Math.round((Date.now()-t)/60000);
+    return m<1 ? "" : " · "+(m<60 ? m+" min ago" : new Date(t).toLocaleTimeString("en-SG",{hour:"numeric",minute:"2-digit"}));
   }
   // Make sure the Google account behind the token is the one this tutor linked. If it changed (another
   // Google account is signed in on this browser), stop and ask before anything is written.
@@ -1164,7 +1207,8 @@
   }
   // Forget the linked Google account on this TutorDeck account and go back to the Connect step.
   function gcalUnlink(){
-    try{ if(gToken && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(gToken, function(){}); }catch(e){}
+    if(gMode==="server"){ gServer("disconnect"); gLinked=false; }
+    else try{ if(gToken && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(gToken, function(){}); }catch(e){}
     gToken=null; gTokenExp=0; gTokenAccount=null;
     ["tl_gcal_account","tl_gcal_chosen","tl_gcal_calendar","tl_gcal_cals","tl_gcal_list","tl_gcal_connected"].forEach(function(k){ try{ TL.store.remove(k); }catch(e){} });
     updateGcalUI();
@@ -1173,7 +1217,7 @@
   // "Change account": optionally take this tutor's lessons off the old Google calendar (while we can still
   // reach it), then unlink and open Google's account picker for the new one.
   async function changeGcalAccount(){
-    var linked=gcalAccount(); if(!linked || !gTokenClient) return;
+    var linked=gcalAccount(); if(!linked || (!gTokenClient && gMode!=="server")) return;
     var cal=calLabel();
     var body=document.createElement("label"); body.className="gsync-opt";
     body.innerHTML='<input type="checkbox" checked> <span>Remove my lessons from <b></b> first</span>';
@@ -1185,6 +1229,7 @@
       onClose:function(yes){                                   // runs inside the tap, so Google's pop-up isn't blocked
         if(!yes) return;
         remove=box.checked;
+        if(gMode==="server") return;                           // no pop-up needed: handled after the dialog
         if(!remove){ gcalUnlink(); gStatus("Choose the Google account to sync into…"); gUserInit=true; gTokenClient.requestAccessToken({ prompt:"select_account consent" }); return; }
         if(!(gTokenValid() && gTokenAccount===linked)){
           needToken=true;
@@ -1192,7 +1237,15 @@
           gTokenClient.requestAccessToken({ prompt:"", login_hint:linked });
         }
       } });
-    if(ok && remove && !needToken) removeThenUnlink(linked, true);
+    if(!ok) return;
+    if(gMode==="server"){
+      if(!remove){ gcalUnlink(); gServerConnect(); return; }
+      var got=gTokenValid() || await gServerToken();
+      await removeThenUnlink(linked, got);
+      if(!gLinked && !gcalAccount()) gServerConnect();          // removed + unlinked → straight on to Google's page
+      return;
+    }
+    if(remove && !needToken) removeThenUnlink(linked, true);
   }
   async function removeThenUnlink(linked, got){
     if(!got){ gStatus("Couldn't reach "+linked+", so nothing was changed. Try again, or untick “Remove my lessons”.","err"); return; }
@@ -1221,6 +1274,7 @@
     if(!gToken){
       // No live token this session — remember the choice, then get a token and sync to it.
       try{ TL.store.set("tl_gcal_calendar", newT); TL.store.set("tl_gcal_chosen","1"); }catch(e){}
+      if(gMode==="server" && gLinked) gServer("set_calendar", { calendar:newT });
       updateGcalUI(); gStatus("Connecting to Google…");
       connectGcal();                                          // gUserInit=true → syncNow() to the chosen calendar after the token
       return;
@@ -1230,6 +1284,7 @@
       try{ var evs=await myEventsOn(oldT); for(var i=0;i<evs.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(evs[i].id)); }catch(e){} } }catch(e){}
     }
     try{ TL.store.set("tl_gcal_calendar", newT); TL.store.set("tl_gcal_chosen","1"); }catch(e){}
+    if(gMode==="server" && gLinked) gServer("set_calendar", { calendar:newT });
     updateGcalUI();
     syncNow();
   }
@@ -1325,7 +1380,7 @@
     if($("gcal-btn")) $("gcal-btn").addEventListener("click", connectGcal);
     if($("gcal-cal")) $("gcal-cal").addEventListener("change", function(){ if(this.value) setGcalTarget(this.value); });
     if($("gsync-change")) $("gsync-change").addEventListener("click", changeGcalAccount);
-    initGcal();
+    initGcal(); gcalBoot();
     ["day","3day","week","list","month"].forEach(function(k){ var b=$("seg-"+k); if(b) b.addEventListener("click", function(){ setMode(k); }); });
     // phone: swipe left/right on the calendar to move a day / 3 days / week
     // The view tracks the finger once the gesture is clearly sideways; vertical scrolling is left alone.
