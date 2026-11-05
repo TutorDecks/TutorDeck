@@ -122,5 +122,10 @@
         }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "api/gcal.js": {
+      "maxDuration": 60
+    }
+  }
 }
