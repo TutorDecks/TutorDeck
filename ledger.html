@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Ledger · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=249">
+<link rel="stylesheet" href="assets/css/app.css?v=250">
 <script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
@@ -114,6 +114,24 @@
     #month-table tbody tr:not(.today-div) td[data-label="Status"]{order:4}
     #month-table tbody tr:not(.today-div) td[data-label="Status"] .badge,
     #month-table tbody tr:not(.today-div) td[data-label="Status"] .kind-tag{font-size:11.5px;padding:2px 8px}
+  }
+
+  /* v250: phone multi-select — "Select" turns on tick boxes + a select-all bar (desktop keeps the header tick box) */
+  #rec-selmode,.rec-selbar{display:none}
+  .rec-selbar{align-items:center;gap:10px;padding:10px 14px;margin:6px 12px 4px;border:1px solid var(--line);border-radius:10px;background:var(--cream)}
+  .rs-all{display:flex;align-items:center;gap:9px;flex:1;min-width:0;font-weight:700;font-size:14px;color:var(--ink);cursor:pointer}
+  .rs-all input{width:18px;height:18px;accent-color:var(--accent);flex:none}
+  .rs-all .rs-n{font-weight:500;color:var(--muted)}
+  .rec-selbar .btn{padding:8px 12px}
+  @media(max-width:820px){
+    #rec-selmode{display:inline-flex;flex:0 0 auto}
+    #rec-view.selecting #rec-selmode,#rec-view.selecting #rec-ftoggle,#rec-delsel-btn{display:none!important}
+    #rec-view.selecting .rec-selbar{display:flex}
+    #rec-view.selecting #month-table tbody tr:not(.today-div){grid-template-columns:auto 1fr auto}
+    #rec-view.selecting #month-table tbody tr:not(.today-div) td[data-label=""]{display:flex;align-items:center;grid-column:1;grid-row:1/3;padding-right:4px}
+    #rec-view.selecting #month-table .lchk{width:20px;height:20px;accent-color:var(--accent)}
+    #rec-view.selecting #month-table tbody tr.sel{background:var(--accent-soft)}
+    #rec-view.selecting #month-table tbody tr.sel td,#rec-view.selecting #month-table tbody tr.sel:hover td{background:transparent}
   }
 
   /* ---- Ledger v149: summary strip, single control row, menus ---- */
@@ -262,7 +280,7 @@
   .inv-note-btn{all:unset;cursor:pointer;color:var(--accent);font-weight:700;text-decoration:underline;text-underline-offset:2px}
   .inv-note-btn:focus-visible{outline:3px solid rgba(15,118,110,.35);border-radius:4px}
 </style>
-<link rel="stylesheet" href="assets/css/dark.css?v=249">
+<link rel="stylesheet" href="assets/css/dark.css?v=250">
 </head>
 <body>
 <div id="view">
@@ -335,6 +353,7 @@
     <div class="filters">
       <input id="rec-search" type="search" placeholder="Search…">
       <button class="btn" id="rec-ftoggle" type="button" aria-expanded="false">Filter</button>
+      <button class="btn" id="rec-selmode" type="button">Select</button>
       <select id="rec-student"><option value="">All students</option></select>
       <select id="rec-subject"><option value="">All subjects</option></select>
       <select id="rec-level"><option value="">All levels</option></select>
@@ -348,6 +367,11 @@
       </select>
       <button class="btn" id="rec-clear" style="display:none">Clear</button>
       <button class="btn btn-danger" id="rec-delsel-btn" style="display:none">Delete selected</button>
+    </div>
+    <div class="rec-selbar" id="rec-selbar">
+      <label class="rs-all"><input type="checkbox" id="rec-selall-m"> Select all <span class="rs-n" id="rec-selall-n"></span></label>
+      <button class="btn btn-danger" id="rec-delsel-m" type="button" disabled>Delete</button>
+      <button class="btn" id="rec-seldone" type="button">Done</button>
     </div>
     <div class="empty" id="month-empty" style="display:none"><h3>No lessons this month yet</h3></div>
     <div class="tscroll"><table class="tbl" id="month-table" style="display:none">
@@ -478,10 +502,10 @@
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
 <script src="assets/js/qrlib.js"></script>
-<script src="assets/js/config.js?v=249"></script>
-<script src="assets/js/supabase.js?v=249"></script>
-<script src="assets/js/app.js?v=249"></script>
-<script src="assets/js/paynow.js?v=249"></script>
-<script src="assets/js/ledger.js?v=249"></script>
+<script src="assets/js/config.js?v=250"></script>
+<script src="assets/js/supabase.js?v=250"></script>
+<script src="assets/js/app.js?v=250"></script>
+<script src="assets/js/paynow.js?v=250"></script>
+<script src="assets/js/ledger.js?v=250"></script>
 </body>
 </html>

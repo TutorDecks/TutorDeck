@@ -462,6 +462,7 @@
     body.querySelectorAll("tr[data-lid]").forEach(function(tr){
       tr.addEventListener("click",function(e){
         if(e.target.closest("a,button,input,label"))return;
+        if(recSelecting()){var cb=tr.querySelector("[data-rsel]");if(cb){cb.checked=!cb.checked;cb.dispatchEvent(new Event("change"));}return;}
         openRecDetail(tr.dataset.lid);
       });
     });
@@ -503,18 +504,34 @@
     var btn=$("rec-delsel-btn");
     if(btn){btn.style.display=n?"":"none";btn.textContent="Delete "+n+" selected";}
     var all=$("rec-selall");
-    if(all)all.checked=lastRecordRows.length>0&&lastRecordRows.every(function(l){return selectedRecords[l.id];});
+    var every=lastRecordRows.length>0&&lastRecordRows.every(function(l){return selectedRecords[l.id];});
+    if(all)all.checked=every;
+    // phone select bar
+    var am=$("rec-selall-m"); if(am)am.checked=every;
+    var an=$("rec-selall-n"); if(an)an.textContent="("+lastRecordRows.length+")";
+    var dm=$("rec-delsel-m"); if(dm){dm.disabled=!n;dm.textContent=n?"Delete "+n:"Delete";}
+    document.querySelectorAll("#month-body tr[data-lid]").forEach(function(tr){tr.classList.toggle("sel",!!selectedRecords[tr.dataset.lid]);});
   }
-  function toggleSelectAllRecords(){
-    var checked=$("rec-selall").checked;
+  function recSelecting(){var v=$("rec-view");return !!(v&&v.classList.contains("selecting"));}
+  function setRecSelecting(on){
+    $("rec-view").classList.toggle("selecting",on);
+    if(!on){selectedRecords={};renderRecords();}
+  }
+  function toggleSelectAllRecords(e){
+    var checked=(e&&e.target?e.target:$("rec-selall")).checked;
     lastRecordRows.forEach(function(l){if(checked)selectedRecords[l.id]=1; else delete selectedRecords[l.id];});
     renderRecords();
   }
   async function deleteSelectedRecords(){
     var ids=Object.keys(selectedRecords);
     if(!ids.length)return;
-    if(!(await TL.confirm({title:"Delete "+TL.plural(ids.length,"lesson")+"?",message:"The selected "+(ids.length===1?"lesson is":"lessons are")+" deleted permanently. This can\u2019t be undone.",confirmText:"Delete",danger:true})))return;
+    var paidById={};(allLessons||[]).forEach(function(l){if(l.paid)paidById[l.id]=1;});
+    var paidN=ids.filter(function(id){return paidById[id];}).length;
+    var msg="The selected "+(ids.length===1?"lesson is":"lessons are")+" deleted permanently. This can\u2019t be undone."+
+      (paidN?" "+TL.plural(paidN,"of them is","of them are")+" already paid, so "+(paidN===1?"that payment":"those payments")+" will disappear from your income too.":"");
+    if(!(await TL.confirm({title:"Delete "+TL.plural(ids.length,"lesson")+"?",message:msg,confirmText:"Delete",danger:true})))return;
     selectedRecords={};
+    var rv=$("rec-view"); if(rv)rv.classList.remove("selecting");
     deleteLessons(ids);
   }
   function shiftMonth(d){period.mode="month";var dt=new Date(period.y,period.m+d,1);period.y=dt.getFullYear();period.m=dt.getMonth();refreshPeriod();}
@@ -1648,6 +1665,10 @@
     ["rec-student","rec-subject","rec-level","rec-status"].forEach(function(id){on(id,"change",renderRecords);});
     on("rec-clear","click",clearRecFilters);
     on("rec-selall","change",toggleSelectAllRecords);
+    on("rec-selall-m","change",toggleSelectAllRecords);
+    on("rec-delsel-m","click",deleteSelectedRecords);
+    on("rec-selmode","click",function(){setRecSelecting(true);});
+    on("rec-seldone","click",function(){setRecSelecting(false);});
     on("rec-delsel-btn","click",deleteSelectedRecords);
     on("seg-out","click",function(){setLedgerMode("out");});
     on("owe-close","click",closeOwe);
