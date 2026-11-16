@@ -531,7 +531,7 @@
       (b.adhoc?' <span class="cp-tag" style="background:rgba(19,35,63,.10);color:var(--navy)">✦ One-off</span>':'')+
       (b.postponed?' <span class="cp-tag" style="background:rgba(180,83,9,.18);color:#92400E">Postponed</span>':'')+
       actionButtons(b)+
-      (cv?'':'<a class="cp-act" href="ledger">'+(b.kind==="proj"?"Open Ledger":"Edit in Ledger")+' →</a>');
+      (cv?'':'<a class="cp-act" href="'+(b.kind==="lesson"?"ledger?lesson="+encodeURIComponent(b.id):"ledger")+'">'+(b.kind==="proj"?"Open Ledger":"Edit in Ledger")+' →</a>');
     pop.style.display="block";
     var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
     positionPopover(node);

@@ -538,13 +538,13 @@
   function periodAll(){period.mode="all";refreshPeriod();}
   function periodThisMonth(){var n=new Date();period={mode:"month",y:n.getFullYear(),m:n.getMonth()};refreshPeriod();}
   // Outstanding / Records tabs — mirrors setDashMode() on the dashboard.
-  function setLedgerMode(mode){
+  function setLedgerMode(mode, keep){   // keep: don't remember this tab (a one-off jump from a link)
     var rec=mode==="rec";
     if($("out-view"))$("out-view").style.display=rec?"none":"block";
     if($("rec-view"))$("rec-view").style.display=rec?"block":"none";
     if($("seg-out"))$("seg-out").classList.toggle("on",!rec);
     if($("seg-rec"))$("seg-rec").classList.toggle("on",rec);
-    try{TL.store.set("tl_ledger_mode",mode);}catch(e){}
+    if(!keep) try{TL.store.set("tl_ledger_mode",mode);}catch(e){}
   }
   // Count rides on the tab so you can see who's owing without switching to look.
   function setOutCount(n){var el=$("seg-out-n");if(el)el.textContent=n?" · "+n:"";}
@@ -776,6 +776,24 @@
     openPayModal(owed);
   }
   function goBack(){ if(payBack){ var b=payBack; payBack=null; location.href=b; } }
+  // Calendar's "Edit in Ledger" links here as ledger?lesson=<id>: open Records on that lesson's month,
+  // scroll its row into view, flash it, and open its sheet. Not found (deleted, or not this tutor's) → a short note.
+  function jumpFromLink(){
+    var q=new URLSearchParams(location.search), id=q.get("lesson");
+    if(!id) return;
+    try{ history.replaceState(null,"",location.pathname); }catch(e){}
+    var l=allLessons.filter(function(x){ return String(x.id)===id; })[0];
+    if(!l){ TL.toast("That lesson isn't in the Ledger any more."); return; }
+    setLedgerMode("rec", true);
+    var y=+l.lesson_date.slice(0,4), m=+l.lesson_date.slice(5,7)-1;
+    if(period.mode!=="all"&&(period.y!==y||period.m!==m)){ period={mode:"month",y:y,m:m}; refreshPeriod(true); }
+    if(!monthById[l.id]) clearRecFilters();   // a filter or search was hiding it
+    var tr=document.querySelector('#month-body tr[data-lid="'+l.id+'"]');
+    // Instant scroll: the sheet opens straight away (a smooth scroll would be cut short by the sheet's scroll lock).
+    // The row keeps a teal tint until the list redraws, so after closing the sheet you can see where you are.
+    if(tr){ tr.scrollIntoView({behavior:"auto",block:"center"}); tr.classList.add("jumped"); }
+    openRecDetail(l.id);
+  }
   async function confirmPay(){
     if(!payIds.length){closePay();return;}
     var date=$("pay-date").value||todayISO(), file=$("pay-shot").files[0]||null, ids=payIds.slice();
@@ -1565,6 +1583,7 @@
     payFromLink();
     fillSubjects(allLessons.map(function(l){return l.subject;}).concat(slots.map(function(s){return s.subject;})));fillRecFilters();
     renderRecords();
+    jumpFromLink();
   }
 
   // One shared period (the header navigator) drives the KPIs, Outstanding, and Records.
@@ -1577,7 +1596,7 @@
     if($("p-today"))$("p-today").style.display=cur?"none":"";
   }
   function persistPeriod(){ try{TL.store.set("tl_period",JSON.stringify(period));}catch(e){} }
-  function refreshPeriod(){ persistPeriod(); updatePeriodUI(); renderPendingKpi(); renderMonthKpis(); renderOutstanding(lastUnpaid); renderRecords(); }
+  function refreshPeriod(keep){ if(!keep) persistPeriod(); updatePeriodUI(); renderPendingKpi(); renderMonthKpis(); renderOutstanding(lastUnpaid); renderRecords(); }
   // Pending KPI: All = all-time total; a specific month = that month's pending.
   function renderPendingKpi(){
     var all=lastUnpaid||[], pk=periodKey();

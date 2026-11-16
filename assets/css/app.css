@@ -1,5 +1,5 @@
-/* v251 */
-/* v251 */
+/* v252 */
+/* v252 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -161,8 +161,12 @@ body:has(#view)::after{content:"";position:fixed;z-index:9999;left:max(24px,calc
 .tbl tbody tr.is-cancelled{opacity:.55}
 .tbl tbody tr.is-cancelled td[data-label="Amount"]{text-decoration:line-through}
 .tbl tbody tr.flash td{animation:tl-flash 1.2s ease-out 1}
+/* row opened from a link (Calendar → Edit in Ledger): flash, then a steady tint + outline until the list redraws */
+.tbl tbody tr.jumped td{background-color:var(--accent-soft);animation:tl-jump 1.6s ease-out 1}
+.tbl tbody tr.jumped{outline:2px solid var(--accent);outline-offset:-2px}   /* an outline, so it still stands out on a "today" row */
+@keyframes tl-jump{0%,45%{background-color:rgba(15,118,110,.24)}100%{background-color:var(--accent-soft)}}
 @keyframes tl-flash{0%,50%{background-color:rgba(15,118,110,.24)}100%{background-color:transparent}}
-@media(prefers-reduced-motion:reduce){.tbl tbody tr.flash td{animation:none}}
+@media(prefers-reduced-motion:reduce){.tbl tbody tr.flash td,.tbl tbody tr.jumped td{animation:none}}
 .kind-tag{display:inline-block;font-size:11px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--line);padding:2px 8px;border-radius:999px;text-transform:capitalize}
 .row-act{all:unset;cursor:pointer;color:var(--owed);font-weight:600;font-size:13px}
 .row-act:hover{text-decoration:underline}
