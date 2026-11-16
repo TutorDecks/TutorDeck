@@ -1152,7 +1152,7 @@ window.TL = (function () {
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,
            todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd, isOwed: isOwed, noCharge: noCharge, syncInvoicesForLessons: syncInvoicesForLessons,
-           dialog: dialog, firstName: firstName, subLevel: subLevel, yearLevel: yearLevel,
+           dialog: dialog, toast: toast, firstName: firstName, subLevel: subLevel, yearLevel: yearLevel,
            subjectsOf: subjectsOf, subjectText: subjectText, subjectFields: subjectFields, hasSubject: hasSubject, notesOf: notesOf, noteFor: noteFor,
            hasNote: hasNote, notesPayload: notesPayload, prevNote: prevNote, noteEditor: noteEditor, subjectPicker: subjectPicker,
            examRows: examRows, studentSubjects: studentSubjects, cvTip: function () { cvTip(); },
