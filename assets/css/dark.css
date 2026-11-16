@@ -79,6 +79,8 @@ html[data-theme="dark"] .tbl tbody tr.today:hover{background:#382E0F}
 html[data-theme="dark"] .tbl tbody tr.today td:first-child{box-shadow:inset 3px 0 0 var(--gold)}
 html[data-theme="dark"] .tbl tbody tr.today-div{background:var(--bg)}
 html[data-theme="dark"] .tbl tbody tr.today-div td{color:var(--gold)}
+html[data-theme="dark"] .tbl tbody tr.jumped td{background-color:var(--accent-soft)}
+html[data-theme="dark"] .tbl tbody tr.jumped{outline:2px solid var(--accent);outline-offset:-2px}
 html[data-theme="dark"] .kind-tag{color:var(--muted);background:var(--bg);border:1px solid var(--line)}
 html[data-theme="dark"] .row-act{color:var(--owed)}
 html[data-theme="dark"] .muted{color:var(--muted)}
@@ -325,6 +327,8 @@ html[data-theme="dark"] .msub-row select:focus,
 html[data-theme="dark"] .xr-row input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(15,118,110,0.342)}
 html[data-theme="dark"] .msub-lbl{color:var(--ink)}
 html[data-theme="dark"] .msub-lbl span{color:var(--muted)}
+html[data-theme="dark"] .td-toast{background:#2E4166;color:#FFFFFF;box-shadow:0 12px 36px rgba(0,0,0,0.484)}
+html[data-theme="dark"] .td-toast.err{background:#B4432F;color:#fff}
 /* from home.html */
 html[data-theme="dark"] .ob-card{background:#172235;border:1px solid var(--line);box-shadow:var(--shadow)}
 html[data-theme="dark"] .ob-h{color:var(--ink)}
@@ -638,6 +642,16 @@ html[data-theme="dark"] #month-table tbody tr[data-lid]:hover td{background:#1E2
 @media(max-width:820px){html[data-theme="dark"] #month-table tbody tr:not(.today-div) td[data-label="Student"]{color:var(--ink)}}
 @media(max-width:820px){html[data-theme="dark"] #month-table tbody tr:not(.today-div) td[data-label="Student"] a{color:inherit}}
 @media(max-width:820px){html[data-theme="dark"] #month-table tbody tr:not(.today-div) td[data-label="Date"]{color:var(--muted)}}
+html[data-theme="dark"] .rec-selbar{border:1px solid var(--line);background:var(--cream)}
+html[data-theme="dark"] .rs-all{color:var(--ink)}
+html[data-theme="dark"] .rs-all input{accent-color:var(--accent)}
+html[data-theme="dark"] .rs-all .rs-n{color:var(--muted)}
+@media(max-width:820px){html[data-theme="dark"] #rec-view.selecting #month-table .lchk{accent-color:var(--accent)}}
+@media(max-width:820px){html[data-theme="dark"] #rec-view.selecting #month-table tbody tr.sel{background:var(--accent-soft)}}
+@media(max-width:820px){html[data-theme="dark"] #rec-view.selecting #month-table tbody tr.sel td,
+html[data-theme="dark"] #rec-view.selecting #month-table tbody tr.sel:hover td{background:transparent}}
+@media(max-width:820px){html[data-theme="dark"] #month-table tbody tr.jumped{background-color:var(--accent-soft)}}
+@media(max-width:820px){html[data-theme="dark"] #month-table tbody tr.jumped td{background:transparent}}
 html[data-theme="dark"] .led-sum{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow)}
 html[data-theme="dark"] .ls-i{border-left:1px solid var(--line)}
 html[data-theme="dark"] .ls-i:first-child{border-left:none}

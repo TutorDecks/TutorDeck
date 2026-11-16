@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Ledger · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=251">
+<link rel="stylesheet" href="assets/css/app.css?v=252">
 <script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
@@ -132,7 +132,11 @@
     #rec-view.selecting #month-table .lchk{width:20px;height:20px;accent-color:var(--accent)}
     #rec-view.selecting #month-table tbody tr.sel{background:var(--accent-soft)}
     #rec-view.selecting #month-table tbody tr.sel td,#rec-view.selecting #month-table tbody tr.sel:hover td{background:transparent}
+    /* row opened from Calendar's "Edit in Ledger": tint the whole compact row, not each cell */
+    #month-table tbody tr.jumped{background-color:var(--accent-soft);animation:tl-jump 1.6s ease-out 1}
+    #month-table tbody tr.jumped td{background:transparent;animation:none}
   }
+  @media(max-width:820px) and (prefers-reduced-motion:reduce){#month-table tbody tr.jumped{animation:none}}
 
   /* ---- Ledger v149: summary strip, single control row, menus ---- */
   .led-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--paper);border:1px solid var(--line);
@@ -280,7 +284,7 @@
   .inv-note-btn{all:unset;cursor:pointer;color:var(--accent);font-weight:700;text-decoration:underline;text-underline-offset:2px}
   .inv-note-btn:focus-visible{outline:3px solid rgba(15,118,110,.35);border-radius:4px}
 </style>
-<link rel="stylesheet" href="assets/css/dark.css?v=251">
+<link rel="stylesheet" href="assets/css/dark.css?v=252">
 </head>
 <body>
 <div id="view">
@@ -502,10 +506,10 @@
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
 <script src="assets/js/qrlib.js"></script>
-<script src="assets/js/config.js?v=251"></script>
-<script src="assets/js/supabase.js?v=251"></script>
-<script src="assets/js/app.js?v=251"></script>
-<script src="assets/js/paynow.js?v=251"></script>
-<script src="assets/js/ledger.js?v=251"></script>
+<script src="assets/js/config.js?v=252"></script>
+<script src="assets/js/supabase.js?v=252"></script>
+<script src="assets/js/app.js?v=252"></script>
+<script src="assets/js/paynow.js?v=252"></script>
+<script src="assets/js/ledger.js?v=252"></script>
 </body>
 </html>
