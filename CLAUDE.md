@@ -88,6 +88,16 @@ Preview and dev deployments also hit this live DB. So:
   `amount` on load.
 - Invoice "subject" comes from the billed lessons; "level" comes from the student profile.
 
+## Centre mode (multi-tenant, v253+)
+- `db/migration_centres.sql` adds a separate, additive set of `centre_*` tables for tuition centres (first customer: Opus
+  Tuition, ~400 students). Solo tutors keep the original `tutor_id` tables. Access = `centre_members` + `centre_roles`
+  (permission list, editable per centre); helpers `td_has_perm(centre, perm)`, `td_my_member(centre)`.
+- Money tables have NO client write policies: every change goes through `td_*` security-definer functions.
+- Payout rule (default `paid_reconciled`): tutor earnings become payable only when reconciled parent payments cover them.
+  Enforced by triggers; changes only via `td_set_payout_rule` / `td_override_earning` (audited). Never weaken this silently.
+- Permission catalogue lives in both the migration and `assets/js/billing-core.js` (a test checks they match).
+- Test SQL changes with `bash tests/sql/run.sh` on a throwaway local Postgres, never the live DB.
+
 ## Open threads
 - T-Leng has past lessons wrongly showing ✦ one-off: an old slot deletion (before `one_off`
   existed) nulled their `slot_id`, and the backfill set `one_off=true`. Fix per student with a

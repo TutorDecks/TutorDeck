@@ -550,6 +550,7 @@ window.TL = (function () {
                  calendar: ["Calendar", "Lessons across the week"],
                  ledger: ["Ledger", "Lessons, payments & projections"],
                  settings: ["Settings", "Business, payments & your account"],
+                 centre: ["Centre settings", "Your tuition centre, set up your way"],
                  exams: ["Exams", "Upcoming assessments"],
                  invoices: ["Invoices", "Saved invoices"],
                  materials: ["Teaching materials", "Your resource library"],

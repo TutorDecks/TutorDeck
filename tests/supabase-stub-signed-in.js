@@ -47,7 +47,26 @@
   ];
   var profiles=[{id:U,full_name:"Mei",business_name:"Demo Tuition",paynow_type:"mobile",paynow_id:"91234567",invoice_prefix:"INV",fy_start_month:1,welcomed_at:"2026-01-01",reminder_checked_at:"2026-01-01",getpaid_dismissed_at:"2026-01-01",seen_tips:["all"],setup_done_at:"2026-01-01"}];
   var invoices=[{id:"i1",tutor_id:U,student_id:"s1",invoice_no:"INV-0007",issued_date:wd(0,-1),total:210,status:"issued",paid_date:null,data:{lesson_ids:["l1","l6"]}}];
+  // Centre mode (centre.html): one made-up centre this user owns.
+  var C="c1", ALL=["students.view","students.edit","classes.edit","schedule.view_all","lessons.deliver","lessons.remarks","billing.view","billing.edit",
+    "payments.record","payments.reconcile","payouts.view","payouts.view_own","payouts.manage","payouts.override","settings.edit","roles.manage","audit.view"];
+  var centre={centres:[{id:C,name:"Demo Learning Centre",created_by:U,created_at:"2026-11-01T00:00:00Z",gst_registered:true,gst_rate:9,gst_inclusive:false,gst_reg_no:"M90000000X",
+      invoice_prefix:"DLC",payout_rule:"paid_reconciled",settings:{branding:{color:"#1D4ED8"},paynow:{type:"uen",id:"202600000A"},contact:{email:"hello@demo.test"}}}],
+    centre_roles:[{id:"ro",centre_id:C,key:"owner",name:"Owner",permissions:[],sort:0},{id:"ra",centre_id:C,key:"admin",name:"Centre admin",permissions:ALL,sort:10},
+      {id:"rs",centre_id:C,key:"staff",name:"Staff",permissions:["students.view","students.edit","classes.edit","schedule.view_all","lessons.deliver","billing.view","payments.record","payouts.view"],sort:20},
+      {id:"rt",centre_id:C,key:"tutor",name:"Tutor",permissions:["lessons.remarks","payouts.view_own"],sort:30},{id:"rp",centre_id:C,key:"parent",name:"Parent",permissions:[],sort:40}],
+    centre_members:[{id:"m1",centre_id:C,user_id:U,email:"demo@tutordeck.com.sg",display_name:"Mei",role_id:"ro",active:true,created_at:"1"},
+      {id:"m2",centre_id:C,user_id:"u2",email:"ravi@demo.test",display_name:"Ravi",role_id:"rt",active:true,created_at:"2"},
+      {id:"m3",centre_id:C,user_id:null,email:"grace@demo.test",display_name:"Grace",role_id:"rt",active:true,created_at:"3"}],
+    billing_policies:[{id:"p1",centre_id:C,name:"Monthly, after lessons",model:"postpay",is_default:true,archived:false,created_at:"1",config:{cycle:"monthly",due_days:7,sibling_discount:{type:"percent",value:10},late_fee:{type:"fixed",value:10,after_days:7}}},
+      {id:"p2",centre_id:C,name:"Term packages",model:"prepay",is_default:false,archived:false,created_at:"2",config:{due_days:3,packages:[{lessons:10,price:550,expiry_days:120}],unused:{action:"carry_forward"}}}],
+    centre_price_list:[{id:"pl1",centre_id:C,subject:null,level:null,kind:"group",unit:"per_hour",amount:40},{id:"pl2",centre_id:C,subject:"Maths",level:"Sec 4",kind:null,unit:"per_hour",amount:55}],
+    tutor_pay_rules:[{id:"tp1",centre_id:C,tutor_member_id:null,basis:"per_hour",rate:30,created_at:"1"},{id:"tp2",centre_id:C,tutor_member_id:"m2",basis:"percent_of_fee",rate:50,min_pay:40,created_at:"2"}],
+    centre_fields:[{id:"f1",centre_id:C,entity:"student",key:"school",label:"School",type:"text",options:[],required:true,active:true,sort:0},
+      {id:"f2",centre_id:C,entity:"student",key:"heard_from",label:"How did you hear of us?",type:"select",options:["Friend","Google"],required:false,active:true,sort:10}],
+    centre_audit_log:[{id:2,centre_id:C,actor:U,action:"role.save",at:"2026-11-02T09:00:00Z"},{id:1,centre_id:C,actor:U,action:"centre.create",at:"2026-11-01T09:00:00Z"}]};
   var DATA={students:students,recurring_slots:slots,lessons:lessons,exams:exams,profiles:profiles,invoices:invoices,material_folders:[],materials:[],gcal_links:[]};
+  Object.keys(centre).forEach(function(k){DATA[k]=centre[k];});
   function q(t){ var rows=(DATA[t]||[]).slice(); var o={};
     var F={eq:function(k,v){rows=rows.filter(function(r){return r[k]==v;});},neq:function(k,v){rows=rows.filter(function(r){return r[k]!=v;});},
       gte:function(k,v){rows=rows.filter(function(r){return r[k]>=v;});},lte:function(k,v){rows=rows.filter(function(r){return r[k]<=v;});},

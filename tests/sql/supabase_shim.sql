@@ -1,0 +1,18 @@
+-- Minimal stand-in for the bits of Supabase the centre migration relies on, so it can be tested on a
+-- plain local Postgres (never against the live project). auth.uid() reads the JWT claims like Supabase does.
+do $$ begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin bypassrls; end if;
+end $$;
+create schema if not exists auth;
+create table if not exists auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}', email_confirmed_at timestamptz default now());
+create or replace function auth.uid() returns uuid language sql stable as $$
+  select nullif((nullif(current_setting('request.jwt.claims', true), '')::jsonb)->>'sub', '')::uuid $$;
+grant usage on schema auth to anon, authenticated, service_role;
+grant execute on function auth.uid() to anon, authenticated, service_role;
+grant select on auth.users to authenticated;
+create table if not exists public.profiles (id uuid primary key references auth.users(id) on delete cascade, full_name text);
+grant usage on schema public to anon, authenticated, service_role;
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
