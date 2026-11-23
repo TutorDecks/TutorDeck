@@ -88,15 +88,18 @@ Preview and dev deployments also hit this live DB. So:
   `amount` on load.
 - Invoice "subject" comes from the billed lessons; "level" comes from the student profile.
 
-## Centre mode (multi-tenant, v253+)
-- `db/migration_centres.sql` adds a separate, additive set of `centre_*` tables for tuition centres (first customer: Opus
-  Tuition, ~400 students). Solo tutors keep the original `tutor_id` tables. Access = `centre_members` + `centre_roles`
-  (permission list, editable per centre); helpers `td_has_perm(centre, perm)`, `td_my_member(centre)`.
-- Money tables have NO client write policies: every change goes through `td_*` security-definer functions.
-- Payout rule (default `paid_reconciled`): tutor earnings become payable only when reconciled parent payments cover them.
-  Enforced by triggers; changes only via `td_set_payout_rule` / `td_override_earning` (audited). Never weaken this silently.
-- Permission catalogue lives in both the migration and `assets/js/billing-core.js` (a test checks they match).
-- Test SQL changes with `bash tests/sql/run.sh` on a throwaway local Postgres, never the live DB.
+## Organisations (multi-tenant, v253+)
+- `db/migration_org_foundation.sql` (undo: `_down.sql`): every business table has `org_id`; each solo tutor is an
+  organisation of one (kind 'solo', preset 'solo'); centres are kind 'centre'. Access = `memberships` (owner / staff with
+  `permissions[]` / tutor / parent) via `org_can(org, perm)`, `org_can_read(org)`, `org_role(org)`. Old `tutor_id` policies
+  apply only inside solo orgs (`org_is_solo`). `org_row_guard` fills org_id for old pages and blocks cross-org writes.
+- Settings: `org_settings` rows are append-only and effective-dated; save with `org_save_settings`; read with
+  `org_settings_on(org, date)`. Schema/defaults/labels in `assets/js/org-settings.js` (tests check enums match the SQL).
+- Money: integer cents only, all maths in `assets/js/money.js` (tested). GST once per invoice, half up.
+- Centres: issued invoices immutable (credit notes); solo tutors' flows must not change. Default: tutors paid only after the
+  parent's payment is reconciled (wizard question; changes audited). TutorDeck never holds a centre's money.
+- Live schema snapshot: `db/baseline_2026-11.sql`. Test SQL with `bash tests/sql/run.sh` (throwaway Postgres), never live.
+- Dev Supabase project: `tuzxsqkfzrjssnpcoale` (baseline applied; org migration pending). Live: `rnjvswkejbrhbaytutai`.
 
 ## Open threads
 - T-Leng has past lessons wrongly showing ✦ one-off: an old slot deletion (before `one_off`

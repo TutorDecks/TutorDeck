@@ -31,6 +31,15 @@ jobs:
         run: |
           pip install playwright==1.56.0
           python -m playwright install --with-deps chromium
+      - name: Unit tests (money maths, settings schema)
+        run: node --test tests/money.test.js tests/org-settings.test.js
+      - name: Database tests (organisations, isolation, undo) on a throwaway Postgres
+        run: |
+          sudo apt-get install -y -q postgresql-16 >/dev/null
+          sudo mkdir -p /var/lib/postgresql && sudo chown postgres /var/lib/postgresql
+          sudo -u postgres /usr/lib/postgresql/16/bin/initdb -D /var/lib/postgresql/tdtest -A trust -U postgres >/dev/null
+          sudo -u postgres /usr/lib/postgresql/16/bin/pg_ctl -D /var/lib/postgresql/tdtest -o "-p 54329 -k /var/lib/postgresql" -l /tmp/pg.log start
+          bash tests/sql/run.sh
       - name: Install axe-core (accessibility checker)
         run: npm install --prefix tests --no-audit --no-fund
       - name: Run smoke tests

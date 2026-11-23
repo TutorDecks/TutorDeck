@@ -32,26 +32,30 @@ payment modes, tutor pay, platform billing and 5 phases. We are in **Phase 1 (Fo
 8. Billable "active student": any non-trial lesson attended, absent or late-cancelled in the month.
 - Pricing research earlier (solo S$15 / Team seats) is superseded by the above.
 
-## 4. Current state
-- Branch: `claude/gifted-cori-wssq1j` (session branch; based on main 6862d4a). HEAD = origin = `4ef26af` (pushed; working tree clean except this file).
-  - `ebe564e` = last week's v253 centre-mode work (superseded; `db/migration_centres.sql`, `centre.html`, `assets/js/centre.js`, `assets/js/billing-core.js`, `tests/sql/centres_test.sql` still present — to be removed/reworked).
-  - `4ef26af` = Phase 1 WIP: `db/baseline_2026-11.sql` (+`_storage.sql`), `db/migration_org_foundation.sql`, `db/migration_org_foundation_down.sql`, `tests/sql/org_seed.sql`, `tests/sql/org_test.sql`, `tests/sql/run.sh`, `tests/sql/supabase_shim.sql`.
-- origin/main = 6862d4a (v252), origin/dev = 32926f7. Nothing merged; no PR opened.
-- Supabase projects (org "tutordeckadmin"): LIVE `rnjvswkejbrhbaytutai` (TutorDeck, Singapore; 7 tutors, 59 students, 1,378 lessons) —
-  NO migrations run on it (only read-only catalog queries). DEV `tuzxsqkfzrjssnpcoale` ("tutordeckadmin-creator's Project", Seoul, empty):
-  baseline structure + storage buckets APPLIED; Phase 1 migration NOT applied — the apply call timed out waiting for the owner's approval prompt.
-- Stripe connector: only "TutorDeck sandbox" (test). Vercel connector: only MugCorner team (TutorDeck project not visible).
-- Checks: `bash tests/sql/run.sh` → 71 PASS + undo restores baseline exactly + re-apply after undo (local Postgres 16 at
-  /var/lib/postgresql, port 54329; start with pg_ctl as user postgres). Not yet run: isolation tests on dev project, smoke tests for Phase 1 (no UI yet).
+## 4. Current state (Phase 1 complete in code; Phase 2 is for the next chat)
+- Branch `claude/gifted-cori-wssq1j` (based on main 6862d4a); see `git log` for the latest commit. Nothing merged, no PR.
+- Built: `db/migration_org_foundation.sql` (+ `_down.sql`), `db/baseline_2026-11.sql` (+ `_storage.sql`), `assets/js/money.js`,
+  `assets/js/org-settings.js`, `org.html` + `assets/js/org.js` (wizard steps 1–10 → Settings + Plan + Audit log after launch),
+  Settings link "Set up a tuition centre" → `org`. Last week's `centre_*` design removed. Version v253 everywhere.
+- Tests: `bash tests/sql/run.sh` = 71 PASS + undo restores baseline + re-apply; `node --test tests/money.test.js tests/org-settings.test.js`
+  = 12 PASS; `tests/smoke.py` passes for `org` (phone/desktop, light/dark, axe). Pre-existing: calendar `/api/gcal` 501 locally.
+  CI (.github/workflows/checks.yml) now also runs the unit + database tests.
+- Supabase: LIVE `rnjvswkejbrhbaytutai` untouched (read-only catalog queries only). DEV `tuzxsqkfzrjssnpcoale`: baseline + storage
+  APPLIED; org migration NOT applied (first attempt timed out on the owner's approval prompt; after a restart the connector only
+  showed MugCorner projects — owner must reconnect Supabase to the TutorDeck org, then re-apply and run isolation checks there).
+- Stripe connector: "TutorDeck sandbox" only. Vercel connector: MugCorner team only.
 
-## 5. Open tasks (priority order)
-1. Owner: approve re-applying `migration_org_foundation.sql` to DEV (it prompts for confirmation).
-2. Run isolation checks on DEV (role authenticated + jwt claims, as in tests/sql/org_test.sql).
-3. `assets/js/org-settings.js`: full typed settings schema for wizard steps 1–10 with defaults, "coming soon" flags, validation, solo preset; keep STAFF_PERMISSIONS in sync with the migration.
-4. `assets/js/money.js`: integer-cents module (GST per invoice half-up, platform fee) + node tests incl. brief cases: 98→100→S$140; 250→S$200; 398→400→S$260; 403→400→S$260; 405→410→S$264; 500→S$300; 1000→S$500.
-5. Setup wizard page (10 steps) + Settings screens (org profile, users & permissions, audit log view, plan/fee shown to owner); "Create a centre" entry from Settings; solo preset skips wizard.
-6. Remove superseded v253 centre files from the branch; bump version, README log, CLAUDE.md update; Phase 1 report.
-- Waiting on owner: solo plan price; restoring last night's encrypted backup into DEV for a real-data migration dry run (owner holds BACKUP_PASSPHRASE; README → Backups); email provider choice for Phase 2 (none in code; Resend/Brevo connectors available); later, TutorDeck Pte Ltd Stripe live account.
+## 5. Open tasks
+Phase 1 leftovers (need the owner):
+1. Reconnect Supabase connector to the TutorDeck organisation; apply `migration_org_foundation.sql` to DEV; run isolation checks there.
+2. Restore last night's encrypted backup into DEV (owner has BACKUP_PASSPHRASE; README → Backups) and dry-run the migration on real data.
+3. Decide the solo plan price (stored as 0/0 in `org_plans` for solo orgs).
+4. Only then: run the migration on LIVE (with explicit go-ahead), before this code lands on dev/main.
+Phase 2 (per the brief; plan → wait for go-ahead first): centre admin screens (tutors, students, households, classes, branches/rooms,
+term calendar, timetable); tutor view (own schedule, attendance, remarks + deadlines; needs `lessons.taught_by`, attendance status,
+`trial` flag, `session_id`); billing engine for the four models in money.js; invoice runs/drafts/approval/branded pages/links/reminders/
+credit notes/overdue/CSV; manual PayNow + payment recording; platform billing snapshot job + platform admin view (`platform_orgs()` exists);
+data export; email provider (none in code yet; Resend/Brevo connectors available).
 
 ## 6. Paths & gotchas
 - `db/schema.sql` is stale; use `db/baseline_2026-11.sql` (rebuilt from the live catalog). Live has `invoices.share_token` + `invoice_by_token()`;
