@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>My lessons · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=257">
+<link rel="stylesheet" href="assets/css/app.css?v=258">
 <script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   /* ---- lesson detail sheet (same component as Exams / Ledger) ---- */
@@ -66,8 +66,8 @@
   .tt-facts div{display:flex;gap:10px}
   .tt-facts span:first-child{flex:0 0 84px;color:var(--muted)}
   .tt-facts .due.late{color:var(--warn);font-weight:700}
-  .tt-opts{display:flex;gap:10px;margin:0 0 16px}
-  .tt-opt{flex:1;min-height:48px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
+  .tt-opts{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 16px}
+  .tt-opt{flex:1 1 calc(50% - 5px);min-height:48px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
   .tt-opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
   .tt-opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .tt-lbl{display:block;font-size:13px;font-weight:700;color:var(--ink);margin:0 0 6px}
@@ -76,7 +76,7 @@
   .tt-ro{margin:0 0 14px;font-size:14px;white-space:pre-wrap}
   .tt-ro small{display:block;color:var(--muted);font-size:12.5px;font-weight:700;margin-bottom:2px}
 </style>
-<link rel="stylesheet" href="assets/css/dark.css?v=257">
+<link rel="stylesheet" href="assets/css/dark.css?v=258">
 </head>
 <body>
 <div id="view" data-page="tutor">
@@ -101,10 +101,10 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=257"></script>
-<script src="assets/js/supabase.js?v=257"></script>
-<script src="assets/js/app.js?v=257"></script>
-<script src="assets/js/tutor-core.js?v=257"></script>
-<script src="assets/js/tutor.js?v=257"></script>
+<script src="assets/js/config.js?v=258"></script>
+<script src="assets/js/supabase.js?v=258"></script>
+<script src="assets/js/app.js?v=258"></script>
+<script src="assets/js/tutor-core.js?v=258"></script>
+<script src="assets/js/tutor.js?v=258"></script>
 </body>
 </html>

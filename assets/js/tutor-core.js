@@ -49,7 +49,7 @@
     if (l.status === "cancelled") return "This lesson was cancelled.";
     if (l.lesson_date > today) return "You can mark a lesson from its day onward.";
     if (!l.can_note) return "That's too long ago to change here. Please ask an admin.";
-    if (l.attendance) return STAFF_SET[l.attendance] ? "An admin marked this as \"" + STAFF_SET[l.attendance].toLowerCase() + "\"." : "Someone else already marked this lesson. Ask an admin to change it.";
+    if (l.attendance) return STAFF_SET[l.attendance] ? "Already marked as \"" + STAFF_SET[l.attendance].toLowerCase() + "\" by someone else. Ask an admin to change it." : "Someone else already marked this lesson. Ask an admin to change it.";
     return "At this centre an admin marks attendance. You can still add notes.";
   }
 
@@ -90,13 +90,21 @@
     CANCELLED: "That lesson was cancelled.",
     ADMIN_ONLY: "At this centre an admin marks attendance. Your notes were not saved either, so please try again without changing attendance.",
     ALREADY_MARKED: "Someone else already marked this lesson. Ask an admin to change it.",
-    BAD_VALUE: "Choose attended or absent.",
+    BAD_VALUE: "That isn't something you can mark at this centre.",
+    REMARKS_REQUIRED: "This centre needs remarks before a lesson is marked as attended. Please add them and save again.",
     TOO_LONG: "Please keep each note under 2000 characters.",
     BAD_RANGE: "Something went wrong loading your lessons. Please try again."
   };
   function errorText(err) {
     var m = /^([A-Z_]+)(?::|$)/.exec(String((err && err.message) || ""));
     return (m && ERRORS[m[1]]) || "We couldn't save that just now. Please try again.";
+  }
+
+  // The attendance choices this tutor is offered: attended / absent always, and the two cancellations only when the centre lets tutors mark them.
+  function attendanceOptions(l) {
+    var o = [{ value: "attended", label: "Attended" }, { value: "absent", label: "Absent" }];
+    if (l.can_cancel) o.push({ value: "cancelled_early", label: "Cancelled in time" }, { value: "late_cancelled", label: "Late cancellation" });
+    return o;
   }
 
   // Which fields to send: attendance only if it changed, a note only if its text changed (null = leave it alone in the database)
@@ -112,5 +120,5 @@
   }
 
   return { addDays: addDays, dateLabel: dateLabel, timeLabel: timeLabel, timeRange: timeRange, chip: chip, lockReason: lockReason,
-           remarksDue: remarksDue, group: group, errorText: errorText, changes: changes };
+           remarksDue: remarksDue, attendanceOptions: attendanceOptions, group: group, errorText: errorText, changes: changes };
 });

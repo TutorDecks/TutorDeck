@@ -246,6 +246,92 @@ begin
 end $$;
 update organisations set timezone = 'Asia/Singapore' where id = t.id('centre');
 
+-- ===================================================================== the CENTRE's own rules (chosen at sign-up, changed later)
+-- Each rule below is a setting of the centre, not something built into TutorDeck. The owner (c1) saves settings; the tutor functions read them as of today.
+-- (a) bad values are refused when saving
+select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
+select t.fails($q$ select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"attendance_window_days": 0}'), current_date) $q$, 'an attendance window of 0 days');
+select t.fails($q$ select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"attendance_window_days": 61}'), current_date) $q$, 'an attendance window of 61 days');
+select t.fails($q$ select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"attendance_window_days": "lots"}'), current_date) $q$, 'a non-numeric attendance window');
+select t.fails($q$ select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"attendance_by": "nobody"}'), current_date) $q$, 'an unknown attendance_by');
+select t.fails($q$ select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"cancellations_marked_by": "everyone"}'), current_date) $q$, 'an unknown cancellations_marked_by');
+reset role;
+
+-- (b) the marking window is the centre's choice (default 14 days)
+select t.put('LW5',  pg_temp.mk('s2', -5,  t.id('m1')));
+select t.put('LW20', pg_temp.mk('s3', -20, t.id('m1')));
+select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
+select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"attendance_window_days": 3}'), current_date);
+reset role;
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+do $$ declare m text; begin
+  begin perform tutor_mark_attendance(t.id('LW5'), 'attended'); exception when others then m := sqlerrm; end;
+  if m is null or m not like 'TOO_OLD%3 days%' then raise exception 'FAIL: a 5-day-old lesson with a 3-day window gave: %', m; end if;
+  raise notice 'PASS window of 3 days: a 5-day-old lesson is refused, and the message names the centre''s number (%)', m;
+end $$;
+select t.ok((select not can_mark and not can_note from tutor_my_lessons((select today - 5 from td), (select today - 5 from td)) where lesson_id = t.id('LW5')), 'the screen is told neither marking nor notes are open for it');
+reset role;
+select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
+select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"attendance_window_days": 30}'), current_date);
+reset role;
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select t.ok((select can_mark and can_note from tutor_my_lessons((select today - 20 from td), (select today - 20 from td)) where lesson_id = t.id('LW20')), 'window of 30 days: a 20-day-old lesson is open (a change applies to lessons already on the calendar)');
+select tutor_mark_attendance(t.id('LW20'), 'attended');
+reset role;
+select t.ok((select attendance = 'attended' from lessons where id = t.id('LW20')), 'and it can be marked');
+
+-- (c) who marks cancellations is the centre's choice (default: an admin)
+select t.put('LC1', pg_temp.mk('s3', 0, t.id('m1')));
+select t.put('LC2', pg_temp.mk('s4', 0, t.id('m1')));
+select t.put('LC3', pg_temp.mk('s1', 0, t.id('m1')));
+select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
+select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"cancellations_marked_by": "tutor"}'), current_date);
+reset role;
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select t.ok((select can_cancel from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LC1')), 'tutors-mark-cancellations: the screen is told the cancellation choices are open');
+select tutor_mark_attendance(t.id('LC1'), 'late_cancelled');
+select tutor_mark_attendance(t.id('LC2'), 'cancelled_early');
+select tutor_mark_attendance(t.id('LC2'), 'absent');
+select t.fails($q$ select tutor_mark_attendance(t.id('LC3'), 'maybe') $q$, 'an invented value is still refused');
+reset role;
+select t.ok((select attendance = 'late_cancelled' and attendance_marked_by = '00000000-0000-0000-0000-000000007001' from lessons where id = t.id('LC1')), 'a tutor can record a late cancellation when the centre allows it, and is stamped');
+select t.ok((select attendance = 'absent' from lessons where id = t.id('LC2')), 'and change their own mark');
+select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
+select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{}'), current_date);          -- back to the defaults
+reset role;
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select t.ok((select not can_cancel from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LC3')), 'back to the default: cancellations are not the tutor''s to mark');
+select t.fails($q$ select tutor_mark_attendance(t.id('LC3'), 'late_cancelled') $q$, 'and the database agrees');
+reset role;
+
+-- (d) required remarks are the centre's choice (default: not required)
+select t.put('LR1', pg_temp.mk('s1', 0, t.id('m1')));
+select t.put('LR2', pg_temp.mk('s2', 0, t.id('m1')));
+select t.put('LR3', pg_temp.mk('s3', 0, t.id('m1')));
+select t.put('LR4', pg_temp.mk('s4', 0, t.id('m1')));
+update lessons set remarks = 'Prepared by the centre' where id in (t.id('LR2'), t.id('LR4'));
+select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
+select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"remarks": {"required": true, "deadline_hours": 24}}'), current_date);
+reset role;
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select t.ok((select remarks_required from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LR1')), 'the screen is told remarks are required');
+do $$ declare m text; begin
+  begin perform tutor_mark_attendance(t.id('LR1'), 'attended'); exception when others then m := sqlerrm; end;
+  if m is null or m not like 'REMARKS_REQUIRED%' then raise exception 'FAIL: attended without remarks gave: %', m; end if;
+  raise notice 'PASS remarks required: attended without remarks is refused (%)', m;
+end $$;
+select t.fails($q$ select tutor_mark_attendance(t.id('LR1'), 'attended', null, null, '   ') $q$, 'remarks required: blank spaces don''t count');
+select t.fails($q$ select tutor_mark_attendance(t.id('LR4'), 'attended', null, null, '') $q$, 'remarks required: clearing the existing remarks in the same call is refused');
+select tutor_mark_attendance(t.id('LR1'), 'attended', null, null, 'Covered ratios');
+select tutor_mark_attendance(t.id('LR2'), 'attended');                              -- remarks already there
+select tutor_mark_attendance(t.id('LR3'), 'absent');                                -- a lesson that did not happen needs none
+reset role;
+select t.ok((select attendance = 'attended' and remarks = 'Covered ratios' from lessons where id = t.id('LR1')), 'with remarks it goes through');
+select t.ok((select attendance = 'attended' from lessons where id = t.id('LR2')) and (select attendance = 'absent' and remarks is null from lessons where id = t.id('LR3')), 'existing remarks satisfy the rule; absent never needs remarks');
+select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
+select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{}'), current_date);          -- defaults again
+reset role;
+
 -- ===================================================================== grants
 select t.ok(not has_function_privilege('anon', 'public.tutor_my_lessons(date,date)', 'execute')
         and not has_function_privilege('anon', 'public.tutor_mark_attendance(uuid,text,text,text,text)', 'execute')

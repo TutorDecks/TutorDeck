@@ -98,6 +98,33 @@ const LESSONS = [["a", -3], ["b", -1, { attendance: "late_cancelled", can_mark: 
     }
     await ctx.close();
   }
+  // ---------- A2. the centre's own rules show up on the sheet
+  { const cfg = { lessons: [["c", 0, { can_cancel: true, remarks_required: true }], ["d", 0, { can_cancel: false, remarks_required: false }]] };
+    const { ctx, page } = await open(b, "phone", "light", cfg, "tutor");
+    await page.click('.tt-row[data-id="c"]'); await page.waitForTimeout(300);
+    const opts = await page.$$eval(".tt-opt", (e) => e.map((x) => x.textContent.trim()));
+    ok(opts.join(",") === "Attended,Absent,Cancelled in time,Late cancellation", "centre lets tutors mark cancellations: four choices (" + opts.join(", ") + ")");
+    ok(/required to mark attended/.test(await page.textContent("#ts-body")), "centre requires remarks: the Remarks box says so");
+    await page.click('.tt-opt[data-att="late_cancelled"]'); await page.fill("#ts-remarks", "Parent called at noon"); await page.click("#ts-save"); await page.waitForTimeout(400);
+    const call = await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_mark_attendance")[0]);
+    ok(call && call[1].p_attendance === "late_cancelled" && call[1].p_remarks === "Parent called at noon", "a cancellation is sent as chosen: " + JSON.stringify(call && call[1]));
+    await page.click('.tt-row[data-id="d"]'); await page.waitForTimeout(300);
+    const opts2 = await page.$$eval(".tt-opt", (e) => e.map((x) => x.textContent.trim()));
+    ok(opts2.join(",") === "Attended,Absent" && !/required to mark attended/.test(await page.textContent("#ts-body")), "default centre: just attended / absent, remarks optional");
+    await axeCheck(page, "phone/light sheet with four choices");
+    if (SC) await page.screenshot({ path: path.join(SC, "tutor-sheet-four.png") });
+    await ctx.close(); }
+  // ---------- A3. the sign-up screens offer the new options (and are honest about what is not built yet)
+  { const { ctx, page } = await open(b, "desktop", "light", {}, "org");
+    await page.click("text=Demo Learning Centre"); await page.waitForTimeout(900);        // open the centre being set up
+    await page.click("button:has-text('Tutors and lessons')"); await page.waitForTimeout(700);   // step 7
+    const txt = await page.evaluate(() => document.body.innerText);
+    ok(/Tutors can mark or change attendance for/.test(txt), "setup screen: the marking-window option is offered");
+    ok(/Cancellations \(in time or late\) are marked by/.test(txt), "setup screen: who marks cancellations is offered");
+    ok(/Lesson remarks are required/.test(txt), "setup screen: required remarks is offered");
+    ok(/coming soon/i.test(txt), "setup screen: options that aren't built yet say \"coming soon\"");
+    if (SC) await page.screenshot({ path: path.join(SC, "org-step-lessons.png"), fullPage: true });
+    await ctx.close(); }
   // ---------- B. a refusal from the database is explained kindly and never shown raw
   { const { ctx, page } = await open(b, "phone", "light", { lessons: LESSONS, markError: "ALREADY_MARKED: someone else already marked this lesson; ask an admin to change it" }, "tutor");
     await page.click('.tt-row[data-id="c"]'); await page.click('.tt-opt[data-att="attended"]'); await page.click("#ts-save"); await page.waitForTimeout(400);

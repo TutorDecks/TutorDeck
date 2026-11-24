@@ -40,7 +40,8 @@
   }
 
   function openSheet(l, trigger) {
-    current = l; picked = l.attendance === "attended" || l.attendance === "absent" ? l.attendance : null; opener = trigger || null;
+    var opts = TC.attendanceOptions(l);
+    current = l; picked = opts.some(function (o) { return o.value === l.attendance; }) ? l.attendance : null; opener = trigger || null;
     $("ts-title").textContent = l.student_name;
     $("ts-sub").textContent = TC.dateLabel(l.lesson_date, today) + " · " + TC.timeRange(l);
     var lock = TC.lockReason(l, today), due = TC.remarksDue(l, Date.now()), html = "";
@@ -52,15 +53,14 @@
       '</div>';
     if (l.can_mark) {
       html += '<span class="tt-lbl" id="ts-att-l">Attendance</span><div class="tt-opts" role="group" aria-labelledby="ts-att-l">' +
-        '<button type="button" class="tt-opt" data-att="attended" aria-pressed="' + (picked === "attended") + '">Attended</button>' +
-        '<button type="button" class="tt-opt" data-att="absent" aria-pressed="' + (picked === "absent") + '">Absent</button></div>';
+        opts.map(function (o) { return '<button type="button" class="tt-opt" data-att="' + o.value + '" aria-pressed="' + (picked === o.value) + '">' + esc(o.label) + '</button>'; }).join("") + '</div>';
     } else if (lock) {
       html += '<p class="tt-note">' + esc(lock) + '</p>';
     }
     if (l.can_note) {
       html += '<label class="tt-lbl" for="ts-topics">Topics covered</label><textarea class="tt-ta" id="ts-topics" maxlength="2000">' + esc(l.topics) + '</textarea>' +
               '<label class="tt-lbl" for="ts-homework">Homework</label><textarea class="tt-ta" id="ts-homework" maxlength="2000">' + esc(l.homework) + '</textarea>' +
-              '<label class="tt-lbl" for="ts-remarks">Remarks</label><textarea class="tt-ta" id="ts-remarks" maxlength="2000">' + esc(l.remarks) + '</textarea>';
+              '<label class="tt-lbl" for="ts-remarks">Remarks' + (l.remarks_required ? ' <span style="font-weight:600;color:var(--muted)">(required to mark attended)</span>' : '') + '</label><textarea class="tt-ta" id="ts-remarks" maxlength="2000">' + esc(l.remarks) + '</textarea>';
     } else {
       [["Topics covered", l.topics], ["Homework", l.homework], ["Remarks", l.remarks]].forEach(function (n) {
         if (n[1]) html += '<div class="tt-ro"><small>' + n[0] + '</small>' + esc(n[1]) + '</div>';

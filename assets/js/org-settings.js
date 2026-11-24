@@ -116,14 +116,20 @@
       { path: "payments.overpayments", label: "Overpayments", type: "select", options: [o("credit", "Kept as credit for the family"), o("refund", "Refunded manually")] }
     ]},
     { id: "lessons", n: 7, title: "Tutors and lessons", fields: [
-      { path: "lessons.timetable_editing", label: "Who edits the timetable", type: "select", options: [o("admin_only", "Admins only"), o("tutors_own", "Tutors may edit their own lessons")] },
+      { path: "lessons.timetable_editing", label: "Who edits the timetable", type: "select", options: [o("admin_only", "Admins only"), o("tutors_own", "Tutors may edit their own lessons")],
+        soonOptions: ["tutors_own"] },
       { path: "lessons.attendance_by", label: "Attendance is marked by", type: "select", options: [o("tutor", "The tutor"), o("admin", "An admin")] },
+      { path: "lessons.attendance_window_days", label: "Tutors can mark or change attendance for (days after the lesson)", type: "number",
+        help: "From the lesson's day, for this many days. After that only an admin can." },
+      { path: "lessons.cancellations_marked_by", label: "Cancellations (in time or late) are marked by", type: "select", options: [o("admin", "An admin"), o("tutor", "The tutor")],
+        help: "Whether a cancellation counts as late depends on your own cancellation policy, so most centres let an admin decide." },
       { path: "lessons.remarks.required", label: "Lesson remarks are required", type: "toggle" },
       { path: "lessons.remarks.deadline_hours", label: "Remarks due within (hours after the lesson)", type: "number" },
       { path: "lessons.remarks.visibility", label: "Who sees remarks", type: "select", options: [
         o("admin_only", "Admins only"), o("parents_auto", "Sent to parents automatically"), o("parents_after_approval", "Sent to parents after admin approval")],
         soonOptions: ["parents_auto", "parents_after_approval"] },
-      { path: "lessons.missed_remarks_reminders", label: "Remind tutors about missing remarks", type: "toggle" },
+      { path: "lessons.missed_remarks_reminders", label: "Remind tutors about missing remarks", type: "toggle", soon: true,
+        help: "Reminders go by email, which comes with the email provider. Until then the My lessons page shows what's overdue." },
       { path: "lessons.replacement_tutors", label: "Admins can give one lesson to a replacement tutor", type: "toggle" },
       { path: "lessons.tutors_see_parent_contact", label: "Tutors can see parents' contact details", type: "toggle",
         help: "Tutors always see student names and levels." }
@@ -166,7 +172,7 @@
         delivery: { email: false, share_link: true }, reminders: { enabled: false, schedule: [-3, 0, 7] } },
       payments: { modes: ["manual_paynow"], paynow: { type: "uen", id: "" }, statement_bank: "DBS", hitpay: { paynow: true, cards: false },
         gateway_fees: "absorb", partial_payments: true, overpayments: "credit" },
-      lessons: { timetable_editing: "admin_only", attendance_by: "tutor", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
+      lessons: { timetable_editing: "admin_only", attendance_by: "tutor", attendance_window_days: 14, cancellations_marked_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
         missed_remarks_reminders: true, replacement_tutors: true, tutors_see_parent_contact: false },
       tutor_pay: { mode: "report", payable_when: "parent_paid", rate_model: "per_hour", adjustments: true,
         cycle: { cutoff_day: 31, pay_day: 7 }, payout_method: "manual_list", tutor_visibility: "closed_only" },
@@ -224,6 +230,7 @@
     if (!/^[A-Za-z0-9-]{1,8}$/.test(p.invoice_prefix || "")) e.push("Invoice prefix: 1–8 letters or numbers.");
     if (!(p.next_invoice_number >= 1)) e.push("Next invoice number must be 1 or more.");
     if (!Array.isArray(s.payments.modes) || !s.payments.modes.length) e.push("Pick at least one way for parents to pay.");
+    var aw = s.lessons.attendance_window_days; if (aw != null && !(Number.isSafeInteger(aw) && aw >= 1 && aw <= 60)) e.push("Attendance window must be 1–60 days.");
     var gd = s.invoicing.generate.day; if (!(gd >= 1 && gd <= 28)) e.push("Invoice day must be 1–28 (so it exists in every month).");
     var cd = s.tutor_pay.cycle; if (!(cd.cutoff_day >= 1 && cd.cutoff_day <= 31) || !(cd.pay_day >= 1 && cd.pay_day <= 31)) e.push("Pay days must be 1–31.");
     if (s.billing.sibling_discount.type === "percent" && s.billing.sibling_discount.percent_bp > 10000) e.push("Sibling discount can't be over 100%.");

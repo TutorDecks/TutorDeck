@@ -91,6 +91,19 @@ Preview and dev deployments also hit this live DB. So:
 - Deleting an account = `api/delete-account.js` (Stripe, storage, Google, then `org_delete_solo()` in the DB, then the login). The audit log, `org_settings` and fee snapshots are append-only EXCEPT inside `org_delete_solo` (flag `td.deleting_org`). Never delete a tutor's rows by hand from the browser or SQL editor: it copies their data into the audit log. Any new table with an `org_id` is covered automatically; it just needs `on delete cascade`.
 - Invoice "subject" comes from the billed lessons; "level" comes from the student profile.
 
+## Product principle: the centre decides, we build it (owner's rule, 2026-11-24)
+- Anything that depends on a centre's own business process is an **option in the sign-up wizard** (`assets/js/org-settings.js`, saved in `org_settings`), never a
+  hard-coded rule: who marks attendance, how long tutors have to mark, who records cancellations, whether remarks are required, who sees parents' contact, who may
+  replace a tutor, and so on. We then implement **every** option completely, in the database first, with tests for each value.
+- An option that isn't built yet is marked `soon` (or `soonOptions` for one choice of a dropdown) so the wizard never offers something that does nothing.
+- What stays fixed is integrity, not process: nobody marks a lesson before its day, nobody overwrites another person's mark, tutors never touch money, status, date,
+  time or the trial flag, and tutors have no table access at all.
+- Before adding a rule, ask: "would two centres reasonably decide this differently?" If yes: a setting, a default, SQL validation in `org_validate_settings`, a JS
+  check that the options match (tests/org-settings.test.js), and a test per value. Process rules are read as of TODAY (a change applies to every lesson from then on);
+  money rules follow the settings in force when the lesson happened.
+- Still to turn into settings or build: who flags a lesson as a trial; whether an absent lesson is billable (a billing option); tutors editing their own lessons
+  (`timetable_editing = tutors_own`, marked soon); remarks sent to parents (soon); missed-remarks reminders by email (soon, needs the email provider).
+
 ## Organisations (multi-tenant, v253+)
 - `db/migration_org_foundation.sql` (undo: `_down.sql`): every business table has `org_id`; each solo tutor is an
   organisation of one (kind 'solo', preset 'solo'); centres are kind 'centre'. Access = `memberships` (owner / staff with
@@ -103,8 +116,9 @@ Preview and dev deployments also hit this live DB. So:
   parent's payment is reconciled (wizard question; changes audited). TutorDeck never holds a centre's money.
 - Centre tutors (`memberships.role = 'tutor'`) have NO table access on purpose: `lessons` also holds what parents pay, and row-level security can't hide columns.
   They use only `tutor_my_lessons(from, to)` and `tutor_mark_attendance(...)` (db/migration_tutor_access.sql): explicit column list (never `l.*`, never
-  rate/amount/paid), attended/absent + notes only, on their OWN lesson (`lessons.taught_by` = their membership id), from the lesson's day (the centre's
-  timezone) to 14 days after, never over someone else's mark; `lessons.tutors_see_parent_contact` (default off) controls parent contact. Staff/owners use the
+  rate/amount/paid), attended/absent + notes (and the two cancellations if the centre chooses), on their OWN lesson (`lessons.taught_by` = their membership id), from the lesson's day (the
+  centre's timezone) for the centre's own window (`lessons.attendance_window_days`, default 14), never over someone else's mark; these settings are the centre's:
+  `lessons.attendance_by`, `attendance_window_days`, `cancellations_marked_by`, `remarks.required`, `remarks.deadline_hours`, `tutors_see_parent_contact` (default off), `replacement_tutors`. Staff/owners use the
   normal `org_write` policy. Don't add a tutor policy on any table, and don't add a column to `tutor_my_lessons` without checking it isn't money.
 - Tutor screen = `tutor.html` + `assets/js/tutor.js` (+ pure logic in `assets/js/tutor-core.js`, unit-tested; browser check: `node tests/tutor-page.check.js` with
   `python3 tests/server.py 8765`). It only calls the two tutor functions. Which menu a login gets is `TL.roleMode()` ("solo" | "both" | "tutor-only", remembered 12 hours,

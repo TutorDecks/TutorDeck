@@ -32,7 +32,7 @@ test("why a lesson is locked", () => {
   assert.match(T.lockReason(L({ status: "cancelled", can_mark: false, can_note: false }), TODAY), /cancelled/);
   assert.match(T.lockReason(L({ lesson_date: "2026-11-25", can_mark: false, can_note: false }), TODAY), /from its day/);
   assert.match(T.lockReason(L({ lesson_date: "2026-11-01", can_mark: false, can_note: false }), TODAY), /too long ago/);
-  assert.match(T.lockReason(L({ attendance: "late_cancelled", can_mark: false }), TODAY), /late cancellation/);
+  assert.match(T.lockReason(L({ attendance: "late_cancelled", can_mark: false }), TODAY), /late cancellation.*someone else/);
   assert.match(T.lockReason(L({ attendance: "attended", can_mark: false }), TODAY), /Someone else/);
   assert.match(T.lockReason(L({ can_mark: false }), TODAY), /admin marks attendance.*notes/);
 });
@@ -87,4 +87,15 @@ test("only changed fields are sent", () => {
   const c = T.changes(l, { attendance: null, topics: "", homework: "Page 4", remarks: "Good" });
   assert.strictEqual(c.topics, "", "emptying a note sends an empty string (clears it)"); assert.strictEqual(c.homework, "Page 4"); assert.strictEqual(c.attendance, null);
   assert.strictEqual(T.changes(L({ attendance: "attended" }), { attendance: "attended", topics: "", homework: "", remarks: "" }).any, false, "same attendance again is not a change");
+});
+
+test("cancellation choices appear only when the centre lets tutors mark them", () => {
+  assert.deepStrictEqual(T.attendanceOptions(L()).map((o) => o.value), ["attended", "absent"]);
+  assert.deepStrictEqual(T.attendanceOptions(L({ can_cancel: true })).map((o) => o.value), ["attended", "absent", "cancelled_early", "late_cancelled"]);
+  assert.strictEqual(T.attendanceOptions(L({ can_cancel: true })).find((o) => o.value === "late_cancelled").label, "Late cancellation");
+});
+test("the centre's remarks rule and refusals are explained", () => {
+  assert.match(T.errorText({ message: "REMARKS_REQUIRED: this centre needs remarks before a lesson is marked attended" }), /needs remarks/);
+  assert.match(T.errorText({ message: "BAD_VALUE: that isn't something you can mark at this centre" }), /at this centre/);
+  assert.match(T.errorText({ message: "TOO_OLD: ask an admin to change attendance older than 3 days" }), /too old/);
 });
