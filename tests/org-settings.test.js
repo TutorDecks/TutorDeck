@@ -71,3 +71,21 @@ test("stored older settings gain new keys without losing values", () => {
   assert.equal(s.tutor_pay.mode, "off");           // solo preset default
   assert.deepEqual(s.payments.modes, ["manual_paynow"]);
 });
+
+test("settings nothing reads yet are marked soon, with help text (T18a)", () => {
+  const fields = {};
+  S.STEPS.forEach((st) => st.fields.forEach((f) => { fields[f.path] = f; }));
+  const credit = "Make-up credits come in a later update; for now a make-up is added as a normal lesson.";
+  for (const p of ["billing.makeups.allowed", "billing.makeups.per_period", "billing.makeups.uses_credit",
+    "billing.low_balance_credits", "billing.credit_expiry_days"]) {
+    assert.equal(fields[p].soon, true, p + " must be soon");
+    assert.equal(fields[p].help, credit, p);
+  }
+  assert.equal(fields["calendar.skip_holidays"].soon, true);
+  assert.match(fields["calendar.skip_holidays"].help, /later update/);
+  // saved values stay valid
+  const s = S.defaults("centre"); s.profile.trading_name = "T";
+  s.billing.makeups = { allowed: false, per_period: 5, uses_credit: true };
+  s.calendar.skip_holidays = false;
+  assert.deepEqual(S.validate(s), []);
+});
