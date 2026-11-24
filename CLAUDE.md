@@ -147,7 +147,8 @@ Preview and dev deployments also hit this live DB. So:
      monthly/yearly with proration, cancel at period end (the sandbox one is bpc_1UfDQgCAjCe5dyzzzWFnx8xr). Without it api/billing.js `portal` fails.
    - **Centre fee job** (api/billing-cron.js, daily cron 16:30 UTC = 00:30 SGT, production only): set `CRON_SECRET` (16+ random chars) in Vercel Production;
      run `db/migration_attendance.sql`; create each centre's Stripe subscription BY HAND with both items (centre_base_monthly ×1 and
-     centre_student_monthly ×0, billing anchor on the 1st) and save its id in `org_subscriptions.stripe_subscription_id`; use `?dry=1` first. The job
+     centre_student_monthly ×0, billing anchor 12:00 SGT = 04:00 UTC on the 1st, so the job at 00:30 SGT always runs first; if a renewal was already
+     invoiced the job refuses with `renewal_already_billed` (HTTP 500) and changes nothing) and save its id in `org_subscriptions.stripe_subscription_id`; use `?dry=1` first. The job
      refuses (price_mismatch) if Stripe's prices differ from the centre's `org_plans`. Needs the Phase 2 attendance/trial screens or counts stay 0.
    - Vercel Pro before charging (Hobby is non-commercial). Decide GST (TutorDeck is not GST-registered: prices carry no GST, Stripe Tax stays off).
    - Pricing decisions: solo free ≤5 active students, Solo Pro S$14.90/mo or S$149/yr, 30-day trial (once per org), existing solo tutors unlimited.

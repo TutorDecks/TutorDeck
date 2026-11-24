@@ -17,8 +17,8 @@ function reset(o) {
     subs: { [ORG]: "sub_1" }, qty: { sub_1: 100 }, failStripePost: false }, o || {});
 }
 const stripeSub = (id) => ({ id, status: "active", currency: "sgd", items: { data: [
-  { id: "si_base", quantity: 1, price: { lookup_key: "centre_base_monthly", unit_amount: 10000 } },
-  { id: "si_stu", quantity: st.qty[id], price: { lookup_key: "centre_student_monthly", unit_amount: 40 } }] } });
+  { id: "si_base", quantity: 1, current_period_start: st.periodStart, price: { lookup_key: "centre_base_monthly", unit_amount: 10000 } },
+  { id: "si_stu", quantity: st.qty[id], current_period_start: st.periodStart, price: { lookup_key: "centre_student_monthly", unit_amount: 40 } }] } });
 global.fetch = async (url, opt) => {
   opt = opt || {}; const u = String(url), method = opt.method || "GET";
   const json = (code, obj) => ({ ok: code < 400, status: code, json: async () => obj, text: async () => JSON.stringify(obj) });
@@ -92,4 +92,15 @@ test("skips centres with no subscription yet, and flags a price mismatch as a fa
   reset({ plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 30, effective_from: "2026-10-01" }] } });
   r = await run("/api/billing-cron"); assert.strictEqual(r.statusCode, 500); assert.strictEqual(r.body.centres[0].result, "skipped:price_mismatch");
   assert.ok(!writes.some((w) => w[0] === "stripe" || w[0] === "snapshot"));
+});
+
+test("renewal already invoiced this month: no Stripe write, no snapshot, flagged as a failure", async () => {
+  reset({ periodStart: Math.floor(Date.now() / 1000) });        // the billing period started just now = this month
+  const r = await run("/api/billing-cron");
+  assert.strictEqual(r.statusCode, 500); assert.strictEqual(r.body.failed, 1);
+  assert.strictEqual(r.body.centres[0].result, "skipped:renewal_already_billed");
+  assert.ok(!writes.some((w) => w[0] === "stripe" || w[0] === "snapshot"));
+  assert.strictEqual(st.qty.sub_1, 100, "quantity untouched");
+  reset({ periodStart: Math.floor(Date.now() / 1000) - 40 * 86400 });   // period began 40 days ago: normal
+  assert.strictEqual((await run("/api/billing-cron")).statusCode, 200);
 });

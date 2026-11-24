@@ -51,3 +51,22 @@ test("snapshot row has exactly the table's columns", () => {
   const f = J.decide(sub(), plan, 403).fee;
   assert.deepStrictEqual(J.snapshotRow("o1", "2026-12-01", plan, f), { org_id: "o1", month: "2026-12-01", active_students: 403, billable_students: 400, base_cents: 10000, per_student_cents: 40, fee_cents: 26000 });
 });
+
+test("renewal already billed this month → don't touch the quantity (it would land on the wrong month)", () => {
+  const sec = (iso) => Date.parse(iso) / 1000;
+  const withStart = (start, shape) => { const sb = sub(); if (shape === "sub") sb.current_period_start = start; else sb.items.data.forEach((i) => { i.current_period_start = start; }); return sb; };
+  // period started on the 15th of last month → this month's renewal is still ahead: fine
+  assert.strictEqual(J.renewedInMonth(withStart(sec("2026-11-15T04:00:00Z"), "item"), "2026-12-01"), false);
+  // period started 1 Dec 04:00 UTC (12:00 SGT) → already renewed for December
+  assert.strictEqual(J.renewedInMonth(withStart(sec("2026-12-01T04:00:00Z"), "item"), "2026-12-01"), true);
+  // boundary: 00:00 SGT on the 1st counts as this month; 23:59:59 SGT the day before doesn't
+  assert.strictEqual(J.renewedInMonth(withStart(sec("2026-11-30T16:00:00Z"), "item"), "2026-12-01"), true);
+  assert.strictEqual(J.renewedInMonth(withStart(sec("2026-11-30T15:59:59Z"), "item"), "2026-12-01"), false);
+  // older API shape: the period start is on the subscription itself
+  assert.strictEqual(J.renewedInMonth(withStart(sec("2026-12-02T00:00:00Z"), "sub"), "2026-12-01"), true);
+  // no period information at all: can't tell, so don't block
+  assert.strictEqual(J.renewedInMonth(sub(), "2026-12-01"), false);
+  // decide() uses it, but only when it is given the month
+  assert.strictEqual(J.decide(withStart(sec("2026-12-01T04:00:00Z"), "item"), plan, 403, "2026-12-01").skip, "renewal_already_billed");
+  assert.ok(J.decide(withStart(sec("2026-11-15T04:00:00Z"), "item"), plan, 403, "2026-12-01").fee);
+});

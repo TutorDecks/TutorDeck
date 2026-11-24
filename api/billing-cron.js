@@ -55,8 +55,9 @@ module.exports = async function (req, res) {
         const plan = J.planFor(plans.data, month), subId = subRow.data && subRow.data[0] && subRow.data[0].stripe_subscription_id;
         if (!subId) { row.result = "skipped:no_subscription"; out.centres.push(row); continue; }
         const sub = await B.stripe("GET", "/subscriptions/" + encodeURIComponent(subId));
-        const d = J.decide(sub, plan, cnt.data);
-        if (d.skip) { row.result = "skipped:" + d.skip; out.failed += (d.skip === "price_mismatch" || d.skip === "missing_price_items") ? 1 : 0; out.centres.push(row); continue; }
+        const d = J.decide(sub, plan, cnt.data, month);
+        // these need a human, so they count as failures (HTTP 500, visible in the logs); the others are normal "nothing to do"
+        if (d.skip) { row.result = "skipped:" + d.skip; out.failed += ["price_mismatch", "missing_price_items", "renewal_already_billed"].indexOf(d.skip) >= 0 ? 1 : 0; out.centres.push(row); continue; }
         Object.assign(row, { active: d.fee.active, billable: d.fee.billable, fee_cents: d.fee.fee_cents, quantity_before: d.currentQty });
         if (dry) { row.result = d.needsUpdate ? "dry:would_update" : "dry:already_correct"; out.centres.push(row); continue; }
         if (d.needsUpdate) {
