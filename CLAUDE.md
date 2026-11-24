@@ -124,3 +124,17 @@ Preview and dev deployments also hit this live DB. So:
    on 2026-10-18), then submit for verification.
 5. Later: separate dev Supabase project; custom SMTP for auth emails; Vercel Pro before
    charging customers (Hobby plan is non-commercial).
+6. **Platform billing (Stripe) — GO-LIVE CHECKLIST. Remind the owner of this whenever billing, Stripe or going live comes up.**
+   Built and tested on the DEV Supabase project + Stripe SANDBOX only (branch claude/sleepy-bell-xfr6zb). Before real money:
+   - Run `db/migration_org_foundation.sql` then `db/migration_billing.sql` on LIVE (SELECT preview + explicit yes first; dry-run on a restored backup;
+     the billing one marks every existing solo tutor `grandfathered = true`).
+   - Vercel **Production** env: LIVE `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (LIVE project's own key), LIVE `STRIPE_SECRET_KEY`
+     (`sk_live_…`), and a new LIVE webhook secret. Today `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`SUPABASE_SERVICE_ROLE_KEY` are shared by
+     Production + Preview with SANDBOX/DEV values — split them. Billing refuses to run without `SUPABASE_URL`, so Production is inert until it is set.
+   - Stripe LIVE mode: recreate the products/prices (same lookup keys: solo_pro_monthly S$14.90, solo_pro_yearly S$149, centre_base_monthly,
+     centre_student_monthly) and a LIVE webhook endpoint for https://tutordeck.vercel.app/api/stripe-webhook (+ www.tutordeck.com.sg) with the 6 events
+     listed in api/stripe-webhook.js. Live Stripe account needs business details/bank account (TutorDeck Pte. Ltd.).
+   - Vercel Pro before charging (Hobby is non-commercial). Decide GST (TutorDeck is not GST-registered: prices carry no GST, Stripe Tax stays off).
+   - Pricing decisions: solo free ≤5 active students, Solo Pro S$14.90/mo or S$149/yr, 30-day trial (once per org), existing solo tutors unlimited.
+     Centre S$100 + S$0.40 × billable students is UNDER REVIEW (SchoolTracs charges ~S$148 per branch at 400 students; owner chose to keep it for now).
+   - Lock down helper functions (search_path / anon execute) flagged by Supabase advisors in a follow-up migration before LIVE.

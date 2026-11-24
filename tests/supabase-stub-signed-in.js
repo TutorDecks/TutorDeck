@@ -85,7 +85,7 @@
       getUser:function(){return Promise.resolve({data:{user:user},error:null});},
       onAuthStateChange:function(){return {data:{subscription:{unsubscribe:function(){}}}};},
       mfa:{getAuthenticatorAssuranceLevel:function(){return Promise.resolve({data:{currentLevel:"aal1",nextLevel:"aal1"},error:null});},listFactors:function(){return Promise.resolve({data:{totp:[]},error:null});}}},
-    from:q, rpc:function(n){return Promise.resolve({data:n==="org_settings_on"?JSON.parse(JSON.stringify(orgSettings)):null,error:null});}, functions:{invoke:function(){return Promise.resolve({data:null,error:null});}},
+    from:q, rpc:function(n){return Promise.resolve({data:n==="org_settings_on"?JSON.parse(JSON.stringify(orgSettings)):(n==="org_plan_status"?{kind:"solo",tier:"free",status:"none",grandfathered:false,has_pro:false,active_students:4,free_limit:5,can_add_student:true}:null),error:null});}, functions:{invoke:function(){return Promise.resolve({data:null,error:null});}},
     storage:{from:function(){return {createSignedUrl:function(){return Promise.resolve({data:null});},list:function(){return Promise.resolve({data:[],error:null});}};}}
   };}};
 })();
