@@ -20,6 +20,10 @@ BEFORE=$(shape)
 $P -f db/migration_org_foundation.sql
 $P -f db/migration_org_foundation.sql                     # must be safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_test.sql
+$P -f db/migration_billing.sql
+$P -f db/migration_billing.sql                            # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/billing_test.sql
+$P -f db/migration_billing_down.sql
 $P -f db/migration_org_foundation_down.sql
 AFTER=$(shape)
 if [ "$BEFORE" != "$AFTER" ]; then echo "FAIL: undo did not restore the baseline"; diff <(echo "$BEFORE") <(echo "$AFTER") | head -20; exit 1; fi
