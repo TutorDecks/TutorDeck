@@ -35,14 +35,16 @@ developers AND we both use the app live for our own tuition businesses.
 - Never suggest pushing straight to main or force-pushing.
 
 ## Data warning
-There is only ONE Supabase database, and it holds REAL student/payment data.
+There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it holds REAL student/payment data.
 Preview and dev deployments also hit this live DB. So:
 - Don't write code or run scripts that bulk-delete/modify data without asking me first.
 - Test with dummy students.
 - Any new `db/migration_*.sql` must be run in the Supabase SQL editor BEFORE the code that
   needs it is merged to main, or pages will error with "column does not exist". Because
   previews hit the same DB, run it before the code lands on `dev` too.
-- A separate dev Supabase project is planned but not set up yet.
+- A separate DEV Supabase project exists (`tuzxsqkfzrjssnpcoale`, dummy data only) and is where migrations get tried first. But the site's
+  `assets/js/config.js` still points at LIVE, so every Vercel preview still reads and writes LIVE data, except the server functions in `api/`
+  on a branch that has its own `SUPABASE_URL` Preview variable (billing branch only). Don't point `config.js` at DEV without asking.
 - Nightly encrypted DB backups run via GitHub Actions (.github/workflows/db-backup.yml, 30-day artifacts).
   The repo is PUBLIC: never commit dumps, never print data in workflow logs. Restore steps: README → Backups.
 
@@ -100,7 +102,9 @@ Preview and dev deployments also hit this live DB. So:
 - Centres: issued invoices immutable (credit notes); solo tutors' flows must not change. Default: tutors paid only after the
   parent's payment is reconciled (wizard question; changes audited). TutorDeck never holds a centre's money.
 - Live schema snapshot: `db/baseline_2026-11.sql`. Test SQL with `bash tests/sql/run.sh` (throwaway Postgres), never live.
-- Dev Supabase project: `tuzxsqkfzrjssnpcoale` (baseline applied; org migration pending). Live: `rnjvswkejbrhbaytutai`.
+- Dev Supabase project: `tuzxsqkfzrjssnpcoale` (baseline + org_foundation + billing + attendance + org_delete migrations applied). Live: `rnjvswkejbrhbaytutai`
+  (NONE of the org/billing/attendance/delete migrations are on live yet). Migration order everywhere: org_foundation → billing → attendance → org_delete
+  (undo in reverse); `bash tests/sql/run.sh` runs all four and the undo checks.
 
 ## Open threads
 - T-Leng has past lessons wrongly showing ✦ one-off: an old slot deletion (before `one_off`
@@ -123,10 +127,14 @@ Preview and dev deployments also hit this live DB. So:
    Google Cloud → Branding links currently point to https://tutordeck.vercel.app (/privacy,
    /terms). Switch them to tutordeck.com.sg once that domain is live (DNS returned NXDOMAIN
    on 2026-10-18), then submit for verification.
-5. Later: separate dev Supabase project; custom SMTP for auth emails; Vercel Pro before
+5. Later: point a DEV build's `config.js` at the DEV project so previews stop touching live data; custom SMTP for auth emails; Vercel Pro before
    charging customers (Hobby plan is non-commercial).
 6. **Platform billing (Stripe) — GO-LIVE CHECKLIST. Remind the owner of this whenever billing, Stripe or going live comes up.**
    Built and tested on the DEV Supabase project + Stripe SANDBOX only (branch claude/sleepy-bell-xfr6zb). Before real money:
+   - **"Delete my account" depends on server config** (api/delete-account.js replaced the old Edge Function; there is NO browser fallback). Production has no
+     `SUPABASE_URL` today, so the function answers 503 and deletion stops working in Production the moment that code ships. So LIVE `SUPABASE_URL` +
+     LIVE `SUPABASE_SERVICE_ROLE_KEY` (+ live `STRIPE_SECRET_KEY` for anyone who ever subscribed) are prerequisites of shipping it, not just of charging.
+     Also run `migration_org_delete.sql` on LIVE (the order is foundation → billing → attendance → org_delete) before the code lands on dev/main.
    - Run `db/migration_org_foundation.sql` then `db/migration_billing.sql` on LIVE (SELECT preview + explicit yes first; dry-run on a restored backup;
      the billing one marks every existing solo tutor `grandfathered = true`).
    - Vercel **Production** env: LIVE `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (LIVE project's own key), LIVE `STRIPE_SECRET_KEY`
