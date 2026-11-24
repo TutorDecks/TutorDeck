@@ -5,7 +5,7 @@
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
-  var TC = window.TutorCore, rows = [], byId = {}, today = "", current = null, picked = null, opener = null, manyOrgs = false;
+  var TC = window.TutorCore, rows = [], byId = {}, today = "", current = null, picked = null, opener = null, manyOrgs = false, chargeText = "";
 
   function say(t, err) { var m = $("ts-msg"); m.textContent = t || ""; m.className = "msg" + (t ? (err ? " err" : " ok") : ""); }
 
@@ -49,11 +49,14 @@
       (l.subject || l.student_level ? '<div><span>Class</span><span>' + esc([l.student_level, l.subject].filter(Boolean).join(" · ")) + '</span></div>' : '') +
       (manyOrgs ? '<div><span>Centre</span><span>' + esc(l.org_name) + '</span></div>' : '') +
       (l.parent_contact ? '<div><span>Parent</span><span><a href="tel:' + esc(String(l.parent_contact).replace(/[^\d+]/g, "")) + '">' + esc(l.parent_contact) + '</a></span></div>' : '') +
+      (l.trial && !l.can_flag_trial ? '<div><span>Trial</span><span>This is a trial lesson</span></div>' : '') +
       (due ? '<div><span>Remarks due</span><span class="due' + (due.overdue ? ' late' : '') + '">' + esc(new Date(due.at).toLocaleString("en-SG", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })) + (due.overdue ? " (overdue)" : "") + '</span></div>' : '') +
       '</div>';
+    if (l.can_flag_trial) html += '<label class="tt-check"><input type="checkbox" id="ts-trial"' + (l.trial ? ' checked' : '') + '> This is a trial lesson</label>';
+    if (l.charge_pending) html += '<p class="tt-note">An admin still needs to set the charge for this lesson.</p>';
     if (l.can_mark) {
       html += '<span class="tt-lbl" id="ts-att-l">Attendance</span><div class="tt-opts" role="group" aria-labelledby="ts-att-l">' +
-        opts.map(function (o) { return '<button type="button" class="tt-opt" data-att="' + o.value + '" aria-pressed="' + (picked === o.value) + '">' + esc(o.label) + '</button>'; }).join("") + '</div>';
+        opts.map(function (o) { return '<button type="button" class="tt-opt" data-att="' + o.value + '" aria-pressed="' + (picked === o.value) + '">' + esc(o.label) + '</button>'; }).join("") + '</div><div id="ts-charge"></div>';
     } else if (lock) {
       html += '<p class="tt-note">' + esc(lock) + '</p>';
     }
@@ -66,11 +69,26 @@
         if (n[1]) html += '<div class="tt-ro"><small>' + n[0] + '</small>' + esc(n[1]) + '</div>';
       });
     }
+    chargeText = "";
     $("ts-body").innerHTML = html;
+    refreshCharge();
     $("ts-save").style.display = (l.can_mark || l.can_note) ? "" : "none";
     $("ts-save").disabled = false; say("");
     $("tt-sheet").classList.add("on"); document.body.classList.add("sheet-lock");
     var first = $("ts-body").querySelector("button,textarea"); if (first) setTimeout(function () { try { first.focus({ preventScroll: true }); } catch (e) {} }, 60);
+  }
+  // Under the attendance choices: the charge box (when the centre has tutors type the charge for an absent or cancelled lesson), or a plain note when an admin does.
+  function refreshCharge() {
+    var box = $("ts-charge"); if (!box || !current) return;
+    if (TC.needsCharge(current, picked)) {
+      var same = picked === current.attendance;
+      box.innerHTML = '<label class="tt-lbl" for="ts-charge-in">Charge for this lesson (S$)</label>' +
+        '<input class="tt-in" id="ts-charge-in" inputmode="decimal" autocomplete="off" placeholder="' + (same ? "Leave blank to keep it as it is" : "e.g. 25") + '" value="' + esc(chargeText) + '">' +
+        '<div class="tt-hint">' + (same ? "Type a new amount only if you want to change it. " : "") + 'Type 0 if the family isn\u2019t charged.</div>';
+      $("ts-charge-in").addEventListener("input", function (e) { chargeText = e.target.value; });
+    } else if (TC.adminChargeNote(current, picked)) {
+      box.innerHTML = '<p class="tt-note">An admin will decide what this lesson is charged.</p>';
+    } else box.innerHTML = "";
   }
   function closeSheet() {
     $("tt-sheet").classList.remove("on"); document.body.classList.remove("sheet-lock");
@@ -81,11 +99,13 @@
   async function save() {
     var l = current; if (!l) return;
     var form = { attendance: picked, topics: $("ts-topics") ? $("ts-topics").value : l.topics, homework: $("ts-homework") ? $("ts-homework").value : l.homework,
-                 remarks: $("ts-remarks") ? $("ts-remarks").value : l.remarks };
+                 remarks: $("ts-remarks") ? $("ts-remarks").value : l.remarks,
+                 trial: $("ts-trial") ? $("ts-trial").checked : null, compensation: chargeText };
     var ch = TC.changes(l, form);
+    if (ch.chargeError) { say(TC.errorText({ message: "CHARGE_REQUIRED" }), true); var ci = $("ts-charge-in"); if (ci) ci.focus(); return; }
     if (!ch.any) { closeSheet(); return; }
     $("ts-save").disabled = true; say("Saving…");
-    var r = await window.sb.rpc("tutor_mark_attendance", { p_lesson: l.lesson_id, p_attendance: ch.attendance, p_topics: ch.topics, p_homework: ch.homework, p_remarks: ch.remarks });
+    var r = await window.sb.rpc("tutor_mark_attendance", { p_lesson: l.lesson_id, p_attendance: ch.attendance, p_topics: ch.topics, p_homework: ch.homework, p_remarks: ch.remarks, p_trial: ch.trial, p_compensation: ch.compensation });
     if (r.error) { say(TC.errorText(r.error), true); $("ts-save").disabled = false; return; }
     closeSheet(); TL.toast("Saved"); load(true);
   }
@@ -113,6 +133,7 @@
       var o = e.target.closest(".tt-opt"); if (!o) return;
       picked = o.getAttribute("data-att");
       Array.prototype.forEach.call($("ts-body").querySelectorAll(".tt-opt"), function (x) { x.setAttribute("aria-pressed", String(x === o)); });
+      refreshCharge();
     });
     $("ts-save").addEventListener("click", save);
     $("ts-close").addEventListener("click", closeSheet);

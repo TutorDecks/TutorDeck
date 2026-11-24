@@ -96,13 +96,19 @@ Preview and dev deployments also hit this live DB. So:
   hard-coded rule: who marks attendance, how long tutors have to mark, who records cancellations, whether remarks are required, who sees parents' contact, who may
   replace a tutor, and so on. We then implement **every** option completely, in the database first, with tests for each value.
 - An option that isn't built yet is marked `soon` (or `soonOptions` for one choice of a dropdown) so the wizard never offers something that does nothing.
-- What stays fixed is integrity, not process: nobody marks a lesson before its day, nobody overwrites another person's mark, tutors never touch money, status, date,
-  time or the trial flag, and tutors have no table access at all.
+- What stays fixed is integrity, not process: nobody marks a lesson before its day, nobody overwrites another person's mark, tutors never see or edit a lesson's price,
+  date or time, and tutors have no table access at all. (Status follows attendance, set by the system, never typed by a tutor. A tutor can flag trials, or type the charge
+  for an absent / cancelled lesson, ONLY if the centre chose that.)
 - Before adding a rule, ask: "would two centres reasonably decide this differently?" If yes: a setting, a default, SQL validation in `org_validate_settings`, a JS
   check that the options match (tests/org-settings.test.js), and a test per value. Process rules are read as of TODAY (a change applies to every lesson from then on);
   money rules follow the settings in force when the lesson happened.
-- Still to turn into settings or build: who flags a lesson as a trial; whether an absent lesson is billable (a billing option); tutors editing their own lessons
-  (`timetable_editing = tutors_own`, marked soon); remarks sent to parents (soon); missed-remarks reminders by email (soon, needs the email provider).
+- Billing of absent / cancelled lessons works the way the app always has (owner, 2026-11-24): the lesson becomes `cancelled` and its billable amount is its
+  **compensation**, a number someone types when marking it, **0 if the family isn't charged**; null = "charge pending" (an admin still has to type it, and invoicing
+  must wait for it). Who types it is a centre setting (`lessons.compensation_entered_by`: admin default, or tutor, capped at the lesson's own price). Attended = `done`.
+  This status/compensation mapping only applies to centres; solo tutors' lessons never change status just because attendance is set.
+- Still to build: tutors editing their own lessons (`timetable_editing = tutors_own`, marked soon); remarks sent to parents (soon); missed-remarks reminders by email
+  (soon, needs the email provider); the staff screens (marking and correcting attendance, typing pending charges, flagging trials); centre invoicing, which must treat a
+  cancelled lesson with a null compensation as not ready to invoice.
 
 ## Organisations (multi-tenant, v253+)
 - `db/migration_org_foundation.sql` (undo: `_down.sql`): every business table has `org_id`; each solo tutor is an
@@ -118,7 +124,7 @@ Preview and dev deployments also hit this live DB. So:
   They use only `tutor_my_lessons(from, to)` and `tutor_mark_attendance(...)` (db/migration_tutor_access.sql): explicit column list (never `l.*`, never
   rate/amount/paid), attended/absent + notes (and the two cancellations if the centre chooses), on their OWN lesson (`lessons.taught_by` = their membership id), from the lesson's day (the
   centre's timezone) for the centre's own window (`lessons.attendance_window_days`, default 14), never over someone else's mark; these settings are the centre's:
-  `lessons.attendance_by`, `attendance_window_days`, `cancellations_marked_by`, `remarks.required`, `remarks.deadline_hours`, `tutors_see_parent_contact` (default off), `replacement_tutors`. Staff/owners use the
+  `lessons.attendance_by`, `attendance_window_days`, `cancellations_marked_by`, `compensation_entered_by`, `trials_flagged_by`, `remarks.required`, `remarks.deadline_hours`, `tutors_see_parent_contact` (default off), `replacement_tutors`. Staff/owners use the
   normal `org_write` policy. Don't add a tutor policy on any table, and don't add a column to `tutor_my_lessons` without checking it isn't money.
 - Tutor screen = `tutor.html` + `assets/js/tutor.js` (+ pure logic in `assets/js/tutor-core.js`, unit-tested; browser check: `node tests/tutor-page.check.js` with
   `python3 tests/server.py 8765`). It only calls the two tutor functions. Which menu a login gets is `TL.roleMode()` ("solo" | "both" | "tutor-only", remembered 12 hours,

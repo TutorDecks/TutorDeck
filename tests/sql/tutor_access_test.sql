@@ -61,8 +61,11 @@ select t.eq(t.rows($q$ delete from lessons where id = t.id('L1') $q$), 0, 'tutor
 reset role;
 
 -- ===================================================================== what tutor_my_lessons returns
-select t.ok(pg_get_function_result('public.tutor_my_lessons(date,date)'::regprocedure) !~ '(rate|amount|paid|compensation|charge|cents|invoice)',
-            'the read function exposes no money column (checked from the catalog, so a later edit can''t quietly add one)');
+select t.ok(not exists (select 1 from pg_proc p, unnest(p.proargnames, p.proallargtypes, p.proargmodes) as a(n, ty, m)
+                        where p.oid = 'public.tutor_my_lessons(date,date)'::regprocedure and a.m = 't'
+                          and (format_type(a.ty, null) in ('numeric', 'real', 'double precision', 'money', 'integer', 'bigint', 'smallint')
+                               or a.n in ('rate', 'amount', 'paid', 'compensation', 'charge_note', 'total', 'invoice_id') or a.n ~ '_cents$')),
+            'the read function returns no number, money, price or paid column of any kind (checked by type and exact name from the catalog, so a later edit can''t quietly add one; true/false flags like charge_pending are fine)');
 select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
 select t.eq((select count(*) from tutor_my_lessons((select today - 30 from td), (select today + 5 from td))), 5, 'T1 sees exactly their own 5 lessons (not T2''s, not others'')');
 select t.eq((select count(*) from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LT2')), 0, 'T1 can''t see T2''s lesson');
@@ -98,12 +101,12 @@ reset role;
 select t.ok((select attendance = 'attended' and attendance_marked_by = '00000000-0000-0000-0000-000000007001' and attendance_marked_at is not null
              and topics = 'Fractions' and homework = 'Worksheet 3' and remarks = 'Good progress' and remarks_at is not null from lessons where id = t.id('L1')),
             'attendance, notes, who and when are all recorded');
-select t.ok((select status = 'scheduled' and amount = 123.45 and rate = 55 and lesson_date = (select today from td) from lessons where id = t.id('L1')),
-            'status, amount, rate and date are untouched (whether absent is billable is the owner''s money rule)');
+select t.ok((select status = 'done' and amount = 123.45 and rate = 55 and lesson_date = (select today from td) from lessons where id = t.id('L1')),
+            'marking attended makes the lesson done (system-driven); amount, rate and date are untouched');
 select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
 select tutor_mark_attendance(t.id('L1'), 'absent');
 reset role;
-select t.ok((select attendance = 'absent' and remarks = 'Good progress' from lessons where id = t.id('L1')), 'the same tutor can change their own mark; notes left as they were (null = unchanged)');
+select t.ok((select attendance = 'absent' and remarks = 'Good progress' and status = 'cancelled' and compensation is null from lessons where id = t.id('L1')), 'the same tutor can change their own mark; notes left as they were; absent = cancelled with the charge still pending');
 select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
 select tutor_mark_attendance(t.id('L1'), null, '', null, null);
 reset role;
@@ -132,7 +135,7 @@ select t.fails($q$ select tutor_mark_attendance(t.id('L2'), 'maybe') $q$, 'a mad
 select t.fails($q$ select tutor_mark_attendance(t.id('L2'), 'attended', repeat('x', 2001)) $q$, 'a 2001-character topic');
 reset role;
 select t.eq((select count(*) from lessons where attendance is not null and id in (t.id('L1'), t.id('L2'), t.id('LT2'), t.id('LF'), t.id('LOLD'), t.id('LCAN'), t.id('LINV'), t.id('LDIS'))), 1, 'none of the refused calls changed anything (only L1 is marked)');
-select t.ok((select not trial from lessons where id = t.id('L1')), 'the trial flag is not something tutors can touch (no parameter for it)');
+select t.ok((select not trial from lessons where id = t.id('L1')), 'none of the refused calls changed the trial flag');
 
 -- the disabled tutor and the unclaimed invitation can't mark
 insert into auth.users(id, email) values ('00000000-0000-0000-0000-000000007005', 'tutor5@centre.test');
@@ -332,11 +335,123 @@ select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
 select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{}'), current_date);          -- defaults again
 reset role;
 
+-- ===================================================================== the charge for absent / cancelled lessons, and trial lessons
+-- (a) default: an ADMIN enters the charge. The tutor marks; the lesson becomes cancelled with the charge pending (compensation null).
+select t.put('LA1', pg_temp.mk('s1', 0, t.id('m1')));
+select t.put('LA2', pg_temp.mk('s2', 0, t.id('m1')));
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select tutor_mark_attendance(t.id('LA1'), 'absent');
+select t.fails($q$ select tutor_mark_attendance(t.id('LA2'), 'absent', null, null, null, null, 30) $q$, 'default centre: a tutor typing the charge');
+select t.ok((select charge_pending and status = 'cancelled' and not tutor_sets_compensation from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LA1')), 'the screen is told the charge is pending and an admin sets it');
+reset role;
+select t.ok((select status = 'cancelled' and compensation is null from lessons where id = t.id('LA1')), 'absent: status cancelled, charge pending (compensation null)');
+select t.as('00000000-0000-0000-0000-000000007004'); set role authenticated;
+update lessons set compensation = 25 where id = t.id('LA1');            -- staff type the charge, like the app does today
+reset role;
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select t.ok((select not charge_pending from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LA1')), 'once an admin types it, no longer pending');
+select tutor_mark_attendance(t.id('LA1'), 'attended');                     -- the tutor changes their mind
+reset role;
+select t.ok((select status = 'done' and compensation is null and attendance = 'attended' from lessons where id = t.id('LA1')), 'changing absent to attended makes it done and clears the old charge');
+select t.ok((select amount = 123.45 and rate = 55 from lessons where id = t.id('LA1')), 'the lesson''s own price is never touched');
+
+-- (b) the centre lets TUTORS type the charge: a number, 0 if the family isn't charged, never above the lesson's own price
+select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
+select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"compensation_entered_by": "tutor"}'), current_date);
+reset role;
+select t.put('LB1', pg_temp.mk('s1', 0, t.id('m1')));
+select t.put('LB2', pg_temp.mk('s2', 0, t.id('m1')));
+select t.put('LB3', pg_temp.mk('s3', 0, t.id('m1')));
+update lessons set amount = 0 where id = t.id('LB3');                      -- no stored price yet: the cap falls back to rate x hours (55 x 1)
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select t.ok((select tutor_sets_compensation from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LB1')), 'the screen is told the tutor types the charge');
+do $$ declare m text; begin
+  begin perform tutor_mark_attendance(t.id('LB1'), 'absent'); exception when others then m := sqlerrm; end;
+  if m is null or m not like 'CHARGE_REQUIRED%' then raise exception 'FAIL: absent without a charge gave: %', m; end if;
+  raise notice 'PASS tutors-type-the-charge: absent without a number is refused (%)', m;
+end $$;
+select t.fails($q$ select tutor_mark_attendance(t.id('LB1'), 'late_cancelled') $q$, 'a cancellation without a number is refused too (even if the centre lets tutors mark it, which it does not here)');
+select t.fails($q$ select tutor_mark_attendance(t.id('LB1'), 'absent', null, null, null, null, -1) $q$, 'a negative charge');
+select t.fails($q$ select tutor_mark_attendance(t.id('LB1'), 'absent', null, null, null, null, 500) $q$, 'a charge above the lesson''s own price (123.45)');
+select t.fails($q$ select tutor_mark_attendance(t.id('LB1'), 'absent', null, null, null, null, 12.345) $q$, 'a charge with more than 2 decimals');
+select t.fails($q$ select tutor_mark_attendance(t.id('LB1'), 'attended', null, null, null, null, 10) $q$, 'a charge on an attended lesson');
+select tutor_mark_attendance(t.id('LB1'), 'absent', null, null, null, null, 0);                      -- 0 = not charged
+select tutor_mark_attendance(t.id('LB2'), 'absent', null, null, null, null, 60.5);
+select t.fails($q$ select tutor_mark_attendance(t.id('LB3'), 'absent', null, null, null, null, 56) $q$, 'no stored price: the cap is rate x hours (55)');
+select tutor_mark_attendance(t.id('LB3'), 'absent', null, null, null, null, 55);
+reset role;
+select t.ok((select compensation = 0 and status = 'cancelled' from lessons where id = t.id('LB1')), '0 is recorded as 0 (not charged), not as pending');
+select t.ok((select compensation = 60.5 from lessons where id = t.id('LB2')) and (select compensation = 55 from lessons where id = t.id('LB3')), 'a charge up to the price is recorded');
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select t.ok((select not charge_pending from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LB1')), '0 is not "pending"');
+select tutor_mark_attendance(t.id('LB2'), null, null, null, null, null, 20);                         -- the tutor corrects their own amount
+reset role;
+select t.ok((select compensation = 20 from lessons where id = t.id('LB2')), 'the tutor can correct the amount they typed');
+select t.as('00000000-0000-0000-0000-000000007004'); set role authenticated;
+update lessons set compensation = 40 where id = t.id('LB2');                                       -- an admin overrides (normal staff access)
+reset role;
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select tutor_mark_attendance(t.id('LB2'), null, null, null, null, null, 10);                         -- same marker: still theirs to change
+reset role;
+-- a charge on a lesson someone else marked is not the tutor's to change
+update lessons set attendance_marked_by = '00000000-0000-0000-0000-000000007004' where id = t.id('LB2');
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select t.fails($q$ select tutor_mark_attendance(t.id('LB2'), null, null, null, null, null, 5) $q$, 'changing the charge on a lesson an admin marked');
+reset role;
+select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
+select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{}'), current_date);          -- defaults again
+reset role;
+
+-- (c) trial lessons: flagged by an admin by default, by the tutor if the centre chooses
+select t.put('LT1', pg_temp.mk('s1', 0, t.id('m1')));
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select t.fails($q$ select tutor_mark_attendance(t.id('LT1'), null, null, null, null, true) $q$, 'default centre: a tutor flagging a trial');
+select tutor_mark_attendance(t.id('LT1'), null, null, null, 'note only', false);                   -- unchanged value is not a flag change
+select t.ok(not (select can_flag_trial from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LT1')), 'the screen is told trials are an admin matter here');
+reset role;
+select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
+select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"trials_flagged_by": "tutor"}'), current_date);
+reset role;
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select t.ok((select can_flag_trial from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LT1')), 'trials-by-tutor: the screen is told it may flag');
+select tutor_mark_attendance(t.id('LT1'), null, null, null, null, true);
+reset role;
+select t.ok((select trial from lessons where id = t.id('LT1')), 'a tutor can flag a trial when the centre allows it');
+-- a trial lesson is left out of TutorDeck's active-student count: a brand-new pupil whose only lesson is a trial adds 0, and counts 1 once it is not a trial
+select set_config('request.jwt.claims', '', false);
+create temp table before_n as select org_active_students_in_month(t.id('centre'), (select today from td)) as n;
+insert into students(id, tutor_id, org_id, name) values ('00000000-0000-0000-0000-00000000aaaa', '00000000-0000-0000-0000-0000000000c1', t.id('centre'), 'Trial pupil');
+insert into lessons(id, tutor_id, org_id, student_id, lesson_date, start_time, end_time, rate, attendance, trial)
+  values ('00000000-0000-0000-0000-00000000bbbb', '00000000-0000-0000-0000-0000000000c1', t.id('centre'), '00000000-0000-0000-0000-00000000aaaa', (select today from td), '09:00', '10:00', 50, 'attended', true);
+select t.eq(org_active_students_in_month(t.id('centre'), (select today from td)) - (select n from before_n), 0, 'a pupil whose only lesson is a trial adds nothing to the fee count');
+update lessons set trial = false where id = '00000000-0000-0000-0000-00000000bbbb';
+select t.eq(org_active_students_in_month(t.id('centre'), (select today from td)) - (select n from before_n), 1, 'and counts as active once it is no longer a trial');
+select t.as('00000000-0000-0000-0000-000000007001'); set role authenticated;
+select tutor_mark_attendance(t.id('LT1'), null, null, null, null, false);
+reset role;
+select t.ok((select not trial from lessons where id = t.id('LT1')), 'and unflag it');
+select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
+select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{}'), current_date);
+select t.fails($q$ select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"compensation_entered_by": "nobody"}'), current_date) $q$, 'an unknown compensation_entered_by');
+select t.fails($q$ select org_save_settings(t.id('centre'), jsonb_set(t.centre_settings(), '{lessons}', '{"trials_flagged_by": "everyone"}'), current_date) $q$, 'an unknown trials_flagged_by');
+reset role;
+
+-- (d) solo tutors' lessons never change status just because attendance is set (the status rule is for centres only)
+select set_config('request.jwt.claims', '', false);                       -- no signed-in identity: these updates are made as the database owner
+insert into lessons(tutor_id, org_id, student_id, lesson_date, start_time, end_time, rate, amount, status)
+  select '00000000-0000-0000-0000-0000000000a1', t.id('tina_org'), id, current_date, '10:00', '11:00', 40, 40, 'scheduled' from students where org_id = t.id('tina_org') limit 1;
+select t.put('SOLO1', (select id from lessons where org_id = t.id('tina_org') and status = 'scheduled' and lesson_date = current_date and start_time = '10:00' limit 1));
+update lessons set attendance = 'attended' where id = t.id('SOLO1');
+select t.ok((select status = 'scheduled' and attendance = 'attended' and compensation is null and attendance_marked_at is not null from lessons where id = t.id('SOLO1')), 'a solo lesson keeps its status when attendance is set (the status rule is for centres only)');
+update lessons set attendance = 'absent' where id = t.id('SOLO1');
+select t.ok((select status = 'scheduled' from lessons where id = t.id('SOLO1')), 'and also for absent: solo flows are unchanged');
+update lessons set attendance = null where org_id = t.id('tina_org');
+
 -- ===================================================================== grants
 select t.ok(not has_function_privilege('anon', 'public.tutor_my_lessons(date,date)', 'execute')
-        and not has_function_privilege('anon', 'public.tutor_mark_attendance(uuid,text,text,text,text)', 'execute')
+        and not has_function_privilege('anon', 'public.tutor_mark_attendance(uuid,text,text,text,text,boolean,numeric)', 'execute')
         and has_function_privilege('authenticated', 'public.tutor_my_lessons(date,date)', 'execute')
-        and has_function_privilege('authenticated', 'public.tutor_mark_attendance(uuid,text,text,text,text)', 'execute'), 'anonymous callers have no access; signed-in users do (each call checks who they are)');
+        and has_function_privilege('authenticated', 'public.tutor_mark_attendance(uuid,text,text,text,text,boolean,numeric)', 'execute'), 'anonymous callers have no access; signed-in users do (each call checks who they are)');
 set role anon;
 select t.fails($q$ select * from tutor_my_lessons(current_date, current_date) $q$, 'an anonymous call to tutor_my_lessons');
 reset role;

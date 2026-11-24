@@ -91,6 +91,10 @@
     ADMIN_ONLY: "At this centre an admin marks attendance. Your notes were not saved either, so please try again without changing attendance.",
     ALREADY_MARKED: "Someone else already marked this lesson. Ask an admin to change it.",
     BAD_VALUE: "That isn't something you can mark at this centre.",
+    CHARGE_REQUIRED: "Please enter the charge for this lesson, or 0 if the family isn't charged.",
+    BAD_CHARGE: "The charge must be an amount from 0 up to the lesson's own price, with at most 2 decimals.",
+    CHARGE_ADMIN_ONLY: "At this centre an admin enters the charge for absent or cancelled lessons.",
+    TRIAL_ADMIN_ONLY: "At this centre an admin flags trial lessons.",
     REMARKS_REQUIRED: "This centre needs remarks before a lesson is marked as attended. Please add them and save again.",
     TOO_LONG: "Please keep each note under 2000 characters.",
     BAD_RANGE: "Something went wrong loading your lessons. Please try again."
@@ -107,18 +111,39 @@
     return o;
   }
 
+  // The charge (compensation) for an absent or cancelled lesson: a number, 0 if the family isn't charged. "25", "12.5", "S$12.50", "0" are fine.
+  var CHARGE_VALUES = ["absent", "cancelled_early", "late_cancelled"];
+  function parseCharge(text) {
+    var t = String(text == null ? "" : text).trim().replace(/^S?\$\s*/i, "");
+    if (!/^\d+(\.\d{1,2})?$/.test(t)) return { ok: false };
+    return { ok: true, value: Number(t) };
+  }
+  // Does this centre make the tutor type a charge for this choice?
+  function needsCharge(l, attendance) { return !!l.tutor_sets_compensation && CHARGE_VALUES.indexOf(attendance) >= 0; }
+  // Only for absent / cancelled choices when the ADMIN sets the charge: tell the tutor what happens next.
+  function adminChargeNote(l, attendance) { return !l.tutor_sets_compensation && CHARGE_VALUES.indexOf(attendance) >= 0; }
+
   // Which fields to send: attendance only if it changed, a note only if its text changed (null = leave it alone in the database)
   function changes(l, form) {
-    var out = { attendance: null, topics: null, homework: null, remarks: null }, any = false;
+    var out = { attendance: null, topics: null, homework: null, remarks: null, trial: null, compensation: null, chargeError: false }, any = false;
     if (form.attendance && form.attendance !== l.attendance) { out.attendance = form.attendance; any = true; }
     ["topics", "homework", "remarks"].forEach(function (k) {
       var was = String(l[k] || "").trim(), now = String(form[k] == null ? "" : form[k]).trim();
       if (now !== was) { out[k] = now; any = true; }
     });
+    if (l.can_flag_trial && form.trial != null && !!form.trial !== !!l.trial) { out.trial = !!form.trial; any = true; }
+    // the charge: required whenever the attendance changes to an absent / cancelled choice (and the centre has tutors type it); otherwise only if they typed one
+    if (needsCharge(l, form.attendance || l.attendance)) {
+      var typed = String(form.compensation == null ? "" : form.compensation).trim();
+      if (out.attendance !== null || typed !== "") {
+        var c = parseCharge(typed);
+        if (!c.ok) out.chargeError = true; else { out.compensation = c.value; any = true; }
+      }
+    }
     out.any = any;
     return out;
   }
 
   return { addDays: addDays, dateLabel: dateLabel, timeLabel: timeLabel, timeRange: timeRange, chip: chip, lockReason: lockReason,
-           remarksDue: remarksDue, attendanceOptions: attendanceOptions, group: group, errorText: errorText, changes: changes };
+           remarksDue: remarksDue, attendanceOptions: attendanceOptions, parseCharge: parseCharge, needsCharge: needsCharge, adminChargeNote: adminChargeNote, group: group, errorText: errorText, changes: changes };
 });

@@ -82,7 +82,7 @@ test("database refusals become kind sentences, and unknown ones never leak", () 
 test("only changed fields are sent", () => {
   const l = L({ attendance: null, topics: "Fractions", remarks: "Good" });
   assert.deepStrictEqual(T.changes(l, { attendance: "attended", topics: "Fractions", homework: "", remarks: "Good" }),
-    { attendance: "attended", topics: null, homework: null, remarks: null, any: true });
+    { attendance: "attended", topics: null, homework: null, remarks: null, trial: null, compensation: null, chargeError: false, any: true });
   assert.deepStrictEqual(T.changes(l, { attendance: null, topics: "Fractions ", homework: "", remarks: "Good" }).any, false, "trailing space is not a change");
   const c = T.changes(l, { attendance: null, topics: "", homework: "Page 4", remarks: "Good" });
   assert.strictEqual(c.topics, "", "emptying a note sends an empty string (clears it)"); assert.strictEqual(c.homework, "Page 4"); assert.strictEqual(c.attendance, null);
@@ -98,4 +98,55 @@ test("the centre's remarks rule and refusals are explained", () => {
   assert.match(T.errorText({ message: "REMARKS_REQUIRED: this centre needs remarks before a lesson is marked attended" }), /needs remarks/);
   assert.match(T.errorText({ message: "BAD_VALUE: that isn't something you can mark at this centre" }), /at this centre/);
   assert.match(T.errorText({ message: "TOO_OLD: ask an admin to change attendance older than 3 days" }), /too old/);
+});
+
+test("the charge for an absent or cancelled lesson: a number, 0 if not charged", () => {
+  assert.deepStrictEqual(T.parseCharge("0"), { ok: true, value: 0 });
+  assert.deepStrictEqual(T.parseCharge("25"), { ok: true, value: 25 });
+  assert.deepStrictEqual(T.parseCharge(" 12.5 "), { ok: true, value: 12.5 });
+  assert.deepStrictEqual(T.parseCharge("S$12.50"), { ok: true, value: 12.5 });
+  assert.deepStrictEqual(T.parseCharge("$7"), { ok: true, value: 7 });
+  ["", "  ", "-1", "12.345", "abc", "1e3", "12,50", "S$", null].forEach((x) => assert.strictEqual(T.parseCharge(x).ok, false, JSON.stringify(x)));
+});
+
+test("charge box and note only where the centre's setting says so", () => {
+  const byTutor = L({ tutor_sets_compensation: true }), byAdmin = L({ tutor_sets_compensation: false });
+  assert.strictEqual(T.needsCharge(byTutor, "absent"), true); assert.strictEqual(T.needsCharge(byTutor, "late_cancelled"), true);
+  assert.strictEqual(T.needsCharge(byTutor, "attended"), false); assert.strictEqual(T.needsCharge(byTutor, null), false);
+  assert.strictEqual(T.needsCharge(byAdmin, "absent"), false);
+  assert.strictEqual(T.adminChargeNote(byAdmin, "absent"), true); assert.strictEqual(T.adminChargeNote(byAdmin, "attended"), false);
+  assert.strictEqual(T.adminChargeNote(byTutor, "absent"), false);
+});
+
+test("what is sent when the tutor types the charge, or an admin does", () => {
+  const byTutor = L({ tutor_sets_compensation: true }), form = (o) => Object.assign({ attendance: null, topics: "", homework: "", remarks: "", trial: null, compensation: "" }, o);
+  // choosing Absent needs a number
+  let c = T.changes(byTutor, form({ attendance: "absent" })); assert.strictEqual(c.chargeError, true, "blank charge when marking absent");
+  c = T.changes(byTutor, form({ attendance: "absent", compensation: "abc" })); assert.strictEqual(c.chargeError, true);
+  c = T.changes(byTutor, form({ attendance: "absent", compensation: "0" })); assert.deepStrictEqual([c.attendance, c.compensation, c.chargeError, c.any], ["absent", 0, false, true], "0 = not charged");
+  c = T.changes(byTutor, form({ attendance: "late_cancelled", compensation: "S$30" })); assert.strictEqual(c.compensation, 30);
+  // already absent: blank leaves the charge alone, a typed amount changes it
+  const already = L({ tutor_sets_compensation: true, attendance: "absent" });
+  c = T.changes(already, form({ attendance: "absent" })); assert.deepStrictEqual([c.compensation, c.chargeError, c.any], [null, false, false]);
+  c = T.changes(already, form({ attendance: "absent", compensation: "10" })); assert.deepStrictEqual([c.compensation, c.any], [10, true]);
+  // attended never sends a charge, even if one was typed earlier
+  c = T.changes(byTutor, form({ attendance: "attended", compensation: "99" })); assert.strictEqual(c.compensation, null);
+  // when an admin sets the charge the tutor sends none
+  c = T.changes(L({ tutor_sets_compensation: false }), form({ attendance: "absent", compensation: "20" }));
+  assert.deepStrictEqual([c.attendance, c.compensation, c.chargeError], ["absent", null, false]);
+});
+
+test("trial flag is sent only when the centre lets the tutor flag it and it changed", () => {
+  const form = (o) => Object.assign({ attendance: null, topics: "", homework: "", remarks: "", trial: null, compensation: "" }, o);
+  assert.deepStrictEqual([T.changes(L({ can_flag_trial: true, trial: false }), form({ trial: true })).trial, T.changes(L({ can_flag_trial: true, trial: false }), form({ trial: true })).any], [true, true]);
+  assert.strictEqual(T.changes(L({ can_flag_trial: true, trial: true }), form({ trial: false })).trial, false, "unflagging is sent as false");
+  assert.strictEqual(T.changes(L({ can_flag_trial: true, trial: true }), form({ trial: true })).any, false, "unchanged is not sent");
+  assert.strictEqual(T.changes(L({ can_flag_trial: false, trial: false }), form({ trial: true })).trial, null, "admin-only centre: ignored");
+});
+
+test("new refusals are explained", () => {
+  assert.match(T.errorText({ message: "CHARGE_REQUIRED: enter the amount" }), /charge/);
+  assert.match(T.errorText({ message: "BAD_CHARGE: enter an amount from 0 up to the lesson's own price" }), /up to the lesson/);
+  assert.match(T.errorText({ message: "CHARGE_ADMIN_ONLY: x" }), /admin enters the charge/);
+  assert.match(T.errorText({ message: "TRIAL_ADMIN_ONLY: x" }), /admin flags trial/);
 });

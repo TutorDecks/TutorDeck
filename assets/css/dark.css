@@ -1022,6 +1022,11 @@ html[data-theme="dark"] .tt-opt:focus-visible{outline:2px solid var(--accent);ou
 html[data-theme="dark"] .tt-lbl{color:var(--ink)}
 html[data-theme="dark"] .tt-ta{border:1px solid var(--line);background:#172235;color:var(--ink)}
 html[data-theme="dark"] .tt-ta:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(15,118,110,0.342)}
+html[data-theme="dark"] .tt-in{border:1px solid var(--line);background:#172235;color:var(--ink)}
+html[data-theme="dark"] .tt-in:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(15,118,110,0.342)}
+html[data-theme="dark"] .tt-hint{color:var(--muted)}
+html[data-theme="dark"] .tt-check{color:var(--ink)}
+html[data-theme="dark"] .tt-check input{accent-color:var(--accent)}
 html[data-theme="dark"] .tt-ro small{color:var(--muted)}
 /* inline colours written by page scripts (calendar popover tags, student progress chart) */
 html[data-theme="dark"] [style*="background:#F1EFEA"]{background:#243048!important}

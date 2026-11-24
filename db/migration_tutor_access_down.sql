@@ -4,6 +4,7 @@ drop trigger if exists lessons_taught_by_guard on public.lessons;
 drop trigger if exists lessons_attendance_stamp on public.lessons;
 drop function if exists public.tutor_my_lessons(date, date);
 drop function if exists public.tutor_mark_attendance(uuid, text, text, text, text);
+drop function if exists public.tutor_mark_attendance(uuid, text, text, text, text, boolean, numeric);
 drop function if exists public.lessons_taught_by_guard();
 drop function if exists public.lessons_attendance_stamp();
 alter table public.lessons drop constraint if exists lessons_taught_by_same_org;

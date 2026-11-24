@@ -22,7 +22,8 @@ function override(cfg) {   // runs in the page before anything else
     var iso = function (n) { var d = new Date(); d.setDate(d.getDate() + n); var p = function (x) { return (x < 10 ? "0" : "") + x; }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); };
     var L = function (id, off, o) { return Object.assign({ lesson_id: id, org_id: "o2", org_name: "Opus Tuition", student_id: "s" + id, student_name: "Pupil " + id, student_level: "P5", parent_contact: null,
       lesson_date: iso(off), start_time: "16:00:00", end_time: "17:00:00", subject: "Math", status: "scheduled", attendance: null, trial: false, session_id: null,
-      topics: null, homework: null, remarks: null, remarks_due_at: null, can_mark: true, can_note: true }, o || {}); };
+      topics: null, homework: null, remarks: null, remarks_due_at: null, can_mark: true, can_note: true, can_cancel: false, remarks_required: false,
+      can_flag_trial: false, tutor_sets_compensation: false, charge_pending: false }, o || {}); };
     var lessons = cfg.lessons ? cfg.lessons.map(function (x) { return L(x[0], x[1], x[2]); }).sort(function (a, b) { return a.lesson_date < b.lesson_date ? -1 : a.lesson_date > b.lesson_date ? 1 : 0; }) : [];   // the database returns date order
     var origRpc = c.rpc.bind(c), origFrom = c.from.bind(c);
     c.rpc = function (n, a) {
@@ -114,6 +115,39 @@ const LESSONS = [["a", -3], ["b", -1, { attendance: "late_cancelled", can_mark: 
     await axeCheck(page, "phone/light sheet with four choices");
     if (SC) await page.screenshot({ path: path.join(SC, "tutor-sheet-four.png") });
     await ctx.close(); }
+  // ---------- A2b. absent / cancelled lessons: the charge (compensation) the way the app already works, and trial lessons
+  { const cfg = { lessons: [["p", 0, { tutor_sets_compensation: true, can_cancel: true, can_flag_trial: true }], ["q", 0, { tutor_sets_compensation: false }], ["r", 0, { attendance: "absent", can_mark: false, charge_pending: true }]] };
+    const { ctx, page } = await open(b, "phone", "light", cfg, "tutor");
+    await page.click('.tt-row[data-id="p"]'); await page.waitForTimeout(300);
+    ok(!(await page.$("#ts-charge-in")), "attended is selected by default of nothing: no charge box yet");
+    await page.click('.tt-opt[data-att="absent"]'); await page.waitForTimeout(200);
+    ok(await page.isVisible("#ts-charge-in") && /Type 0 if the family/.test(await page.textContent("#ts-charge")), "centre has tutors type the charge: Absent shows the charge box with a 0 hint");
+    await page.click('.tt-opt[data-att="attended"]'); await page.waitForTimeout(150);
+    ok(!(await page.$("#ts-charge-in")), "switching back to Attended hides it");
+    await page.click('.tt-opt[data-att="late_cancelled"]'); await page.waitForTimeout(150);
+    ok(await page.isVisible("#ts-charge-in"), "a cancellation shows it too");
+    await page.click("#ts-save"); await page.waitForTimeout(300);
+    ok(/enter the charge/i.test(await page.textContent("#ts-msg")) && (await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_mark_attendance").length)) === 0, "saving with the charge blank is refused on the screen, nothing is sent");
+    await page.fill("#ts-charge-in", "abc"); await page.click("#ts-save"); await page.waitForTimeout(200);
+    ok((await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_mark_attendance").length)) === 0, "a non-number is not sent either");
+    await page.check("#ts-trial"); await page.fill("#ts-charge-in", "0"); await page.click("#ts-save"); await page.waitForTimeout(400);
+    const c1 = await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_mark_attendance")[0]);
+    ok(c1 && c1[1].p_attendance === "late_cancelled" && c1[1].p_compensation === 0 && c1[1].p_trial === true, "0 is sent as 0, with the trial flag: " + JSON.stringify(c1 && c1[1]));
+    await axeCheck(page, "phone/light sheet with charge box + trial");
+    await page.click('.tt-row[data-id="p"]'); await page.click('.tt-opt[data-att="absent"]'); await page.waitForTimeout(150);
+    if (SC) await page.screenshot({ path: path.join(SC, "tutor-sheet-charge.png") });
+    await page.keyboard.press("Escape"); await page.waitForTimeout(200);
+    // an admin-sets-the-charge centre
+    await page.click('.tt-row[data-id="q"]'); await page.click('.tt-opt[data-att="absent"]'); await page.waitForTimeout(200);
+    ok(!(await page.$("#ts-charge-in")) && /An admin will decide what this lesson is charged/.test(await page.textContent("#ts-charge")), "admin-sets-the-charge centre: no box, just a plain note");
+    ok(!(await page.$("#ts-trial")), "and no trial tick-box when admins flag trials");
+    await page.click("#ts-save"); await page.waitForTimeout(300);
+    const c2 = await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_mark_attendance")[1]);
+    ok(c2 && c2[1].p_attendance === "absent" && c2[1].p_compensation === null, "marked absent with no charge sent: " + JSON.stringify(c2 && c2[1]));
+    // a lesson already absent with the charge pending
+    await page.click('.tt-row[data-id="r"]'); await page.waitForTimeout(200);
+    ok(/still needs to set the charge/.test(await page.textContent("#ts-body")), "pending charge: the tutor is told an admin still has to set it");
+    await ctx.close(); }
   // ---------- A3. the sign-up screens offer the new options (and are honest about what is not built yet)
   { const { ctx, page } = await open(b, "desktop", "light", {}, "org");
     await page.click("text=Demo Learning Centre"); await page.waitForTimeout(900);        // open the centre being set up
@@ -122,6 +156,8 @@ const LESSONS = [["a", -3], ["b", -1, { attendance: "late_cancelled", can_mark: 
     ok(/Tutors can mark or change attendance for/.test(txt), "setup screen: the marking-window option is offered");
     ok(/Cancellations \(in time or late\) are marked by/.test(txt), "setup screen: who marks cancellations is offered");
     ok(/Lesson remarks are required/.test(txt), "setup screen: required remarks is offered");
+    ok(/charge \(compensation\) is entered by/.test(txt), "setup screen: who enters the charge for absent/cancelled lessons is offered");
+    ok(/Trial lessons are flagged by/.test(txt), "setup screen: who flags trial lessons is offered");
     ok(/coming soon/i.test(txt), "setup screen: options that aren't built yet say \"coming soon\"");
     if (SC) await page.screenshot({ path: path.join(SC, "org-step-lessons.png"), fullPage: true });
     await ctx.close(); }
