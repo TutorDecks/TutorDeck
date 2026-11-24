@@ -77,7 +77,7 @@
           <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••" aria-describedby="pw-hint">
           <button type="button" class="pw-eye" id="pw-eye" aria-label="Show password" aria-pressed="false">Show</button>
         </div>
-        <div class="pw-hint" id="pw-hint" style="display:none" aria-live="polite">At least 8 characters</div>
+        <div class="pw-hint" id="pw-hint" style="display:none" aria-live="polite">At least 8 characters, with a lowercase and an uppercase letter, a number and a symbol</div>
       </div>
       <div id="captcha" class="cf-turnstile" style="display:none;margin:0 0 12px"></div>
       <label id="consent-field" style="display:none;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--muted);margin:2px 0 14px;line-height:1.5;cursor:pointer">
@@ -121,9 +121,10 @@
 <script src="assets/vendor/supabase-2.118.0.js"></script>
 <script src="assets/js/config.js?v=260"></script>
 <script src="assets/js/supabase.js?v=260"></script>
+<script src="assets/js/password-rules.js?v=260"></script>
 <script>
 (function () {
-  var PW_MIN = 8;   // keep in step with the Supabase project setting: Authentication → Sign In / Providers → Email → Minimum password length
+  var PW_MIN = PasswordRules.MIN;   // all password rules live in assets/js/password-rules.js (keep in step with Supabase: Authentication → Sign In / Providers → Email)
   var mode = "in";
   var $ = function (id) { return document.getElementById(id); };
   var msg = $("msg");
@@ -190,13 +191,11 @@
 
   // Live password hint (Create account): tells the person exactly what is still missing.
   function pwProblems(pw) {
-    var p = [];
-    if (pw.length < PW_MIN) p.push("at least " + PW_MIN + " characters (" + (PW_MIN - pw.length) + " more)");
-    return p;
+    return PasswordRules.problems(pw);
   }
   function updatePwHint() {
     var pw = $("pw").value, el = $("pw-hint"), p = pwProblems(pw);
-    if (!pw) { el.textContent = "At least " + PW_MIN + " characters"; el.className = "pw-hint"; return; }
+    if (!pw) { el.textContent = PasswordRules.summary(); el.className = "pw-hint"; return; }
     if (p.length) { el.textContent = "Still needed: " + p.join(", "); el.className = "pw-hint"; }
     else { el.textContent = "\u2713 Looks good"; el.className = "pw-hint ok"; }
   }
@@ -207,7 +206,7 @@
     if (!r.length && !(e && e.code === "weak_password")) return null;
     var out = [];
     if (r.indexOf("length") >= 0) out.push("be at least " + PW_MIN + " characters");
-    if (r.indexOf("characters") >= 0) out.push("mix upper and lower case letters, numbers and symbols");
+    if (r.indexOf("characters") >= 0) out.push("include a lowercase and an uppercase letter, a number and a symbol");
     if (r.indexOf("pwned") >= 0) out.push("not be one that has appeared in a data breach");
     return out.length ? "Your password needs to " + out.join(", ") + "." : null;
   }
