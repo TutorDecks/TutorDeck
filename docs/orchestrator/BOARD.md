@@ -60,7 +60,8 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T14 | D3 (low): "remarks due" uses browser time zone, no label; use centre timezone | todo | |
 | T15 | D4 (low): redirect tutor-only logins away from solo pages (owner said yes) | doing | session_01CPTfbEDw4AWzHoFEvRJePv / `claude/t15-tutor-redirect`, no PR yet |
 | T16 | D5 (low): centre owner has no menu entry for /org | todo | |
-| T17 | Owner: delete throwaway DEV user `t2-throwaway-mwum2aj0@example.test` + "T2 Test Centre" (DEV only) after testing account deletion on it | waiting | |
+| T17 | Delete throwaway DEV user `t2-throwaway-...@example.test` (still exists 2026-11-24; its centre owner so app deletion refuses; no password) + its solo org + "T2 Test Centre" | → T21: worker prepares preview + script (not run); owner approves, then run on DEV | |
+| T21 | Prepare DEV-only cleanup script + SELECT preview for T17 | doing | NEW worker / `claude/t21-cleanup` |
 | T18 | Holidays (selectable Singapore public-holiday library, never auto-applied) + make-up credits (one owed lesson = one credit? explain in app); investigate + plan | doing (plan only) | NEW worker / `claude/t18-plan` |
 | T19 | Sign-up password rules: make the hint list the exact rules the backend enforces (capital, number, symbol...) so weak passwords are caught before the backend error. Needs the DEV/LIVE Supabase password-requirement setting from the owner | doing (owner: LIVE rule = lowercase, uppercase, digit, symbol; owner sets DEV to match) | NEW worker / `claude/t19-password-rules` |
 | T20 | Plan card shows card on file (brand, last4, expiry; "No card on file"; Update card) | doing | NEW worker / `claude/t20-card-on-file`, no PR |
