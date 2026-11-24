@@ -33,6 +33,12 @@ window.TL = (function () {
                                                                   { id: "invoices", label: "Invoices", href: "invoices" },
                                                                   { id: "insights", label: "Insights", href: "insights" } ] }
   ];
+  // A login that is ONLY a centre tutor (no students of their own) sees a one-page menu instead of the solo-tutor screens;
+  // a solo tutor who also teaches at a centre gets "My lessons" in the More sheet. See roleMode() / detectRole().
+  var TUTOR_GROUPS = [
+    { id: "tutor", label: "My lessons", ic: "schedule", pages: [ { id: "tutor", label: "My lessons", href: "tutor" } ] }
+  ];
+  var TUTOR_EXTRA = { id: "tutor", label: "My lessons", href: "tutor", ic: "schedule" };
   // Secondary destinations: sidebar footer on desktop, "More" sheet on phones.
   var EXTRA = [
     { id: "materials", label: "Materials", href: "https://mugcornersg.com", ic: "materials", ext: true, hint: "Materials on MugCorner (opens in a new tab)" },
@@ -40,9 +46,10 @@ window.TL = (function () {
   ];
   // External destinations (e.g. Materials → MugCorner) open in a new tab.
   function extAttr(n) { return n.ext ? ' target="_blank" rel="noopener"' : ""; }
-  function groupOf(active) {
-    for (var i = 0; i < GROUPS.length; i++) {
-      var g = GROUPS[i];
+  function groupOf(active, list) {
+    list = list || GROUPS;
+    for (var i = 0; i < list.length; i++) {
+      var g = list[i];
       if ((g.also || []).indexOf(active) > -1) return g;
       for (var j = 0; j < g.pages.length; j++) if (g.pages[j].id === active) return g;
     }
@@ -94,12 +101,14 @@ window.TL = (function () {
 
   // Build sidebar + topbar around the page's <div id="view">
   function mountShell(active, email, title, sub) {
-    var grp = groupOf(active);
-    var extras = EXTRA.filter(function (n) { return !n.ownerOnly || isOwner; });
+    var mode = roleMode(), G = mode === "tutor-only" ? TUTOR_GROUPS : GROUPS;
+    var grp = groupOf(active, G);
+    var extras = (mode === "tutor-only" ? [] : mode === "both" ? [TUTOR_EXTRA].concat(EXTRA) : EXTRA)
+      .filter(function (n) { return !n.ownerOnly || isOwner; });
     var onExtra = extras.some(function (n) { return n.id === active; });
 
     // Desktop top bar: brand · the four groups · Settings/Materials icons + account menu.
-    var side = GROUPS.map(function (g) {
+    var side = G.map(function (g) {
       return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "active" : "") + '"' +
              (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 18) + '<span>' + g.label + '</span></a>';
     }).join("");
@@ -110,7 +119,7 @@ window.TL = (function () {
     var initials = acctInitials();
 
     // Phone bottom bar: the four groups + More.
-    var bar = GROUPS.map(function (g) {
+    var bar = G.map(function (g) {
       return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "on" : "") + '"' +
              (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 22) + '<span>' + g.label + '</span></a>';
     }).join("") +
@@ -170,6 +179,7 @@ window.TL = (function () {
       ${sheet}`;
     document.body.innerHTML = "";
     document.body.appendChild(app);
+    try { if (window.TLENG_CONFIG && window.TLENG_CONFIG.showEnvBanner) window.TLENG_CONFIG.showEnvBanner(); } catch (e) {}   // "Test version" tab on non-production builds
     document.getElementById("tl-signout").addEventListener("click", signOut);
     document.getElementById("tl-signout-m").addEventListener("click", signOut);
     // Desktop account menu
@@ -268,6 +278,28 @@ window.TL = (function () {
       try { for (var i = localStorage.length - 1; i >= 0; i--) { var k = localStorage.key(i); if (k && k.indexOf(base) === 0) localStorage.removeItem(k); } } catch (e) {}
     }
   };
+  // ---- which kind of login is this? ("solo" | "both" | "tutor-only"), remembered on this device for 12 hours ----
+  // tutor-only = an active TUTOR membership in a centre and no students of their own (an invited centre tutor, whose empty
+  // solo organisation was created at sign-up). Any doubt or error = "solo": the screens people already have never disappear.
+  function roleMode() {
+    try { var o = JSON.parse(store.get("role") || "null"); if (o && o.v && o.at > Date.now() - 12 * 3600e3) return o.v; } catch (e) {}
+    return null;
+  }
+  function setRole(v) { store.set("role", JSON.stringify({ v: v, at: Date.now() })); }
+  async function detectRole() {
+    var c = roleMode(); if (c) return c;
+    try {
+      var m = await window.sb.from("memberships").select("role,status,organisations(kind)").eq("user_id", UID).eq("status", "active");
+      if (m.error) { setRole("solo"); return "solo"; }                     // organisation tables not installed here (yet)
+      var tutor = (m.data || []).some(function (r) { return r.role === "tutor" && r.organisations && r.organisations.kind === "centre"; });
+      var mode = "solo";
+      if (tutor) {
+        var st = await window.sb.from("students").select("id", { count: "exact", head: true });
+        mode = (!st.error && st.count === 0) ? "tutor-only" : "both";
+      }
+      setRole(mode); return mode;
+    } catch (e) { return null; }
+  }
   // Old builds kept these unscoped, so a second account in the same browser inherited the first one's
   // state (e.g. "Not logged" hidden, Google Calendar "connected"). Nobody can tell whose they were — drop them.
   (function dropLegacy() {
@@ -550,6 +582,8 @@ window.TL = (function () {
                  calendar: ["Calendar", "Lessons across the week"],
                  ledger: ["Ledger", "Lessons, payments & projections"],
                  settings: ["Settings", "Business, payments & your account"],
+                 org: ["Organisation", "Your tuition centre, set up your way"],
+                 tutor: ["My lessons", "Your classes and attendance"],
                  exams: ["Exams", "Upcoming assessments"],
                  invoices: ["Invoices", "Saved invoices"],
                  materials: ["Teaching materials", "Your resource library"],
@@ -577,6 +611,8 @@ window.TL = (function () {
         location.replace("login?mfa=1"); return;
       }
     } catch (e) { /* MFA unavailable — proceed as normal */ }
+    // Which menu does this login get? (instant when remembered; one query about every 12 hours; any doubt = the usual menu)
+    try { await detectRole(); } catch (e) { /* keep the usual menu */ }
     // Brand the top bar with this tutor's business name. Draw the page straight away with the name we saw
     // last time on this browser (no blank screen while the profile loads); fix it up if it has changed.
     // First visit on a browser: wait for the profile as before.
@@ -723,6 +759,16 @@ window.TL = (function () {
   function tlConfirm(o) { return dialog(Object.assign({ confirmText: "OK" }, o)).then(function (v) { return !!v; }); }
   function tlAlert(o) { if (typeof o === "string") o = { message: o }; return dialog(Object.assign({ confirmText: "OK", cancelText: false }, o)).then(function () {}); }
   function tlPrompt(o) { return dialog(Object.assign({ confirmText: "OK" }, o, { prompt: true })); }
+  // The free plan covers 5 active students; the database refuses the 6th with an error starting "FREE_LIMIT".
+  // TL.freeLimit(error) → Promise<boolean>: true if it WAS that error (a friendly prompt was shown, "See plans" opens
+  // Settings → Your plan), false for any other error (the caller shows it as before).
+  function tlFreeLimit(err) {
+    if (!err || !/^FREE_LIMIT/.test(String(err.message || ""))) return Promise.resolve(false);
+    return tlConfirm({ title: "Your free plan is full",
+      message: "The free plan covers 5 active students. Solo Pro is unlimited \u2014 S$14.90 a month, with a 30-day free trial and no card needed to start.\n\nYour existing students and lessons are untouched.",
+      confirmText: "See plans", cancelText: "Not now" })
+      .then(function (go) { if (go) location.href = "settings#plan-card"; return true; });
+  }
 
   function askDiscard(yes) {
     tlConfirm({ title: "Discard changes?", message: "What you\u2019ve typed in this form will be lost.",
@@ -1146,8 +1192,8 @@ window.TL = (function () {
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
-           store: store, uid: function () { return UID; }, plural: plural,
-           confirm: tlConfirm, alert: tlAlert, prompt: tlPrompt,
+           store: store, roleMode: roleMode, setRole: setRole, detectRole: detectRole, uid: function () { return UID; }, plural: plural,
+           confirm: tlConfirm, alert: tlAlert, prompt: tlPrompt, freeLimit: tlFreeLimit,
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,

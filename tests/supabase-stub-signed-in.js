@@ -47,7 +47,27 @@
   ];
   var profiles=[{id:U,full_name:"Mei",business_name:"Demo Tuition",paynow_type:"mobile",paynow_id:"91234567",invoice_prefix:"INV",fy_start_month:1,welcomed_at:"2026-01-01",reminder_checked_at:"2026-01-01",getpaid_dismissed_at:"2026-01-01",seen_tips:["all"],setup_done_at:"2026-01-01"}];
   var invoices=[{id:"i1",tutor_id:U,student_id:"s1",invoice_no:"INV-0007",issued_date:wd(0,-1),total:210,status:"issued",paid_date:null,data:{lesson_ids:["l1","l6"]}}];
+  // Organisations (org.html): this user's solo org, a centre being set up (o2) and a live centre (o3). Made up.
+  var orgs=[{id:"o1",kind:"solo",preset:"solo",status:"active",setup_step:10,trading_name:"Demo Tuition",created_at:"2026-01-01"},
+    {id:"o2",kind:"centre",preset:"centre",status:"setup",setup_step:4,trading_name:"Demo Learning Centre",created_at:"2026-11-01"},
+    {id:"o3",kind:"centre",preset:"centre",status:"active",setup_step:10,trading_name:"Live Demo Centre",created_at:"2026-10-01"}];
+  var memberships=[{id:"m1",org_id:"o1",user_id:U,display_name:"Mei",role:"owner",permissions:[],status:"active",created_at:"1"},
+    {id:"m2",org_id:"o2",user_id:U,display_name:"Mei",role:"owner",permissions:[],status:"active",created_at:"2"},
+    {id:"m3",org_id:"o2",user_id:null,invited_email:"sam@demo.test",display_name:"Sam",role:"staff",permissions:["manage_timetable","issue_invoices"],status:"invited",created_at:"3"},
+    {id:"m4",org_id:"o2",user_id:"u9",display_name:"Ravi",role:"tutor",employment_type:"freelancer",permissions:[],status:"active",created_at:"4"},
+    {id:"m5",org_id:"o3",user_id:U,display_name:"Mei",role:"owner",permissions:[],status:"active",created_at:"5"}];
+  memberships.forEach(function(m){ m.organisations=orgs.filter(function(o){return o.id===m.org_id;})[0]; });
+  var orgData={organisations:orgs,memberships:memberships,
+    branches:[{id:"b1",org_id:"o2",name:"Tampines",address:"1 Tampines Ave",created_at:"1"}],rooms:[{id:"r1",org_id:"o2",branch_id:"b1",name:"Room 1",capacity:8}],
+    terms:[{id:"t1",org_id:"o2",name:"Term 1 2027",starts_on:"2027-01-02",ends_on:"2027-03-14"}],holidays:[{id:"h1",org_id:"o2",name:"Chinese New Year",starts_on:"2027-02-06",ends_on:"2027-02-07"}],
+    org_plans:[{id:"pl1",org_id:"o3",plan_code:"centre",base_cents:10000,per_student_cents:40,effective_from:"2026-10-01"}],
+    platform_fee_snapshots:[{org_id:"o3",month:"2026-11-01",active_students:403,billable_students:400,base_cents:10000,per_student_cents:40,fee_cents:26000}],
+    audit_log:[{id:2,org_id:"o3",actor:U,action:"update",table_name:"org_settings",after:{version:2,effective_from:"2026-12-01"},at:"2026-11-02T09:00:00Z"},
+      {id:1,org_id:"o3",actor:U,action:"insert",table_name:"organisations",after:{trading_name:"Live Demo Centre"},at:"2026-10-01T09:00:00Z"}]};
+  var orgSettings={schema_version:1,preset:"centre",profile:{trading_name:"Demo Learning Centre",uen:"202600000A",gst_registered:true,gst_number:"M90000000X",gst_rate_bp:900,brand_color:"#1D4ED8",invoice_prefix:"DLC",next_invoice_number:1},
+    billing:{model:"prepaid_packages",sibling_discount:{type:"percent",percent_bp:1000,fixed_cents:500}},payments:{modes:["manual_paynow"]},tutor_pay:{mode:"report",payable_when:"parent_paid"}};
   var DATA={students:students,recurring_slots:slots,lessons:lessons,exams:exams,profiles:profiles,invoices:invoices,material_folders:[],materials:[],gcal_links:[]};
+  Object.keys(orgData).forEach(function(k){DATA[k]=orgData[k];});
   function q(t){ var rows=(DATA[t]||[]).slice(); var o={};
     var F={eq:function(k,v){rows=rows.filter(function(r){return r[k]==v;});},neq:function(k,v){rows=rows.filter(function(r){return r[k]!=v;});},
       gte:function(k,v){rows=rows.filter(function(r){return r[k]>=v;});},lte:function(k,v){rows=rows.filter(function(r){return r[k]<=v;});},
@@ -65,7 +85,7 @@
       getUser:function(){return Promise.resolve({data:{user:user},error:null});},
       onAuthStateChange:function(){return {data:{subscription:{unsubscribe:function(){}}}};},
       mfa:{getAuthenticatorAssuranceLevel:function(){return Promise.resolve({data:{currentLevel:"aal1",nextLevel:"aal1"},error:null});},listFactors:function(){return Promise.resolve({data:{totp:[]},error:null});}}},
-    from:q, rpc:function(){return Promise.resolve({data:null,error:null});}, functions:{invoke:function(){return Promise.resolve({data:null,error:null});}},
+    from:q, rpc:function(n){return Promise.resolve({data:n==="org_settings_on"?JSON.parse(JSON.stringify(orgSettings)):(n==="org_plan_status"?{kind:"solo",tier:"free",status:"none",grandfathered:false,has_pro:false,active_students:4,free_limit:5,can_add_student:true}:null),error:null});}, functions:{invoke:function(){return Promise.resolve({data:null,error:null});}},
     storage:{from:function(){return {createSignedUrl:function(){return Promise.resolve({data:null});},list:function(){return Promise.resolve({data:[],error:null});}};}}
   };}};
 })();

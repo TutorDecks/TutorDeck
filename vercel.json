@@ -123,8 +123,23 @@
       ]
     }
   ],
+  "crons": [
+    { "path": "/api/billing-cron", "schedule": "30 16 * * *" }
+  ],
   "functions": {
     "api/gcal.js": {
+      "maxDuration": 60
+    },
+    "api/stripe-webhook.js": {
+      "maxDuration": 30
+    },
+    "api/billing.js": {
+      "maxDuration": 30
+    },
+    "api/billing-cron.js": {
+      "maxDuration": 60
+    },
+    "api/delete-account.js": {
       "maxDuration": 60
     }
   }
