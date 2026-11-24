@@ -19,6 +19,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 | Tests | `node --test tests/*.test.js` (76 pass); `bash tests/sql/run.sh` (6 suites + undo check); browser checks `node tests/tutor-page.check.js`, `node tests/env-hosts.check.js` (need `python3 tests/server.py 8765`); static checks `cd tests && python3 -c "import smoke; smoke.static_checks()"`. The full Python smoke suite is not runnable in the cloud container (no Python Playwright) — it runs in CI. |
 
 ## Owner's decisions (do not re-ask)
+- **STANDING RULE (2026-11-24, all of TutorDeck): no Vercel deploys until the owner says so; any GitHub Actions run needs the owner's approval first.** Pushes/merges auto-trigger previews and CI, so ask before pushing where possible and before any merge into `dev`.
+- 2026-11-24: owner approved merging #123 and #124 into `dev` after T11 (Calendar test stub) finishes — but a merge into `dev` auto-deploys staging, which conflicts with the rule above: HOLD until the owner confirms.
 - Solo plan: free ≤ 5 **active students**; Solo Pro S$14.90/mo or S$149/yr; 30-day trial (once per organisation, no card to start); **existing solo tutors keep unlimited** (grandfathered).
 - TutorDeck is **not GST-registered** (prices carry no GST); centres choose GST settings themselves.
 - Centre fee: S$100 + S$0.40 × billable students (previous month's active students, rounded to nearest 10, halves up). Active = non-trial lesson attended, absent or late-cancelled that month. **Under review** vs SchoolTracs (~S$148/branch at 400 students); owner chose to keep it for now.
@@ -43,7 +45,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | # | Task | Status | Worker / branch | Notes / done means |
 |---|---|---|---|---|
 | T1 | **Merge plan**: PR #122 → `dev`, then one follow-up PR of the remainder; resolve README/CLAUDE.md/run.sh/vercel.json conflicts; CI green | #122 MERGED into dev. #124 open into dev (`claude/merge-remainder-t1`), only red check = known Calendar `/api/gcal` 501 | session_01CPTfbCvscRa5XGLemp8qip | Needs owner's go-ahead. Do NOT open any PR into `main`. |
-| T2 | **End-to-end test on the DEV preview** with the demo logins: sign in (all five), My lessons marking flows, free-plan prompt, plan card → Stripe sandbox checkout → webhook updates DEV, customer portal, centre setup step 7, account deletion on a throwaway demo user; log every defect as a new task | blocked: worker's container cannot reach preview/DEV Supabase/Stripe; owner must allow hosts | NEW session (see board) / report on `claude/t2-report` | First real browser test of billing checkout. Use the branch-alias preview address (checkout only accepts it). |
+| T2 | **End-to-end test on the DEV preview** with the demo logins: sign in (all five), My lessons marking flows, free-plan prompt, plan card → Stripe sandbox checkout → webhook updates DEV, customer portal, centre setup step 7, account deletion on a throwaway demo user; log every defect as a new task | doing again (owner allowed hosts 2026-11-24) | NEW session (see board) / report on `claude/t2-report` | First real browser test of billing checkout. Use the branch-alias preview address (checkout only accepts it). |
 | T3 | **Staff screens for centres** (plan first, owner approves the plan): timetable (assign tutors, replacement tutors), mark/correct attendance, type pending charges (cancelled lessons with empty compensation), flag trials, cancellations marking | todo | — | Everything driven by the centre settings; solo flows unchanged; tests at DB level first. |
 | T4 | **Centre invoicing & payments** (Phase 3): invoice runs from lessons (cancelled + compensation rule; pending charge blocks invoicing), households, GST per centre setting, credit notes, manual PayNow recording | todo | — | Plan first. Money in integer cents via `assets/js/money.js`. |
 | T5 | Browser-test the **sign-up password hint** branch and decide on a PR | PR #123 open into dev; awaiting review | NEW worker session_01CPTfbBbKbHFCNEfzmTTt59 / `claude/modest-hypatia-lxmmks` (old session ...E24 idle) | Independent of the rest. Preview now uses DEV, so test with a fresh sign-up there. |
@@ -51,6 +53,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T7 | **Remarks emails / reminders** (needs an email provider; Resend and Brevo connectors are available) and remarks sent to parents | todo | — | Needs an owner decision on provider before starting. |
 | T8 | **Go-live execution** (owner-gated, see Waiting #5) | todo | — | Do not start without the owner's explicit word. |
 | T9 | Centre pricing review (S$100 + S$0.40 vs competitors) | todo | — | Owner decision; only research if asked. |
+| T11 | Stub `/api/gcal` in `tests/server.py` so smoke CI is green | doing | session_01CPTfbCu6T7y8P8douwp4Nh / `claude/t11-gcal-test-stub` (no PR until owner OKs) |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
