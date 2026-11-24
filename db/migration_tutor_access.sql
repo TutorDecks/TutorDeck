@@ -9,7 +9,8 @@
 -- can do goes through two narrow functions that each check who is calling, return/accept an explicit list of fields,
 -- and never touch money, status or the lesson's date and time:
 --   tutor_my_lessons(from, to)   → my lessons in a date range, with student name + level (parent contact only if the
---                                  centre's setting `lessons.tutors_see_parent_contact` is on; off when the key is missing)
+--                                  centre's setting `lessons.tutors_see_parent_contact` is on; off when the key is missing),
+--                                  plus can_mark (may set attendance) and can_note (may write notes) so the screen needn't guess
 --   tutor_mark_attendance(...)   → set attended / absent and write topics, homework, remarks, on MY lesson, from its
 --                                  day (centre's own timezone) to 14 days after; never over someone else's mark
 -- Staff and owners keep using the existing org_write policy (manage_timetable) to schedule, reassign and mark anything.
@@ -75,10 +76,12 @@ create trigger lessons_taught_by_guard before insert or update of taught_by on p
 
 -- ---------------------------------------------------------------- tutor_my_lessons: read, explicit columns only
 -- No rate, amount, paid, compensation, charge_note or *_cents column is returned, and never `l.*` — add a column here deliberately or not at all.
+-- (the return columns changed once during development, so drop first; safe on a database that already has an older copy)
+drop function if exists public.tutor_my_lessons(date, date);
 create or replace function public.tutor_my_lessons(p_from date, p_to date)
 returns table(lesson_id uuid, org_id uuid, org_name text, student_id uuid, student_name text, student_level text, parent_contact text,
               lesson_date date, start_time time, end_time time, subject text, status text, attendance text, trial boolean,
-              session_id uuid, topics text, homework text, remarks text, remarks_due_at timestamptz, can_mark boolean)
+              session_id uuid, topics text, homework text, remarks text, remarks_due_at timestamptz, can_mark boolean, can_note boolean)
 language plpgsql stable security definer set search_path = public as $$
 begin
   if auth.uid() is null then raise exception 'NOT_FOUND' using errcode = 'P0001'; end if;
@@ -94,7 +97,11 @@ begin
             and l.lesson_date <= (now() at time zone o.timezone)::date
             and l.lesson_date >= (now() at time zone o.timezone)::date - 14
             and coalesce(cfg.s #>> '{lessons,attendance_by}', 'tutor') = 'tutor'
-            and (l.attendance is null or l.attendance_marked_by = auth.uid()))
+            and (l.attendance is null or l.attendance_marked_by = auth.uid())),
+         -- notes (topics / homework / remarks) don't depend on attendance_by, only on the lesson being live and inside the window
+         (l.status <> 'cancelled'
+            and l.lesson_date <= (now() at time zone o.timezone)::date
+            and l.lesson_date >= (now() at time zone o.timezone)::date - 14)
   from lessons l
   join memberships m on m.id = l.taught_by and m.org_id = l.org_id and m.user_id = auth.uid() and m.status = 'active'
   join organisations o on o.id = l.org_id and o.kind = 'centre'

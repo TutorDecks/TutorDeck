@@ -602,5 +602,11 @@
     box.style.display="block";
   }
 
-  TL.requireAuth(($("view")&&$("view").dataset.page)||"dashboard",function(){load();});
+  TL.requireAuth(($("view")&&$("view").dataset.page)||"dashboard",function(){
+    // A login that is only a centre tutor has no use for the solo Home: send them to My lessons (decided once, remembered 12 hours).
+    var known=TL.roleMode();
+    if(known==="tutor-only"){ location.replace("tutor"); return; }
+    if(known===null){ TL.detectRole().then(function(m){ if(m==="tutor-only") location.replace("tutor"); }); }
+    load();
+  });
 })();

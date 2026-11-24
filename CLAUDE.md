@@ -106,6 +106,10 @@ Preview and dev deployments also hit this live DB. So:
   rate/amount/paid), attended/absent + notes only, on their OWN lesson (`lessons.taught_by` = their membership id), from the lesson's day (the centre's
   timezone) to 14 days after, never over someone else's mark; `lessons.tutors_see_parent_contact` (default off) controls parent contact. Staff/owners use the
   normal `org_write` policy. Don't add a tutor policy on any table, and don't add a column to `tutor_my_lessons` without checking it isn't money.
+- Tutor screen = `tutor.html` + `assets/js/tutor.js` (+ pure logic in `assets/js/tutor-core.js`, unit-tested; browser check: `node tests/tutor-page.check.js` with
+  `python3 tests/server.py 8765`). It only calls the two tutor functions. Which menu a login gets is `TL.roleMode()` ("solo" | "both" | "tutor-only", remembered 12 hours,
+  decided by `TL.detectRole()` in requireAuth): tutor-only = an active tutor membership in a centre and no students of their own, so they get a one-item menu and Home
+  sends them to /tutor; "both" adds My lessons to More. Any doubt or error = "solo" (the usual menu), so nothing solo tutors have can disappear.
 - Live schema snapshot: `db/baseline_2026-11.sql`. Test SQL with `bash tests/sql/run.sh` (throwaway Postgres), never live.
 - Dev Supabase project: `tuzxsqkfzrjssnpcoale` (baseline + org_foundation + billing + attendance + tutor_access + org_delete + function_lockdown migrations applied). Live: `rnjvswkejbrhbaytutai`
   (NONE of the org/billing/attendance/delete migrations are on live yet). Migration order everywhere: org_foundation → billing → attendance → tutor_access → org_delete → function_lockdown

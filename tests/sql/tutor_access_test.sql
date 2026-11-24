@@ -68,6 +68,10 @@ select t.eq((select count(*) from tutor_my_lessons((select today - 30 from td), 
 select t.eq((select count(*) from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LT2')), 0, 'T1 can''t see T2''s lesson');
 select t.ok((select bool_and(parent_contact is null) from tutor_my_lessons((select today - 30 from td), (select today + 5 from td))), 'parent contact hidden by default (setting missing = off)');
 select t.ok((select student_name = 'Pupil s1' and student_level = 'P1' from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('L1')), 'student name and level are shown');
+select t.ok((select can_mark and can_note from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('L2')), 'today''s lesson: can mark and can write notes');
+select t.ok((select not can_mark and not can_note from tutor_my_lessons((select today + 1 from td), (select today + 1 from td)) where lesson_id = t.id('LF')), 'tomorrow''s lesson: neither yet');
+select t.ok((select not can_mark and not can_note from tutor_my_lessons((select today - 20 from td), (select today - 20 from td)) where lesson_id = t.id('LOLD')), 'a 20-day-old lesson: neither (an admin must change it)');
+select t.ok((select not can_mark and not can_note from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LCAN')), 'a cancelled lesson: neither');
 select t.fails($q$ select * from tutor_my_lessons(current_date - 100, current_date) $q$, 'asking for more than 62 days');
 select t.fails($q$ select * from tutor_my_lessons(current_date, current_date - 1) $q$, 'a backwards date range');
 reset role;
@@ -178,6 +182,7 @@ select t.fails($q$ select tutor_mark_attendance(t.id('LT2'), 'attended') $q$, 'a
 select tutor_mark_attendance(t.id('LT2'), null, null, null, 'Remarks are still allowed');
 select t.ok((select parent_contact = '91234003' from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LT2')), 'tutors_see_parent_contact = true: the number is shown');
 select t.ok((select can_mark = false from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LT2')), 'and the screen is told it can''t mark attendance');
+select t.ok((select can_note from tutor_my_lessons((select today from td), (select today from td)) where lesson_id = t.id('LT2')), 'but is told it CAN still write notes (attendance_by = admin only blocks attendance)');
 reset role;
 select t.ok((select attendance is null and remarks = 'Remarks are still allowed' and remarks_at is not null from lessons where id = t.id('LT2')), 'remarks saved, attendance untouched');
 select t.as('00000000-0000-0000-0000-000000007004'); set role authenticated;
