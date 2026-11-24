@@ -41,6 +41,7 @@
   .pw-eye:hover{background:var(--accent-soft)}
   .pw-eye:focus-visible{outline:3px solid rgba(15,118,110,.35)}
   .pw-hint{font-size:12.5px;color:var(--muted);margin-top:6px}
+  .pw-hint.ok{color:var(--accent);font-weight:700}
   #forgot{display:block;margin:12px auto 0}
   .tabs button.on{color:var(--ink)}
   .auth-card .btn{height:46px;border-radius:11px;font-size:15px}
@@ -76,7 +77,7 @@
           <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••" aria-describedby="pw-hint">
           <button type="button" class="pw-eye" id="pw-eye" aria-label="Show password" aria-pressed="false">Show</button>
         </div>
-        <div class="pw-hint" id="pw-hint" style="display:none">At least 8 characters</div>
+        <div class="pw-hint" id="pw-hint" style="display:none" aria-live="polite">At least 8 characters</div>
       </div>
       <div id="captcha" class="cf-turnstile" style="display:none;margin:0 0 12px"></div>
       <label id="consent-field" style="display:none;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--muted);margin:2px 0 14px;line-height:1.5;cursor:pointer">
@@ -122,6 +123,7 @@
 <script src="assets/js/supabase.js?v=260"></script>
 <script>
 (function () {
+  var PW_MIN = 8;   // keep in step with the Supabase project setting: Authentication → Sign In / Providers → Email → Minimum password length
   var mode = "in";
   var $ = function (id) { return document.getElementById(id); };
   var msg = $("msg");
@@ -139,6 +141,7 @@
     $("forgot").style.display = m === "up" ? "none" : "block";
     $("pw").autocomplete = m === "up" ? "new-password" : "current-password";
     msg.textContent = ""; msg.className = "msg";
+    updatePwHint();
   }
   $("tab-in").onclick = function () { setMode("in"); };
   $("tab-up").onclick = function () { setMode("up"); };
@@ -184,7 +187,30 @@
       return 0;
     } catch (e) { return 0; }
   }
-  var PW_MIN = 8;   // keep in step with the Supabase project setting: Authentication → Sign In / Providers → Email → Minimum password length
+
+  // Live password hint (Create account): tells the person exactly what is still missing.
+  function pwProblems(pw) {
+    var p = [];
+    if (pw.length < PW_MIN) p.push("at least " + PW_MIN + " characters (" + (PW_MIN - pw.length) + " more)");
+    return p;
+  }
+  function updatePwHint() {
+    var pw = $("pw").value, el = $("pw-hint"), p = pwProblems(pw);
+    if (!pw) { el.textContent = "At least " + PW_MIN + " characters"; el.className = "pw-hint"; return; }
+    if (p.length) { el.textContent = "Still needed: " + p.join(", "); el.className = "pw-hint"; }
+    else { el.textContent = "\u2713 Looks good"; el.className = "pw-hint ok"; }
+  }
+  $("pw").addEventListener("input", updatePwHint);
+  // Friendlier wording for Supabase's server-side weak-password rejection (error.weak_password.reasons)
+  function weakPwMessage(e) {
+    var r = (e && e.weak_password && e.weak_password.reasons) || [];
+    if (!r.length && !(e && e.code === "weak_password")) return null;
+    var out = [];
+    if (r.indexOf("length") >= 0) out.push("be at least " + PW_MIN + " characters");
+    if (r.indexOf("characters") >= 0) out.push("mix upper and lower case letters, numbers and symbols");
+    if (r.indexOf("pwned") >= 0) out.push("not be one that has appeared in a data breach");
+    return out.length ? "Your password needs to " + out.join(", ") + "." : null;
+  }
 
   function show(text, ok) { msg.textContent = text; msg.className = "msg " + (ok ? "ok" : "err"); }
 
@@ -262,7 +288,8 @@
     $("go").disabled = true;
     try {
       if (mode === "up") {
-        if (pw.length < PW_MIN) { show("Your password needs at least " + PW_MIN + " characters.", false); return; }
+        var pwp = pwProblems(pw);
+        if (pwp.length) { show("Your password is missing: " + pwp.join(", ") + ".", false); $("pw").focus(); return; }
         var leaked = await pwnedCount(pw);
         if (leaked > 0) { show("That password has appeared in " + leaked.toLocaleString() + " known data breaches — please choose a different one.", false); return; }
         if (!$("consent").checked) { show("Please accept the Terms and Privacy Policy to create an account.", false); return; }
@@ -284,7 +311,7 @@
         location.replace("home");
       }
     } catch (e) {
-      show(e.message || "Something went wrong.", false);
+      show(weakPwMessage(e) || e.message || "Something went wrong.", false);
     } finally {
       $("go").disabled = false;
     }
