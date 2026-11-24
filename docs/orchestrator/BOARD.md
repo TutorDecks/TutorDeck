@@ -49,21 +49,22 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T2 | **End-to-end test on the DEV preview** with the demo logins: sign in (all five), My lessons marking flows, free-plan prompt, plan card → Stripe sandbox checkout → webhook updates DEV, customer portal, centre setup step 7, account deletion on a throwaway demo user; log every defect as a new task | done (local run): all areas pass except not tested: Stripe, account deletion (owner by hand), setting variants, replacement tutors. Report on `claude/t2-report`. Defects → T12-T16 | NEW session (see board) / report on `claude/t2-report` | First real browser test of billing checkout. Use the branch-alias preview address (checkout only accepts it). |
 | T3 | **Staff screens for centres** (plan first, owner approves the plan): timetable (assign tutors, replacement tutors), mark/correct attendance, type pending charges (cancelled lessons with empty compensation), flag trials, cancellations marking | todo | — | Everything driven by the centre settings; solo flows unchanged; tests at DB level first. |
 | T4 | **Centre invoicing & payments** (Phase 3): invoice runs from lessons (cancelled + compensation rule; pending charge blocks invoicing), households, GST per centre setting, credit notes, manual PayNow recording | todo | — | Plan first. Money in integer cents via `assets/js/money.js`. |
-| T5 | Browser-test the **sign-up password hint** branch and decide on a PR | PR #123 open into dev; awaiting review | NEW worker session_01CPTfbBbKbHFCNEfzmTTt59 / `claude/modest-hypatia-lxmmks` (old session ...E24 idle) | Independent of the rest. Preview now uses DEV, so test with a fresh sign-up there. |
+| T5 | Browser-test the **sign-up password hint** branch and decide on a PR | PR #123 has merge conflicts after #124/#125 merged into dev; worker resolving, then merge | NEW worker session_01CPTfbBbKbHFCNEfzmTTt59 / `claude/modest-hypatia-lxmmks` (old session ...E24 idle) | Independent of the rest. Preview now uses DEV, so test with a fresh sign-up there. |
 | T6 | **Tutors edit their own lessons** (`timetable_editing = tutors_own`, currently "coming soon") | todo | — | Own-lesson reschedule rules as a setting-driven database function; same no-table-access rule. |
 | T7 | **Remarks emails / reminders** (needs an email provider; Resend and Brevo connectors are available) and remarks sent to parents | todo | — | Needs an owner decision on provider before starting. |
 | T8 | **Go-live execution** (owner-gated, see Waiting #5) | todo | — | Do not start without the owner's explicit word. |
 | T9 | Centre pricing review (S$100 + S$0.40 vs competitors) | todo | — | Owner decision; only research if asked. |
-| T11 | Stub `/api/gcal` in `tests/server.py` so smoke CI is green | done; PR #125 open into dev (not merged) | session_01CPTfbCu6T7y8P8douwp4Nh / `claude/t11-gcal-test-stub` |
+| T11 | Stub `/api/gcal` in `tests/server.py` so smoke CI is green | MERGED into dev 2026-11-24 (#125) | session_01CPTfbCu6T7y8P8douwp4Nh / `claude/t11-gcal-test-stub` |
 | T12 | D1 (medium): centre owner's solo screens show the centre's students/lessons/money as their own (rows carry owner's tutor_id); decide what Add student does | todo, needs owner decision | feeds T3/T4 |
 | T13 | D2 (low): step 7 contradictory messages for window -3 | todo | |
 | T14 | D3 (low): "remarks due" uses browser time zone, no label; use centre timezone | todo | |
-| T15 | D4 (low): tutor-only logins can open solo pages by URL (empty, no leak); redirect? | todo, needs owner decision | |
+| T15 | D4 (low): redirect tutor-only logins away from solo pages (owner said yes) | doing | session_01CPTfbEDw4AWzHoFEvRJePv / `claude/t15-tutor-redirect`, no PR yet |
 | T16 | D5 (low): centre owner has no menu entry for /org | todo | |
 | T17 | Owner: delete throwaway DEV user `t2-throwaway-mwum2aj0@example.test` + "T2 Test Centre" (DEV only) after testing account deletion on it | waiting | |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
+- 2026-11-24: #125 and #124 MERGED into `dev` (owner approved; first test bundle, deploys staging). #123 pending conflict fix.
 - Previews use DEV, production uses LIVE; demo logins + seed (v260).
 - Absent/cancelled billing via compensation; trial flag and charge entry as centre settings (v259).
 - Centre rules as sign-up settings: attendance window, cancellations, required remarks (v258).
