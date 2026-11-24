@@ -329,6 +329,8 @@ html[data-theme="dark"] .msub-lbl{color:var(--ink)}
 html[data-theme="dark"] .msub-lbl span{color:var(--muted)}
 html[data-theme="dark"] .td-toast{background:#2E4166;color:#FFFFFF;box-shadow:0 12px 36px rgba(0,0,0,0.484)}
 html[data-theme="dark"] .td-toast.err{background:#B4432F;color:#fff}
+html[data-theme="dark"] .plan-meter{background:var(--line)}
+html[data-theme="dark"] .plan-meter i{background:#12857A}
 /* from home.html */
 html[data-theme="dark"] .ob-card{background:#172235;border:1px solid var(--line);box-shadow:var(--shadow)}
 html[data-theme="dark"] .ob-h{color:var(--ink)}

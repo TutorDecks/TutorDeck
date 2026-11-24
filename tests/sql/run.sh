@@ -27,6 +27,10 @@ $P -f db/migration_attendance.sql
 $P -f db/migration_attendance.sql                         # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/attendance_test.sql
 $P -f db/migration_attendance_down.sql
+$P -f db/migration_org_delete.sql
+$P -f db/migration_org_delete.sql                         # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_delete_test.sql
+$P -f db/migration_org_delete_down.sql
 $P -f db/migration_billing_down.sql
 $P -f db/migration_org_foundation_down.sql
 AFTER=$(shape)
