@@ -141,37 +141,30 @@
   async function deleteAccount(){
     var m=$("data-msg");
     var typed=await TL.prompt({title:"Delete your account?",
-      message:"This permanently deletes your account and ALL your data: students, lessons, invoices and settings. It can\u2019t be undone.\n\nTo confirm, type DELETE below.",
+      message:"This permanently deletes your account and ALL your data: students, parents\u2019 contact details, lessons, invoices, files, settings and your activity history. Any Solo Pro subscription is cancelled and not refunded. It can\u2019t be undone.\n\nTo confirm, type DELETE below.",
       placeholder:"DELETE", match:"DELETE", confirmText:"Delete account", danger:true});
     if(typed!=="DELETE"){ m.textContent="Deletion cancelled."; m.className="msg"; return; }
     $("delete-btn").disabled=true; m.textContent="Deleting…"; m.className="msg";
     try{
-      // remove any materials files this account owns (DB cascade won't touch storage)
-      var mats=await window.sb.from("materials").select("file_path").eq("owner_id",userId);
-      if(mats.data&&mats.data.length){ await window.sb.storage.from("materials").remove(mats.data.map(function(x){return x.file_path;})); }
-
-      // full server-side deletion: removes the login record + cascades all data
-      var res=await window.sb.functions.invoke("delete-account");
-      if(res.error) throw res.error;
+      // One server call does everything in order: cancel Stripe, remove stored files, delete the database rows, then the login.
+      // There is deliberately no "delete rows from the browser" fallback: it can't reach the files, Stripe or the audit log,
+      // so it would only look like a deletion. If something fails, nothing half-deleted is claimed and you can press Delete again.
+      var s=await window.sb.auth.getSession(), jwt=s&&s.data&&s.data.session&&s.data.session.access_token;
+      var r=await fetch("/api/delete-account",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+jwt},body:JSON.stringify({confirm:"DELETE"})});
+      var d=await r.json().catch(function(){return {};});
+      if(!r.ok){ var e=new Error(d.error||("http "+r.status)); e.code=d.error; throw e; }
 
       try{ TL.store.clear(""); }catch(e){} try{ await window.sb.auth.signOut(); }catch(e){}
       await TL.alert({title:"Account deleted",message:"Your account and all your data have been permanently deleted."});
       location.replace("login");
     }catch(e){
-      // Fallback if the Edge Function isn't deployed: wipe the data rows directly.
-      try{
-        await window.sb.from("materials").delete().eq("owner_id",userId);
-        await window.sb.from("invoices").delete().eq("tutor_id",userId);
-        await window.sb.from("students").delete().eq("tutor_id",userId);  // cascades lessons, slots, exams
-        await window.sb.from("profiles").delete().eq("id",userId);
-        try{ TL.store.clear(""); }catch(e){}
-        await window.sb.auth.signOut();
-        await TL.alert("Your data has been deleted and you've been signed out.\n\n(Note: the account login record couldn't be removed automatically — deploy the delete-account function for full removal.)");
-        location.replace("login");
-      }catch(e2){
-        m.textContent="Couldn't complete deletion: "+(e2.message||e2); m.className="msg err";
-        $("delete-btn").disabled=false;
-      }
+      var why={
+        has_other_orgs:"Your login also belongs to a tuition centre, and centres can\u2019t be deleted from here yet. Nothing was deleted. Please contact tutordeckadmin@gmail.com.",
+        billing_unavailable:"We couldn\u2019t cancel your Solo Pro subscription just now, so nothing was deleted. Please try again in a few minutes.",
+        signed_out:"You\u2019ve been signed out. Sign in again, then try again."
+      }[e&&e.code]||"We couldn\u2019t finish deleting your account. Anything already removed stays removed, and pressing Delete again carries on. If it keeps failing, contact tutordeckadmin@gmail.com.";
+      m.textContent=why; m.className="msg err";
+      $("delete-btn").disabled=false;
     }
   }
 
