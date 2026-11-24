@@ -1,13 +1,14 @@
 # TutorDeck board
 
-Last updated: 2026-11-24 (written at the end of the "Stripe / centres" chat, session_01CPTfbBm11QDKUJaZDLiBUC). The orchestrator keeps this current.
+Last updated: 2026-11-24, verified by the orchestrator (written at the end of the "Stripe / centres" chat, session_01CPTfbBm11QDKUJaZDLiBUC). The orchestrator keeps this current.
 
 ## Where things are
 | Thing | State |
 |---|---|
-| Integration branch | `claude/sleepy-bell-xfr6zb`, at v260 (commit `ec54aa8` at handoff). Contains: Phase 1 org foundation, Stripe billing (solo plans, webhook, checkout, portal, centre fee job), free-plan gate + prompt, account deletion (merged in), attendance + centre tutors (My lessons page), centre settings (attendance window, cancellations, charges, trials, remarks), previews-on-DEV config. **Not merged to `dev` or `main`.** |
+| Integration branch | `claude/sleepy-bell-xfr6zb`, at v260 (code at `ec54aa8`; board/orchestrator files on top, head `2127a02`). Contains: Phase 1 org foundation, Stripe billing (solo plans, webhook, checkout, portal, centre fee job), free-plan gate + prompt, account deletion (merged in), attendance + centre tutors (My lessons page), centre settings (attendance window, cancellations, charges, trials, remarks), previews-on-DEV config. **Not merged to `dev` or `main`.** |
 | PR #122 | `claude/cool-archimedes-wmgz77` → `dev`: account deletion + billing steps 1–3 only (v255). Open. My later work is NOT in it. |
 | Other TutorDeck branch | `claude/modest-hypatia-lxmmks`: sign-up password hint (session_01CPTfbE24CDWJiiNfzpQBK6, "Cloudflare preview connection issue"). Pushed, **not browser-tested, no PR**. |
+| Old branch | `claude/gifted-cori-wssq1j` (Phase 1, v253): already contained in the integration branch; safe to delete later (owner approval needed). |
 | Worker sessions (idle) | session_01CPTfbDuPMU9Rw1Vtm4rsQK (deletion; waiting on owner), session_01CPTfbE24CDWJiiNfzpQBK6 (sign-up hint). |
 | **Not TutorDeck, do not touch** | MugCorner sessions (Lesson building…, Surd answer format…, IB/IGCSE notes…, etc.). |
 | Production | `main` @ v252 (`6862d4a`). Live site: https://www.tutordeck.com.sg (also tutordeck.vercel.app). Hobby plan. |
