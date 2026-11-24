@@ -36,15 +36,17 @@ developers AND we both use the app live for our own tuition businesses.
 
 ## Data warning
 There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it holds REAL student/payment data.
-Preview and dev deployments also hit this live DB. So:
-- Don't write code or run scripts that bulk-delete/modify data without asking me first.
-- Test with dummy students.
-- Any new `db/migration_*.sql` must be run in the Supabase SQL editor BEFORE the code that
-  needs it is merged to main, or pages will error with "column does not exist". Because
-  previews hit the same DB, run it before the code lands on `dev` too.
-- A separate DEV Supabase project exists (`tuzxsqkfzrjssnpcoale`, dummy data only) and is where migrations get tried first. But the site's
-  `assets/js/config.js` still points at LIVE, so every Vercel preview still reads and writes LIVE data, except the server functions in `api/`
-  on a branch that has its own `SUPABASE_URL` Preview variable (billing branch only). Don't point `config.js` at DEV without asking.
+- **Only the production addresses use it** (www.tutordeck.com.sg, tutordeck.com.sg, tutordeck.vercel.app and the two other aliases of the production deployment).
+  Every Vercel preview (including `dev`), local testing and any address not on that list uses the **DEV project** (`tuzxsqkfzrjssnpcoale`, dummy data only). The choice is made in
+  `assets/js/config.js` by hostname, with DEV as the default so a mistake fails on the safe side; non-production pages show a "Test version · dummy data only" tab. Server
+  functions in `api/` follow the same rule: Vercel Preview env vars point at DEV, and without settings only `VERCEL_ENV=production` falls back to the live project.
+  **A new production domain must be added to `PRODUCTION_HOSTS` in config.js and `tests/config.test.js`**, or that domain would show the test banner and nobody could sign in.
+- DEV has demo logins and sample data from `db/seed_dev_demo.sql` (centre owner, two centre tutors, a solo tutor with exactly 5 students, a solo+centre tutor; password
+  `Demo-Pass-2026`). It has no Google sign-in, no bot check and its own auth settings, so test sign-in with those email logins.
+- Don't write code or run scripts that bulk-delete/modify LIVE data without asking me first. Before running anything that changes real rows in the live project, show the SELECT
+  preview first and get a yes. DEV is free to experiment on.
+- Any new `db/migration_*.sql`: apply it to DEV first (previews need it there), and run it on LIVE in the Supabase SQL editor BEFORE the code that needs it is merged to `main`,
+  or production pages will error with "column does not exist". (Previews no longer touch live, so LIVE only needs it at the moment of shipping to `main`.)
 - Nightly encrypted DB backups run via GitHub Actions (.github/workflows/db-backup.yml, 30-day artifacts).
   The repo is PUBLIC: never commit dumps, never print data in workflow logs. Restore steps: README → Backups.
 
@@ -156,10 +158,11 @@ Preview and dev deployments also hit this live DB. So:
    Google Cloud → Branding links currently point to https://tutordeck.vercel.app (/privacy,
    /terms). Switch them to tutordeck.com.sg once that domain is live (DNS returned NXDOMAIN
    on 2026-10-18), then submit for verification.
-5. Later: point a DEV build's `config.js` at the DEV project so previews stop touching live data; custom SMTP for auth emails; Vercel Pro before
+5. Later: custom SMTP for auth emails (DEV's sign-up confirmation emails need it too); Vercel Pro before
    charging customers (Hobby plan is non-commercial).
 6. **Platform billing (Stripe) — GO-LIVE CHECKLIST. Remind the owner of this whenever billing, Stripe or going live comes up.**
    Built and tested on the DEV Supabase project + Stripe SANDBOX only (branch claude/sleepy-bell-xfr6zb). Before real money:
+   - Previews already use DEV (config.js by hostname). Check before shipping that `www.tutordeck.com.sg` still gets the live project (tests/config.test.js and tests/env-hosts.check.js).
    - **"Delete my account" depends on server config** (api/delete-account.js replaced the old Edge Function; there is NO browser fallback). Production has no
      `SUPABASE_URL` today, so the function answers 503 and deletion stops working in Production the moment that code ships. So LIVE `SUPABASE_URL` +
      LIVE `SUPABASE_SERVICE_ROLE_KEY` (+ live `STRIPE_SECRET_KEY` for anyone who ever subscribed) are prerequisites of shipping it, not just of charging.

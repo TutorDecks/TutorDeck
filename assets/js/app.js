@@ -179,6 +179,7 @@ window.TL = (function () {
       ${sheet}`;
     document.body.innerHTML = "";
     document.body.appendChild(app);
+    try { if (window.TLENG_CONFIG && window.TLENG_CONFIG.showEnvBanner) window.TLENG_CONFIG.showEnvBanner(); } catch (e) {}   // "Test version" tab on non-production builds
     document.getElementById("tl-signout").addEventListener("click", signOut);
     document.getElementById("tl-signout-m").addEventListener("click", signOut);
     // Desktop account menu
