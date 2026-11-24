@@ -63,9 +63,11 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T17 | Owner: delete throwaway DEV user `t2-throwaway-mwum2aj0@example.test` + "T2 Test Centre" (DEV only) after testing account deletion on it | waiting | |
 | T18 | Holidays (selectable Singapore public-holiday library, never auto-applied) + make-up credits (one owed lesson = one credit? explain in app); investigate + plan | doing (plan only) | NEW worker / `claude/t18-plan` |
 | T19 | Sign-up password rules: make the hint list the exact rules the backend enforces (capital, number, symbol...) so weak passwords are caught before the backend error. Needs the DEV/LIVE Supabase password-requirement setting from the owner | doing (owner: LIVE rule = lowercase, uppercase, digit, symbol; owner sets DEV to match) | NEW worker / `claude/t19-password-rules` |
+| T20 | Plan card shows card on file (brand, last4, expiry; "No card on file"; Update card) | doing | NEW worker / `claude/t20-card-on-file`, no PR |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
+- 2026-11-24: owner tested Stripe sandbox checkout + portal + account deletion on the integration preview: all work. Finding -> T20 (card on file not shown in app).
 - 2026-11-24: #125 and #124 MERGED into `dev` (owner approved; first test bundle, deploys staging). #123 MERGED too (conflict fixed by worker). `dev` now = v260 + sign-up hint + Calendar test stub. Owner told to test (list sent).
 - Previews use DEV, production uses LIVE; demo logins + seed (v260).
 - Absent/cancelled billing via compensation; trial flag and charge entry as centre settings (v259).
