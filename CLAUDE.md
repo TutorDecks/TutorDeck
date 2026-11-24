@@ -86,6 +86,7 @@ Preview and dev deployments also hit this live DB. So:
   back on). Planner, Calendar and Ledger only load `active=true` slots.
 - A cancelled lesson's billable amount is its `compensation` (0 if none); pages normalise
   `amount` on load.
+- Deleting an account = `api/delete-account.js` (Stripe, storage, Google, then `org_delete_solo()` in the DB, then the login). The audit log, `org_settings` and fee snapshots are append-only EXCEPT inside `org_delete_solo` (flag `td.deleting_org`). Never delete a tutor's rows by hand from the browser or SQL editor: it copies their data into the audit log. Any new table with an `org_id` is covered automatically; it just needs `on delete cascade`.
 - Invoice "subject" comes from the billed lessons; "level" comes from the student profile.
 
 ## Organisations (multi-tenant, v253+)
