@@ -7,6 +7,10 @@ PayNow invoices, WhatsApp reminders, exams, student profiles). It started as
 Company: TutorDeck Pte. Ltd. (Singapore), founded by Raphael and T-Leng. We are both
 developers AND we both use the app live for our own tuition businesses.
 
+## How the work is organised
+- An **orchestrator chat** hands tasks to **worker chats** and tracks them in `docs/orchestrator/BOARD.md` (rules and the worker-brief template: `docs/orchestrator/ORCHESTRATOR.md`).
+  If you are a worker: do exactly your brief, work and push only on your own branch, finish with an "ORCHESTRATOR SUMMARY" block, and don't edit the board.
+
 ## Stack
 - Plain HTML/CSS/JS, no build step, no framework (vanilla JS, Chart.js, html2canvas).
 - Supabase (Postgres + Auth) for data and accounts. Row-level security on every table
