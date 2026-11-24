@@ -67,12 +67,12 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T15 | D4 (low): redirect tutor-only logins away from solo pages (owner said yes) | DONE on branch (v262, no PR); owner to decide if Settings hidden for tutor-only | `claude/t15-tutor-redirect` |
 | T16 | D5 (low): centre owner has no menu entry for /org | todo | |
 | T17 | Delete throwaway DEV user `t2-throwaway-...@example.test` (still exists 2026-11-24; its centre owner so app deletion refuses; no password) + its solo org + "T2 Test Centre" | → T21: worker prepares preview + script (not run); owner approves, then run on DEV | |
-| T21 | Prepare DEV-only cleanup script + SELECT preview for T17 | doing | NEW worker / `claude/t21-cleanup` |
+| T21 | Prepare DEV-only cleanup script + SELECT preview for T17 | DONE: preview/delete/postcheck SQL in docs/orchestrator/t21/, tested on scratch DB; nothing run on DEV; owner runs preview.sql first | `claude/t21-cleanup` |
 | T18 | Holidays (selectable Singapore public-holiday library, never auto-applied) + make-up credits (one owed lesson = one credit? explain in app); investigate + plan | plan DONE (`claude/t18-plan`): no credits exist today; owner decisions pending | worker / `claude/t18-plan` |
 | T19 | Sign-up password rules: make the hint list the exact rules the backend enforces (capital, number, symbol...) so weak passwords are caught before the backend error. Needs the DEV/LIVE Supabase password-requirement setting from the owner | DONE on branch, no PR (owner: LIVE rule = lowercase, uppercase, digit, symbol; owner sets DEV to match) | NEW worker / `claude/t19-password-rules` |
-| T20 | Plan card shows card on file (brand, last4, expiry; "No card on file"; Update card) | doing | NEW worker / `claude/t20-card-on-file`, no PR |
-| T12a | T12 step 1: DB same-organisation guard (migration_org_separation) | doing | session_01CPTfbDeinaE8s16cR4s9qq / `claude/t12a-org-guard` |
-| T18a | T18 step 1: mark unbuilt settings `soon` | doing | session_01CPTfbBSoNxnqDqwmMbJcma / `claude/t18a-honest-settings` |
+| T20 | Plan card shows card on file (brand, last4, expiry; "No card on file"; Update card) | DONE on branch, untested vs real Stripe | `claude/t20-card-on-file` |
+| T12a | T12 step 1: DB same-organisation guard (migration_org_separation) | DONE on branch (migration + SQL tests; DEV apply status to confirm) | `claude/t12a-org-guard` |
+| T18a | T18 step 1: mark unbuilt settings `soon` | DONE on branch (v263, six settings marked soon) | `claude/t18a-honest-settings` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
