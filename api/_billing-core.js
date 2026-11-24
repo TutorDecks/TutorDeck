@@ -85,4 +85,13 @@ function trialDaysFor(subRow, days) {
   return days;
 }
 
-module.exports = { LIVE_STATUSES, ENDED_STATUSES, verifySignature, form, formEncode, mapStatus, subscriptionRow, invoiceSubscriptionId, trialDaysFor };
+// Stripe PaymentMethod → the ONLY card facts the browser ever gets: brand, last4, expiry (never the full number; Stripe doesn't send it).
+const BRANDS = { visa: "Visa", mastercard: "Mastercard", amex: "American Express", discover: "Discover", diners: "Diners Club", jcb: "JCB", unionpay: "UnionPay", cartes_bancaires: "Cartes Bancaires", eftpos_au: "EFTPOS" };
+function cardSummary(pm) {
+  const c = pm && typeof pm === "object" && pm.card;
+  if (!c || !/^\d{4}$/.test(String(c.last4 || ""))) return null;
+  const m = Number(c.exp_month), y = Number(c.exp_year);
+  return { brand: BRANDS[c.brand] || "Card", last4: String(c.last4), exp_month: m >= 1 && m <= 12 ? m : null, exp_year: y > 2000 ? y : null };
+}
+
+module.exports = { cardSummary, LIVE_STATUSES, ENDED_STATUSES, verifySignature, form, formEncode, mapStatus, subscriptionRow, invoiceSubscriptionId, trialDaysFor };

@@ -5,12 +5,30 @@
   "use strict";
   var card = document.getElementById("plan-card");
   if (!card || !window.sb) return;
-  var body = document.getElementById("plan-body"), msg = document.getElementById("plan-msg"), orgId = null, plan = null;
+  var body = document.getElementById("plan-body"), msg = document.getElementById("plan-msg"), orgId = null, plan = null, cardInfo = "loading";   // cardInfo: "loading" | "error" | "hidden" | {card:null|{brand,last4,exp_month,exp_year}}
 
   function esc(x) { return String(x == null ? "" : x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
   function day(iso) { return iso ? new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" }) : ""; }
   function say(t, err) { msg.textContent = t || ""; msg.className = "msg" + (t ? (err ? " err" : " ok") : ""); }
   function daysLeft(iso) { return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000)); }
+
+  // "Visa ending 4242, expires 08/2029" — amber when it has expired or runs out within 60 days (colour = meaning)
+  function cardHtml() {
+    var ci = cardInfo, canUpdate = plan.status === "active" && plan.has_pro;
+    if (ci === "hidden") return "";
+    if (ci === "loading") return '<p class="muted plan-sub plan-pay">Checking your card…</p>';
+    if (ci === "error") return '<p class="muted plan-sub plan-pay">We couldn’t check your card just now.</p>';
+    var c = ci.card, link = canUpdate ? ' <button type="button" class="plan-link" data-act="portal">Update card</button>' : "";
+    if (!c) return '<p class="plan-sub plan-pay"><b>No card on file.</b>' + (plan.status === "trialing" ? "" : " Add one to keep Solo Pro.") + '</p>';
+    var txt = esc(c.brand) + ' ending ' + esc(c.last4), warn = "";
+    if (c.exp_month && c.exp_year) {
+      var mm = (c.exp_month < 10 ? "0" : "") + c.exp_month, endOfMonth = new Date(c.exp_year, c.exp_month, 1).getTime();
+      if (endOfMonth <= Date.now()) { txt += ', expired ' + mm + '/' + c.exp_year; warn = " warn"; }
+      else if (endOfMonth - Date.now() < 60 * 86400000) { txt += ', expires ' + mm + '/' + c.exp_year + ' — update it soon'; warn = " warn"; }
+      else txt += ', expires ' + mm + '/' + c.exp_year;
+    }
+    return '<p class="plan-sub plan-pay' + warn + '">' + txt + link + '</p>';
+  }
 
   // the one sentence + the one action for each situation
   function render() {
@@ -23,14 +41,14 @@
     } else if (p.status === "trialing") {
       html = '<p class="plan-line"><span class="badge paid">Solo Pro trial</span> ' + daysLeft(p.trial_end) + ' day' + (daysLeft(p.trial_end) === 1 ? "" : "s") +
         ' left (ends ' + esc(day(p.trial_end)) + '). No card needed until you choose to continue.</p>' +
-        '<p class="muted plan-sub">' + used + ' active student' + (used === 1 ? "" : "s") + ' — unlimited on Solo Pro.</p>';
-      act = '<button class="btn" data-act="portal">Add a card to continue</button>';
+        '<p class="muted plan-sub">' + used + ' active student' + (used === 1 ? "" : "s") + ' — unlimited on Solo Pro.</p>' + cardHtml();
+      act = '<button class="btn" data-act="portal">' + (cardInfo && cardInfo.card ? "Update card" : "Add a card to continue") + '</button>';
     } else if (p.status === "active" && p.has_pro) {
       html = '<p class="plan-line"><span class="badge paid">Solo Pro</span> ' + (p.cancel_at_period_end ? 'Ends ' : 'Renews ') + esc(day(p.current_period_end)) + '.</p>' +
-        '<p class="muted plan-sub">' + used + ' active student' + (used === 1 ? "" : "s") + ' — unlimited.</p>';
+        '<p class="muted plan-sub">' + used + ' active student' + (used === 1 ? "" : "s") + ' — unlimited.</p>' + cardHtml();
       act = '<button class="btn" data-act="portal">Manage plan &amp; card</button>';
     } else if (p.status === "past_due" && p.has_pro) {
-      html = '<p class="plan-line" style="color:var(--warn)"><b>Your last payment didn’t go through.</b> Update your card to keep Solo Pro.</p>';
+      html = '<p class="plan-line" style="color:var(--warn)"><b>Your last payment didn’t go through.</b> Update your card to keep Solo Pro.</p>' + cardHtml();
       act = '<button class="btn" data-act="portal">Update card</button>';
     } else {
       var full = used >= lim;
@@ -77,7 +95,12 @@
     orgId = o.data[0].id;
     var r = await window.sb.rpc("org_plan_status", { p_org: orgId });
     if (r.error || !r.data) return;
-    plan = r.data; render();
+    plan = r.data;
+    // the card line only exists for people who have (or had) a Stripe customer; the free plan and early tutors have none
+    var paying = !plan.grandfathered && (plan.status === "trialing" || plan.status === "active" || plan.status === "past_due") && plan.has_pro;
+    cardInfo = paying ? "loading" : "hidden"; render();
+    if (paying) call("card").then(function (d) { cardInfo = d; render(); },
+      function (e) { cardInfo = e.code === "owner_only" ? "hidden" : "error"; render(); });
     if (/[?&]billing=success/.test(location.search)) say("Thanks — your plan will update in a moment.");
   }
   // sb.auth session is established by app.js before pages run; wait for it, then load
