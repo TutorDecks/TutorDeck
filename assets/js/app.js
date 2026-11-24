@@ -724,6 +724,16 @@ window.TL = (function () {
   function tlConfirm(o) { return dialog(Object.assign({ confirmText: "OK" }, o)).then(function (v) { return !!v; }); }
   function tlAlert(o) { if (typeof o === "string") o = { message: o }; return dialog(Object.assign({ confirmText: "OK", cancelText: false }, o)).then(function () {}); }
   function tlPrompt(o) { return dialog(Object.assign({ confirmText: "OK" }, o, { prompt: true })); }
+  // The free plan covers 5 active students; the database refuses the 6th with an error starting "FREE_LIMIT".
+  // TL.freeLimit(error) → Promise<boolean>: true if it WAS that error (a friendly prompt was shown, "See plans" opens
+  // Settings → Your plan), false for any other error (the caller shows it as before).
+  function tlFreeLimit(err) {
+    if (!err || !/^FREE_LIMIT/.test(String(err.message || ""))) return Promise.resolve(false);
+    return tlConfirm({ title: "Your free plan is full",
+      message: "The free plan covers 5 active students. Solo Pro is unlimited \u2014 S$14.90 a month, with a 30-day free trial and no card needed to start.\n\nYour existing students and lessons are untouched.",
+      confirmText: "See plans", cancelText: "Not now" })
+      .then(function (go) { if (go) location.href = "settings#plan-card"; return true; });
+  }
 
   function askDiscard(yes) {
     tlConfirm({ title: "Discard changes?", message: "What you\u2019ve typed in this form will be lost.",
@@ -1148,7 +1158,7 @@ window.TL = (function () {
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
            store: store, uid: function () { return UID; }, plural: plural,
-           confirm: tlConfirm, alert: tlAlert, prompt: tlPrompt,
+           confirm: tlConfirm, alert: tlAlert, prompt: tlPrompt, freeLimit: tlFreeLimit,
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,
