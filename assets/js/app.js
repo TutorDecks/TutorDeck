@@ -300,6 +300,16 @@ window.TL = (function () {
       setRole(mode); return mode;
     } catch (e) { return null; }
   }
+  // Pages a tutor-only login may open: My lessons, and Settings (two-factor sign-in, "Download my data" and "Delete my account"
+  // live there and have no other home). Everything else is a solo-tutor page and sends them to My lessons.
+  // Returns the address to go to, or null to stay. Only a CONFIRMED "tutor-only" ever redirects: "solo", "both", null and
+  // anything unexpected stay put, so no solo tutor can be moved by a doubt or an error.
+  var TUTOR_ONLY_PAGES = ["tutor", "settings"];
+  function tutorOnlyRedirect(active, mode) {
+    if (mode !== "tutor-only") return null;
+    if (!active || TUTOR_ONLY_PAGES.indexOf(active) >= 0) return null;
+    return "tutor";
+  }
   // Old builds kept these unscoped, so a second account in the same browser inherited the first one's
   // state (e.g. "Not logged" hidden, Google Calendar "connected"). Nobody can tell whose they were — drop them.
   (function dropLegacy() {
@@ -613,6 +623,10 @@ window.TL = (function () {
     } catch (e) { /* MFA unavailable — proceed as normal */ }
     // Which menu does this login get? (instant when remembered; one query about every 12 hours; any doubt = the usual menu)
     try { await detectRole(); } catch (e) { /* keep the usual menu */ }
+    // A tutor-only login who types a solo page's address (students, ledger, planner …) goes to My lessons, like Home does.
+    // The decision only reads the role we just settled; tutorOnlyRedirect() never fires on a doubt, and never for "tutor" itself.
+    var goTo = tutorOnlyRedirect(active, roleMode());
+    if (goTo) { location.replace(goTo); return; }
     // Brand the top bar with this tutor's business name. Draw the page straight away with the name we saw
     // last time on this browser (no blank screen while the profile loads); fix it up if it has changed.
     // First visit on a browser: wait for the profile as before.
@@ -1192,7 +1206,7 @@ window.TL = (function () {
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
-           store: store, roleMode: roleMode, setRole: setRole, detectRole: detectRole, uid: function () { return UID; }, plural: plural,
+           store: store, roleMode: roleMode, setRole: setRole, detectRole: detectRole, tutorOnlyRedirect: tutorOnlyRedirect, uid: function () { return UID; }, plural: plural,
            confirm: tlConfirm, alert: tlAlert, prompt: tlPrompt, freeLimit: tlFreeLimit,
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
