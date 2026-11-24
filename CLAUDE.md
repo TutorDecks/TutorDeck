@@ -101,10 +101,15 @@ Preview and dev deployments also hit this live DB. So:
 - Money: integer cents only, all maths in `assets/js/money.js` (tested). GST once per invoice, half up.
 - Centres: issued invoices immutable (credit notes); solo tutors' flows must not change. Default: tutors paid only after the
   parent's payment is reconciled (wizard question; changes audited). TutorDeck never holds a centre's money.
+- Centre tutors (`memberships.role = 'tutor'`) have NO table access on purpose: `lessons` also holds what parents pay, and row-level security can't hide columns.
+  They use only `tutor_my_lessons(from, to)` and `tutor_mark_attendance(...)` (db/migration_tutor_access.sql): explicit column list (never `l.*`, never
+  rate/amount/paid), attended/absent + notes only, on their OWN lesson (`lessons.taught_by` = their membership id), from the lesson's day (the centre's
+  timezone) to 14 days after, never over someone else's mark; `lessons.tutors_see_parent_contact` (default off) controls parent contact. Staff/owners use the
+  normal `org_write` policy. Don't add a tutor policy on any table, and don't add a column to `tutor_my_lessons` without checking it isn't money.
 - Live schema snapshot: `db/baseline_2026-11.sql`. Test SQL with `bash tests/sql/run.sh` (throwaway Postgres), never live.
-- Dev Supabase project: `tuzxsqkfzrjssnpcoale` (baseline + org_foundation + billing + attendance + org_delete + function_lockdown migrations applied). Live: `rnjvswkejbrhbaytutai`
-  (NONE of the org/billing/attendance/delete migrations are on live yet). Migration order everywhere: org_foundation → billing → attendance → org_delete → function_lockdown
-  (undo in reverse); `bash tests/sql/run.sh` runs all five and the undo checks.
+- Dev Supabase project: `tuzxsqkfzrjssnpcoale` (baseline + org_foundation + billing + attendance + tutor_access + org_delete + function_lockdown migrations applied). Live: `rnjvswkejbrhbaytutai`
+  (NONE of the org/billing/attendance/delete migrations are on live yet). Migration order everywhere: org_foundation → billing → attendance → tutor_access → org_delete → function_lockdown
+  (undo in reverse); `bash tests/sql/run.sh` runs all six and the undo checks.
 
 ## Open threads
 - T-Leng has past lessons wrongly showing ✦ one-off: an old slot deletion (before `one_off`
@@ -156,6 +161,7 @@ Preview and dev deployments also hit this live DB. So:
    - **REVOKE the Vercel "Protection Bypass for Automation" token** (Vercel → project → Settings → Deployment Protection) created for the Stripe
      SANDBOX webhook (note: "Stripe sandbox webhook testing - REVOKE before going live"), and delete/replace the sandbox webhook endpoint that carries it
      in its URL. The LIVE webhook must point at a custom/production domain (not behind Vercel protection) with no bypass token in the URL.
+   - Run `db/migration_tutor_access.sql` on LIVE after attendance (order: foundation → billing → attendance → tutor_access → org_delete → function_lockdown).
    - Run `db/migration_function_lockdown.sql` on LIVE last (after org_delete): pins search_path, takes anonymous/any-user access away from the org helper
      functions and trigger functions. Still flagged by the advisor on the existing live setup and NOT touched here: `invoice_by_token` (intentionally public),
      `client_errors_recent/prune` (only a rate-limit count / a trigger) and `rls_auto_enable` (Supabase-managed event trigger).

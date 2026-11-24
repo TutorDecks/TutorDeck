@@ -41,7 +41,8 @@ select t.ok((select bool_and(coalesce(p.proconfig::text, '') like '%search_path=
 
 -- ===================================================================== signed-in pages still work (row-level security uses the helpers)
 select t.as('00000000-0000-0000-0000-0000000000a1'); set role authenticated;
-select t.ok((select count(*) from organisations) = 1, 'a solo tutor still sees exactly their own organisation');
+select t.ok((select count(*) from organisations where kind = 'solo') = 1, 'a solo tutor still sees exactly their own solo organisation (plus any centre they belong to, never anyone else''s)');
+select t.ok(not exists (select 1 from organisations where id = t.id('ben_org')), 'and not another tutor''s');
 select t.ok((select count(*) from students) >= 1, 'and their students');
 insert into students(tutor_id, name) values ('00000000-0000-0000-0000-0000000000a1', 'After lockdown');
 select t.ok(exists (select 1 from students where name = 'After lockdown'), 'a tutor can still add a student (the row guard and triggers still run)');
