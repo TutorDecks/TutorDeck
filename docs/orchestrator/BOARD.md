@@ -20,7 +20,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 ## Owner's decisions (do not re-ask)
 - **STANDING RULE (2026-11-24, all of TutorDeck): no Vercel deploys until the owner says so; any GitHub Actions run needs the owner's approval first.** Pushes/merges auto-trigger previews and CI, so ask before pushing where possible and before any merge into `dev`.
-- 2026-11-24: owner approved merging #123 and #124 into `dev` after T11 (Calendar test stub) finishes — but a merge into `dev` auto-deploys staging, which conflicts with the rule above: HOLD until the owner confirms.
+- **MERGE RULE (2026-11-24, owner):** merge into `dev` only when the owner needs to test something, and then as one complete user flow (not a single feature, not too much). Orchestrator proposes the bundle; owner says go. #123/#124 stay open until then.
+- (superseded by the rule above) 2026-11-24: owner approved merging #123 and #124 into `dev` after T11 (Calendar test stub) finishes — but a merge into `dev` auto-deploys staging, which conflicts with the rule above: HOLD until the owner confirms.
 - Solo plan: free ≤ 5 **active students**; Solo Pro S$14.90/mo or S$149/yr; 30-day trial (once per organisation, no card to start); **existing solo tutors keep unlimited** (grandfathered).
 - TutorDeck is **not GST-registered** (prices carry no GST); centres choose GST settings themselves.
 - Centre fee: S$100 + S$0.40 × billable students (previous month's active students, rounded to nearest 10, halves up). Active = non-trial lesson attended, absent or late-cancelled that month. **Under review** vs SchoolTracs (~S$148/branch at 400 students); owner chose to keep it for now.
