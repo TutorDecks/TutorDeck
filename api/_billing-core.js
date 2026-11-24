@@ -45,6 +45,11 @@ function mapStatus(s) {
   }
 }
 
+// Stripe statuses where a subscription still exists and may charge (used to protect a live subscription from being overwritten).
+const LIVE_STATUSES = ["trialing", "active", "past_due", "unpaid"];
+// …and the others (the column only allows these six): a row in one of these may be replaced by a different subscription.
+const ENDED_STATUSES = ["none", "canceled"];
+
 const iso = (sec) => (sec ? new Date(sec * 1000).toISOString() : null);
 
 // The org_subscriptions columns to write for a Stripe subscription object (current state, fetched from Stripe).
@@ -80,4 +85,4 @@ function trialDaysFor(subRow, days) {
   return days;
 }
 
-module.exports = { verifySignature, form, formEncode, mapStatus, subscriptionRow, invoiceSubscriptionId, trialDaysFor };
+module.exports = { LIVE_STATUSES, ENDED_STATUSES, verifySignature, form, formEncode, mapStatus, subscriptionRow, invoiceSubscriptionId, trialDaysFor };

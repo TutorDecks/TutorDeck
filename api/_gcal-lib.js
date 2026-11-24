@@ -8,8 +8,12 @@
 "use strict";
 const crypto = require("crypto");
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "https://rnjvswkejbrhbaytutai.supabase.co";
-const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || "sb_publishable_IKUtlGhnwJT0Hld5A8cglw_0iF6Y5J9";
+// Which database when SUPABASE_URL / SUPABASE_ANON_KEY aren't set as environment variables: the REAL one only on the production deployment
+// (Vercel sets VERCEL_ENV), the DEV one everywhere else (previews, local), so a missing setting can never point a test at real data.
+// Same rule as assets/js/config.js. Both keys are public publishable keys.
+const IS_PRODUCTION = process.env.VERCEL_ENV === "production";
+const SUPABASE_URL = process.env.SUPABASE_URL || (IS_PRODUCTION ? "https://rnjvswkejbrhbaytutai.supabase.co" : "https://tuzxsqkfzrjssnpcoale.supabase.co");
+const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || (IS_PRODUCTION ? "sb_publishable_IKUtlGhnwJT0Hld5A8cglw_0iF6Y5J9" : "sb_publishable__UR4PFxyxgc6pmRP_iVxLA_f_XoVusA");
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "560106211240-ip7sv5rrpc71f6jenmod34e13i94rdjg.apps.googleusercontent.com";
 const SCOPE = "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly";
 
@@ -93,4 +97,4 @@ async function readBody(req) {
   try { return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"); } catch (e) { return {}; }
 }
 
-module.exports = { SCOPE, GOOGLE_CLIENT_ID, configured, seal, open, origin, redirectUri, getUser, db, googleToken, googleEmail, revoke, send, readBody };
+module.exports = { SUPABASE_URL, SCOPE, GOOGLE_CLIENT_ID, configured, seal, open, origin, redirectUri, getUser, db, googleToken, googleEmail, revoke, send, readBody };

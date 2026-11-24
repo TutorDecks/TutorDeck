@@ -84,4 +84,15 @@ select t.fails($q$ update org_subscriptions set stripe_customer_id = 'cus_test1'
 -- the audit log records changes to subscriptions
 select t.ok((select count(*) >= 1 from audit_log where table_name = 'org_subscriptions' and org_id = t.id('nina_org')), 'subscription changes are in the audit log');
 
+-- ===================================================================== one big insert can't slip past the limit
+-- (the check counts rows already inserted by the SAME statement, and a refused statement inserts nothing)
+insert into auth.users(id, email) values ('00000000-0000-0000-0000-0000000000e8', 'bulk@solo.test');
+select t.put('bulk_org', org_personal('00000000-0000-0000-0000-0000000000e8'));
+select t.as('00000000-0000-0000-0000-0000000000e8'); set role authenticated;
+select t.fails($q$ insert into students(tutor_id, name) select '00000000-0000-0000-0000-0000000000e8', 'B' || g from generate_series(1, 8) g $q$, 'adding 8 students in ONE statement on the free tier');
+select t.eq((select count(*) from students where org_id = t.id('bulk_org')), 0, 'the refused statement inserted nothing (all or nothing)');
+insert into students(tutor_id, name) select '00000000-0000-0000-0000-0000000000e8', 'B' || g from generate_series(1, 5) g;
+select t.eq(org_active_students(t.id('bulk_org')), 5, 'exactly 5 in one statement is fine');
+reset role;
+
 \echo ALL BILLING TESTS PASSED

@@ -105,7 +105,10 @@
       end_date:($("e-enddate")&&$("e-enddate").value)||null
     }).eq("id",sid);
     b.disabled=false;
-    if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
+    if(res.error){
+      if(await TL.freeLimit(res.error)){msg.textContent="Your free plan covers 5 active students.";msg.className="msg err";return;}
+      msg.textContent=res.error.message;msg.className="msg err";return;
+    }
     closeEdit();load();
   }
 

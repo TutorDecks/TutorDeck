@@ -43,6 +43,7 @@
     }
     body.innerHTML = html + (act ? '<div style="margin-top:12px">' + act + '</div>' : "");
     card.style.display = "";
+    if (location.hash === "#plan-card") card.scrollIntoView({ block: "start" });
   }
 
   async function call(action, extra) {

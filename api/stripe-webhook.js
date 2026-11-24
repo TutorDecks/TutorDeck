@@ -17,9 +17,21 @@ async function syncSubscription(subId, orgHint) {
   if (org && /^[0-9a-f-]{36}$/i.test(org)) q = "org_id=eq." + org;
   else if (row.stripe_customer_id) q = "stripe_customer_id=eq." + encodeURIComponent(row.stripe_customer_id);
   if (!q) return "no_org";
-  const w = await B.svc("PATCH", "org_subscriptions?" + q, row, { Prefer: "return=representation" });
+  // Never let one subscription overwrite a row that holds a DIFFERENT live one: a late "cancelled" event for an old
+  // subscription, or the loser of two checkouts opened at once, must not flip a paying tutor to cancelled. The rule is part
+  // of the write itself (one atomic request): allowed when the row has no subscription yet, is this same subscription,
+  // or its current subscription is no longer live.
+  const guard = "&or=(stripe_subscription_id.is.null,stripe_subscription_id.eq." + encodeURIComponent(sub.id) +
+    ",status.in.(" + Core.ENDED_STATUSES.join(",") + "))";
+  const w = await B.svc("PATCH", "org_subscriptions?" + q + guard, row, { Prefer: "return=representation" });
   if (!w.ok) throw new Error("write " + w.status);
-  return (w.data || []).length ? "updated" : "no_org";
+  if ((w.data || []).length) return "updated";
+  const ex = await B.svc("GET", "org_subscriptions?select=org_id&" + q);
+  if (ex.ok && (ex.data || []).length) {
+    console.error("stripe-webhook: ignored subscription " + sub.id + " (status " + sub.status + "): the organisation already has a different live subscription");
+    return "ignored_other_live_subscription";
+  }
+  return "no_org";
 }
 
 module.exports = async function (req, res) {

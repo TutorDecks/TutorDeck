@@ -36,7 +36,10 @@
       ? await window.sb.from("students").update(fields).eq("id",editingId)
       : await window.sb.from("students").insert(Object.assign({tutor_id:userId},fields)).select("id").single();
     $("m-save").disabled=false;
-    if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
+    if(res.error){
+      if(await TL.freeLimit(res.error)){msg.textContent="Your free plan covers 5 active students.";msg.className="msg err";return;}
+      msg.textContent=res.error.message;msg.className="msg err";return;
+    }
     var wasNew=!editingId;
     openModal(false);load();
     if(wasNew && TL.guide && TL.guide.on){
@@ -95,7 +98,10 @@
     var fields={active:active};
     if(active && cur && TL.isEnded(cur.end_date)) fields.end_date=null;
     var res=await window.sb.from("students").update(fields).eq("id",id);
-    if(res.error){TL.alert("Couldn't update: "+res.error.message);return;}
+    if(res.error){
+      if(await TL.freeLimit(res.error)) return;      // blocked: nothing changed, and the student's slots stay as they were
+      TL.alert("Couldn't update: "+res.error.message);return;
+    }
     // Keep the weekly schedule in step: discontinuing removes the student's recurring slots from the
     // Planner/Calendar (both filter active slots); reactivating brings them back. Lessons are untouched.
     try{ await window.sb.from("recurring_slots").update({active:active}).eq("student_id",id); }

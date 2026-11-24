@@ -30,7 +30,10 @@ global.fetch = async (url, opt) => {
     if (opt.method === "PATCH") {
       if (failWrites) return json(500, {});
       const row = JSON.parse(opt.body), m = u.match(/org_id=eq\.([0-9a-f-]+)/), c = u.match(/stripe_customer_id=eq\.([\w%]+)/);
-      const hit = Object.values(subs).filter((s) => s && s.org_id && ((m && s.org_id === m[1]) || (c && s.stripe_customer_id === decodeURIComponent(c[1]))));
+      // the webhook's "don't overwrite a different live subscription" rule, applied the way PostgREST applies the or=() filter
+      const g = u.match(/or=\(stripe_subscription_id\.is\.null,stripe_subscription_id\.eq\.([\w%]+),status\.in\.\(([\w,]+)\)\)/);
+      const allowed = (s) => !g || s.stripe_subscription_id == null || s.stripe_subscription_id === decodeURIComponent(g[1]) || g[2].split(",").indexOf(s.status) >= 0;
+      const hit = Object.values(subs).filter((s) => s && s.org_id && allowed(s) && ((m && s.org_id === m[1]) || (c && s.stripe_customer_id === decodeURIComponent(c[1]))));
       hit.forEach((s) => Object.assign(s, row));
       return json(200, hit);
     }
@@ -87,6 +90,36 @@ test("webhook: payment failed → past_due; cancelled → canceled (limit comes 
   stripeState = stripeSub({ status: "canceled" });
   body = evt("evt_f", "customer.subscription.deleted", { id: "sub_1" });
   await post(webhook, body, signed(body)); assert.strictEqual(subs[ORG].status, "canceled");
+});
+
+test("webhook: a late 'cancelled' event for an OLD subscription can't flip a paying tutor", async () => {
+  reset(); subs[ORG].stripe_subscription_id = "sub_new"; subs[ORG].tier = "pro"; subs[ORG].status = "active";
+  stripeState = stripeSub({ id: "sub_old", status: "canceled" });
+  const body = evt("evt_h", "customer.subscription.deleted", { id: "sub_old" });
+  const r = await post(webhook, body, signed(body));
+  assert.strictEqual(r.statusCode, 200); assert.strictEqual(r.body.result, "ignored_other_live_subscription");
+  assert.strictEqual(subs[ORG].status, "active"); assert.strictEqual(subs[ORG].stripe_subscription_id, "sub_new");
+});
+
+test("webhook: a second LIVE subscription (two checkouts at once) doesn't replace the first", async () => {
+  reset(); subs[ORG].stripe_subscription_id = "sub_first"; subs[ORG].tier = "pro"; subs[ORG].status = "trialing";
+  stripeState = stripeSub({ id: "sub_second", status: "active" });
+  const body = evt("evt_i", "customer.subscription.created", { id: "sub_second" });
+  const r = await post(webhook, body, signed(body));
+  assert.strictEqual(r.body.result, "ignored_other_live_subscription");
+  assert.strictEqual(subs[ORG].stripe_subscription_id, "sub_first"); assert.strictEqual(subs[ORG].status, "trialing");
+});
+
+test("webhook: a NEW subscription replaces one that has ended; updates to the current one still apply", async () => {
+  reset(); subs[ORG].stripe_subscription_id = "sub_ended"; subs[ORG].tier = "pro"; subs[ORG].status = "canceled";
+  stripeState = stripeSub({ id: "sub_next", status: "active", trial_end: null });
+  let body = evt("evt_j", "customer.subscription.created", { id: "sub_next" });
+  assert.strictEqual((await post(webhook, body, signed(body))).body.result, "updated");
+  assert.strictEqual(subs[ORG].stripe_subscription_id, "sub_next"); assert.strictEqual(subs[ORG].status, "active");
+  stripeState = stripeSub({ id: "sub_next", status: "past_due", trial_end: null });
+  body = evt("evt_k", "invoice.payment_failed", { subscription: "sub_next" });
+  assert.strictEqual((await post(webhook, body, signed(body))).body.result, "updated");
+  assert.strictEqual(subs[ORG].status, "past_due", "the current subscription keeps updating");
 });
 
 test("webhook: an unrelated event is acknowledged and ignored", async () => {
