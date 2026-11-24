@@ -73,6 +73,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T20 | Plan card shows card on file (brand, last4, expiry; "No card on file"; Update card) | DONE on branch, untested vs real Stripe | `claude/t20-card-on-file` |
 | T12a | T12 step 1: DB same-organisation guard (migration_org_separation) | DONE on branch (migration + SQL tests; DEV apply status to confirm) | `claude/t12a-org-guard` |
 | T18a | T18 step 1: mark unbuilt settings `soon` | DONE on branch (v263, six settings marked soon) | `claude/t18a-honest-settings` |
+| T22 | Assemble bundle 2 (T19+T15+T20+T12a+T18a) into one PR to dev; owner approved 2026-11-24; orchestrator merges after CI + owner go | doing | NEW worker / `claude/bundle-2` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
