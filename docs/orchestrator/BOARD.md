@@ -32,6 +32,12 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 - Previews use DEV; production is the only thing on the real database.
 - Audit-log retention on account deletion: the worker's choice was "delete all audit rows of the deleted organisation, keep one anonymous marker row" — **owner still to confirm** (see Waiting).
 
+## Owner decisions 2026-11-24 (evening)
+- T12 plan approved: centre owner loses solo-screen view of centre data until T3/T4; org switcher for multi-org people; centre staff land on centre home; ship the DB safety net (step 1) to dev first.
+- T18: one missed lesson = one credit, make-up never charged twice (centre setting, unbuilt options `soon`); credit earned for notice-given absences, tutor cancellations and holidays; credits never expire by default; centres skip holidays by default; holiday library for solo tutors later; SG holiday dates from MOM, re-check 2027 before shipping; add next year's rows each November.
+- Settings stays reachable for tutor-only logins (T15). My lessons NOT added for solo tutors. DEV Supabase password rules set to match LIVE (lower, upper, digit, symbol).
+- Bundle rule: second test bundle proposed = T19 + T15 + T20 + T12a (+T18a); owner says go.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -65,6 +71,8 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T18 | Holidays (selectable Singapore public-holiday library, never auto-applied) + make-up credits (one owed lesson = one credit? explain in app); investigate + plan | plan DONE (`claude/t18-plan`): no credits exist today; owner decisions pending | worker / `claude/t18-plan` |
 | T19 | Sign-up password rules: make the hint list the exact rules the backend enforces (capital, number, symbol...) so weak passwords are caught before the backend error. Needs the DEV/LIVE Supabase password-requirement setting from the owner | DONE on branch, no PR (owner: LIVE rule = lowercase, uppercase, digit, symbol; owner sets DEV to match) | NEW worker / `claude/t19-password-rules` |
 | T20 | Plan card shows card on file (brand, last4, expiry; "No card on file"; Update card) | doing | NEW worker / `claude/t20-card-on-file`, no PR |
+| T12a | T12 step 1: DB same-organisation guard (migration_org_separation) | doing | session_01CPTfbDeinaE8s16cR4s9qq / `claude/t12a-org-guard` |
+| T18a | T18 step 1: mark unbuilt settings `soon` | doing | session_01CPTfbBSoNxnqDqwmMbJcma / `claude/t18a-honest-settings` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
