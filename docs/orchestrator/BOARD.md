@@ -62,7 +62,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T16 | D5 (low): centre owner has no menu entry for /org | todo | |
 | T17 | Owner: delete throwaway DEV user `t2-throwaway-mwum2aj0@example.test` + "T2 Test Centre" (DEV only) after testing account deletion on it | waiting | |
 | T18 | Holidays (selectable Singapore public-holiday library, never auto-applied) + make-up credits (one owed lesson = one credit? explain in app); investigate + plan | doing (plan only) | NEW worker / `claude/t18-plan` |
-| T19 | Sign-up password rules: make the hint list the exact rules the backend enforces (capital, number, symbol...) so weak passwords are caught before the backend error. Needs the DEV/LIVE Supabase password-requirement setting from the owner | waiting on owner info | |
+| T19 | Sign-up password rules: make the hint list the exact rules the backend enforces (capital, number, symbol...) so weak passwords are caught before the backend error. Needs the DEV/LIVE Supabase password-requirement setting from the owner | doing (owner: LIVE rule = lowercase, uppercase, digit, symbol; owner sets DEV to match) | NEW worker / `claude/t19-password-rules` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
