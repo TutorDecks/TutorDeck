@@ -13,11 +13,13 @@ function reset() {
 }
 const stripeSub = (o) => Object.assign({ id: "sub_1", customer: "cus_1", status: "trialing", trial_end: 1_900_000_000, cancel_at_period_end: false,
   metadata: { org_id: ORG, tier: "pro" }, items: { data: [{ current_period_end: 1_901_000_000, price: { lookup_key: "solo_pro_monthly" } }] } }, o || {});
-let stripeState;
+let stripeState, stripeCustomer = { invoice_settings: {} }, stripePms = [];
 global.fetch = async (url, opt) => {
   opt = opt || {}; const u = String(url); calls.push((opt.method || "GET") + " " + u);
   const json = (code, obj) => ({ ok: code < 400, status: code, json: async () => obj, text: async () => JSON.stringify(obj) });
   if (u.startsWith("https://api.stripe.com/v1/subscriptions/")) return json(200, stripeState);
+  if (u.startsWith("https://api.stripe.com/v1/customers/")) return json(200, stripeCustomer);
+  if (u.startsWith("https://api.stripe.com/v1/payment_methods")) return json(200, { data: stripePms });
   if (u.startsWith("https://api.stripe.com/v1/prices")) return json(200, { data: [{ id: "price_solo" }] });
   if (u.startsWith("https://api.stripe.com/v1/checkout/sessions")) { subs.__checkoutBody = opt.body; return json(200, { url: "https://checkout.stripe.test/s" }); }
   if (u.startsWith("https://api.stripe.com/v1/billing_portal/sessions")) return json(200, { url: "https://portal.stripe.test/s" });
@@ -151,4 +153,44 @@ test("checkout: signed-out, bad org id and wrong host are refused", async () => 
   global.fetch = saved;
   assert.strictEqual((await post(billing, { action: "checkout", org_id: "x" }, { authorization: "Bearer jwt", host: "tutordeck.vercel.app" })).statusCode, 400);
   assert.strictEqual((await post(billing, { action: "checkout", org_id: ORG }, { authorization: "Bearer jwt", host: "evil.example.com" })).statusCode, 400);
+});
+
+const pm = (o) => ({ id: "pm_1", type: "card", card: Object.assign({ brand: "visa", last4: "4242", exp_month: 8, exp_year: 2029, fingerprint: "SECRET", number: "4242424242424242" }, o || {}) });
+const H = { authorization: "Bearer jwt", host: "tutordeck.vercel.app" };
+
+test("card: customer default card → brand, last4, expiry only (nothing else leaks)", async () => {
+  reset(); stripeCustomer = { invoice_settings: { default_payment_method: pm() } }; stripePms = [];
+  const r = await post(billing, { action: "card", org_id: ORG }, H);
+  assert.strictEqual(r.statusCode, 200);
+  assert.deepStrictEqual(r.body, { card: { brand: "Visa", last4: "4242", exp_month: 8, exp_year: 2029 } });
+  assert.ok(!JSON.stringify(r.body).includes("SECRET") && !JSON.stringify(r.body).includes("4242424242424242"));
+});
+
+test("card: falls back to the subscription's card, then to any saved card", async () => {
+  reset(); stripeCustomer = { invoice_settings: { default_payment_method: null } };
+  subs[ORG].stripe_subscription_id = "sub_1"; stripeState = stripeSub({ default_payment_method: pm({ brand: "mastercard", last4: "4444" }) });
+  assert.strictEqual((await post(billing, { action: "card", org_id: ORG }, H)).body.card.last4, "4444");
+  stripeState = stripeSub({ default_payment_method: null }); stripePms = [pm({ brand: "amex", last4: "0005" })];
+  const r = await post(billing, { action: "card", org_id: ORG }, H);
+  assert.strictEqual(r.body.card.brand, "American Express"); assert.strictEqual(r.body.card.last4, "0005");
+  stripePms = [];
+});
+
+test("card: no card on file (trial without card) → { card: null }; no Stripe customer yet → null without calling Stripe", async () => {
+  reset(); stripeCustomer = { invoice_settings: {} }; stripePms = [];
+  assert.deepStrictEqual((await post(billing, { action: "card", org_id: ORG }, H)).body, { card: null });
+  subs[ORG].stripe_customer_id = null; calls.length = 0;
+  assert.deepStrictEqual((await post(billing, { action: "card", org_id: ORG }, H)).body, { card: null });
+  assert.ok(!calls.some((c) => c.includes("api.stripe.com")));
+});
+
+test("card: signed-out refused; Stripe failure gives a generic 502", async () => {
+  reset();
+  const saved = global.fetch;
+  global.fetch = async (u, o) => String(u).endsWith("/auth/v1/user") ? { ok: false, status: 401, json: async () => ({}), text: async () => "" } : saved(u, o);
+  assert.strictEqual((await post(billing, { action: "card", org_id: ORG }, H)).statusCode, 401);
+  global.fetch = async (u, o) => String(u).includes("api.stripe.com") ? { ok: false, status: 500, json: async () => ({ error: { message: "internal secret detail" } }), text: async () => "" } : saved(u, o);
+  const r = await post(billing, { action: "card", org_id: ORG }, H);
+  assert.strictEqual(r.statusCode, 502); assert.ok(!JSON.stringify(r.body).includes("secret detail"));
+  global.fetch = saved;
 });

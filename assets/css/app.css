@@ -1,5 +1,5 @@
-/* v262 */
-/* v262 */
+/* v263 */
+/* v263 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -905,4 +905,6 @@ html.is-offline .btn-primary,html.is-offline .btn-gold,html.is-offline .cp-btn.p
 .plan-sub{margin:4px 0 0;font-size:13px}
 .plan-meter{height:8px;border-radius:999px;background:var(--line);overflow:hidden;margin:8px 0 4px;max-width:320px}
 .plan-meter i{display:block;height:100%;background:var(--teal);border-radius:999px}
+.plan-pay.warn{color:var(--warn)}
+.plan-link{background:none;border:0;padding:0 0 0 8px;font:inherit;color:var(--teal);text-decoration:underline;cursor:pointer;min-height:32px}
 .plan-int{display:inline-flex;align-items:center;gap:6px;margin:10px 14px 0 0;font-size:13.5px}

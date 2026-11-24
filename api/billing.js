@@ -2,6 +2,7 @@
 // "Authorization: Bearer …". Only the organisation's OWNER may use it.
 //   checkout → { url }  Stripe Checkout for Solo Pro (monthly | yearly), 30-day free trial, no card needed to start
 //   portal   → { url }  Stripe's customer portal: change card, switch monthly/yearly, cancel
+//   card     → { card: {brand,last4,exp_month,exp_year} | null }  the card on file, read live from Stripe (owner only)
 //   status   → the Plan screen's numbers (active students, limit, trial end…)
 // Subscription state is written ONLY by api/stripe-webhook.js, never from here or from the browser.
 "use strict";
@@ -66,6 +67,23 @@ module.exports = async function (req, res) {
         allow_promotion_codes: "true"
       });
       return L.send(res, 200, { url: sess.url });
+    }
+
+    // The card on file, in plain facts only (brand, last 4, expiry), read live from Stripe so it matches the customer portal.
+    // Order: the customer's default for invoices → the subscription's own default → any card saved on the customer.
+    if (b.action === "card") {
+      if (!sub.stripe_customer_id) return L.send(res, 200, { card: null });
+      const cus = await B.stripe("GET", "/customers/" + encodeURIComponent(sub.stripe_customer_id), { expand: ["invoice_settings.default_payment_method"] });
+      let card = Core.cardSummary(cus.invoice_settings && cus.invoice_settings.default_payment_method);
+      if (!card && sub.stripe_subscription_id) {
+        const s = await B.stripe("GET", "/subscriptions/" + encodeURIComponent(sub.stripe_subscription_id), { expand: ["default_payment_method"] });
+        card = Core.cardSummary(s.default_payment_method);
+      }
+      if (!card) {
+        const l = await B.stripe("GET", "/payment_methods", { customer: sub.stripe_customer_id, type: "card", limit: 1 });
+        card = Core.cardSummary(l.data && l.data[0]);
+      }
+      return L.send(res, 200, { card });
     }
 
     if (b.action === "portal") {
