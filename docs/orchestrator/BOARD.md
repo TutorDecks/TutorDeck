@@ -55,15 +55,15 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T8 | **Go-live execution** (owner-gated, see Waiting #5) | todo | — | Do not start without the owner's explicit word. |
 | T9 | Centre pricing review (S$100 + S$0.40 vs competitors) | todo | — | Owner decision; only research if asked. |
 | T11 | Stub `/api/gcal` in `tests/server.py` so smoke CI is green | MERGED into dev 2026-11-24 (#125) | session_01CPTfbCu6T7y8P8douwp4Nh / `claude/t11-gcal-test-stub` |
-| T12 | D1 (medium): centre owner's solo screens show the centre's data. OWNER DECIDED 2026-11-24: centre and solo must be separate. Plan first. | doing (plan only) | NEW worker / `claude/t12-plan` (docs/orchestrator/T12-plan.md); feeds T3/T4 |
+| T12 | D1 (medium): centre owner's solo screens show the centre's data. OWNER DECIDED 2026-11-24: centre and solo must be separate. Plan first. | plan DONE (branch `claude/t12-plan`), waiting on 4 owner decisions | worker / `claude/t12-plan` (docs/orchestrator/T12-plan.md); feeds T3/T4 |
 | T13 | D2 (low): step 7 contradictory messages for window -3 | todo | |
 | T14 | D3 (low): "remarks due" uses browser time zone, no label; use centre timezone | todo | |
-| T15 | D4 (low): redirect tutor-only logins away from solo pages (owner said yes) | doing | session_01CPTfbEDw4AWzHoFEvRJePv / `claude/t15-tutor-redirect`, no PR yet |
+| T15 | D4 (low): redirect tutor-only logins away from solo pages (owner said yes) | DONE on branch (v262, no PR); owner to decide if Settings hidden for tutor-only | `claude/t15-tutor-redirect` |
 | T16 | D5 (low): centre owner has no menu entry for /org | todo | |
 | T17 | Delete throwaway DEV user `t2-throwaway-...@example.test` (still exists 2026-11-24; its centre owner so app deletion refuses; no password) + its solo org + "T2 Test Centre" | → T21: worker prepares preview + script (not run); owner approves, then run on DEV | |
 | T21 | Prepare DEV-only cleanup script + SELECT preview for T17 | doing | NEW worker / `claude/t21-cleanup` |
-| T18 | Holidays (selectable Singapore public-holiday library, never auto-applied) + make-up credits (one owed lesson = one credit? explain in app); investigate + plan | doing (plan only) | NEW worker / `claude/t18-plan` |
-| T19 | Sign-up password rules: make the hint list the exact rules the backend enforces (capital, number, symbol...) so weak passwords are caught before the backend error. Needs the DEV/LIVE Supabase password-requirement setting from the owner | doing (owner: LIVE rule = lowercase, uppercase, digit, symbol; owner sets DEV to match) | NEW worker / `claude/t19-password-rules` |
+| T18 | Holidays (selectable Singapore public-holiday library, never auto-applied) + make-up credits (one owed lesson = one credit? explain in app); investigate + plan | plan DONE (`claude/t18-plan`): no credits exist today; owner decisions pending | worker / `claude/t18-plan` |
+| T19 | Sign-up password rules: make the hint list the exact rules the backend enforces (capital, number, symbol...) so weak passwords are caught before the backend error. Needs the DEV/LIVE Supabase password-requirement setting from the owner | DONE on branch, no PR (owner: LIVE rule = lowercase, uppercase, digit, symbol; owner sets DEV to match) | NEW worker / `claude/t19-password-rules` |
 | T20 | Plan card shows card on file (brand, last4, expiry; "No card on file"; Update card) | doing | NEW worker / `claude/t20-card-on-file`, no PR |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
