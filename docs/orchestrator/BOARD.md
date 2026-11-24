@@ -55,7 +55,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T8 | **Go-live execution** (owner-gated, see Waiting #5) | todo | — | Do not start without the owner's explicit word. |
 | T9 | Centre pricing review (S$100 + S$0.40 vs competitors) | todo | — | Owner decision; only research if asked. |
 | T11 | Stub `/api/gcal` in `tests/server.py` so smoke CI is green | MERGED into dev 2026-11-24 (#125) | session_01CPTfbCu6T7y8P8douwp4Nh / `claude/t11-gcal-test-stub` |
-| T12 | D1 (medium): centre owner's solo screens show the centre's students/lessons/money as their own (rows carry owner's tutor_id); decide what Add student does | todo, needs owner decision | feeds T3/T4 |
+| T12 | D1 (medium): centre owner's solo screens show the centre's data. OWNER DECIDED 2026-11-24: centre and solo must be separate. Plan first. | doing (plan only) | NEW worker / `claude/t12-plan` (docs/orchestrator/T12-plan.md); feeds T3/T4 |
 | T13 | D2 (low): step 7 contradictory messages for window -3 | todo | |
 | T14 | D3 (low): "remarks due" uses browser time zone, no label; use centre timezone | todo | |
 | T15 | D4 (low): redirect tutor-only logins away from solo pages (owner said yes) | doing | session_01CPTfbEDw4AWzHoFEvRJePv / `claude/t15-tutor-redirect`, no PR yet |
