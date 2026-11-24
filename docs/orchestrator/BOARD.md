@@ -54,7 +54,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T7 | **Remarks emails / reminders** (needs an email provider; Resend and Brevo connectors are available) and remarks sent to parents | todo | — | Needs an owner decision on provider before starting. |
 | T8 | **Go-live execution** (owner-gated, see Waiting #5) | todo | — | Do not start without the owner's explicit word. |
 | T9 | Centre pricing review (S$100 + S$0.40 vs competitors) | todo | — | Owner decision; only research if asked. |
-| T11 | Stub `/api/gcal` in `tests/server.py` so smoke CI is green | done, pushed, no PR (owner OK needed) | session_01CPTfbCu6T7y8P8douwp4Nh / `claude/t11-gcal-test-stub` |
+| T11 | Stub `/api/gcal` in `tests/server.py` so smoke CI is green | done; PR #125 open into dev (not merged) | session_01CPTfbCu6T7y8P8douwp4Nh / `claude/t11-gcal-test-stub` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
