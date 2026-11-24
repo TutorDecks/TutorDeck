@@ -30,6 +30,7 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 - Audit-log retention on account deletion: the worker's choice was "delete all audit rows of the deleted organisation, keep one anonymous marker row" — **owner still to confirm** (see Waiting).
 
 ## Waiting on the owner
+(2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
 2. Merge strategy: recommendation = merge PR #122 into `dev` first, then open ONE follow-up PR from the integration branch (it will then show only the remainder). Needs the owner's go-ahead; nothing is merged without it.
 3. DEV project settings only the owner can change in Supabase: turn off "Confirm email" (or set up SMTP) so sign-ups work on previews; add the preview domain pattern to the redirect/allowed URLs; (optional) Google sign-in for DEV.
@@ -41,16 +42,16 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 
 | # | Task | Status | Worker / branch | Notes / done means |
 |---|---|---|---|---|
-| T1 | **Merge plan**: PR #122 → `dev`, then one follow-up PR of the remainder; resolve README/CLAUDE.md/run.sh/vercel.json conflicts; CI green | waiting | — | Needs owner's go-ahead. Do NOT open any PR into `main`. |
+| T1 | **Merge plan**: PR #122 → `dev`, then one follow-up PR of the remainder; resolve README/CLAUDE.md/run.sh/vercel.json conflicts; CI green | doing (owner approved 2026-11-24) | session_01CPTfbCvscRa5XGLemp8qip / `claude/merge-remainder-t1` | Needs owner's go-ahead. Do NOT open any PR into `main`. |
 | T2 | **End-to-end test on the DEV preview** with the demo logins: sign in (all five), My lessons marking flows, free-plan prompt, plan card → Stripe sandbox checkout → webhook updates DEV, customer portal, centre setup step 7, account deletion on a throwaway demo user; log every defect as a new task | todo | — | First real browser test of billing checkout. Use the branch-alias preview address (checkout only accepts it). |
 | T3 | **Staff screens for centres** (plan first, owner approves the plan): timetable (assign tutors, replacement tutors), mark/correct attendance, type pending charges (cancelled lessons with empty compensation), flag trials, cancellations marking | todo | — | Everything driven by the centre settings; solo flows unchanged; tests at DB level first. |
 | T4 | **Centre invoicing & payments** (Phase 3): invoice runs from lessons (cancelled + compensation rule; pending charge blocks invoicing), households, GST per centre setting, credit notes, manual PayNow recording | todo | — | Plan first. Money in integer cents via `assets/js/money.js`. |
-| T5 | Browser-test the **sign-up password hint** branch and decide on a PR | todo | session_01CPTfbE24CDWJiiNfzpQBK6 / `claude/modest-hypatia-lxmmks` | Independent of the rest. Preview now uses DEV, so test with a fresh sign-up there. |
+| T5 | Browser-test the **sign-up password hint** branch and decide on a PR | doing (PR into dev approved) | NEW worker session_01CPTfbBbKbHFCNEfzmTTt59 / `claude/modest-hypatia-lxmmks` (old session ...E24 idle) | Independent of the rest. Preview now uses DEV, so test with a fresh sign-up there. |
 | T6 | **Tutors edit their own lessons** (`timetable_editing = tutors_own`, currently "coming soon") | todo | — | Own-lesson reschedule rules as a setting-driven database function; same no-table-access rule. |
 | T7 | **Remarks emails / reminders** (needs an email provider; Resend and Brevo connectors are available) and remarks sent to parents | todo | — | Needs an owner decision on provider before starting. |
 | T8 | **Go-live execution** (owner-gated, see Waiting #5) | todo | — | Do not start without the owner's explicit word. |
 | T9 | Centre pricing review (S$100 + S$0.40 vs competitors) | todo | — | Owner decision; only research if asked. |
-| T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | todo | — | Part of T1. |
+| T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
 - Previews use DEV, production uses LIVE; demo logins + seed (v260).
