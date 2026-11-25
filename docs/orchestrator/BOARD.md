@@ -93,10 +93,12 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T12c | T12 steps 3+4: solo pages filter by current org (null = no filter), centre menu + redirect, centre home | doing | NEW worker / `claude/t12c-org-filter` (v269), builds on `claude/t12b-current-org` |
 | T24b | Plan: Settings for centre tutors (profile, password, payout details PayNow/bank, delete account) | doing (plan only) | NEW worker / `claude/t24b-plan` |
 | T24c | Build tutor settings page per T24b plan (7 steps, DB first) | todo; start after bundle 3 (T12 on dev) | |
-| T25 | Assemble bundle 3 (T23 + T24 + T12b + T12c + T18b) into one PR to dev; owner OK needed to MERGE | doing | NEW worker / `claude/bundle-3` |
+| T25 | Assemble bundle 3 (T23 + T24 + T12b + T12c + T18b) into one PR to dev; owner OK needed to MERGE | MERGED into dev 2026-11-25 (#127, v271, CI green after contrast fix) | `claude/bundle-3` |
+| T3.1 | T3 step 1: staff seed logins + centre Home (staff_home) | doing | NEW worker / `claude/t3-1-staff-home` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
+- 2026-11-25: bundle 3 (#127: T23 password checklist, T24 Settings closed to tutor-only, T12b switcher, T12c centre/solo separation + centre menu, T18b SG holiday library; v271) MERGED into `dev`. Deployment started (verify READY). NULL_IS_MINE=true. No new migrations.
 - 2026-11-25: bundle 2 (#126: T19 password rules, T15 tutor redirect, T20 card on plan card, T12a org guard, T18a soon flags; v264) MERGED into `dev`. Migration org_separation applied to DEV only, NOT LIVE.
 - 2026-11-24: owner tested Stripe sandbox checkout + portal + account deletion on the integration preview: all work. Finding -> T20 (card on file not shown in app).
 - 2026-11-24: #125 and #124 MERGED into `dev` (owner approved; first test bundle, deploys staging). #123 MERGED too (conflict fixed by worker). `dev` now = v260 + sign-up hint + Calendar test stub. Owner told to test (list sent).
