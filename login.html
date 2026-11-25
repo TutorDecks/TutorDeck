@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Sign in · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=264">
+<link rel="stylesheet" href="assets/css/app.css?v=265">
 <style>
   .oauth-div{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--muted);font-size:12.5px}
   .oauth-div::before,.oauth-div::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -40,8 +40,15 @@
     border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--accent)}
   .pw-eye:hover{background:var(--accent-soft)}
   .pw-eye:focus-visible{outline:3px solid rgba(15,118,110,.35)}
-  .pw-hint{font-size:12.5px;color:var(--muted);margin-top:6px}
-  .pw-hint.ok{color:var(--accent);font-weight:700}
+  /* sign-up checklist: grey until met, then tick + teal (the house "ok/paid" colour); red only after a failed submit. Fixed height = no layout jump */
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .pw-list{list-style:none;margin:8px 0 0;padding:0;font-size:12.5px;color:var(--muted)}
+  .pw-list li{display:flex;align-items:center;gap:8px;line-height:1.4;padding:2px 0}
+  .pw-list .pw-ico{flex:0 0 16px;width:16px;height:16px;box-sizing:border-box;border:1.5px solid currentColor;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;line-height:1}
+  .pw-list li.met{color:var(--accent);font-weight:700}
+  .pw-list li.met .pw-ico{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pw-list li.met .pw-ico::before{content:"\2713"}
+  .pw-list li.bad{color:var(--owed)}
   #forgot{display:block;margin:12px auto 0}
   .tabs button.on{color:var(--ink)}
   .auth-card .btn{height:46px;border-radius:11px;font-size:15px}
@@ -77,7 +84,7 @@
           <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••" aria-describedby="pw-hint">
           <button type="button" class="pw-eye" id="pw-eye" aria-label="Show password" aria-pressed="false">Show</button>
         </div>
-        <div class="pw-hint" id="pw-hint" style="display:none" aria-live="polite">At least 8 characters, with a lowercase and an uppercase letter, a number and a symbol</div>
+        <ul class="pw-list" id="pw-hint" style="display:none" aria-live="polite" aria-label="Password rules"></ul>
       </div>
       <div id="captcha" class="cf-turnstile" style="display:none;margin:0 0 12px"></div>
       <label id="consent-field" style="display:none;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--muted);margin:2px 0 14px;line-height:1.5;cursor:pointer">
@@ -119,9 +126,9 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=264"></script>
-<script src="assets/js/supabase.js?v=264"></script>
-<script src="assets/js/password-rules.js?v=264"></script>
+<script src="assets/js/config.js?v=265"></script>
+<script src="assets/js/supabase.js?v=265"></script>
+<script src="assets/js/password-rules.js?v=265"></script>
 <script>
 (function () {
   var PW_MIN = PasswordRules.MIN;   // all password rules live in assets/js/password-rules.js (keep in step with Supabase: Authentication → Sign In / Providers → Email)
@@ -193,13 +200,23 @@
   function pwProblems(pw) {
     return PasswordRules.problems(pw);
   }
-  function updatePwHint() {
-    var pw = $("pw").value, el = $("pw-hint"), p = pwProblems(pw);
-    if (!pw) { el.textContent = PasswordRules.summary(); el.className = "pw-hint"; return; }
-    if (p.length) { el.textContent = "Still needed: " + p.join(", "); el.className = "pw-hint"; }
-    else { el.textContent = "\u2713 Looks good"; el.className = "pw-hint ok"; }
+  // Checklist under the password field (Create account): every rule is always listed; met rules get a tick and teal text.
+  // pwSubmitted = a submit was refused: unmet lines then turn red (reset when typing resumes or the mode changes).
+  var pwSubmitted = false;
+  function updatePwHint(fromSubmit) {
+    var el = $("pw-hint"), items = PasswordRules.checklist($("pw").value);
+    pwSubmitted = fromSubmit === true;
+    if (el.children.length !== items.length) {
+      el.innerHTML = items.map(function () { return '<li><span class="pw-ico" aria-hidden="true"></span><span class="pw-txt"></span><span class="sr-only"></span></li>'; }).join("");
+    }
+    items.forEach(function (it, i) {
+      var li = el.children[i];
+      li.className = it.ok ? "met" : (pwSubmitted ? "bad" : "");
+      li.children[1].textContent = it.label;
+      li.children[2].textContent = it.ok ? " (done)" : " (not yet)";
+    });
   }
-  $("pw").addEventListener("input", updatePwHint);
+  $("pw").addEventListener("input", function () { updatePwHint(); });
   // Friendlier wording for Supabase's server-side weak-password rejection (error.weak_password.reasons)
   function weakPwMessage(e) {
     var r = (e && e.weak_password && e.weak_password.reasons) || [];
@@ -288,7 +305,7 @@
     try {
       if (mode === "up") {
         var pwp = pwProblems(pw);
-        if (pwp.length) { show("Your password is missing: " + pwp.join(", ") + ".", false); $("pw").focus(); return; }
+        if (pwp.length) { updatePwHint(true); show("Your password is missing: " + pwp.join(", ") + ".", false); $("pw").focus(); return; }
         var leaked = await pwnedCount(pw);
         if (leaked > 0) { show("That password has appeared in " + leaked.toLocaleString() + " known data breaches — please choose a different one.", false); return; }
         if (!$("consent").checked) { show("Please accept the Terms and Privacy Policy to create an account.", false); return; }
