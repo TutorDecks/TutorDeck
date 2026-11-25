@@ -1,0 +1,209 @@
+{
+ "_meta": {
+  "about": "Singapore public holidays, copied by hand from the official MOM page. Public data, no secrets. Nothing here is applied to anyone's calendar automatically: a centre ticks the ones it wants.",
+  "source": "https://www.mom.gov.sg/employment-practices/public-holidays",
+  "source_last_updated": "19 June 2026",
+  "fetched_on": "2026-11-25",
+  "years_published": [
+   2026,
+   2027
+  ],
+  "years_not_published_yet": [
+   2028
+  ],
+  "substitute_rows": "Rows with substitute_for are the Monday MOM gives only to people whose rest day is that Sunday. Offered as separate rows for the centre to choose.",
+  "status_values": {
+   "official": "as listed on the MOM page on fetched_on",
+   "to_confirm": "not confirmed; shown to the centre as 'to confirm'"
+  },
+  "yearly_update": "Each November add next year's rows from the MOM page, update source_last_updated/fetched_on/years_published, and bump ?v=. See README."
+ },
+ "holidays": [
+  {
+   "year": 2026,
+   "date": "2026-01-01",
+   "weekday": "Thursday",
+   "name": "New Year's Day",
+   "status": "official"
+  },
+  {
+   "year": 2026,
+   "date": "2026-02-17",
+   "weekday": "Tuesday",
+   "name": "Chinese New Year (day 1)",
+   "status": "official"
+  },
+  {
+   "year": 2026,
+   "date": "2026-02-18",
+   "weekday": "Wednesday",
+   "name": "Chinese New Year (day 2)",
+   "status": "official"
+  },
+  {
+   "year": 2026,
+   "date": "2026-03-21",
+   "weekday": "Saturday",
+   "name": "Hari Raya Puasa",
+   "status": "official"
+  },
+  {
+   "year": 2026,
+   "date": "2026-04-03",
+   "weekday": "Friday",
+   "name": "Good Friday",
+   "status": "official"
+  },
+  {
+   "year": 2026,
+   "date": "2026-05-01",
+   "weekday": "Friday",
+   "name": "Labour Day",
+   "status": "official"
+  },
+  {
+   "year": 2026,
+   "date": "2026-05-27",
+   "weekday": "Wednesday",
+   "name": "Hari Raya Haji",
+   "status": "official"
+  },
+  {
+   "year": 2026,
+   "date": "2026-05-31",
+   "weekday": "Sunday",
+   "name": "Vesak Day",
+   "status": "official"
+  },
+  {
+   "year": 2026,
+   "date": "2026-06-01",
+   "weekday": "Monday",
+   "name": "Vesak Day (Monday substitute)",
+   "status": "official",
+   "substitute_for": "2026-05-31"
+  },
+  {
+   "year": 2026,
+   "date": "2026-08-09",
+   "weekday": "Sunday",
+   "name": "National Day",
+   "status": "official"
+  },
+  {
+   "year": 2026,
+   "date": "2026-08-10",
+   "weekday": "Monday",
+   "name": "National Day (Monday substitute)",
+   "status": "official",
+   "substitute_for": "2026-08-09"
+  },
+  {
+   "year": 2026,
+   "date": "2026-11-08",
+   "weekday": "Sunday",
+   "name": "Deepavali",
+   "status": "official"
+  },
+  {
+   "year": 2026,
+   "date": "2026-11-09",
+   "weekday": "Monday",
+   "name": "Deepavali (Monday substitute)",
+   "status": "official",
+   "substitute_for": "2026-11-08"
+  },
+  {
+   "year": 2026,
+   "date": "2026-12-25",
+   "weekday": "Friday",
+   "name": "Christmas Day",
+   "status": "official"
+  },
+  {
+   "year": 2027,
+   "date": "2027-01-01",
+   "weekday": "Friday",
+   "name": "New Year's Day",
+   "status": "official"
+  },
+  {
+   "year": 2027,
+   "date": "2027-02-06",
+   "weekday": "Saturday",
+   "name": "Chinese New Year (day 1)",
+   "status": "official"
+  },
+  {
+   "year": 2027,
+   "date": "2027-02-07",
+   "weekday": "Sunday",
+   "name": "Chinese New Year (day 2)",
+   "status": "official"
+  },
+  {
+   "year": 2027,
+   "date": "2027-02-08",
+   "weekday": "Monday",
+   "name": "Chinese New Year (Monday substitute)",
+   "status": "official",
+   "substitute_for": "2027-02-07"
+  },
+  {
+   "year": 2027,
+   "date": "2027-03-10",
+   "weekday": "Wednesday",
+   "name": "Hari Raya Puasa",
+   "status": "official"
+  },
+  {
+   "year": 2027,
+   "date": "2027-03-26",
+   "weekday": "Friday",
+   "name": "Good Friday",
+   "status": "official"
+  },
+  {
+   "year": 2027,
+   "date": "2027-05-01",
+   "weekday": "Saturday",
+   "name": "Labour Day",
+   "status": "official"
+  },
+  {
+   "year": 2027,
+   "date": "2027-05-17",
+   "weekday": "Monday",
+   "name": "Hari Raya Haji",
+   "status": "official"
+  },
+  {
+   "year": 2027,
+   "date": "2027-05-20",
+   "weekday": "Thursday",
+   "name": "Vesak Day",
+   "status": "official"
+  },
+  {
+   "year": 2027,
+   "date": "2027-08-09",
+   "weekday": "Monday",
+   "name": "National Day",
+   "status": "official"
+  },
+  {
+   "year": 2027,
+   "date": "2027-10-28",
+   "weekday": "Thursday",
+   "name": "Deepavali",
+   "status": "official"
+  },
+  {
+   "year": 2027,
+   "date": "2027-12-25",
+   "weekday": "Saturday",
+   "name": "Christmas Day",
+   "status": "official"
+  }
+ ]
+}
