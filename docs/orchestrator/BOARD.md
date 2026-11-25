@@ -47,6 +47,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-25 T24b decisions, all YES: delete = request to centre owner (one-tap approve, auto-OK after 7 days) then erase login+personal data, lessons/attendance stay as "Former tutor"; new permission `view_payout_details` (owner always, staff opt-in); old payout rows erased 12 months after leaving (confirm with the company's adviser); bank-account encryption later (plain+functions+masked+audited now); amber flag for 7 days when payout details change. T12c: menu label "Centre" for one centre, "Centres" for more than one; NULL_IS_MINE=true until a LIVE preview shows zero null org_id rows (on the live-shipping checklist).
 
+- 2026-11-25 OWNER GO: merge bundle 3 (#127) into dev as soon as CI is green (contrast fix in progress), then send the owner the test list. (Owner go given in own words: "fix, deploy and tell me what to test".)
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
