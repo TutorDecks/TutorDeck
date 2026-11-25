@@ -2,6 +2,7 @@
 // database functions (staff_lessons, staff_mark_attendance, staff_correct_attendance); this page never touches a table. What a person may do is decided
 // there (any owner / staff may look; manage_timetable is needed to mark or correct; "not before its day" and "never over someone else's mark" are
 // enforced by the lessons table itself); assets/js/centre-attendance-core.js only words the answers and saves a round trip.
+// The second tab, Charges (T3 step 4), is its own file: assets/js/centre-charges.js, started at the end of init().
 //   centre-attendance?id=<centre>[&date=yyyy-mm-dd][&view=day|week][&f=unmarked|marked]
 (function () {
   "use strict";
@@ -101,7 +102,11 @@
       '<div><span>Tutor</span><span>' + (r.tutor_name ? esc(r.tutor_name) : 'No tutor yet') + '</span></div>' +
       (r.attendance != null ? '<div><span>Marked</span><span>' + esc(CA.markedLine(r).replace(/^Marked\s*/, "") || "Yes") + '</span></div>' : '') +
       (r.remarks ? '<div><span>Remarks</span><span>' + esc(r.remarks) + '</span></div>' : '') + '</div>';
-    if (r.charge_pending) html += '<p class="ca-pend">The charge for this lesson hasn’t been confirmed yet. Whoever looks after invoicing sets it.</p>';
+    if (r.charge_pending) {
+      var CH = window.CentreCharges, mine = CH && CH.enabled();
+      html += '<p class="ca-pend">The charge for this lesson hasn’t been confirmed yet. ' + (mine ? '' : 'Whoever looks after invoicing sets it.') + '</p>' +
+        (mine ? '<div class="ca-marks"><button type="button" class="btn" id="ca-tocharges">Go to Charges</button></div>' : '');
+    }
     if (a.note) html += '<p class="ca-ro">' + esc(a.note) + '</p>';
     if (a.mark) {
       html += '<div class="ca-h">Mark this lesson</div><div class="field"><label for="ca-rm">Remarks <span class="opt">Optional</span></label>' +
@@ -172,6 +177,7 @@
       if (!cur) return;
       var m = e.target.closest("[data-mark]"); if (m) { doMark(m.dataset.mark); return; }
       if (e.target.id === "ca-correct") openCorrect();
+      if (e.target.id === "ca-tocharges") { closeSheet(); window.CentreCharges.show(); }
     });
     $("cc-cancel").addEventListener("click", function () { $("ca-cor").classList.remove("on"); });
     $("cc-save").addEventListener("click", saveCorrect);
@@ -192,6 +198,7 @@
     if (CA.validISO(q.get("date"))) state.anchor = q.get("date");
     if (q.get("f") === "unmarked" || q.get("f") === "marked") state.status = q.get("f");
     wire(); controls(); load();
+    if (window.CentreCharges) window.CentreCharges.init(id, q.get("tab") === "charges" ? "charges" : "");   // adds the Charges tab only for people who may set charges (issue_invoices)
   }
   TL.requireAuth("centre-attendance", init);
 })();

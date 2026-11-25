@@ -18,9 +18,10 @@
                   items: ["See which lessons still need a mark", "Mark attended or absent, with remarks", "Correct a mark, with a reason that is kept on record"] }
   };
 
-  function tile(n, label, todo) {
+  function tile(n, label, todo, href) {
     if (n == null) return "";                                        // not allowed to see this one: leave it out, don't show a 0
-    return '<div class="card ch-tile' + (todo ? " todo" : "") + (todo && n === 0 ? " zero" : "") + '"><span class="n">' + n + '</span><span class="l">' + esc(label) + '</span></div>';
+    var inner = '<span class="n">' + n + '</span><span class="l">' + esc(label) + '</span>', cls = 'card ch-tile' + (todo ? " todo" : "") + (todo && n === 0 ? " zero" : "");
+    return href ? '<a class="' + cls + ' ch-link" href="' + esc(href) + '">' + inner + '</a>' : '<div class="' + cls + '">' + inner + '</div>';
   }
   function plural(n, one, many) { return n === 1 ? one : many; }
 
@@ -35,9 +36,9 @@
       out.push('<div class="ch-h">Needs attention</div><div class="ch-grid">' +
         tile(h.unmarked_past, plural(h.unmarked_past, "past lesson not marked", "past lessons not marked"), true) +
         tile(h.no_tutor_14d, plural(h.no_tutor_14d, "lesson with no tutor, next 14 days", "lessons with no tutor, next 14 days"), true) +
-        (h.can.charges ? tile(h.pending_charges, plural(h.pending_charges, "charge to confirm", "charges to confirm"), true) : "") + '</div>');
+        (h.can.charges ? tile(h.pending_charges, plural(h.pending_charges, "charge to confirm", "charges to confirm"), true, "centre-attendance?id=" + encodeURIComponent(h.org_id) + "&tab=charges") : "") + '</div>');
     } else if (h.can.charges) {
-      out.push('<div class="ch-h">Needs attention</div><div class="ch-grid">' + tile(h.pending_charges, plural(h.pending_charges, "charge to confirm", "charges to confirm"), true) + '</div>');
+      out.push('<div class="ch-h">Needs attention</div><div class="ch-grid">' + tile(h.pending_charges, plural(h.pending_charges, "charge to confirm", "charges to confirm"), true, "centre-attendance?id=" + encodeURIComponent(h.org_id) + "&tab=charges") + '</div>');
     }
     var more = (h.can.students ? tile(h.students_active, plural(h.students_active, "active student", "active students")) : "") +
                (tt ? tile(h.trials_this_month, plural(h.trials_this_month, "trial lesson this month", "trial lessons this month")) : "");
@@ -78,7 +79,7 @@
     }
     h.can = h.can || {};
     if (tab === "students" && h.can.students) { location.replace("centre-students?id=" + encodeURIComponent(id)); return; }   // (T3 step 2) an old link or bookmark
-    if (tab === "attendance" && h.can.timetable) { location.replace("centre-attendance?id=" + encodeURIComponent(id)); return; }   // (T3 step 3) an old link or bookmark
+    if (tab === "attendance" && (h.can.timetable || h.can.charges)) { location.replace("centre-attendance?id=" + encodeURIComponent(id)); return; }   // (T3 step 3) an old link or bookmark
     if (tab) soon(h, tab); else home(h);
   }
   TL.requireAuth("centre", init);

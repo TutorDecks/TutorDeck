@@ -79,13 +79,14 @@
     { id: "orghome", label: "Home",       ic: "home",     tab: "",           perm: null,               soon: false },
     { id: "orgtt",   label: "Timetable",  ic: "schedule", tab: "timetable",  perm: "manage_timetable", soon: true },
     { id: "orgst",   label: "Students",   ic: "students", tab: "students",   perm: "manage_students",  soon: false, page: "centre-students" },
-    { id: "orgatt",  label: "Attendance", ic: "check",    tab: "attendance", perm: "manage_timetable", soon: false, page: "centre-attendance" }
+    { id: "orgatt",  label: "Attendance", ic: "check",    tab: "attendance", perm: ["manage_timetable", "issue_invoices"], soon: false, page: "centre-attendance" }   // issue_invoices alone: the Charges tab on that page
   ];
-  function can(org, perm) {
+  function can(org, perm) {                                   // perm: one permission name, or a list where ANY one is enough
     if (!perm || !org) return true;
     if (org.role === "owner") return true;
     if (org.role !== "staff") return false;
-    return Array.isArray(org.perms) ? org.perms.indexOf(perm) >= 0 : true;
+    var want = Array.isArray(perm) ? perm : [perm];
+    return Array.isArray(org.perms) ? want.some(function (p) { return org.perms.indexOf(p) >= 0; }) : true;
   }
   function centreTabs(org) {
     if (!org || org.kind !== "centre" || !org.id || (org.role !== "owner" && org.role !== "staff")) return [];

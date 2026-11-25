@@ -117,7 +117,9 @@ test("staff see only the tabs their permissions allow; Home is always there", ()
   assert.deepStrictEqual(labels(["manage_students", "manage_timetable", "issue_invoices"]), ["Home", "Timetable", "Students", "Attendance"]);
   assert.deepStrictEqual(labels(["manage_students"]), ["Home", "Students"]);                       // front desk
   assert.deepStrictEqual(labels(["manage_timetable"]), ["Home", "Timetable", "Attendance"]);
-  assert.deepStrictEqual(labels(["issue_invoices"]), ["Home"]);                                    // charges arrive in a later step
+  assert.deepStrictEqual(labels(["issue_invoices"]), ["Home", "Attendance"]);                      // the Charges tab lives on the Attendance page (T3 step 4)
+  assert.deepStrictEqual(labels(["issue_invoices", "manage_students"]), ["Home", "Students", "Attendance"]);
+  assert.deepStrictEqual(labels(["record_payments", "view_revenue"]), ["Home"]);                   // other permissions open nothing yet
   assert.deepStrictEqual(labels([]), ["Home"]);
 });
 test("staff with permissions not known yet (older remembered list): all tabs, the database still decides", () => {
