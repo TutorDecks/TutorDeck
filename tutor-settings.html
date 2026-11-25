@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Your settings · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=273">
+<link rel="stylesheet" href="assets/css/app.css?v=274">
 <script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   .ts-wrap{max-width:560px;display:flex;flex-direction:column;gap:14px}
@@ -38,10 +38,20 @@
   .ts-pw li.met .pw-ico::before{content:"\2713"}
   .ts-pw li.bad{color:var(--owed)}
   .ts-note{margin:0 0 14px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);color:var(--muted);font-size:13.5px;line-height:1.5}
+  .po-cur{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 14px;border-radius:12px;background:var(--bg);border:1px solid var(--line);margin:0 0 14px}
+  .po-cur .po-kind{font-size:12.5px;font-weight:700;color:var(--muted);flex:1 1 100%}
+  .po-cur .po-val{flex:1 1 auto;min-width:0;font-size:16px;font-weight:800;letter-spacing:.02em;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+  .po-cur .btn{min-height:44px;padding:0 16px}
+  .po-sure{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 14px;font-size:14px;font-weight:600}
+  .po-sure .btn{min-height:44px;padding:0 16px}
+  .po-methods{border:0;margin:0 0 14px;padding:0}
+  .po-methods legend{font-size:13px;font-weight:700;color:var(--ink);padding:0;margin:0 0 4px}
+  .po-methods label{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14.5px;font-weight:600;color:var(--ink)}
+  .po-methods input{width:20px;height:20px;accent-color:var(--accent)}
   .ts-out{align-self:flex-start}
   .ts-out.btn{min-height:44px}
 </style>
-<link rel="stylesheet" href="assets/css/dark.css?v=273">
+<link rel="stylesheet" href="assets/css/dark.css?v=274">
 </head>
 <body>
 <div id="view" data-page="tutor-settings">
@@ -91,18 +101,61 @@
       <div class="ts-actions"><div class="msg" id="pw-msg" role="status"></div><button class="btn btn-primary" id="pw-save" type="submit">Change password</button></div>
     </form>
 
+    <form class="card ts-card" id="po-card" novalidate style="display:none">
+      <h2>Payout details</h2>
+      <p class="ts-sub">This is how your centre pays you. We ask for nothing more than this, and only the last 4 characters are shown unless you press Show.</p>
+      <div class="field" id="po-centre-row" style="display:none">
+        <label for="po-centre">Centre</label>
+        <select id="po-centre"></select>
+      </div>
+      <div id="po-cur" class="po-cur" style="display:none">
+        <div class="po-kind" id="po-kind"></div>
+        <div class="po-val" id="po-val" role="status"></div>
+        <button class="btn" id="po-show" type="button" aria-pressed="false">Show</button>
+        <button class="btn" id="po-change" type="button">Change</button>
+        <button class="btn" id="po-clear" type="button">Clear</button>
+      </div>
+      <div id="po-sure" class="po-sure" role="alert" style="display:none"><span>Remove your payout details from this centre?</span><button class="btn btn-primary" id="po-clear-yes" type="button">Yes, clear them</button><button class="btn" id="po-clear-no" type="button">Keep them</button></div>
+      <div id="po-form">
+        <fieldset class="po-methods">
+          <legend>How should your centre pay you?</legend>
+          <label><input type="radio" name="po-method" value="paynow_mobile" checked> PayNow to my mobile number</label>
+          <label><input type="radio" name="po-method" value="paynow_uen"> PayNow to my UEN</label>
+          <label><input type="radio" name="po-method" value="bank"> Bank transfer</label>
+        </fieldset>
+        <div class="field" id="po-bank-row" style="display:none">
+          <label for="po-bank">Bank</label>
+          <select id="po-bank"></select>
+          <input id="po-bank-other" type="text" maxlength="60" autocomplete="off" placeholder="Type the bank’s name" aria-label="Bank name" style="display:none;margin-top:8px">
+        </div>
+        <div class="field" id="po-value-row">
+          <label for="po-value" id="po-value-l">Mobile number</label>
+          <div class="ts-phone" id="po-value-wrap"><span aria-hidden="true">+65</span><input id="po-value" type="text" inputmode="tel" autocomplete="off" spellcheck="false" placeholder="8123 4567" aria-describedby="po-value-h"></div>
+          <p class="ts-hint" id="po-value-h">The mobile number that is linked to your PayNow.</p>
+        </div>
+        <div class="field" id="po-holder-row" style="display:none">
+          <label for="po-holder">Name on the bank account</label>
+          <input id="po-holder" type="text" maxlength="80" autocomplete="off" spellcheck="false" aria-describedby="po-holder-h">
+          <p class="ts-hint" id="po-holder-h">It must match your bank account.</p>
+        </div>
+        <label class="ts-check"><input type="checkbox" id="po-confirm"> These are my own details.</label>
+        <div class="ts-actions"><div class="msg" id="po-msg" role="status"></div><button class="btn btn-primary" id="po-save" type="submit">Save payout details</button></div>
+      </div>
+      <div class="msg" id="po-load" role="status" style="text-align:left;display:none"></div>
+    </form>
+
     <button class="btn ts-out" id="ts-out" type="button" style="display:none">Sign out</button>
   </div>
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=273"></script>
-<script src="assets/js/supabase.js?v=273"></script>
-<script src="assets/js/org-current.js?v=273"></script>
-<script src="assets/js/org-scope.js?v=273"></script>
-<script src="assets/js/app.js?v=273"></script>
-<script src="assets/js/password-rules.js?v=273"></script>
-<script src="assets/js/tutor-settings-core.js?v=273"></script>
-<script src="assets/js/tutor-settings.js?v=273"></script>
+<script src="assets/js/config.js?v=274"></script>
+<script src="assets/js/supabase.js?v=274"></script>
+<script src="assets/js/org-current.js?v=274"></script>
+<script src="assets/js/org-scope.js?v=274"></script>
+<script src="assets/js/app.js?v=274"></script>
+<script src="assets/js/password-rules.js?v=274"></script>
+<script src="assets/js/tutor-settings-core.js?v=274"></script>
+<script src="assets/js/tutor-settings.js?v=274"></script>
 </body>
 </html>

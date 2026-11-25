@@ -1,5 +1,7 @@
-// Your settings (centre tutors): profile (name, phone) and change password, plus sign out. All profile access goes through two database
-// functions (tutor_my_profile, tutor_save_profile); this page never reads or writes a table. Pure checks: assets/js/tutor-settings-core.js.
+// Your settings (centre tutors): profile (name, phone), change password, payout details, plus sign out. All access goes through database
+// functions (tutor_my_profile / tutor_save_profile, tutor_my_payout / tutor_save_payout / tutor_clear_payout / tutor_reveal_payout); this page never
+// reads or writes a table. Pure checks: assets/js/tutor-settings-core.js. Payout numbers are never logged, never put in a URL, and a revealed value
+// is hidden again after 30 seconds or when the page goes to the background.
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
@@ -50,6 +52,98 @@
     $("pw-old").value = ""; $("pw-new").value = ""; pwList(); say("pw-msg", ""); TL.toast("Password changed");
   }
 
+
+  // ---------------------------------------------------------------- payout details
+  var po = [], poCur = null, poTimer = null, poShown = false, poEditing = false;
+  function poMethod() { var r = document.querySelector('input[name="po-method"]:checked'); return r ? r.value : "paynow_mobile"; }
+  function poHide() { clearTimeout(poTimer); poTimer = null; poShown = false; }
+  function poShowValues() {
+    if (!poCur || !poCur.has_payout) return;
+    var hidden = poCur.method === "bank" ? (poCur.bank_name || "Bank") + "  " + (poCur.masked || "") + "  ·  " + (poCur.holder_hint || "") : (poCur.masked || "");
+    $("po-val").textContent = poShown && poCur._full ? C.payoutDisplay(poCur._full) : hidden;
+    $("po-show").textContent = poShown ? "Hide" : "Show"; $("po-show").setAttribute("aria-pressed", poShown ? "true" : "false");
+  }
+  function poFields() {
+    var m = poMethod();
+    $("po-bank-row").style.display = m === "bank" ? "" : "none"; $("po-holder-row").style.display = m === "bank" ? "" : "none";
+    $("po-bank-other").style.display = m === "bank" && $("po-bank").value === "Other" ? "" : "none";
+    $("po-value-wrap").classList.toggle("ts-phone", m === "paynow_mobile");
+    $("po-value-wrap").firstElementChild.style.display = m === "paynow_mobile" ? "" : "none";
+    $("po-value-l").textContent = m === "paynow_mobile" ? "Mobile number" : m === "paynow_uen" ? "UEN" : "Account number";
+    $("po-value").placeholder = m === "paynow_mobile" ? "8123 4567" : m === "paynow_uen" ? "53123456K" : "Digits only";
+    $("po-value").setAttribute("inputmode", m === "paynow_uen" ? "text" : m === "bank" ? "numeric" : "tel");
+    $("po-value-h").textContent = m === "paynow_mobile" ? "The mobile number that is linked to your PayNow." : m === "paynow_uen" ? "The UEN that is linked to your PayNow." : "Numbers only, 7 to 16 digits.";
+  }
+  function poClearForm() { $("po-value").value = ""; $("po-holder").value = ""; $("po-bank-other").value = ""; $("po-confirm").checked = false; }
+  function poRender() {
+    var r = poCur; if (!r) return;
+    var has = !!r.has_payout;
+    $("po-cur").style.display = has ? "" : "none"; $("po-sure").style.display = "none";
+    $("po-form").style.display = !has || poEditing ? "" : "none";
+    if (has) { $("po-kind").textContent = C.METHODS[r.method] || ""; poShowValues(); }
+    poFields();
+  }
+  async function poLoad() {
+    var r = await window.sb.rpc("tutor_my_payout");
+    if (r.error) { $("po-card").style.display = ""; $("po-form").style.display = "none"; $("po-cur").style.display = "none"; $("po-load").style.display = ""; $("po-load").className = "msg err"; $("po-load").textContent = "Your payout details aren’t available right now. Please try again in a few minutes."; return; }
+    $("po-load").style.display = "none";
+    po = r.data || [];
+    if (!po.length) { $("po-card").style.display = "none"; return; }
+    var keep = poCur && poCur.membership_id;
+    $("po-centre").innerHTML = po.map(function (x) { return '<option value="' + x.membership_id + '">' + String(x.org_name || "Centre").replace(/&/g, "&amp;").replace(/</g, "&lt;") + '</option>'; }).join("");
+    if (keep && po.some(function (x) { return x.membership_id === keep; })) $("po-centre").value = keep;
+    $("po-centre-row").style.display = po.length > 1 ? "" : "none";
+    poPick();
+    $("po-card").style.display = "";
+  }
+  function poPick() { var id = $("po-centre").value; poCur = po.filter(function (x) { return x.membership_id === id; })[0] || po[0]; poHide(); poRender(); }
+
+  async function poToggleShow() {
+    if (poShown) { poHide(); delete poCur._full; poShowValues(); return; }
+    $("po-show").disabled = true;
+    var r = await window.sb.rpc("tutor_reveal_payout", { p_membership: poCur.membership_id });
+    $("po-show").disabled = false;
+    if (r.error || !r.data || !r.data.length) { say("po-msg", C.payoutErrorText(r.error), true); return; }
+    poCur._full = r.data[0]; poShown = true; poShowValues();
+    clearTimeout(poTimer); poTimer = setTimeout(function () { poHide(); if (poCur) delete poCur._full; poShowValues(); }, 30000);
+  }
+  async function poSave(e) {
+    e.preventDefault();
+    var bank = $("po-bank").value === "Other" ? $("po-bank-other").value : $("po-bank").value;
+    var v = C.validatePayout({ method: poMethod(), value: $("po-value").value, bank: bank, holder: $("po-holder").value, confirm: $("po-confirm").checked });
+    if (!v.ok) { say("po-msg", v.error, true); var f = { value: "po-value", bank: $("po-bank").value === "Other" ? "po-bank-other" : "po-bank", holder: "po-holder", confirm: "po-confirm", method: "po-card" }[v.field]; if ($(f) && $(f).focus) $(f).focus(); return; }
+    $("po-save").disabled = true; say("po-msg", "Saving…");
+    var args = v.args; args.p_membership = poCur.membership_id;
+    var r = await window.sb.rpc("tutor_save_payout", args);
+    args = null;
+    $("po-save").disabled = false;
+    if (r.error) { say("po-msg", C.payoutErrorText(r.error), true); return; }
+    poClearForm(); say("po-msg", ""); poEditing = false; poHide(); TL.toast("Payout details saved");
+    await poLoad();
+  }
+  async function poClear() {
+    $("po-clear-yes").disabled = true;
+    var r = await window.sb.rpc("tutor_clear_payout", { p_membership: poCur.membership_id });
+    $("po-clear-yes").disabled = false;
+    if (r.error) { say("po-msg", C.payoutErrorText(r.error), true); return; }
+    poHide(); poEditing = false; say("po-msg", ""); TL.toast("Payout details cleared");
+    await poLoad();
+  }
+  function poInit() {
+    $("po-card").addEventListener("submit", poSave);
+    $("po-centre").addEventListener("change", function () { poEditing = false; say("po-msg", ""); poClearForm(); poPick(); });
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="po-method"]'), function (x) { x.addEventListener("change", function () { say("po-msg", ""); $("po-value").value = ""; poFields(); }); });
+    $("po-bank").innerHTML = '<option value="">Choose your bank</option>' + C.BANKS.map(function (b) { return "<option>" + b.replace(/&/g, "&amp;") + "</option>"; }).join("");
+    $("po-bank").addEventListener("change", poFields);
+    $("po-show").addEventListener("click", poToggleShow);
+    $("po-change").addEventListener("click", function () { poEditing = true; poHide(); say("po-msg", ""); poRender(); $("po-form").querySelector("input[name=po-method]:checked").focus(); });
+    $("po-clear").addEventListener("click", function () { $("po-sure").style.display = ""; $("po-clear-no").focus(); });
+    $("po-clear-no").addEventListener("click", function () { $("po-sure").style.display = "none"; $("po-clear").focus(); });
+    $("po-clear-yes").addEventListener("click", poClear);
+    document.addEventListener("visibilitychange", function () { if (document.hidden && poShown && poCur) { poHide(); delete poCur._full; poShowValues(); } });
+    poFields();
+  }
+
   async function load(quiet) {
     var r = await window.sb.rpc("tutor_my_profile");
     if (r.error) { $("tp-load").className = "msg err"; $("tp-load").textContent = "Your profile isn’t available right now. Please try again in a few minutes."; return; }
@@ -74,8 +168,8 @@
     $("pw-new").addEventListener("input", pwList);
     $("pw-show").addEventListener("change", function () { var t = $("pw-show").checked ? "text" : "password"; $("pw-old").type = t; $("pw-new").type = t; });
     $("ts-out").addEventListener("click", function () { TL.signOut(); });
-    pwList();
-    load();
+    pwList(); poInit();
+    load(); poLoad();
   }
   TL.requireAuth("tutor-settings", init);
 })();

@@ -1061,6 +1061,12 @@ html[data-theme="dark"] .ts-pw li.met{color:var(--accent)}
 html[data-theme="dark"] .ts-pw li.met .pw-ico{background:#12857A;border-color:var(--accent);color:#fff}
 html[data-theme="dark"] .ts-pw li.bad{color:var(--owed)}
 html[data-theme="dark"] .ts-note{background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+html[data-theme="dark"] .po-cur{background:var(--bg);border:1px solid var(--line)}
+html[data-theme="dark"] .po-cur .po-kind{color:var(--muted)}
+html[data-theme="dark"] .po-methods{border:0}
+html[data-theme="dark"] .po-methods legend{color:var(--ink)}
+html[data-theme="dark"] .po-methods label{color:var(--ink)}
+html[data-theme="dark"] .po-methods input{accent-color:var(--accent)}
 /* inline colours written by page scripts (calendar popover tags, student progress chart) */
 html[data-theme="dark"] [style*="background:#F1EFEA"]{background:#243048!important}
 html[data-theme="dark"] [style*="background:rgba(19,35,63,.10)"]{background:rgba(255,255,255,.08)!important}

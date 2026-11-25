@@ -53,5 +53,64 @@
     if (r.indexOf("pwned") >= 0) out.push("not be one that has appeared in a data breach");
     return out.length ? "Your password needs to " + out.join(", ") + "." : "That password isn’t strong enough. Try a longer one.";
   }
-  return { NAME_MAX: NAME_MAX, normalisePhone: normalisePhone, phoneDisplay: phoneDisplay, phoneForEdit: phoneForEdit, nameProblem: nameProblem, errorText: errorText, weakPasswordText: weakPasswordText };
+
+  // ---------------------------------------------------------------- payout details (T24c step 3)
+  // The database (tutor_save_payout) is the authority; these checks give an earlier, friendlier answer and never leave the page.
+  var METHODS = { paynow_mobile: "PayNow mobile", paynow_uen: "PayNow UEN", bank: "Bank account" };
+  var BANKS = ["DBS / POSB", "OCBC", "UOB", "Standard Chartered", "Maybank", "HSBC", "Citibank", "CIMB", "Bank of China", "Other"];
+  var UEN_SHAPES = [/^\d{8}[A-Z]$/, /^(19|20)\d{2}\d{5}[A-Z]$/, /^[TSR]\d{2}[A-Z]{2}\d{4}[A-Z]$/];
+  function strip(s) { return String(s == null ? "" : s).replace(/[\s\-]/g, ""); }
+  // PayNow needs a mobile: +65 then 8 digits starting 8 or 9 (not 6, which is a landline). → { ok, value:"+65…" } | { ok:false, error }
+  function normalisePaynowMobile(s) {
+    var raw = strip(s);
+    if (/^[89]\d{7}$/.test(raw)) raw = "+65" + raw; else if (/^65[89]\d{7}$/.test(raw)) raw = "+" + raw;
+    if (!/^\+65[89]\d{7}$/.test(raw)) return { ok: false, error: "Use a Singapore mobile that starts with 8 or 9, like 8123 4567." };
+    return { ok: true, value: raw };
+  }
+  function normaliseUen(s) {
+    var raw = strip(s).toUpperCase();
+    if (!UEN_SHAPES.some(function (re) { return re.test(raw); })) return { ok: false, error: "A UEN has 9 or 10 characters, like 53123456K or 201912345A." };
+    return { ok: true, value: raw };
+  }
+  function normaliseAccount(s) {
+    var raw = strip(s);
+    if (!/^\d{7,16}$/.test(raw)) return { ok: false, error: "An account number is 7 to 16 digits, with no letters." };
+    return { ok: true, value: raw };
+  }
+  function mask(v) { v = String(v == null ? "" : v); return v ? "•••••" + v.slice(-4) : ""; }
+  // f = { method, value, bank, holder, confirm } as typed → { ok:true, args } (what to send) or { ok:false, error, field } with the box to focus
+  function validatePayout(f) {
+    var m = f && f.method, bank = String((f && f.bank) || "").trim(), holder = String((f && f.holder) || "").trim(), r;
+    if (!METHODS[m]) return { ok: false, error: "Choose how your centre should pay you.", field: "method" };
+    if (m === "paynow_mobile") { r = normalisePaynowMobile(f.value); if (!r.ok) return { ok: false, error: r.error, field: "value" }; }
+    else if (m === "paynow_uen") { r = normaliseUen(f.value); if (!r.ok) return { ok: false, error: r.error, field: "value" }; }
+    else {
+      if (bank.length < 2 || bank.length > 60) return { ok: false, error: "Choose your bank, or type its name.", field: "bank" };
+      r = normaliseAccount(f.value); if (!r.ok) return { ok: false, error: r.error, field: "value" };
+      if (holder.length < 2 || holder.length > 80) return { ok: false, error: "Type the name on the bank account (2 to 80 characters).", field: "holder" };
+    }
+    if (!f.confirm) return { ok: false, error: "Please tick that these are your own details.", field: "confirm" };
+    return { ok: true, args: { p_method: m, p_value: r.value, p_bank_name: m === "bank" ? bank : null, p_holder: m === "bank" ? holder : null, p_confirm: true } };
+  }
+  // a full value for the Show button: "+65 8123 4567" | "53123456K" | "Example Bank · 1234567890 · Name on account"
+  function payoutDisplay(p) {
+    if (!p) return "";
+    if (p.method === "paynow_mobile") return phoneDisplay(p.paynow_id) || String(p.paynow_id || "");
+    if (p.method === "paynow_uen") return String(p.paynow_id || "");
+    return [p.bank_name, p.account_no, p.account_holder].filter(Boolean).join(" · ");
+  }
+  function payoutErrorText(err) {
+    var m = String((err && err.message) || "");
+    if (/^BAD_PAYNOW_MOBILE/.test(m)) return "Use a Singapore mobile that starts with 8 or 9, like 8123 4567.";
+    if (/^BAD_UEN/.test(m)) return "A UEN has 9 or 10 characters, like 53123456K or 201912345A.";
+    if (/^BAD_ACCOUNT/.test(m)) return "An account number is 7 to 16 digits, with no letters.";
+    if (/^BAD_BANK_NAME/.test(m)) return "Choose your bank, or type its name.";
+    if (/^BAD_HOLDER/.test(m)) return "Type the name on the bank account (2 to 80 characters).";
+    if (/^BAD_METHOD/.test(m)) return "Choose how your centre should pay you.";
+    if (/^NEED_CONFIRM/.test(m)) return "Please tick that these are your own details.";
+    if (/^NO_PAYOUT/.test(m)) return "You have no payout details saved yet.";
+    if (/NOT_FOUND/.test(m)) return "We couldn’t find your tutor profile. Please reload the page.";
+    return "That didn’t save. Please try again in a moment.";
+  }
+  return { METHODS: METHODS, BANKS: BANKS, normalisePaynowMobile: normalisePaynowMobile, normaliseUen: normaliseUen, normaliseAccount: normaliseAccount, mask: mask, validatePayout: validatePayout, payoutDisplay: payoutDisplay, payoutErrorText: payoutErrorText, NAME_MAX: NAME_MAX, normalisePhone: normalisePhone, phoneDisplay: phoneDisplay, phoneForEdit: phoneForEdit, nameProblem: nameProblem, errorText: errorText, weakPasswordText: weakPasswordText };
 });
