@@ -51,6 +51,9 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-25 owner: "continue with the rest first, I will test later" => workers continue in parallel; bundle 3 test list already sent; nothing else needs merging until owner tests.
 
+- 2026-11-25 owner "all yes" on T3.1 decisions (tab permissions; centre.staff has 8 perms; past-unmarked = 60 days; distinct icon later) and T7.2 decisions (staff with Manage tutors may resend; welcome page says Welcome to TutorDeck; claim at most every 30 min per login; add the 2 new test files to .github/workflows/checks.yml in a bundle). Owner also asked: app must handle BOTH tuition centres and 1-to-1 (remote) centres such as Opus Tuition: design goal for all centre work: never require class/room/branch; 1-to-1 lessons first-class; add online lesson link + tutor pay per lesson in T4/T3 planning.
+- DEV migrations pending apply (owner said all yes; GitHub was 503 so orchestrator could not read files): migration_staff_home.sql then seed_dev_demo.sql (t3-1), migration_invites.sql (t7-2), migration_tutor_profile.sql (t24c-1). Apply order: staff_home, invites, tutor_profile. Via orchestrator's Supabase connector (reaches DEV tuzxsqkfzrjssnpcoale) after GitHub is back.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -98,6 +101,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T25 | Assemble bundle 3 (T23 + T24 + T12b + T12c + T18b) into one PR to dev; owner OK needed to MERGE | MERGED into dev 2026-11-25 (#127, v271, CI green after contrast fix) | `claude/bundle-3` |
 | T3.1 | T3 step 1: staff seed logins + centre Home (staff_home) | doing | NEW worker / `claude/t3-1-staff-home` |
 | T7.2 | T7 code: reset page uses password rules (E2), invite email api/send-invite (E4), admin Resend invite button (E5), owner-steps doc; owner does E1/E3 (Supabase SMTP) later | doing | NEW worker / `claude/t7-2-invites` |
+| T3.2 | T3 step 2: centre Students + households (view/add/edit/discontinue), 1-to-1 friendly | doing | NEW worker / `claude/t3-2-students` (on t3-1) |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
