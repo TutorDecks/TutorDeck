@@ -12,7 +12,7 @@
   function missing(err) { return err && (err.code === "42P01" || err.code === "PGRST205" || err.code === "42883" || /does not exist|Could not find/i.test(err.message || "")); }
   function prettyDate(iso) { return new Date(iso + "T00:00:00").toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" }); }
 
-  var st = { org: null, role: null, saved: null, draft: null, step: "profile", members: [], branches: [], rooms: [], terms: [], holidays: [] };
+  var st = { lib: undefined, libBusy: false, org: null, role: null, saved: null, draft: null, step: "profile", members: [], branches: [], rooms: [], terms: [], holidays: [] };
   var EXTRA_TABS = [["plan", "Plan"], ["audit", "Audit log"]];
   function isOwner() { return st.role === "owner"; }
   function setup() { return st.org && st.org.status === "setup"; }
@@ -47,6 +47,9 @@
       sb().from("holidays").select("*").eq("org_id", id).order("starts_on")
     ]);
     st.members = q[0].data || []; st.branches = q[1].data || []; st.rooms = q[2].data || []; st.terms = q[3].data || []; st.holidays = q[4].data || [];
+    if (st.lib === undefined) {
+      try { var lr = await fetch("assets/data/sg-public-holidays.json", { cache: "no-cache" }); st.lib = lr.ok ? await lr.json() : null; } catch (e) { st.lib = null; }
+    }
   }
   function fail(err) { $("og").innerHTML = '<div class="card og-card"><p class="msg err" style="margin:0">' + esc(err.message) + '</p><p style="margin:12px 0 0"><a class="og-link" href="org">← Your organisations</a></p></div>'; }
   function notReady() { $("og").innerHTML = '<div class="card og-card og-empty"><h2>Not switched on yet</h2><p class="og-sub">Organisations need <b>db/migration_org_foundation.sql</b> run first.</p></div>'; }
@@ -260,8 +263,69 @@
       (can ? '<div class="og-row"><div class="field"><label for="b-name">Branch name</label><input id="b-name" type="text" placeholder="e.g. Tampines"></div><div class="field"><label for="b-addr">Address (optional)</label><input id="b-addr" type="text"></div></div><button class="btn" id="b-add">Add branch</button>' : "") +
       "<h3>Terms</h3><div class=\"og-list\">" + (dated(st.terms, "terms") || '<p class="muted" style="font-size:13px;margin:0">No terms yet (only needed for per-term fees).</p>') + "</div>" +
       (can ? dateForm("t", "Term name", "e.g. Term 1 2027") : "") +
+      libraryHtml(can) +
       "<h3>Holidays</h3><div class=\"og-list\">" + (dated(st.holidays, "holidays") || '<p class="muted" style="font-size:13px;margin:0">No holidays yet.</p>') + "</div>" +
       (can ? dateForm("h", "Holiday", "e.g. Chinese New Year") : "") + "<h3>Rule</h3>";
+  }
+  // Singapore public holidays (assets/data/sg-public-holidays.json). Nothing ticked by default; ticking inserts a normal `holidays` row.
+  var HL = window.HolidayLibrary;
+  function shortDate(iso) { return new Date(iso + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }); }
+  function libraryHtml(can) {
+    var head = "<h3>Singapore public holidays</h3>";
+    if (!st.lib || !HL) return head + '<p class="og-help" style="margin-top:0">The holiday list could not be loaded. You can still add holidays below.</p>';
+    var m = st.lib._meta || {}, groups = HL.byYear(st.lib);
+    var out = head + '<p class="og-help" style="margin-top:0">Optional. Tick the days your centre is closed; nothing is added unless you tick it. Monday substitutes are not included in “Select all”. Source: Ministry of Manpower, checked ' + esc(shortDate(m.fetched_on || "2026-01-01")) + ".</p>";
+    groups.forEach(function (g) {
+      out += '<div class="og-hol"><div class="og-hol-head"><b>' + g.year + "</b>" + (can ? '<span class="og-hol-btns"><button class="btn" type="button" data-hsel="' + g.year + '">Select all for ' + g.year + '</button><button class="btn" type="button" data-hclr="' + g.year + '">Clear</button></span>' : "") + '</div><div class="og-hol-list">';
+      g.rows.forEach(function (h) {
+        var mt = HL.match(st.holidays, h), on = !!mt, rangeOnly = on && !mt.exact;
+        var meta = shortDate(h.date) + (h.substitute_for ? " · only if you also close on the Monday" : "") + (rangeOnly ? " · part of “" + esc(mt.row.name) + "”" : "");
+        out += '<label class="og-check og-hol-row"><input type="checkbox" data-hol="' + esc(h.date) + '"' + (on ? " checked" : "") + (!can || rangeOnly ? " disabled" : "") + '><span><span class="og-hol-name">' + esc(h.name) + '</span>' +
+          (h.status === "to_confirm" ? ' <span class="og-badge grey">To confirm</span>' : "") + '<span class="meta og-hol-meta">' + meta + "</span></span></label>";
+      });
+      out += "</div></div>";
+    });
+    var none = (m.years_not_published_yet || []).map(function (y) { return y + ": not published yet"; });
+    return out + (none.length ? '<p class="og-help">' + esc(none.join(" · ")) + ".</p>" : "");
+  }
+  async function libWrite(fn) {
+    if (st.libBusy) return; st.libBusy = true;
+    try { await fn(); await loadSide(); } catch (e) { TL.alert(e.message || String(e)); try { await loadSide(); } catch (e2) {} }
+    st.libBusy = false; var y = window.scrollY; renderStep(S.STEPS[1]); window.scrollTo(0, y);
+  }
+  function bindLibrary() {
+    var body = $("og-body");
+    body.querySelectorAll("[data-hol]").forEach(function (cb) {
+      cb.onchange = function () {
+        var h = st.lib.holidays.filter(function (x) { return x.date === cb.getAttribute("data-hol"); })[0]; if (!h) return;
+        libWrite(async function () {
+          var mt = HL.match(st.holidays, h);
+          if (cb.checked) {
+            if (mt) return; // already has a row for that day: never double up
+            var r = await sb().from("holidays").insert(Object.assign({ org_id: st.org.id }, HL.toRow(h))); if (r.error) throw r.error;
+          } else if (mt && mt.exact) {
+            var d = await sb().from("holidays").delete().eq("id", mt.row.id); if (d.error) throw d.error;
+          }
+        });
+      };
+    });
+    body.querySelectorAll("[data-hsel]").forEach(function (b) {
+      b.onclick = function () {
+        var y = +b.getAttribute("data-hsel");
+        libWrite(async function () {
+          await loadSide(); var rows = HL.toTick(st.holidays, st.lib, y); if (!rows.length) return;
+          var r = await sb().from("holidays").insert(rows.map(function (x) { return Object.assign({ org_id: st.org.id }, x); })); if (r.error) throw r.error;
+        });
+      };
+    });
+    body.querySelectorAll("[data-hclr]").forEach(function (b) {
+      b.onclick = async function () {
+        var y = +b.getAttribute("data-hclr"), ids = HL.toClear(st.holidays, st.lib, y);
+        if (!ids.length) return TL.toast("Nothing ticked for " + y);
+        if (!(await TL.confirm({ title: "Clear " + ids.length + " holiday" + (ids.length === 1 ? "" : "s") + " for " + y + "?", message: "Removes the ticked Singapore public holidays for " + y + ". Holidays you added yourself are kept.", confirmText: "Clear", danger: true }))) return;
+        libWrite(async function () { var d = await sb().from("holidays").delete().in("id", ids); if (d.error) throw d.error; });
+      };
+    });
   }
   function dateForm(p, label, ph) {
     return '<div class="og-row"><div class="field"><label for="' + p + '-name">' + label + '</label><input id="' + p + '-name" type="text" placeholder="' + ph + '"></div>' +
@@ -274,7 +338,7 @@
     await loadSide(); var y = window.scrollY; renderStep(S.STEPS[1]); window.scrollTo(0, y);
   }
   function bindCalendar() {
-    var body = $("og-body");
+    var body = $("og-body"); if (st.lib && HL) bindLibrary();
     if ($("b-add")) $("b-add").onclick = function () { var n = $("b-name").value.trim(); if (!n) return $("b-name").focus(); addRow("branches", { name: n, address: $("b-addr").value.trim() || null }); };
     [["t", "terms"], ["h", "holidays"]].forEach(function (x) {
       if (!$(x[0] + "-add")) return;
