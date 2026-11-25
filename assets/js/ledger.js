@@ -70,7 +70,7 @@
     var start=new Date(fromISO+"T00:00:00"),end=new Date(toISO+"T00:00:00");
     if(Math.round((end-start)/86400000)+1>366){msg.textContent="Range too large \u2014 keep it within a year.";msg.className="msg err";return;}
     var b=$("cr-save");b.disabled=true;
-    var ex=await window.sb.from("lessons").select("student_id,lesson_date,start_time").gte("lesson_date",fromISO).lte("lesson_date",toISO);
+    var ex=await TL.scope(window.sb.from("lessons").select("student_id,lesson_date,start_time")).gte("lesson_date",fromISO).lte("lesson_date",toISO);
     var seen={};(ex.data||[]).forEach(function(l){seen[l.student_id+"|"+l.lesson_date+"|"+hm(l.start_time)]=1;});
     var rows=[];
     for(var d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
@@ -86,7 +86,7 @@
     if(!rows.length){msg.textContent="That range is already logged \u2014 nothing new to add.";msg.className="msg";return;}
     if(!(await TL.confirm({title:"Log lessons",message:"Add "+TL.plural(rows.length,"lesson")+" for "+rangeText(fromISO,toISO)+"? Lessons already logged are skipped.",confirmText:"Log "+rows.length})))return;
     b.disabled=true;
-    var res=await window.sb.from("lessons").insert(rows);
+    var res=await window.sb.from("lessons").insert(TL.orgFields(rows));
     b.disabled=false;
     if(res.error){msg.textContent="Couldn't generate: "+res.error.message;msg.className="msg err";return;}
     closeCustom();load();
@@ -108,7 +108,7 @@
   async function loadSentMap(){
     sentByLesson={}; sentKnown=false;
     try{
-      var r=await window.sb.from("invoices").select("data,sent_at").not("sent_at","is",null);
+      var r=await TL.scope(window.sb.from("invoices").select("data,sent_at")).not("sent_at","is",null);
       if(r.error) return;
       sentKnown=true;
       (r.data||[]).forEach(function(v){ var ids=(v.data&&v.data.lesson_ids)||[]; ids.forEach(function(id){
@@ -668,12 +668,12 @@
       student:billTo,lessons:sorted,total:total,combined:!single,paid:true,
       payTo:profile.paynow_id?PayNow.normalize(profile.paynow_type,profile.paynow_id):(hasBank(profile)?bankObj(profile).name:"")};
     var html=invoiceHTML(data,"");   // paid receipt — no QR needed
-    var ins=await window.sb.from("invoices").insert({
+    var ins=await window.sb.from("invoices").insert(TL.orgFields({
       tutor_id:userId,student_id:single?stuIds[0]:null,invoice_no:invoiceNo,
       issued_date:pd,total:total,status:"paid",paid_date:pd,
       data:{html:html,title:"Invoice_"+slug+"_"+pd,
         students:single?null:stuIds,name:billTo,lesson_ids:rows.map(function(l){return l.id;})}
-    }).select("id").single();
+    })).select("id").single();
     if(!ins.error) noteInvNo(invoiceNo);
     return ins.error?null:(ins.data&&ins.data.id);
   }
@@ -686,7 +686,7 @@
   // attachment). With opts.create, freshly-paid lessons that no invoice covers get a paid receipt.
   async function reconcileInvoicesForLessons(ids, paidDate, opts){
     opts=opts||{};
-    var q=await window.sb.from("invoices").select("id,data,status");
+    var q=await TL.scope(window.sb.from("invoices").select("id,data,status"));
     if(q.error)return null;
     var matches=(q.data||[]).filter(function(v){
       var lids=(v.data&&v.data.lesson_ids)||[];
@@ -695,7 +695,7 @@
     var firstId=matches.length?matches[0].id:null;
     for(var i=0;i<matches.length;i++){
       var m=matches[i], lids=m.data.lesson_ids;
-      var chk=await window.sb.from("lessons").select("id,paid").in("id",lids);
+      var chk=await TL.scope(window.sb.from("lessons").select("id,paid")).in("id",lids);
       var got=chk.data||[];
       var allPaid=got.length>0 && got.every(function(l){return l.paid;});
       if(allPaid && m.status!=="paid")
@@ -729,7 +729,7 @@
   }
   // Does any invoice covering these lessons already have a payment screenshot attached?
   async function existingProofFor(ids){
-    var q=await window.sb.from("invoices").select("proof_path,data");
+    var q=await TL.scope(window.sb.from("invoices").select("proof_path,data"));
     if(q.error)return null;
     var hit=null;
     (q.data||[]).forEach(function(v){
@@ -881,7 +881,7 @@
     $("m-save").disabled=true;
     var res=editLessonId
       ? await window.sb.from("lessons").update(fields).eq("id",editLessonId)   // editing never changes one_off
-      : await window.sb.from("lessons").insert(Object.assign({tutor_id:userId,one_off:true},fields));   // manual add = one-off
+      : await window.sb.from("lessons").insert(TL.orgFields(Object.assign({tutor_id:userId,one_off:true},fields)));   // manual add = one-off
     $("m-save").disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
     // Ticking/unticking "already paid" here must flow through to any invoice covering this lesson.
@@ -897,7 +897,7 @@
     var last=new Date(y,m+1,0).getDate();
     var mStart=iso(new Date(y,m,1)),mEnd=iso(new Date(y,m,last));
     var mo=["January","February","March","April","May","June","July","August","September","October","November","December"][m];
-    var ex=await window.sb.from("lessons").select("student_id,lesson_date,start_time").gte("lesson_date",mStart).lte("lesson_date",mEnd);
+    var ex=await TL.scope(window.sb.from("lessons").select("student_id,lesson_date,start_time")).gte("lesson_date",mStart).lte("lesson_date",mEnd);
     var seen={};(ex.data||[]).forEach(function(l){seen[l.student_id+"|"+l.lesson_date+"|"+hm(l.start_time)]=1;});
     var rows=[];
     for(var day=1;day<=last;day++){
@@ -911,7 +911,7 @@
     }
     if(!rows.length){TL.alert(mo+" is already fully logged — nothing new to add.");return;}
     if(!(await TL.confirm({title:"Log "+mo,message:"Add "+TL.plural(rows.length,"lesson")+" to fill every weekly slot in "+mo+"? Lessons already logged are skipped.",confirmText:"Log "+rows.length})))return;
-    var res=await window.sb.from("lessons").insert(rows);
+    var res=await window.sb.from("lessons").insert(TL.orgFields(rows));
     if(res.error){TL.alert("Couldn't generate: "+res.error.message);return;}
     load();
   }
@@ -919,7 +919,7 @@
     if(!slots.length){TL.alert("No recurring slots to generate from. Add them on the Planner first.");return;}
     var mon=mondayOf(new Date());mon.setDate(mon.getDate()+genWeekOff*7);
     var weekStart=iso(mon),end=new Date(mon);end.setDate(mon.getDate()+6);var weekEnd=iso(end);
-    var ex=await window.sb.from("lessons").select("student_id,lesson_date,start_time").gte("lesson_date",weekStart).lte("lesson_date",weekEnd);
+    var ex=await TL.scope(window.sb.from("lessons").select("student_id,lesson_date,start_time")).gte("lesson_date",weekStart).lte("lesson_date",weekEnd);
     var seen={};(ex.data||[]).forEach(function(l){seen[l.student_id+"|"+l.lesson_date+"|"+hm(l.start_time)]=1;});
     var rows=[];
     slots.forEach(function(s){
@@ -930,7 +930,7 @@
     });
     if(!rows.length){TL.alert("This week is already logged — nothing new to add.");return;}
     if(!(await TL.confirm({title:"Log this week",message:"Add "+TL.plural(rows.length,"lesson")+" for "+rangeText(weekStart,weekEnd)+"? Lessons already logged are skipped.",confirmText:"Log "+rows.length})))return;
-    var res=await window.sb.from("lessons").insert(rows);
+    var res=await window.sb.from("lessons").insert(TL.orgFields(rows));
     if(res.error){TL.alert("Couldn't generate: "+res.error.message);return;}
     load();
   }
@@ -1061,7 +1061,7 @@
   // Read from the saved invoices on load; older date-style numbers (INV-20261022-NAME) are ignored.
   var invMax={};
   async function loadInvSeq(){
-    var r=await window.sb.from("invoices").select("invoice_no"); if(r.error) return;
+    var r=await TL.scope(window.sb.from("invoices").select("invoice_no")); if(r.error) return;
     invMax={}; (r.data||[]).forEach(function(v){ noteInvNo(v.invoice_no); });
   }
   function noteInvNo(no){
@@ -1245,7 +1245,7 @@
   function isReplaced(v){ return !!(v&&v.data&&v.data.replaced_by); }
   async function findSameInvoice(lessons,total){
     var key=lessonKey(lessons.map(function(l){return l.id;}));
-    var q=await window.sb.from("invoices").select("id,invoice_no,issued_date,total,status,sent_at,student_id,data");
+    var q=await TL.scope(window.sb.from("invoices").select("id,invoice_no,issued_date,total,status,sent_at,student_id,data"));
     if(q.error) return null;
     return (q.data||[]).filter(function(v){
       return v.status!=="paid" && !isReplaced(v) && v.data && v.data.html &&
@@ -1259,7 +1259,7 @@
   // Returns null (no overlap), {reopen:invoice}, or {olds, fresh, union, extra}.
   async function findOverlap(lessons, stuIds){
     var mine={}; lessons.forEach(function(l){mine[String(l.id)]=1;});
-    var q=await window.sb.from("invoices").select("id,invoice_no,issued_date,total,status,sent_at,student_id,data");
+    var q=await TL.scope(window.sb.from("invoices").select("id,invoice_no,issued_date,total,status,sent_at,student_id,data"));
     if(q.error) return null;
     var olds=(q.data||[]).filter(function(v){
       var lids=(v.data&&v.data.lesson_ids)||[];
@@ -1312,7 +1312,7 @@
   // "Replaced by …" (kept for reference, left out of every total and of paid/unpaid syncing).
   async function markReplaced(newId,newNo,lessonIds){
     var mine={}; (lessonIds||[]).forEach(function(id){mine[String(id)]=1;});
-    var q=await window.sb.from("invoices").select("id,status,data"); if(q.error) return;
+    var q=await TL.scope(window.sb.from("invoices").select("id,status,data")); if(q.error) return;
     var olds=(q.data||[]).filter(function(v){
       var lids=(v.data&&v.data.lesson_ids)||[];
       return v.id!==newId && v.status!=="paid" && !isReplaced(v) && lids.length && lids.every(function(x){return mine[String(x)];});
@@ -1406,12 +1406,12 @@
   async function saveInvoiceNow(){
     if(!window._invHTML||!window._invMeta)return;
     var m=window._invMeta;
-    var res=await window.sb.from("invoices").insert({
+    var res=await window.sb.from("invoices").insert(TL.orgFields({
       tutor_id:userId,student_id:m.studentId,invoice_no:m.invoiceNo,
       issued_date:m.issuedDate,total:m.total,status:"issued",
       data:{html:window._invHTML,title:window._invTitle||("Invoice_"+m.invoiceNo),
         students:m.students||null,name:m.name||window._invBillTo||null,lesson_ids:m.lessonIds||null}
-    }).select("id").single();
+    })).select("id").single();
     if(!res.error&&res.data){window._invSavedId=res.data.id;noteInvNo(m.invoiceNo);}
     if(res.error){TL.alert("Couldn't save invoice: "+res.error.message);return;}
     window._invSaved=true;   // recorded in the Invoices tab
@@ -1554,17 +1554,17 @@
     if(pr.error) pr=await window.sb.from("profiles").select(PCOLS).eq("id",userId).single();   // older DB without full_name
     profile=pr.error?null:pr.data;
 
-    var st=await window.sb.from("students").select("id,name,active,contact,recipient_name,pay_by_bank,level,end_date").order("name");
+    var st=await TL.scope(window.sb.from("students").select("id,name,active,contact,recipient_name,pay_by_bank,level,end_date")).order("name");
     students=st.data||[];nameById={};contactById={};recipientById={};payByBankById={};levelById={};endById={};householdBy={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;payByBankById[s.id]=!!s.pay_by_bank;levelById[s.id]=s.level||"";endById[s.id]=s.end_date||null;householdBy[s.id]=(function(c){var d=(c||"").replace(/\D/g,"");if(d.length===10&&d.slice(0,2)==="65")d=d.slice(2);return d||null;})(s.contact);});
     studentOptions();
 
-    var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
+    var sl=await TL.scope(window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split")).eq("active",true);
     slots=sl.data||[];
 
     var LCOLS="id,student_id,lesson_date,start_time,end_time,subject,level,rate,split,amount,paid,paid_date,status,postponed,compensation";
-    var ls=await window.sb.from("lessons").select(LCOLS+",charge_note");
+    var ls=await TL.scope(window.sb.from("lessons").select(LCOLS+",charge_note"));
     hasChargeNote=!ls.error;
-    if(ls.error) ls=await window.sb.from("lessons").select(LCOLS);   // db/migration_lesson_charge_note.sql not run yet
+    if(ls.error) ls=await TL.scope(window.sb.from("lessons").select(LCOLS));   // db/migration_lesson_charge_note.sql not run yet
     if(ls.error){$("k-pending").textContent="—";$("out-hint").textContent="Couldn't load: "+ls.error.message;return;}
     var lessons=ls.data||[];
     // A cancelled lesson's billable amount is its compensation (0 if none) — everything

@@ -101,10 +101,12 @@ window.TL = (function () {
 
   // Build sidebar + topbar around the page's <div id="view">
   function mountShell(active, email, title, sub) {
+    var pageId = active;   // the page's own id (the menu may show a centre's items instead, T12c)
     var mode = roleMode(), G = mode === "tutor-only" ? TUTOR_GROUPS : GROUPS;
-    var grp = groupOf(active, G);
     var extras = (mode === "tutor-only" ? [] : mode === "both" ? [TUTOR_EXTRA].concat(EXTRA) : EXTRA)
       .filter(function (n) { return !n.ownerOnly || isOwner; });
+    if (mode !== "tutor-only" && inCentre()) { var cm = centreMenu(active); G = cm.groups; extras = cm.extras; active = cm.active; }   // T12c: a centre has its own menu
+    var grp = groupOf(active, G);
     var onExtra = extras.some(function (n) { return n.id === active; });
 
     // Desktop top bar: brand · the four groups · Settings/Materials icons + account menu.
@@ -155,6 +157,7 @@ window.TL = (function () {
           <a class="tn-brand" href="home" aria-label="TutorDeck home">${LOGO}<b>TutorDeck</b></a>
           <nav class="tn-links" aria-label="Main">${side}</nav>
           <div class="tn-right">
+            ${orgChipHtml("desk")}
             ${sideExtra}
             <div class="tn-acct">
               <button type="button" id="tl-acct" class="tn-avatar" aria-haspopup="true" aria-expanded="false" aria-label="Account" title="${esc(brandName)}">${esc(initials)}</button>
@@ -168,6 +171,7 @@ window.TL = (function () {
       </header>
       <div class="main" role="main">
         <div class="topbar">
+          ${orgChipHtml("phone")}
           <div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div>
         </div>
         ${subtabs}
@@ -181,6 +185,7 @@ window.TL = (function () {
     document.body.appendChild(app);
     try { if (window.TLENG_CONFIG && window.TLENG_CONFIG.showEnvBanner) window.TLENG_CONFIG.showEnvBanner(); } catch (e) {}   // "Test version" tab on non-production builds
     document.getElementById("tl-signout").addEventListener("click", signOut);
+    wireOrgSwitcher();
     document.getElementById("tl-signout-m").addEventListener("click", signOut);
     // Desktop account menu
     var acct = document.getElementById("tl-acct"), acctWrap = acct.parentNode;
@@ -194,7 +199,7 @@ window.TL = (function () {
     scrim.addEventListener("click", function () { setSheet(false); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") { setSheet(false); acctWrap.classList.remove("open"); } });
     // Client view: one floating eye on every page. Tap = hide money instantly (no reload), tap again = show.
-    CV_ACTIVE = active;
+    CV_ACTIVE = pageId;
     if (!document.getElementById("td-cv")) {
       var cvb = document.createElement("button");
       cvb.type = "button"; cvb.id = "td-cv"; cvb.className = "cv-fab";
@@ -310,6 +315,105 @@ window.TL = (function () {
     if (!active || TUTOR_ONLY_PAGES.indexOf(active) >= 0) return null;
     return "tutor";
   }
+  // ======== T12b: the CURRENT ORGANISATION (TL.org) and the organisation switcher ========
+  // Everyone works "in" one organisation: their solo one (what every login has today), or a centre they chose with the
+  // switcher. Pure choosing logic: assets/js/org-current.js (unit-tested). The list of the person's organisations is read once
+  // (one query about every 12 hours, same as roleMode); the CHOICE is stored per user (td:<uid>:org_pick) and applied at once.
+  // Any error or doubt = their solo organisation. Step 2 only adds the concept and the chip: no page filters by it yet.
+  var OC = window.OrgCurrent || null;
+  function orgCache() {
+    try { var o = JSON.parse(store.get("orgs") || "null"); if (o && Array.isArray(o.list) && o.at > Date.now() - 12 * 3600e3) return o.list; } catch (e) {}
+    return null;
+  }
+  function orgList() { return orgCache() || []; }
+  // → { id, kind, role, name }. On doubt: { id: null, kind: "solo", role: null, name: "" } (id null = "my solo organisation, id unknown").
+  function org() {
+    try { var c = OC && OC.pick(orgList(), store.get("org_pick")); if (c) return c; } catch (e) {}
+    return { id: null, kind: "solo", role: null, name: "" };
+  }
+  async function detectOrgs() {
+    if (!OC || orgCache()) return;
+    var list = [];
+    try {
+      var m = await window.sb.from("memberships").select("org_id,role,status,organisations(id,kind,trading_name)").eq("user_id", UID).eq("status", "active");
+      if (!m.error) {                                 // an error (organisation tables not installed here yet) is remembered as "no organisations" = solo
+        list = OC.list(m.data);
+        var solo = list.filter(function (o) { return o.kind === "solo"; })[0];
+        if (solo && list.some(function (o) { return o.kind === "centre" && o.role === "owner"; })) {
+          // a centre owner: does their own solo organisation have any students? (error or doubt = yes, keep it)
+          var st = await window.sb.from("students").select("id", { count: "exact", head: true }).eq("org_id", solo.id);
+          list = OC.dropEmptySolo(list, st.error ? null : st.count);
+        }
+      }
+    } catch (e) {}
+    store.set("orgs", JSON.stringify({ list: list, at: Date.now() }));
+  }
+  function chooseOrg(id) {
+    var o = orgList().filter(function (x) { return x.id === id; })[0];
+    if (!o) return;
+    store.set("org_pick", o.id);
+    location.assign(OC.landing(o));
+  }
+  function orgSwitchOn() { try { return !!(OC && OC.showSwitcher(orgList(), roleMode())); } catch (e) { return false; } }
+  // Two chips, one menu each: the top bar (desktop) and the top of the page (phones, where the top bar is hidden). Hidden unless >1 organisation.
+  function orgChipHtml(where) {
+    if (!orgSwitchOn()) return "";
+    var cur = org(), list = orgList();
+    return '<div class="org-sw org-sw-' + where + '"><button type="button" class="org-chip" aria-haspopup="true" aria-expanded="false" title="Switch organisation">' +
+        '<span class="org-dot ' + (cur.kind === "solo" ? "solo" : "centre") + '"></span><b>' + esc(cur.name || "My tuition") + '</b><svg class="i org-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>' +
+      '<div class="org-menu" role="menu"><div class="org-h">Working in</div>' + list.map(function (o) {
+        return '<button type="button" role="menuitem" data-org="' + esc(o.id) + '"' + (o.id === cur.id ? ' aria-current="true" class="on"' : "") + '>' +
+          '<span class="org-dot ' + (o.kind === "solo" ? "solo" : "centre") + '"></span><span class="org-n">' + esc(o.name || "My tuition") + '</span>' +
+          '<small>' + (o.kind === "solo" ? "Your tuition" : o.role === "owner" ? "Centre · owner" : o.role === "staff" ? "Centre · staff" : "Centre · tutor") + '</small></button>';
+      }).join("") + '</div></div>';
+  }
+  function wireOrgSwitcher() {
+    var sws = document.querySelectorAll(".org-sw");
+    sws.forEach(function (sw) {
+      var chip = sw.querySelector(".org-chip");
+      chip.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var o = !sw.classList.contains("open");
+        sws.forEach(function (x) { x.classList.remove("open"); x.querySelector(".org-chip").setAttribute("aria-expanded", "false"); });
+        sw.classList.toggle("open", o); chip.setAttribute("aria-expanded", o ? "true" : "false");
+      });
+      sw.querySelectorAll("[data-org]").forEach(function (b) {
+        b.addEventListener("click", function () { var id = b.getAttribute("data-org"); if (id === org().id) { sw.classList.remove("open"); return; } chooseOrg(id); });
+      });
+    });
+    if (sws.length) {
+      document.addEventListener("click", function () { sws.forEach(function (x) { x.classList.remove("open"); }); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape") sws.forEach(function (x) { x.classList.remove("open"); }); });
+    }
+  }
+  // ======== end T12b ========
+
+  // ======== T12c: solo pages see ONLY the current solo organisation; centres get their own menu ========
+  // Pure logic in assets/js/org-scope.js (unit-tested). Id unknown (organisation tables missing, as on LIVE today), or any error = NO filter,
+  // exactly what the pages did before. See docs/orchestrator/T12c-notes.md for every call site.
+  var OS = window.OrgScope || null;
+  function scope(q) { try { return OS ? OS.scope(q, org()) : q; } catch (e) { return q; } }                 // reads: TL.scope(sb.from("x").select("…")).order(…)
+  function orgFields(r) { try { return OS ? OS.fields(r, org()) : r; } catch (e) { return r; } }             // inserts: TL.orgFields({…}) or TL.orgFields([{…}])
+  function orgId() { try { return OS ? OS.soloId(org()) : null; } catch (e) { return null; } }
+  function inCentre() { try { var o = org(); return !!(o && o.kind === "centre" && o.id); } catch (e) { return false; } }
+  function centreRedirect(active) { try { return OS ? OS.centreRedirect(org(), active) : null; } catch (e) { return null; } }
+  // Menu while the current organisation is a centre (a person who is only a tutor there gets My lessons, as a tutor-only login does).
+  var CENTRE_GROUPS = [
+    { id: "orghome", label: "Centre home", ic: "home",     pages: [ { id: "orghome", label: "Centre home", href: "org" } ] },
+    { id: "orglist", label: "Centres",     ic: "students", pages: [ { id: "orglist", label: "Centres", href: "org" } ] }
+  ];
+  function centreMenu(active) {
+    var o = org(), G;
+    if (o.role === "tutor") G = TUTOR_GROUPS;
+    else {
+      var home = "org?id=" + encodeURIComponent(o.id);
+      G = CENTRE_GROUPS.map(function (g, i) { return Object.assign({}, g, { pages: [ Object.assign({}, g.pages[0], { href: i === 0 ? home : "org" }) ] }); });
+    }
+    var on = active === "org" ? (/[?&]id=/.test(location.search) ? "orghome" : "orglist") : active;
+    return { groups: G, active: on, extras: EXTRA.filter(function (n) { return n.id === "settings"; }) };
+  }
+  // ======== end T12c ========
+
   // Old builds kept these unscoped, so a second account in the same browser inherited the first one's
   // state (e.g. "Not logged" hidden, Google Calendar "connected"). Nobody can tell whose they were — drop them.
   (function dropLegacy() {
@@ -623,10 +727,15 @@ window.TL = (function () {
     } catch (e) { /* MFA unavailable — proceed as normal */ }
     // Which menu does this login get? (instant when remembered; one query about every 12 hours; any doubt = the usual menu)
     try { await detectRole(); } catch (e) { /* keep the usual menu */ }
+    try { await detectOrgs(); } catch (e) { /* solo organisation, as always */ }
     // A tutor-only login who types a solo page's address (students, ledger, planner …) goes to My lessons, like Home does.
     // The decision only reads the role we just settled; tutorOnlyRedirect() never fires on a doubt, and never for "tutor" itself.
     var goTo = tutorOnlyRedirect(active, roleMode());
     if (goTo) { location.replace(goTo); return; }
+    // T12c: while the current organisation is a centre, a solo page's address leads to the centre home instead (never for tutor-only, handled above).
+    if (roleMode() !== "tutor-only") { var cgo = centreRedirect(active); if (cgo) { location.replace(cgo); return; } }
+    // T12b: a centre owner/admin whose current organisation is a centre lands on the centre page, not the solo dashboard.
+    try { var homeTo = OC && OC.homeRedirect(active, org()); if (homeTo) { location.replace(homeTo); return; } } catch (e) {}
     // Brand the top bar with this tutor's business name. Draw the page straight away with the name we saw
     // last time on this browser (no blank screen while the profile loads); fix it up if it has changed.
     // First visit on a browser: wait for the profile as before.
@@ -1120,16 +1229,16 @@ window.TL = (function () {
   // Flip any "scheduled" lesson whose time has passed to "done" (unpaid),
   // so completed lessons show up as owed without needing a background server.
   async function promotePastLessons() {
-    if (!window.sb) return;
+    if (!window.sb || inCentre()) return;   // T12c: this is the solo pages' job; a centre's lessons follow attendance, set by the system
     var n = new Date(), p = function (x) { return (x < 10 ? "0" : "") + x; };
     var today = n.getFullYear() + "-" + p(n.getMonth() + 1) + "-" + p(n.getDate());
     var nowT = p(n.getHours()) + ":" + p(n.getMinutes()) + ":" + p(n.getSeconds());
     try {
       // past dates: always promote
-      await window.sb.from("lessons").update({ status: "done" })
+      await scope(window.sb.from("lessons").update({ status: "done" }))
         .eq("status", "scheduled").lt("lesson_date", today);
       // today: promote only those whose end time has already passed
-      await window.sb.from("lessons").update({ status: "done" })
+      await scope(window.sb.from("lessons").update({ status: "done" }))
         .eq("status", "scheduled").eq("lesson_date", today).lte("end_time", nowT);
     } catch (e) { /* non-fatal */ }
   }
@@ -1152,14 +1261,14 @@ window.TL = (function () {
   // unpaid. Never creates an invoice; invoices replaced by a newer one are left as they were (same as the Ledger).
   async function syncInvoicesForLessons(ids, paidDate) {
     ids = (ids || []).map(String);
-    var q = await window.sb.from("invoices").select("id,data,status");
+    var q = await scope(window.sb.from("invoices").select("id,data,status"));
     if (q.error) return;
     var hits = (q.data || []).filter(function (v) {
       var lids = (v.data && v.data.lesson_ids) || [];
       return !(v.data && v.data.replaced_by) && lids.some(function (x) { return ids.indexOf(String(x)) > -1; });
     });
     for (var i = 0; i < hits.length; i++) {
-      var v = hits[i], chk = await window.sb.from("lessons").select("id,paid").in("id", v.data.lesson_ids);
+      var v = hits[i], chk = await scope(window.sb.from("lessons").select("id,paid")).in("id", v.data.lesson_ids);
       var got = chk.data || [], allPaid = got.length > 0 && got.every(function (l) { return l.paid; });
       if (allPaid && v.status !== "paid") await window.sb.from("invoices").update({ status: "paid", paid_date: paidDate || todayISO() }).eq("id", v.id);
       else if (!allPaid && v.status === "paid") await window.sb.from("invoices").update({ status: "issued", paid_date: null }).eq("id", v.id);
@@ -1206,7 +1315,7 @@ window.TL = (function () {
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
-           store: store, roleMode: roleMode, setRole: setRole, detectRole: detectRole, tutorOnlyRedirect: tutorOnlyRedirect, uid: function () { return UID; }, plural: plural,
+           store: store, org: org, orgs: orgList, scope: scope, orgFields: orgFields, orgId: orgId, roleMode: roleMode, setRole: setRole, detectRole: detectRole, tutorOnlyRedirect: tutorOnlyRedirect, uid: function () { return UID; }, plural: plural,
            confirm: tlConfirm, alert: tlAlert, prompt: tlPrompt, freeLimit: tlFreeLimit,
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,

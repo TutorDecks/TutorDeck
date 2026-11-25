@@ -181,11 +181,11 @@
   // ---- PDPA retention review: discontinued students with no lesson in 2+ years ----
   async function retentionReview(){
     var box=$("retention"), list=$("retention-list"); if(!box||!list) return;
-    var st=await window.sb.from("students").select("id,name,active,end_date");
+    var st=await TL.scope(window.sb.from("students").select("id,name,active,end_date"));
     var today=TL.todayISO?TL.todayISO():new Date().toISOString().slice(0,10);
     var gone=(st.data||[]).filter(function(s){ return s.active===false || (s.end_date && s.end_date<today); });
     if(!gone.length) return;
-    var ls=await window.sb.from("lessons").select("student_id,lesson_date").in("student_id",gone.map(function(s){return s.id;}));
+    var ls=await TL.scope(window.sb.from("lessons").select("student_id,lesson_date")).in("student_id",gone.map(function(s){return s.id;}));
     var last={}; (ls.data||[]).forEach(function(l){ if(!last[l.student_id]||l.lesson_date>last[l.student_id]) last[l.student_id]=l.lesson_date; });
     var cut=new Date(); cut.setFullYear(cut.getFullYear()-2); var cutISO=cut.toISOString().slice(0,10);
     var old=gone.filter(function(s){ var d=last[s.id]||s.end_date||""; return d && d<cutISO; })

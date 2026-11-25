@@ -1,0 +1,71 @@
+// "Which organisation am I working in right now?" (T12b). Pure logic: no DOM, no network, no storage.
+// assets/js/app.js reads the person's active memberships once, hands them here, and remembers the answer (TL.org()).
+// Rules: the remembered choice if it is still one of their organisations; else their solo organisation; else their
+// first centre. Anything odd (no rows, bad rows, an error) = null, and the caller treats null as "their solo organisation",
+// which is what every login has today. Unit-tested in tests/org-current.test.js.
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.OrgCurrent = factory();
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+  var RANK = { owner: 0, staff: 1, tutor: 2 };   // parents (and anything unknown) don't use these screens
+
+  // memberships: rows of { org_id, role, status, organisations: { id, kind, trading_name } } (as the database returns them).
+  // → one entry per organisation, { id, kind, role, name }, using the person's strongest role in it; solo first, then centres by name.
+  function list(rows) {
+    var by = {};
+    (Array.isArray(rows) ? rows : []).forEach(function (r) {
+      try {
+        if (!r || r.status !== "active" || !(r.role in RANK)) return;
+        var o = r.organisations || {}, id = r.org_id || o.id;
+        if (!id || (o.kind !== "solo" && o.kind !== "centre")) return;
+        var cur = by[id];
+        if (!cur || RANK[r.role] < RANK[cur.role]) by[id] = { id: String(id), kind: o.kind, role: r.role, name: String(o.trading_name || o.name || "").trim() };
+      } catch (e) {}
+    });
+    return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) {
+      if (a.kind !== b.kind) return a.kind === "solo" ? -1 : 1;
+      return a.name.localeCompare(b.name) || (a.id < b.id ? -1 : 1);
+    });
+  }
+
+  // orgs: the result of list(). → { id, kind, role, name } or null (= no answer: the caller uses the solo organisation as before)
+  function pick(orgs, remembered) {
+    if (!Array.isArray(orgs) || !orgs.length) return null;
+    if (remembered) for (var i = 0; i < orgs.length; i++) if (orgs[i].id === String(remembered)) return orgs[i];
+    for (var j = 0; j < orgs.length; j++) if (orgs[j].kind === "solo") return orgs[j];
+    return orgs[0];
+  }
+  function choose(rows, remembered) { return pick(list(rows), remembered); }
+
+  // A centre owner's own solo organisation is an empty shell when they have no students of their own (it is created at sign-up).
+  // Then it is not a place they work in: leave it out, so the centre is their default and they get no chip for a shell.
+  // soloStudents must be the number 0 (a real count); anything else (unknown, error, >0) keeps the solo organisation: a solo tutor
+  // with students is never moved.
+  function dropEmptySolo(orgs, soloStudents) {
+    if (!Array.isArray(orgs) || soloStudents !== 0) return orgs;
+    var ownsCentre = orgs.some(function (o) { return o.kind === "centre" && o.role === "owner"; });
+    if (!ownsCentre) return orgs;
+    return orgs.filter(function (o) { return o.kind !== "solo"; });
+  }
+
+  // Home is the solo dashboard. When the current organisation is a centre the person owns or administers, Home sends them to
+  // that centre's page instead. Only the "dashboard" page; anything else or any doubt = null (stay).
+  function homeRedirect(active, org) {
+    if (active !== "dashboard" || !org || org.kind !== "centre" || !org.id) return null;
+    return org.role === "owner" || org.role === "staff" ? landing(org) : null;
+  }
+
+  // The switcher is for people with more than one organisation. A tutor-only login (one menu item) never gets one.
+  function showSwitcher(orgs, mode) {
+    return Array.isArray(orgs) && orgs.length > 1 && mode !== "tutor-only";
+  }
+
+  // Where choosing an organisation lands: solo → Home; a centre → My lessons if they are only a tutor there, else that centre's page.
+  function landing(org) {
+    if (!org || org.kind === "solo") return "home";
+    return org.role === "tutor" ? "tutor" : "org?id=" + encodeURIComponent(org.id);
+  }
+
+  return { list: list, dropEmptySolo: dropEmptySolo, homeRedirect: homeRedirect, pick: pick, choose: choose, showSwitcher: showSwitcher, landing: landing };
+});
