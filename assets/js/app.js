@@ -155,6 +155,7 @@ window.TL = (function () {
           <a class="tn-brand" href="home" aria-label="TutorDeck home">${LOGO}<b>TutorDeck</b></a>
           <nav class="tn-links" aria-label="Main">${side}</nav>
           <div class="tn-right">
+            ${orgChipHtml("desk")}
             ${sideExtra}
             <div class="tn-acct">
               <button type="button" id="tl-acct" class="tn-avatar" aria-haspopup="true" aria-expanded="false" aria-label="Account" title="${esc(brandName)}">${esc(initials)}</button>
@@ -168,6 +169,7 @@ window.TL = (function () {
       </header>
       <div class="main" role="main">
         <div class="topbar">
+          ${orgChipHtml("phone")}
           <div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div>
         </div>
         ${subtabs}
@@ -181,6 +183,7 @@ window.TL = (function () {
     document.body.appendChild(app);
     try { if (window.TLENG_CONFIG && window.TLENG_CONFIG.showEnvBanner) window.TLENG_CONFIG.showEnvBanner(); } catch (e) {}   // "Test version" tab on non-production builds
     document.getElementById("tl-signout").addEventListener("click", signOut);
+    wireOrgSwitcher();
     document.getElementById("tl-signout-m").addEventListener("click", signOut);
     // Desktop account menu
     var acct = document.getElementById("tl-acct"), acctWrap = acct.parentNode;
@@ -310,6 +313,71 @@ window.TL = (function () {
     if (!active || TUTOR_ONLY_PAGES.indexOf(active) >= 0) return null;
     return "tutor";
   }
+  // ======== T12b: the CURRENT ORGANISATION (TL.org) and the organisation switcher ========
+  // Everyone works "in" one organisation: their solo one (what every login has today), or a centre they chose with the
+  // switcher. Pure choosing logic: assets/js/org-current.js (unit-tested). The list of the person's organisations is read once
+  // (one query about every 12 hours, same as roleMode); the CHOICE is stored per user (td:<uid>:org_pick) and applied at once.
+  // Any error or doubt = their solo organisation. Step 2 only adds the concept and the chip: no page filters by it yet.
+  var OC = window.OrgCurrent || null;
+  function orgCache() {
+    try { var o = JSON.parse(store.get("orgs") || "null"); if (o && Array.isArray(o.list) && o.at > Date.now() - 12 * 3600e3) return o.list; } catch (e) {}
+    return null;
+  }
+  function orgList() { return orgCache() || []; }
+  // → { id, kind, role, name }. On doubt: { id: null, kind: "solo", role: null, name: "" } (id null = "my solo organisation, id unknown").
+  function org() {
+    try { var c = OC && OC.pick(orgList(), store.get("org_pick")); if (c) return c; } catch (e) {}
+    return { id: null, kind: "solo", role: null, name: "" };
+  }
+  async function detectOrgs() {
+    if (!OC || orgCache()) return;
+    var list = [];
+    try {
+      var m = await window.sb.from("memberships").select("org_id,role,status,organisations(id,kind,trading_name)").eq("user_id", UID).eq("status", "active");
+      if (!m.error) list = OC.list(m.data);          // an error (organisation tables not installed here yet) is remembered as "no organisations" = solo
+    } catch (e) {}
+    store.set("orgs", JSON.stringify({ list: list, at: Date.now() }));
+  }
+  function chooseOrg(id) {
+    var o = orgList().filter(function (x) { return x.id === id; })[0];
+    if (!o) return;
+    store.set("org_pick", o.id);
+    location.assign(OC.landing(o));
+  }
+  function orgSwitchOn() { try { return !!(OC && OC.showSwitcher(orgList(), roleMode())); } catch (e) { return false; } }
+  // Two chips, one menu each: the top bar (desktop) and the top of the page (phones, where the top bar is hidden). Hidden unless >1 organisation.
+  function orgChipHtml(where) {
+    if (!orgSwitchOn()) return "";
+    var cur = org(), list = orgList();
+    return '<div class="org-sw org-sw-' + where + '"><button type="button" class="org-chip" aria-haspopup="true" aria-expanded="false" title="Switch organisation">' +
+        '<span class="org-dot ' + (cur.kind === "solo" ? "solo" : "centre") + '"></span><b>' + esc(cur.name || "My tuition") + '</b><svg class="i org-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>' +
+      '<div class="org-menu" role="menu"><div class="org-h">Working in</div>' + list.map(function (o) {
+        return '<button type="button" role="menuitem" data-org="' + esc(o.id) + '"' + (o.id === cur.id ? ' aria-current="true" class="on"' : "") + '>' +
+          '<span class="org-dot ' + (o.kind === "solo" ? "solo" : "centre") + '"></span><span class="org-n">' + esc(o.name || "My tuition") + '</span>' +
+          '<small>' + (o.kind === "solo" ? "Your tuition" : o.role === "owner" ? "Centre · owner" : o.role === "staff" ? "Centre · staff" : "Centre · tutor") + '</small></button>';
+      }).join("") + '</div></div>';
+  }
+  function wireOrgSwitcher() {
+    var sws = document.querySelectorAll(".org-sw");
+    sws.forEach(function (sw) {
+      var chip = sw.querySelector(".org-chip");
+      chip.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var o = !sw.classList.contains("open");
+        sws.forEach(function (x) { x.classList.remove("open"); x.querySelector(".org-chip").setAttribute("aria-expanded", "false"); });
+        sw.classList.toggle("open", o); chip.setAttribute("aria-expanded", o ? "true" : "false");
+      });
+      sw.querySelectorAll("[data-org]").forEach(function (b) {
+        b.addEventListener("click", function () { var id = b.getAttribute("data-org"); if (id === org().id) { sw.classList.remove("open"); return; } chooseOrg(id); });
+      });
+    });
+    if (sws.length) {
+      document.addEventListener("click", function () { sws.forEach(function (x) { x.classList.remove("open"); }); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape") sws.forEach(function (x) { x.classList.remove("open"); }); });
+    }
+  }
+  // ======== end T12b ========
+
   // Old builds kept these unscoped, so a second account in the same browser inherited the first one's
   // state (e.g. "Not logged" hidden, Google Calendar "connected"). Nobody can tell whose they were — drop them.
   (function dropLegacy() {
@@ -623,6 +691,7 @@ window.TL = (function () {
     } catch (e) { /* MFA unavailable — proceed as normal */ }
     // Which menu does this login get? (instant when remembered; one query about every 12 hours; any doubt = the usual menu)
     try { await detectRole(); } catch (e) { /* keep the usual menu */ }
+    try { await detectOrgs(); } catch (e) { /* solo organisation, as always */ }
     // A tutor-only login who types a solo page's address (students, ledger, planner …) goes to My lessons, like Home does.
     // The decision only reads the role we just settled; tutorOnlyRedirect() never fires on a doubt, and never for "tutor" itself.
     var goTo = tutorOnlyRedirect(active, roleMode());
@@ -1206,7 +1275,7 @@ window.TL = (function () {
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
-           store: store, roleMode: roleMode, setRole: setRole, detectRole: detectRole, tutorOnlyRedirect: tutorOnlyRedirect, uid: function () { return UID; }, plural: plural,
+           store: store, org: org, orgs: orgList, roleMode: roleMode, setRole: setRole, detectRole: detectRole, tutorOnlyRedirect: tutorOnlyRedirect, uid: function () { return UID; }, plural: plural,
            confirm: tlConfirm, alert: tlAlert, prompt: tlPrompt, freeLimit: tlFreeLimit,
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
