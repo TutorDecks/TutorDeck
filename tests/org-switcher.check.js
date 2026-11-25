@@ -14,6 +14,16 @@ function override(cfg) {   // runs in the page before anything else
   window.__override = function (c) {
     var from = c.from.bind(c);
     c.from = function (t) {
+      if (t === "students" && cfg.members) {   // the head-only COUNT of the solo organisation's students (the rest of the stub is untouched)
+        var q = from(t), sel = q.select;
+        q.select = function (cols, opt) {
+          if (!(opt && opt.head)) return sel.apply(q, arguments);
+          var o = {}; ["eq", "neq", "in", "is"].forEach(function (m) { o[m] = function () { return o; }; });
+          o.then = function (r, j) { return Promise.resolve(cfg.countError ? { data: null, count: null, error: { message: "x" } } : { data: null, count: cfg.soloStudents === undefined ? 3 : cfg.soloStudents, error: null }).then(r, j); };
+          return o;
+        };
+        return q;
+      }
       if (t !== "memberships" || !cfg.members) return from(t);
       var o = {}; ["select", "eq", "order", "neq", "in", "is", "limit"].forEach(function (m) { o[m] = function () { return o; }; });
       o.maybeSingle = o.single = function () { return Promise.resolve({ data: cfg.members[0] || null, error: null }); };
@@ -68,6 +78,18 @@ const vis = (page, sel) => page.locator(sel).filter({ visible: true }).count();
     await page.locator(".org-sw-desk .org-chip").click(); await page.keyboard.press("Escape");
     ok(await vis(page, ".org-sw-desk .org-menu") === 0, "Escape closes the menu");
     ok(errs.length === 0, "solo + centre: no console errors " + errs.join("|")); await ctx.close(); }
+  // 2b centre owner whose own solo organisation has no students (centre.owner): lands on the centre home, no chip
+  { const { ctx, page, errs } = await open(browser, { members: [M(O.solo, "owner"), M(O.a, "owner")], soloStudents: 0 });
+    await page.goto(BASE + "home"); await page.waitForURL(/org\?id=c1/);
+    ok(true, "centre owner with an empty solo organisation: Home lands on the centre page (org?id=c1)");
+    await page.waitForSelector(".topnav");
+    ok(await page.locator(".org-sw").count() === 0, "…and no chip");
+    ok(await page.evaluate(() => TL.org().id) === "c1", "…TL.org() is the centre");
+    ok(errs.length === 0, "centre owner: no console errors " + errs.join("|")); await ctx.close(); }
+  // 2c students count fails: doubt = solo, nothing moves
+  { const { ctx, page } = await open(browser, { members: [M(O.solo, "owner"), M(O.a, "owner")], countError: true });
+    await page.goto(BASE + "home"); await page.waitForSelector(".topnav");
+    ok(page.url().endsWith("/home") && await page.evaluate(() => TL.org().id) === "s1" && await vis(page, ".org-sw-desk .org-chip") === 1, "student count error: stays solo, chip kept"); await ctx.close(); }
   // 3 a remembered choice that is no longer valid falls back to solo
   { const { ctx, page } = await open(browser, { members: [M(O.solo, "owner"), M(O.a, "owner")] }, { pre: () => { try { localStorage.setItem("td:u1:org_pick", "gone"); } catch (e) {} } });
     await page.goto(BASE + "home"); await page.waitForSelector(".topnav");
