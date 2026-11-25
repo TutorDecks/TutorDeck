@@ -347,6 +347,7 @@ html[data-theme="dark"] .org-menu button{color:var(--ink)}
 html[data-theme="dark"] .org-menu button small{color:var(--muted)}
 html[data-theme="dark"] .org-menu button:hover{background:#282F3C}
 html[data-theme="dark"] .org-menu button.on{background:var(--accent-soft);color:var(--accent)}
+html[data-theme="dark"] .soon-pill{color:var(--muted);background:var(--bg);border:1px solid var(--line)}
 /* from home.html */
 html[data-theme="dark"] .ob-card{background:#172235;border:1px solid var(--line);box-shadow:var(--shadow)}
 html[data-theme="dark"] .ob-h{color:var(--ink)}
@@ -1046,6 +1047,15 @@ html[data-theme="dark"] .tt-hint{color:var(--muted)}
 html[data-theme="dark"] .tt-check{color:var(--ink)}
 html[data-theme="dark"] .tt-check input{accent-color:var(--accent)}
 html[data-theme="dark"] .tt-ro small{color:var(--muted)}
+/* from centre.html */
+html[data-theme="dark"] .ch-date{color:var(--muted)}
+html[data-theme="dark"] .ch-h{color:var(--muted)}
+html[data-theme="dark"] .ch-tile .l{color:var(--muted)}
+html[data-theme="dark"] .ch-tile.todo .n{color:var(--warn)}
+html[data-theme="dark"] .ch-tile.todo.zero .n{color:var(--ink)}
+html[data-theme="dark"] .ch-note{color:var(--muted)}
+html[data-theme="dark"] .ch-soon p{color:var(--muted)}
+html[data-theme="dark"] .ch-pill{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
 /* inline colours written by page scripts (calendar popover tags, student progress chart) */
 html[data-theme="dark"] [style*="background:#F1EFEA"]{background:#243048!important}
 html[data-theme="dark"] [style*="background:rgba(19,35,63,.10)"]{background:rgba(255,255,255,.08)!important}

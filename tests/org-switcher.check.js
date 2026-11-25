@@ -65,8 +65,8 @@ const vis = (page, sel) => page.locator(sel).filter({ visible: true }).count();
     ok(await vis(page, ".org-sw-desk .org-menu button") === 2, "menu lists both organisations");
     if (SC) await page.screenshot({ path: path.join(SC, "menu-desktop.png") });
     await page.locator('.org-sw-desk .org-menu [data-org="c1"]').click();
-    await page.waitForURL(/org\?id=c1/);
-    ok(true, "choosing the centre lands on its centre page (org?id=c1)");
+    await page.waitForURL(/centre\?id=c1/);
+    ok(true, "choosing the centre lands on its centre page (centre?id=c1)");
     await page.goto(BASE + "calendar"); await page.waitForSelector(".topnav");
     ok((await page.locator(".org-sw-desk .org-chip b").innerText()) === "Alpha Learning Centre", "the choice sticks on another page");
     await page.reload(); await page.waitForSelector(".topnav");
@@ -80,8 +80,8 @@ const vis = (page, sel) => page.locator(sel).filter({ visible: true }).count();
     ok(errs.length === 0, "solo + centre: no console errors " + errs.join("|")); await ctx.close(); }
   // 2b centre owner whose own solo organisation has no students (centre.owner): lands on the centre home, no chip
   { const { ctx, page, errs } = await open(browser, { members: [M(O.solo, "owner"), M(O.a, "owner")], soloStudents: 0 });
-    await page.goto(BASE + "home"); await page.waitForURL(/org\?id=c1/);
-    ok(true, "centre owner with an empty solo organisation: Home lands on the centre page (org?id=c1)");
+    await page.goto(BASE + "home"); await page.waitForURL(/centre\?id=c1/);
+    ok(true, "centre owner with an empty solo organisation: Home lands on the centre page (centre?id=c1)");
     await page.waitForSelector(".topnav");
     ok(await page.locator(".org-sw").count() === 0, "…and no chip");
     ok(await page.evaluate(() => TL.org().id) === "c1", "…TL.org() is the centre");

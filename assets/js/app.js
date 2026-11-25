@@ -12,6 +12,7 @@ window.TL = (function () {
     schedule: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/>',
     students: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
     money:    '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+    check:    '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
     more:     '<circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/><circle cx="5" cy="12" r="1.4"/>',
     settings: '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
     materials:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
@@ -44,6 +45,9 @@ window.TL = (function () {
     { id: "materials", label: "Materials", href: "https://mugcornersg.com", ic: "materials", ext: true, hint: "Materials on MugCorner (opens in a new tab)" },
     { id: "settings",  label: "Settings",  href: "settings",  ic: "settings" }
   ];
+  // A menu entry whose screen isn't built yet (T3 centre tabs): a visible "soon" pill, and the same words for screen readers. The link still goes
+  // to a real page that says "Coming next", never a dead end.
+  function soonTag(g) { return g && g.soon ? '<em class="soon-pill" aria-hidden="true">soon</em><span class="sr-only"> (coming next)</span>' : ""; }
   // External destinations (e.g. Materials → MugCorner) open in a new tab.
   function extAttr(n) { return n.ext ? ' target="_blank" rel="noopener"' : ""; }
   function groupOf(active, list) {
@@ -111,8 +115,8 @@ window.TL = (function () {
 
     // Desktop top bar: brand · the four groups · Settings/Materials icons + account menu.
     var side = G.map(function (g) {
-      return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "active" : "") + '"' +
-             (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 18) + '<span>' + g.label + '</span></a>';
+      return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "active" : "") + (g.soon ? " is-soon" : "") + '"' +
+             (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 18) + '<span>' + g.label + soonTag(g) + '</span></a>';
     }).join("");
     var sideExtra = extras.map(function (n) {
       return '<a href="' + n.href + '" class="tn-ic' + (n.id === active ? " active" : "") + '" title="' + (n.hint || n.label) +
@@ -122,8 +126,8 @@ window.TL = (function () {
 
     // Phone bottom bar: the four groups + More.
     var bar = G.map(function (g) {
-      return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "on" : "") + '"' +
-             (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 22) + '<span>' + g.label + '</span></a>';
+      return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "on" : "") + (g.soon ? " is-soon" : "") + '"' +
+             (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 22) + '<span>' + g.label + soonTag(g) + '</span></a>';
     }).join("") +
       '<button type="button" id="tl-more" class="' + (onExtra ? "on" : "") + '" aria-haspopup="dialog" aria-expanded="false">' +
       icon("more", 22) + '<span>More</span></button>';
@@ -335,12 +339,12 @@ window.TL = (function () {
     if (!OC || orgCache()) return;
     var list = [];
     try {
-      var m = await window.sb.from("memberships").select("org_id,role,status,organisations(id,kind,trading_name)").eq("user_id", UID).eq("status", "active");
+      var m = await window.sb.from("memberships").select("org_id,role,status,permissions,organisations(id,kind,trading_name)").eq("user_id", UID).eq("status", "active");
       if (!m.error) {                                 // an error (organisation tables not installed here yet) is remembered as "no organisations" = solo
         list = OC.list(m.data);
         var solo = list.filter(function (o) { return o.kind === "solo"; })[0];
-        if (solo && list.some(function (o) { return o.kind === "centre" && o.role === "owner"; })) {
-          // a centre owner: does their own solo organisation have any students? (error or doubt = yes, keep it)
+        if (solo && list.some(function (o) { return o.kind === "centre" && (o.role === "owner" || o.role === "staff"); })) {
+          // a centre owner or staff member: does their own solo organisation have any students? (error or doubt = yes, keep it)
           var st = await window.sb.from("students").select("id", { count: "exact", head: true }).eq("org_id", solo.id);
           list = OC.dropEmptySolo(list, st.error ? null : st.count);
         }
@@ -406,11 +410,17 @@ window.TL = (function () {
     var o = org(), G;
     if (o.role === "tutor") G = TUTOR_GROUPS;
     else {
-      var home = "org?id=" + encodeURIComponent(o.id);
-      G = CENTRE_GROUPS.map(function (g, i) { return Object.assign({}, g, { pages: [ Object.assign({}, g.pages[0], { href: i === 0 ? home : "org" }) ] }); });
+      // (T3) owner / staff: Home · Timetable · Students · Attendance, then More. Which tabs: OrgCurrent.centreTabs (follows the staff permissions).
+      G = (OC ? OC.centreTabs(o) : []).map(function (t) { return { id: t.id, label: t.label, ic: t.ic, soon: t.soon, tab: t.tab, pages: [ { id: t.id, label: t.label, href: t.href } ] }; });
+      if (!G.length) G = CENTRE_GROUPS;
     }
-    var on = active === "org" ? (/[?&]id=/.test(location.search) ? "orghome" : "orglist") : active;
-    return { groups: G, active: on, extras: EXTRA.filter(function (n) { return n.id === "settings"; }) };
+    var tabQ = (/[?&]tab=([a-z]+)/.exec(location.search) || [])[1] || "";
+    var on = active === "centre" ? (G.filter(function (g) { return (g.tab || "") === tabQ; })[0] || G[0] || {}).id
+           : active === "org" ? (/[?&]id=/.test(location.search) ? "orgsettings" : "orglist") : active;
+    var more = [];
+    if (o.role !== "tutor") more.push({ id: "orgsettings", label: "Centre settings", href: "org?id=" + encodeURIComponent(o.id), ic: "settings" },
+                                      { id: "orglist", label: "Your centres", href: "org", ic: "students" });
+    return { groups: G, active: on, extras: more.concat(EXTRA.filter(function (n) { return n.id === "settings"; })) };
   }
   // ======== end T12c ========
 
@@ -696,6 +706,7 @@ window.TL = (function () {
                  calendar: ["Calendar", "Lessons across the week"],
                  ledger: ["Ledger", "Lessons, payments & projections"],
                  settings: ["Settings", "Business, payments & your account"],
+                 centre: ["Centre home", "Today at your centre"],
                  org: ["Organisation", "Your tuition centre, set up your way"],
                  tutor: ["My lessons", "Your classes and attendance"],
                  exams: ["Exams", "Upcoming assessments"],

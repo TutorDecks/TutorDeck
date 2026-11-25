@@ -38,8 +38,12 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/lockdown_test.sql
 $P -f db/migration_org_separation.sql
 $P -f db/migration_org_separation.sql                       # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_separation_test.sql
+$P -f db/migration_staff_home.sql
+$P -f db/migration_staff_home.sql                           # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_home_test.sql
 $P -f db/migration_org_separation_down.sql
 $P -f db/migration_org_separation.sql                       # and again, so the shipped state is what the undo chain below unwinds
+$P -f db/migration_staff_home_down.sql
 $P -f db/migration_org_separation_down.sql
 $P -f db/migration_function_lockdown_down.sql
 $P -f db/migration_org_delete_down.sql
