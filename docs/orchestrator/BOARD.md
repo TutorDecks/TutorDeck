@@ -40,6 +40,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-25 T12b decisions: hide switcher chip + default current org = centre when the person owns a centre and has no solo students; tutor-only never gets a chip; phone chip at top of page; null current org (LIVE today, no org tables) = no filtering.
 
+- 2026-11-25 T3 plan decisions, all six YES (owner replied six yeses; read as the T3 list): admins with manage_timetable may correct any mark with a required reason (audit-logged), tutors never; pending charges typed by `issue_invoices`; staff can always mark/correct (attendance_by only governs tutors); group classes light (shared session_id); absence-charge setting only pre-fills, admin confirms; start only after T12 steps 1-4 are on dev, ship steps 1-5 as "centre staff v1". T3 build NOT started until T12 is on dev.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
