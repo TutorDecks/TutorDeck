@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://rnjvswkejbrhbaytutai.supabase.co" crossorigin>
+<meta name="theme-color" content="#13233F">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+<meta name="robots" content="noindex,nofollow">
+<title>Your settings · TutorDeck</title>
+<link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
+<link rel="stylesheet" href="assets/css/app.css?v=273">
+<script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
+<style>
+  .ts-wrap{max-width:560px;display:flex;flex-direction:column;gap:14px}
+  .ts-back{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-size:14px;font-weight:700;color:var(--accent-ink);text-decoration:none}
+  .ts-back:hover{text-decoration:underline}
+  .ts-card{padding:20px 22px;border-radius:16px}
+  .ts-card h2{font-size:17px;font-weight:800;margin:0 0 2px}
+  .ts-sub{font-size:13.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .ts-card .field:last-of-type{margin-bottom:0}
+  .ts-card .field input[readonly]{background:var(--bg);color:var(--muted)}
+  .ts-hint{font-size:12.5px;color:var(--muted);margin:6px 0 0;line-height:1.45}
+  .ts-phone{display:flex;align-items:stretch;gap:0}
+  .ts-phone span{display:flex;align-items:center;padding:0 12px;border:1px solid var(--line);border-right:none;border-radius:9px 0 0 9px;background:var(--bg);color:var(--muted);font-weight:700}
+  .ts-phone input{border-radius:0 9px 9px 0}
+  .ts-check{display:flex;align-items:center;gap:10px;min-height:44px;margin:0 0 14px;font-size:14px;font-weight:600;color:var(--ink)}
+  .ts-check input{width:20px;height:20px;accent-color:var(--accent)}
+  .ts-actions{display:flex;align-items:center;gap:12px;margin-top:16px}
+  .ts-actions .btn{min-height:44px;padding:0 22px}
+  .ts-actions .msg{margin:0;flex:1;text-align:left;min-height:0}
+  .ts-pw{list-style:none;margin:8px 0 14px;padding:0;font-size:12.5px;color:var(--muted)}
+  .ts-pw li{display:flex;align-items:center;gap:8px;line-height:1.4;padding:2px 0}
+  .ts-pw .pw-ico{flex:0 0 16px;width:16px;height:16px;box-sizing:border-box;border:1.5px solid currentColor;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;line-height:1}
+  .ts-pw li.met{color:var(--accent);font-weight:700}
+  .ts-pw li.met .pw-ico{background:var(--accent);border-color:var(--accent);color:#fff}
+  .ts-pw li.met .pw-ico::before{content:"\2713"}
+  .ts-pw li.bad{color:var(--owed)}
+  .ts-note{margin:0 0 14px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);color:var(--muted);font-size:13.5px;line-height:1.5}
+  .ts-out{align-self:flex-start}
+  .ts-out.btn{min-height:44px}
+</style>
+<link rel="stylesheet" href="assets/css/dark.css?v=273">
+</head>
+<body>
+<div id="view" data-page="tutor-settings">
+  <div class="ts-wrap">
+    <a class="ts-back" href="tutor"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>My lessons</a>
+    <div class="msg" id="tp-load" role="status" style="text-align:left">Loading your profile…</div>
+
+    <form class="card ts-card" id="tp-card" novalidate style="display:none">
+      <h2>Profile</h2>
+      <p class="ts-sub">This is how your centre sees you.</p>
+      <div class="field" id="tp-centre-row" style="display:none">
+        <label for="tp-centre">Centre</label>
+        <select id="tp-centre"></select>
+      </div>
+      <div class="field">
+        <label for="tp-name">Your name</label>
+        <input id="tp-name" type="text" maxlength="80" autocomplete="name" required>
+      </div>
+      <label class="ts-check" id="tp-all-row" style="display:none"><input type="checkbox" id="tp-all"> Use this name for all my centres</label>
+      <div class="field">
+        <label for="tp-phone">Mobile number <span style="font-weight:500;color:var(--muted)">(optional)</span></label>
+        <div class="ts-phone"><span aria-hidden="true">+65</span><input id="tp-phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="9123 4567" aria-describedby="tp-phone-h"></div>
+        <p class="ts-hint" id="tp-phone-h">Your centre can see this. Parents can’t.</p>
+      </div>
+      <div class="field">
+        <label for="tp-email">Email (your login)</label>
+        <input id="tp-email" type="email" readonly aria-describedby="tp-email-h">
+        <p class="ts-hint" id="tp-email-h">To change your email, ask your centre to invite the new address.</p>
+      </div>
+      <div class="ts-actions"><div class="msg" id="tp-msg" role="status"></div><button class="btn btn-primary" id="tp-save" type="submit">Save</button></div>
+    </form>
+
+    <form class="card ts-card" id="pw-card" novalidate style="display:none">
+      <h2>Change password</h2>
+      <p class="ts-sub">Type your current password first, then choose a new one.</p>
+      <p class="ts-note" id="pw-both" style="display:none">You also have students of your own on TutorDeck. This is one password for both, so it changes for both.</p>
+      <div class="field">
+        <label for="pw-old">Current password</label>
+        <input id="pw-old" type="password" autocomplete="current-password">
+      </div>
+      <div class="field">
+        <label for="pw-new">New password</label>
+        <input id="pw-new" type="password" autocomplete="new-password" aria-describedby="pw-list">
+        <ul class="ts-pw" id="pw-list" aria-label="Password rules" aria-live="polite"></ul>
+      </div>
+      <label class="ts-check"><input type="checkbox" id="pw-show"> Show passwords</label>
+      <div class="ts-actions"><div class="msg" id="pw-msg" role="status"></div><button class="btn btn-primary" id="pw-save" type="submit">Change password</button></div>
+    </form>
+
+    <button class="btn ts-out" id="ts-out" type="button" style="display:none">Sign out</button>
+  </div>
+</div>
+
+<script src="assets/vendor/supabase-2.118.0.js"></script>
+<script src="assets/js/config.js?v=273"></script>
+<script src="assets/js/supabase.js?v=273"></script>
+<script src="assets/js/org-current.js?v=273"></script>
+<script src="assets/js/org-scope.js?v=273"></script>
+<script src="assets/js/app.js?v=273"></script>
+<script src="assets/js/password-rules.js?v=273"></script>
+<script src="assets/js/tutor-settings-core.js?v=273"></script>
+<script src="assets/js/tutor-settings.js?v=273"></script>
+</body>
+</html>

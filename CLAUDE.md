@@ -138,8 +138,8 @@ There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it hol
   sends them to /tutor; "both" adds My lessons to More. Any doubt or error = "solo" (the usual menu), so nothing solo tutors have can disappear.
 - Live schema snapshot: `db/baseline_2026-11.sql`. Test SQL with `bash tests/sql/run.sh` (throwaway Postgres), never live.
 - Dev Supabase project: `tuzxsqkfzrjssnpcoale` (baseline + org_foundation + billing + attendance + tutor_access + org_delete + function_lockdown migrations applied; org_separation not yet). Live: `rnjvswkejbrhbaytutai`
-  (NONE of the org/billing/attendance/delete migrations are on live yet). Migration order everywhere: org_foundation → billing → attendance → tutor_access → org_delete → function_lockdown → org_separation
-  (undo in reverse); `bash tests/sql/run.sh` runs all seven and the undo checks.
+  (NONE of the org/billing/attendance/delete migrations are on live yet). Migration order everywhere: org_foundation → billing → attendance → tutor_access → org_delete → function_lockdown → org_separation → tutor_profile
+  (undo in reverse); `bash tests/sql/run.sh` runs all eight and the undo checks.
 
 ## Open threads
 - T-Leng has past lessons wrongly showing ✦ one-off: an old slot deletion (before `one_off`
@@ -192,7 +192,7 @@ There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it hol
    - **REVOKE the Vercel "Protection Bypass for Automation" token** (Vercel → project → Settings → Deployment Protection) created for the Stripe
      SANDBOX webhook (note: "Stripe sandbox webhook testing - REVOKE before going live"), and delete/replace the sandbox webhook endpoint that carries it
      in its URL. The LIVE webhook must point at a custom/production domain (not behind Vercel protection) with no bypass token in the URL.
-   - Run `db/migration_tutor_access.sql` on LIVE after attendance (order: foundation → billing → attendance → tutor_access → org_delete → function_lockdown → org_separation).
+   - Run `db/migration_tutor_access.sql` on LIVE after attendance (order: foundation → billing → attendance → tutor_access → org_delete → function_lockdown → org_separation → tutor_profile).
    - Run `db/migration_function_lockdown.sql` on LIVE last (after org_delete): pins search_path, takes anonymous/any-user access away from the org helper
      functions and trigger functions. Still flagged by the advisor on the existing live setup and NOT touched here: `invoice_by_token` (intentionally public),
      `client_errors_recent/prune` (only a rate-limit count / a trigger) and `rls_auto_enable` (Supabase-managed event trigger).

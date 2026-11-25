@@ -40,6 +40,12 @@ $P -f db/migration_org_separation.sql                       # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_separation_test.sql
 $P -f db/migration_org_separation_down.sql
 $P -f db/migration_org_separation.sql                       # and again, so the shipped state is what the undo chain below unwinds
+$P -f db/migration_tutor_profile.sql
+$P -f db/migration_tutor_profile.sql                        # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_profile_test.sql
+$P -f db/migration_tutor_profile_down.sql
+$P -f db/migration_tutor_profile.sql                        # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_tutor_profile_down.sql
 $P -f db/migration_org_separation_down.sql
 $P -f db/migration_function_lockdown_down.sql
 $P -f db/migration_org_delete_down.sql

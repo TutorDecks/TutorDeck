@@ -1012,6 +1012,7 @@ html[data-theme="dark"] .owe-x{color:var(--muted)}
 html[data-theme="dark"] .owe-x:hover{background:#282F3C;color:var(--ink)}
 @media(max-width:820px){html[data-theme="dark"] .owe-panel{box-shadow:0 -10px 40px rgba(0,0,0,0.44)}}
 @media(max-width:820px){html[data-theme="dark"] .owe-grab{background:#444C5A}}
+html[data-theme="dark"] .tt-set{color:var(--accent-ink)}
 html[data-theme="dark"] .tt-sum{color:var(--muted)}
 html[data-theme="dark"] .tt-sum b{color:var(--ink)}
 html[data-theme="dark"] .tt-day{color:var(--muted);background:var(--bg);border-top:1px solid var(--line)}
@@ -1046,6 +1047,20 @@ html[data-theme="dark"] .tt-hint{color:var(--muted)}
 html[data-theme="dark"] .tt-check{color:var(--ink)}
 html[data-theme="dark"] .tt-check input{accent-color:var(--accent)}
 html[data-theme="dark"] .tt-ro small{color:var(--muted)}
+/* from tutor-settings.html */
+html[data-theme="dark"] .ts-back{color:var(--accent-ink)}
+html[data-theme="dark"] .ts-sub{color:var(--muted)}
+html[data-theme="dark"] .ts-card .field input[readonly]{background:var(--bg);color:var(--muted)}
+html[data-theme="dark"] .ts-hint{color:var(--muted)}
+html[data-theme="dark"] .ts-phone span{border:1px solid var(--line);border-right:none;background:var(--bg);color:var(--muted)}
+html[data-theme="dark"] .ts-check{color:var(--ink)}
+html[data-theme="dark"] .ts-check input{accent-color:var(--accent)}
+html[data-theme="dark"] .ts-pw{color:var(--muted)}
+html[data-theme="dark"] .ts-pw .pw-ico{border:1.5px solid currentColor}
+html[data-theme="dark"] .ts-pw li.met{color:var(--accent)}
+html[data-theme="dark"] .ts-pw li.met .pw-ico{background:#12857A;border-color:var(--accent);color:#fff}
+html[data-theme="dark"] .ts-pw li.bad{color:var(--owed)}
+html[data-theme="dark"] .ts-note{background:var(--bg);border:1px solid var(--line);color:var(--muted)}
 /* inline colours written by page scripts (calendar popover tags, student progress chart) */
 html[data-theme="dark"] [style*="background:#F1EFEA"]{background:#243048!important}
 html[data-theme="dark"] [style*="background:rgba(19,35,63,.10)"]{background:rgba(255,255,255,.08)!important}
