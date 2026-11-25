@@ -35,7 +35,7 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 ## Owner decisions 2026-11-24 (evening)
 - T12 plan approved: centre owner loses solo-screen view of centre data until T3/T4; org switcher for multi-org people; centre staff land on centre home; ship the DB safety net (step 1) to dev first.
 - T18: one missed lesson = one credit, make-up never charged twice (centre setting, unbuilt options `soon`); credit earned for notice-given absences, tutor cancellations and holidays; credits never expire by default; centres skip holidays by default; holiday library for solo tutors later; SG holiday dates from MOM, re-check 2027 before shipping; add next year's rows each November.
-- Settings stays reachable for tutor-only logins (T15). My lessons NOT added for solo tutors. DEV Supabase password rules set to match LIVE (lower, upper, digit, symbol).
+- ~~Settings stays reachable for tutor-only logins (T15).~~ CHANGED 2026-11-25: Settings is for solo, both and centre owner only, NOT for tutors under an org (T24). My lessons NOT added for solo tutors. DEV Supabase password rules set to match LIVE (lower, upper, digit, symbol).
 - Bundle rule: second test bundle proposed = T19 + T15 + T20 + T12a (+T18a); owner says go.
 
 ## Waiting on the owner
@@ -74,6 +74,8 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T12a | T12 step 1: DB same-organisation guard (migration_org_separation) | DONE on branch (migration + SQL tests; DEV apply status to confirm) | `claude/t12a-org-guard` |
 | T18a | T18 step 1: mark unbuilt settings `soon` | DONE on branch (v263, six settings marked soon) | `claude/t18a-honest-settings` |
 | T22 | Assemble bundle 2 (T19+T15+T20+T12a+T18a) into one PR to dev; owner approved 2026-11-24; orchestrator merges after CI + owner go | MERGED into dev 2026-11-25 (#126, v264, CI green) | `claude/bundle-2` |
+| T23 | Password hint -> checklist, tick turns green (house teal) when met (owner request after testing bundle 2) | doing | NEW worker / `claude/t23-password-checklist` |
+| T24 | Settings CLOSED to tutor-only logins (supersedes earlier decision); open to solo/both/centre owner. Also: how do tutors change password / delete account? | doing | NEW worker / `claude/t24-settings-closed` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
