@@ -300,11 +300,11 @@ window.TL = (function () {
       setRole(mode); return mode;
     } catch (e) { return null; }
   }
-  // Pages a tutor-only login may open: My lessons, and Settings (two-factor sign-in, "Download my data" and "Delete my account"
-  // live there and have no other home). Everything else is a solo-tutor page and sends them to My lessons.
+  // The only page a tutor-only login may open is My lessons (owner's rule, T24: Settings is for solo, both and centre
+  // owner/staff logins, not for a tutor under a centre). Everything else, Settings included, sends them to My lessons.
   // Returns the address to go to, or null to stay. Only a CONFIRMED "tutor-only" ever redirects: "solo", "both", null and
   // anything unexpected stay put, so no solo tutor can be moved by a doubt or an error.
-  var TUTOR_ONLY_PAGES = ["tutor", "settings"];
+  var TUTOR_ONLY_PAGES = ["tutor"];
   function tutorOnlyRedirect(active, mode) {
     if (mode !== "tutor-only") return null;
     if (!active || TUTOR_ONLY_PAGES.indexOf(active) >= 0) return null;
