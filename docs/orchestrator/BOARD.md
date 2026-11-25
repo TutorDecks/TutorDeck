@@ -57,7 +57,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T4 | **Centre invoicing & payments** (Phase 3): invoice runs from lessons (cancelled + compensation rule; pending charge blocks invoicing), households, GST per centre setting, credit notes, manual PayNow recording | todo | — | Plan first. Money in integer cents via `assets/js/money.js`. |
 | T5 | Browser-test the **sign-up password hint** branch and decide on a PR | MERGED into dev 2026-11-24 (#123) | NEW worker session_01CPTfbBbKbHFCNEfzmTTt59 / `claude/modest-hypatia-lxmmks` (old session ...E24 idle) | Independent of the rest. Preview now uses DEV, so test with a fresh sign-up there. |
 | T6 | **Tutors edit their own lessons** (`timetable_editing = tutors_own`, currently "coming soon") | todo | — | Own-lesson reschedule rules as a setting-driven database function; same no-table-access rule. |
-| T7 | **Email via Brevo** (owner chose Brevo, sender noreply@tutordeck.com.sg; domain tutordeck.com.sg verified in Brevo 2026-11-25): Supabase auth emails via SMTP, tutor invite email + set-password landing, later remarks reminders | planning | NEW worker / `claude/t7-plan` (plan only) |
+| T7 | **Email via Brevo** (owner chose Brevo, sender noreply@tutordeck.com.sg; domain tutordeck.com.sg verified in Brevo 2026-11-25): Supabase auth emails via SMTP, tutor invite email + set-password landing, later remarks reminders | plan DONE (`claude/t7-plan`), 5 owner decisions pending; owner added sender noreply@tutordeck.com.sg in Brevo (verified 2026-11-25, active) | `claude/t7-plan` |
 | T8 | **Go-live execution** (owner-gated, see Waiting #5) | todo | — | Do not start without the owner's explicit word. |
 | T9 | Centre pricing review (S$100 + S$0.40 vs competitors) | todo | — | Owner decision; only research if asked. |
 | T11 | Stub `/api/gcal` in `tests/server.py` so smoke CI is green | MERGED into dev 2026-11-24 (#125) | session_01CPTfbCu6T7y8P8douwp4Nh / `claude/t11-gcal-test-stub` |
@@ -74,11 +74,11 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T12a | T12 step 1: DB same-organisation guard (migration_org_separation) | DONE on branch (migration + SQL tests; DEV apply status to confirm) | `claude/t12a-org-guard` |
 | T18a | T18 step 1: mark unbuilt settings `soon` | DONE on branch (v263, six settings marked soon) | `claude/t18a-honest-settings` |
 | T22 | Assemble bundle 2 (T19+T15+T20+T12a+T18a) into one PR to dev; owner approved 2026-11-24; orchestrator merges after CI + owner go | MERGED into dev 2026-11-25 (#126, v264, CI green) | `claude/bundle-2` |
-| T23 | Password hint -> checklist, tick turns green (house teal) when met (owner request after testing bundle 2) | doing | NEW worker / `claude/t23-password-checklist` |
-| T24 | Settings CLOSED to tutor-only logins (supersedes earlier decision); open to solo/both/centre owner. Also: how do tutors change password / delete account? | doing | NEW worker / `claude/t24-settings-closed` |
-| T12b | T12 step 2: TL.org() current organisation + switcher (hidden for single-org users) | doing | NEW worker / `claude/t12b-current-org` (v267) |
-| T18b | T18 step 2: SG public holiday library (selectable, never auto-applied; 2026+2027 verified vs MOM) | doing | NEW worker / `claude/t18b-holiday-library` (v268) |
-| T3 | Plan for staff screens for centres (plan only, owner approves) | doing | NEW worker / `claude/t3-plan` |
+| T23 | Password hint -> checklist, tick turns green (house teal) when met (owner request after testing bundle 2) | DONE on branch | `claude/t23-password-checklist` |
+| T24 | Settings CLOSED to tutor-only logins (supersedes earlier decision); open to solo/both/centre owner. Also: how do tutors change password / delete account? | DONE on branch (v266); owner to pick password option: 1 now (Forgot password), 2 later (Account sheet) | `claude/t24-settings-closed` |
+| T12b | T12 step 2: TL.org() current organisation + switcher (hidden for single-org users) | DONE on branch (v267), 4 non-blocking decisions | `claude/t12b-current-org` |
+| T18b | T18 step 2: SG public holiday library (selectable, never auto-applied; 2026+2027 verified vs MOM) | DONE on branch (v268); 2027 dates re-check before main | `claude/t18b-holiday-library` |
+| T3 | Plan for staff screens for centres (plan only, owner approves) | plan DONE (`claude/t3-plan`), 6 owner decisions pending; start only after T12 steps 1-4 on dev | `claude/t3-plan` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
