@@ -45,6 +45,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 - 2026-11-25 T7 decisions: all five YES (invite landing = reuse /reset welcome variant; link expiry 24h; Brevo free plan for now (stay on Brevo, Resend not worth switching: Resend free = 100/day, 3000/month, Pro US$20; Brevo free = 300/day); previews only email @tutordeck.com.sg + allow-list; centre name in display name, address stays noreply@). ADDED REQUIREMENT: admin must have a Resend-invite option for invites not accepted in time. REPLY-TO DECIDED 2026-11-25: tutordeckadmin@gmail.com for launch (sender stays noreply@tutordeck.com.sg). DNS facts (Vodien): apex A 216.198.79.1 + www CNAME = Vercel; MX points at the apex (Vercel), so the domain CANNOT receive mail today; mail./ftp. CNAMEs are default leftovers; Brevo DKIM x2, brevo-code TXT and DMARC (p=none) are present. Before the first paying centre: set up a real support@ mailbox (Google Workspace or forwarding service) and replace the MX; do not touch other records.
 - 2026-11-25 T24 CHANGED AGAIN: tutors under a centre SHOULD have settings (name, password, payout details bank/PayNow, delete account). Solo Settings page stays closed to tutor-only; a small tutor settings page is planned (T24b). T24 branch (v266 redirect) stays valid.
 
+- 2026-11-25 T24b decisions, all YES: delete = request to centre owner (one-tap approve, auto-OK after 7 days) then erase login+personal data, lessons/attendance stay as "Former tutor"; new permission `view_payout_details` (owner always, staff opt-in); old payout rows erased 12 months after leaving (confirm with the company's adviser); bank-account encryption later (plain+functions+masked+audited now); amber flag for 7 days when payout details change. T12c: menu label "Centre" for one centre, "Centres" for more than one; NULL_IS_MINE=true until a LIVE preview shows zero null org_id rows (on the live-shipping checklist).
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -88,6 +90,8 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T3 | Plan for staff screens for centres (plan only, owner approves) | plan DONE (`claude/t3-plan`), 6 owner decisions pending; start only after T12 steps 1-4 on dev | `claude/t3-plan` |
 | T12c | T12 steps 3+4: solo pages filter by current org (null = no filter), centre menu + redirect, centre home | doing | NEW worker / `claude/t12c-org-filter` (v269), builds on `claude/t12b-current-org` |
 | T24b | Plan: Settings for centre tutors (profile, password, payout details PayNow/bank, delete account) | doing (plan only) | NEW worker / `claude/t24b-plan` |
+| T24c | Build tutor settings page per T24b plan (7 steps, DB first) | todo; start after bundle 3 (T12 on dev) | |
+| T25 | Assemble bundle 3 (T23 + T24 + T12b + T12c + T18b) into one PR to dev; owner OK needed to MERGE | doing | NEW worker / `claude/bundle-3` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
