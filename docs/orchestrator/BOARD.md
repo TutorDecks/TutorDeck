@@ -56,6 +56,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-25 night: owner asked me to keep working until 10:00 SGT 2026-11-26 and then report. Scheduled check-ins + the 10:00 report (send_later). No merges into dev meanwhile (owner tests later), no LIVE. Orchestrator's Supabase connector is READ-ONLY on DEV (write refused), so DEV SQL is run by the owner.
 
+- Version-number clash to fix when bundling: t7-2-invites v273 and t24c-1-profile v273 (t3-1 v272); the bundle assembler picks one final number.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -99,7 +101,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T3 | Plan for staff screens for centres (plan only, owner approves) | plan DONE (`claude/t3-plan`), 6 owner decisions pending; start only after T12 steps 1-4 on dev | `claude/t3-plan` |
 | T12c | T12 steps 3+4: solo pages filter by current org (null = no filter), centre menu + redirect, centre home | doing | NEW worker / `claude/t12c-org-filter` (v269), builds on `claude/t12b-current-org` |
 | T24b | Plan: Settings for centre tutors (profile, password, payout details PayNow/bank, delete account) | doing (plan only) | NEW worker / `claude/t24b-plan` |
-| T24c | Build tutor settings page per T24b plan (7 steps, DB first). Step 1-2 (page shell, profile, change password) | doing | NEW worker / `claude/t24c-1-profile`; steps 3-8 later |
+| T24c | Build tutor settings page per T24b plan (7 steps, DB first). Step 1-2 (page shell, profile, change password) | DONE on branch (v273, migration_tutor_profile.sql NOT yet on DEV, 135 unit tests, smoke+axe pass; phone accepts +65 then 6/8/9 + 7 digits; tutor-settings added to CENTRE_PAGES in org-scope.js) | `claude/t24c-1-profile`; steps 3-8 later. NOTE for step 5: profile saves write name/phone to the generic audit log, the leave-centre step must scrub it |
 | T25 | Assemble bundle 3 (T23 + T24 + T12b + T12c + T18b) into one PR to dev; owner OK needed to MERGE | MERGED into dev 2026-11-25 (#127, v271, CI green after contrast fix) | `claude/bundle-3` |
 | T3.1 | T3 step 1: staff seed logins + centre Home (staff_home) | doing | NEW worker / `claude/t3-1-staff-home` |
 | T7.2 | T7 code: reset page uses password rules (E2), invite email api/send-invite (E4), admin Resend invite button (E5), owner-steps doc; owner does E1/E3 (Supabase SMTP) later | doing | NEW worker / `claude/t7-2-invites` |
