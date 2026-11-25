@@ -1,8 +1,8 @@
 // Centre home for owners and staff (T3 step 1). One database call, staff_home(org), returns COUNTS ONLY (no money, no names);
 // which sections come back is decided by the person's permissions in the database, this page only draws what it got.
-// Timetable / Attendance are not built yet: their tabs open a clear "Coming next" page (never a dead link).
+// Timetable is not built yet: its tab opens a clear "Coming next" page (never a dead link). Students and Attendance are their own pages.
 //   centre?id=<centre>               Home
-//   centre?id=<centre>&tab=<name>    timetable | attendance (coming next); students is its own page now (centre-students)
+//   centre?id=<centre>&tab=<name>    timetable (coming next); students and attendance are their own pages now (centre-students, centre-attendance)
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
@@ -78,6 +78,7 @@
     }
     h.can = h.can || {};
     if (tab === "students" && h.can.students) { location.replace("centre-students?id=" + encodeURIComponent(id)); return; }   // (T3 step 2) an old link or bookmark
+    if (tab === "attendance" && h.can.timetable) { location.replace("centre-attendance?id=" + encodeURIComponent(id)); return; }   // (T3 step 3) an old link or bookmark
     if (tab) soon(h, tab); else home(h);
   }
   TL.requireAuth("centre", init);

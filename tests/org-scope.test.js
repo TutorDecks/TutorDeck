@@ -48,7 +48,7 @@ test("centre on a solo page = redirect to the centre home; own pages stay", () =
   const home = "centre?id=" + CID;
   for (const page of ["dashboard", "calendar", "planner", "students", "student", "exams", "ledger", "invoices", "insights", "materials"])
     assert.strictEqual(OS.centreRedirect(CENTRE, page), home, page);
-  for (const page of ["org", "settings", "tutor", "centre", "centre-students"]) assert.strictEqual(OS.centreRedirect(CENTRE, page), null, page);
+  for (const page of ["org", "settings", "tutor", "centre", "centre-students", "centre-attendance"]) assert.strictEqual(OS.centreRedirect(CENTRE, page), null, page);
   assert.strictEqual(OS.centreRedirect(CENTRE_TUTOR, "ledger"), "tutor");            // only a tutor there: My lessons
 });
 test("solo, unknown or odd organisations never redirect", () => {

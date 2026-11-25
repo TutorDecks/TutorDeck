@@ -79,7 +79,7 @@
     { id: "orghome", label: "Home",       ic: "home",     tab: "",           perm: null,               soon: false },
     { id: "orgtt",   label: "Timetable",  ic: "schedule", tab: "timetable",  perm: "manage_timetable", soon: true },
     { id: "orgst",   label: "Students",   ic: "students", tab: "students",   perm: "manage_students",  soon: false, page: "centre-students" },
-    { id: "orgatt",  label: "Attendance", ic: "check",    tab: "attendance", perm: "manage_timetable", soon: true }
+    { id: "orgatt",  label: "Attendance", ic: "check",    tab: "attendance", perm: "manage_timetable", soon: false, page: "centre-attendance" }
   ];
   function can(org, perm) {
     if (!perm || !org) return true;
