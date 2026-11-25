@@ -378,7 +378,8 @@
       return '<div class="og-item" style="align-items:flex-start"><div class="grow"><b>' + esc(m.display_name) + "</b> " +
         (m.status === "invited" ? '<span class="og-badge grey">Invited</span>' : m.status === "disabled" ? '<span class="og-badge grey">Off</span>' : "") +
         '<div class="meta">' + esc(role) + (m.employment_type ? " · " + esc(m.employment_type) : "") + (m.invited_email ? " · " + esc(m.invited_email) : "") + "</div>" +
-        (m.role === "staff" ? permBoxes("mp-" + m.id, m.permissions || [], !can) : "") + "</div>" +
+        (m.role === "staff" ? permBoxes("mp-" + m.id, m.permissions || [], !can) : "") +
+        (m.role === "tutor" && st.org.kind === "centre" ? '<div class="og-pay" data-pay="' + esc(m.id) + '" aria-live="polite"></div>' : "") + "</div>" +
         (can && m.role !== "owner" ? '<button class="og-x" data-mstatus="' + esc(m.id) + '" title="' + (m.status === "disabled" ? "Turn back on" : "Turn off access") + '">' + (m.status === "disabled" ? "↺" : "×") + "</button>" : "") + "</div>";
     }).join("");
     return '<div class="og-list">' + list + "</div>" + (can ?
@@ -392,6 +393,7 @@
   }
   function bindUsers() {
     var body = $("og-body");
+    loadPayouts();
     if ($("i-role")) $("i-role").onchange = function () {
       var staff = $("i-role").value === "staff"; $("i-perms-w").style.display = staff ? "" : "none"; $("i-emp-w").style.display = staff ? "none" : "";
     };
@@ -424,6 +426,51 @@
         await loadSide(); renderStep(S.STEPS[2]);
       };
     });
+  }
+
+  // ------------------------------------------------------------------ tutors' payout details (T24c step 4; separate block)
+  // Owner, or staff with "view_payout_details": a MASKED value per tutor, an amber chip for 7 days after a change, and an explicit Reveal (audited by the database).
+  // Any other staff member: only "Provided" / "Not provided". Nothing is asked of the database unless this is a centre. If the migration is not on the project yet, the line stays empty.
+  var PAY_METHOD = { paynow_mobile: "PayNow mobile", paynow_uen: "PayNow UEN", bank: "Bank account" };
+  function canSeePayouts() {
+    if (isOwner()) return true;
+    var me = st.members.filter(function (m) { return m.user_id === TL.uid() && m.status === "active"; })[0];
+    return !!me && me.role === "staff" && (me.permissions || []).indexOf("view_payout_details") > -1;
+  }
+  function shortStamp(ts) { return new Date(ts).toLocaleDateString("en-SG", { day: "numeric", month: "short" }); }
+  async function loadPayouts() {
+    var slots = $("og-body").querySelectorAll("[data-pay]");
+    if (!slots.length) return;
+    var full = canSeePayouts();
+    var r = await sb().rpc(full ? "org_tutor_payouts" : "org_tutor_payout_status", { p_org: st.org.id });
+    if (r.error) {
+      if (!missing(r.error)) slots.forEach(function (el) { el.innerHTML = '<span class="og-pay-no">Payout details could not be loaded.</span>'; });
+      return;
+    }
+    var by = {}; (r.data || []).forEach(function (x) { by[x.membership_id] = x; });
+    slots.forEach(function (el) {
+      var id = el.getAttribute("data-pay"), x = by[id], m = st.members.filter(function (y) { return y.id === id; })[0];
+      if (!x || !m) return;
+      if (!x.has_payout) { el.innerHTML = '<span class="og-pay-no">Payout details: not provided</span>'; return; }
+      if (!full) { el.innerHTML = '<span class="og-pay-yes">Payout details: provided</span>'; return; }
+      el.innerHTML = '<span class="og-pay-yes">Payout: <b>' + esc(PAY_METHOD[x.method] || x.method) + (x.bank_name ? " · " + esc(x.bank_name) : "") + " " + esc(x.masked || "") + "</b></span>" +
+        (x.changed_recently ? ' <span class="og-badge amber" title="Changed in the last 7 days. If you were not expecting this, check with the tutor before paying.">Changed ' + esc(shortStamp(x.changed_at)) + "</span>" : "") +
+        ' <button type="button" class="og-link" data-reveal="' + esc(id) + '" aria-label="Reveal payout details for ' + esc(m.display_name) + '">Reveal</button>' +
+        '<div class="meta">Updated ' + esc(shortStamp(x.changed_at)) + (x.changed_by_name ? " by " + esc(x.changed_by_name) : "") + '</div><div class="og-revealed" data-revealed="' + esc(id) + '" hidden></div>';
+      el.querySelector("[data-reveal]").onclick = function () { revealPayout(el, id, m.display_name); };
+    });
+  }
+  async function revealPayout(el, id, name) {
+    if (!(await TL.confirm({ title: "Show " + name + "’s full payout details?", message: "This is recorded in the audit log with your name and the time (never the number itself).", confirmText: "Show" }))) return;
+    var r = await sb().rpc("org_reveal_payout", { p_membership: id });
+    if (r.error) return TL.alert(/NO_PAYOUT/.test(r.error.message || "") ? "This tutor has not added payout details." : "Could not show the details. Please try again.");
+    var d = (r.data || [])[0]; if (!d) return;
+    var box = el.querySelector("[data-revealed]"), btn = el.querySelector("[data-reveal]"), timer;
+    function hide() { clearTimeout(timer); box.hidden = true; box.textContent = ""; btn.hidden = false; }
+    var lines = d.method === "bank" ? [d.bank_name, "Account " + d.account_no, "Name " + d.account_holder] : [(PAY_METHOD[d.method] || d.method) + " " + d.paynow_id];
+    box.textContent = ""; lines.forEach(function (t) { var l = document.createElement("div"); l.textContent = t; box.appendChild(l); });
+    var hb = document.createElement("button"); hb.type = "button"; hb.className = "og-link"; hb.textContent = "Hide"; hb.onclick = hide; box.appendChild(hb);
+    box.hidden = false; btn.hidden = true; timer = setTimeout(hide, 30000);   // closes by itself after 30 seconds
   }
 
   // ------------------------------------------------------------------ step 9: import (coming soon)

@@ -46,6 +46,12 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_profile_test.sql
 $P -f db/migration_tutor_payout.sql
 $P -f db/migration_tutor_payout.sql                         # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_payout_test.sql
+$P -f db/migration_payout_permission.sql
+$P -f db/migration_payout_permission.sql                    # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/payout_permission_test.sql
+$P -f db/migration_payout_permission_down.sql
+$P -f db/migration_payout_permission.sql                    # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_payout_permission_down.sql
 $P -f db/migration_tutor_payout_down.sql
 $P -f db/migration_tutor_payout.sql                         # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_tutor_payout_down.sql

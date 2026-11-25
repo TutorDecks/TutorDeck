@@ -9,7 +9,7 @@
   "use strict";
   var SCHEMA_VERSION = 1;
 
-  // keep in sync with org_invite() in the migration (a test checks this)
+  // keep in sync with org_invite() and org_update_member() in db/migration_payout_permission.sql (a test checks this)
   var STAFF_PERMISSIONS = [
     { key: "manage_timetable", label: "Manage timetable" },
     { key: "manage_students",  label: "Manage students & families" },
@@ -18,7 +18,8 @@
     { key: "record_payments",  label: "Record payments" },
     { key: "view_revenue",     label: "View revenue" },
     { key: "run_tutor_pay",    label: "Run tutor pay" },
-    { key: "view_audit_log",   label: "View the audit log" }
+    { key: "view_audit_log",   label: "View the audit log" },
+    { key: "view_payout_details", label: "See tutors’ payout details (PayNow, bank)" }
   ];
 
   function o(v, l) { return [v, l]; }
