@@ -150,7 +150,7 @@ const LESSONS = [["a", -3], ["b", -1, { attendance: "late_cancelled", can_mark: 
     await ctx.close(); }
   // ---------- A3. the sign-up screens offer the new options (and are honest about what is not built yet)
   { const { ctx, page } = await open(b, "desktop", "light", {}, "org");
-    await page.click("text=Demo Learning Centre"); await page.waitForTimeout(900);        // open the centre being set up
+    await page.click("a.og-item:has-text('Demo Learning Centre')"); await page.waitForTimeout(900);        // open the centre being set up
     await page.click("button:has-text('Tutors and lessons')"); await page.waitForTimeout(700);   // step 7
     const txt = await page.evaluate(() => document.body.innerText);
     ok(/Tutors can mark or change attendance for/.test(txt), "setup screen: the marking-window option is offered");
@@ -173,6 +173,7 @@ const LESSONS = [["a", -3], ["b", -1, { attendance: "late_cancelled", can_mark: 
   { const { ctx, page } = await open(b, "phone", "light", { lessons: [] }, "tutor");
     ok(/No lessons are assigned to you/.test(await page.textContent("#tt-lists")), "no lessons: a friendly empty state"); await ctx.close(); }
   // ---------- C. role-based menu and Home redirect
+  const SOLO_ONLY = { role: { memberships: [{ org_id: "o1", user_id: "u1", role: "owner", status: "active", organisations: { id: "o1", kind: "solo", trading_name: "Mei Tuition" } }] } };
   const centreTutor = (n) => ({ role: { memberships: [{ role: "tutor", status: "active", organisations: { kind: "centre" } }, { role: "owner", status: "active", organisations: { kind: "solo" } }], studentCount: n }, lessons: LESSONS });
   { const { ctx, page } = await open(b, "desktop", "light", centreTutor(0), "home");
     await page.waitForTimeout(800);
@@ -190,7 +191,7 @@ const LESSONS = [["a", -3], ["b", -1, { attendance: "late_cancelled", can_mark: 
     ok(nav.join(",") === "Home,Schedule,Students,Money", "main bar unchanged: " + nav.join(","));
     await ctx.close(); }
   for (const pg of ["home", "settings", "students", "calendar", "ledger", "exams"]) {
-    const { ctx, page, errs } = await open(b, "desktop", "light", {}, pg);
+    const { ctx, page, errs } = await open(b, "desktop", "light", SOLO_ONLY, pg);   // a solo-only login (the default stub also owns a centre, which now gets the centre menu, T12c)
     const nav = await page.$$eval(".tn-links a", (e) => e.map((x) => x.textContent.trim()));
     ok(nav.join(",") === "Home,Schedule,Students,Money" && !/\/tutor$/.test(page.url()) && errs.length === 0, "plain solo login on " + pg + ": menu and page unchanged" + (errs.length ? " ERR " + errs[0] : ""));
     await ctx.close();

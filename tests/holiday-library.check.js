@@ -34,7 +34,7 @@ const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fails++
   const after1 = await manual(); await page.click('[data-hsel="2026"]'); await page.waitForTimeout(1200);
   ok(after1 === before + 11 && (await manual()) === after1, "select all adds 11 once, second click adds none (" + after1 + ")");
   ok((await page.locator('[data-hol="2026-06-01"]').isChecked()) === false, "Monday substitute not ticked by select all");
-  await page.click('[data-hclr="2026"]'); await page.click(".tl-dialog .btn-danger, .modal .btn-danger, [data-confirm], button:has-text('Clear'):visible >> nth=-1").catch(() => {});
+  await page.click('[data-hclr="2026"]'); await page.click(".td-dlg-box [data-yes]");
   await page.waitForFunction((x) => document.querySelectorAll('[data-del="holidays"]').length === x, before, { timeout: 8000 }).catch(() => {});
   ok((await manual()) === before, "clear returns to " + before + " rows (" + (await manual()) + ")");
   // dark mode
