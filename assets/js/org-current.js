@@ -72,13 +72,13 @@
   }
 
   // (T3) The centre menu for an owner or staff member: Home · Timetable · Students · Attendance (then the More sheet).
-  // A staff member only gets the tabs their permissions allow (owners get all). Only Home is built so far: the others carry soon:true and
+  // A staff member only gets the tabs their permissions allow (owners get all). Home and Students are built (Students is its own page, `page`); the others carry soon:true and
   // open a clear "Coming next" page, never a dead link. perms = undefined means "not known yet" (an older remembered list): show the tab,
   // the database refuses what a person may not do anyway. Remove `soon` from a tab the day its screen exists.
   var TABS = [
     { id: "orghome", label: "Home",       ic: "home",     tab: "",           perm: null,               soon: false },
     { id: "orgtt",   label: "Timetable",  ic: "schedule", tab: "timetable",  perm: "manage_timetable", soon: true },
-    { id: "orgst",   label: "Students",   ic: "students", tab: "students",   perm: "manage_students",  soon: true },
+    { id: "orgst",   label: "Students",   ic: "students", tab: "students",   perm: "manage_students",  soon: false, page: "centre-students" },
     { id: "orgatt",  label: "Attendance", ic: "check",    tab: "attendance", perm: "manage_timetable", soon: true }
   ];
   function can(org, perm) {
@@ -91,7 +91,7 @@
     if (!org || org.kind !== "centre" || !org.id || (org.role !== "owner" && org.role !== "staff")) return [];
     var base = "centre?id=" + encodeURIComponent(org.id);
     return TABS.filter(function (t) { return can(org, t.perm); }).map(function (t) {
-      return { id: t.id, label: t.label, ic: t.ic, soon: t.soon, tab: t.tab, href: t.tab ? base + "&tab=" + t.tab : base };
+      return { id: t.id, label: t.label, ic: t.ic, soon: t.soon, tab: t.tab, page: t.page || "", href: t.page ? t.page + "?id=" + encodeURIComponent(org.id) : t.tab ? base + "&tab=" + t.tab : base };
     });
   }
 

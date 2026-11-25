@@ -411,11 +411,12 @@ window.TL = (function () {
     if (o.role === "tutor") G = TUTOR_GROUPS;
     else {
       // (T3) owner / staff: Home · Timetable · Students · Attendance, then More. Which tabs: OrgCurrent.centreTabs (follows the staff permissions).
-      G = (OC ? OC.centreTabs(o) : []).map(function (t) { return { id: t.id, label: t.label, ic: t.ic, soon: t.soon, tab: t.tab, pages: [ { id: t.id, label: t.label, href: t.href } ] }; });
+      G = (OC ? OC.centreTabs(o) : []).map(function (t) { return { id: t.id, label: t.label, ic: t.ic, soon: t.soon, tab: t.tab, page: t.page, pages: [ { id: t.id, label: t.label, href: t.href } ] }; });
       if (!G.length) G = CENTRE_GROUPS;
     }
     var tabQ = (/[?&]tab=([a-z]+)/.exec(location.search) || [])[1] || "";
-    var on = active === "centre" ? (G.filter(function (g) { return (g.tab || "") === tabQ; })[0] || G[0] || {}).id
+    var on = active === "centre-students" ? (G.filter(function (g) { return g.page === active; })[0] || G[0] || {}).id
+           : active === "centre" ? (G.filter(function (g) { return (g.tab || "") === tabQ; })[0] || G[0] || {}).id
            : active === "org" ? (/[?&]id=/.test(location.search) ? "orgsettings" : "orglist") : active;
     var more = [];
     if (o.role !== "tutor") more.push({ id: "orgsettings", label: "Centre settings", href: "org?id=" + encodeURIComponent(o.id), ic: "settings" },
@@ -707,6 +708,7 @@ window.TL = (function () {
                  ledger: ["Ledger", "Lessons, payments & projections"],
                  settings: ["Settings", "Business, payments & your account"],
                  centre: ["Centre home", "Today at your centre"],
+                 "centre-students": ["Students", "Your students and their families"],
                  org: ["Organisation", "Your tuition centre, set up your way"],
                  tutor: ["My lessons", "Your classes and attendance"],
                  exams: ["Exams", "Upcoming assessments"],

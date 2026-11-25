@@ -106,11 +106,11 @@ test("Home redirects only owners/admins whose current organisation is a centre",
 // ---- T3: the centre menu (Home · Timetable · Students · Attendance) follows the staff member's permissions ----
 const SF = (perms) => Object.assign({}, CB, { permissions: perms });   // a staff membership with these permissions
 const tabs = (rows) => OC.centreTabs(OC.list(rows).filter((o) => o.kind === "centre")[0]);
-test("owner gets all four tabs; only Home is built, the others are marked soon", () => {
+test("owner gets all four tabs; Home and Students are built, the others are marked soon", () => {
   const t = tabs([CA]);
   assert.deepStrictEqual(t.map((x) => x.label), ["Home", "Timetable", "Students", "Attendance"]);
-  assert.deepStrictEqual(t.map((x) => x.soon), [false, true, true, true]);
-  assert.deepStrictEqual(t.map((x) => x.href), ["centre?id=c1", "centre?id=c1&tab=timetable", "centre?id=c1&tab=students", "centre?id=c1&tab=attendance"]);
+  assert.deepStrictEqual(t.map((x) => x.soon), [false, true, false, true]);
+  assert.deepStrictEqual(t.map((x) => x.href), ["centre?id=c1", "centre?id=c1&tab=timetable", "centre-students?id=c1", "centre?id=c1&tab=attendance"]);
 });
 test("staff see only the tabs their permissions allow; Home is always there", () => {
   const labels = (p) => tabs([SF(p)]).map((x) => x.label);

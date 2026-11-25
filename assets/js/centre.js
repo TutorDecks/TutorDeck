@@ -1,8 +1,8 @@
 // Centre home for owners and staff (T3 step 1). One database call, staff_home(org), returns COUNTS ONLY (no money, no names);
 // which sections come back is decided by the person's permissions in the database, this page only draws what it got.
-// Timetable / Students / Attendance are not built yet: their tabs open a clear "Coming next" page (never a dead link).
+// Timetable / Attendance are not built yet: their tabs open a clear "Coming next" page (never a dead link).
 //   centre?id=<centre>               Home
-//   centre?id=<centre>&tab=<name>    timetable | students | attendance (coming next)
+//   centre?id=<centre>&tab=<name>    timetable | attendance (coming next); students is its own page now (centre-students)
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
@@ -14,8 +14,6 @@
   var SOON = {
     timetable:  { title: "Timetable", need: "timetable", lead: "The week at your centre, one day at a time.",
                   items: ["See every lesson by day, filtered by tutor", "Add or change a weekly slot, and who teaches it", "Cover a lesson with a replacement tutor"] },
-    students:   { title: "Students", need: "students", lead: "Your students and their families in one list.",
-                  items: ["Search by student, level or parent", "Add a student with a parent’s contact details", "Mark a student as discontinued"] },
     attendance: { title: "Attendance", need: "timetable", lead: "Mark today’s lessons, and correct a mark when something was wrong.",
                   items: ["See which lessons still need a mark", "Mark attended or absent, with remarks", "Correct a mark, with a reason that is kept on record"] }
   };
@@ -79,6 +77,7 @@
       return card('<h2 style="font-size:17px;font-weight:800;margin:0 0 6px">Still being set up</h2><p class="ch-note">The owner is still setting this centre up. Check back soon.</p>');
     }
     h.can = h.can || {};
+    if (tab === "students" && h.can.students) { location.replace("centre-students?id=" + encodeURIComponent(id)); return; }   // (T3 step 2) an old link or bookmark
     if (tab) soon(h, tab); else home(h);
   }
   TL.requireAuth("centre", init);

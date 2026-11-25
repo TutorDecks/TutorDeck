@@ -64,7 +64,7 @@ const tabs = (page, phone) => page.locator(phone ? ".tabbar a" : ".tn-links a").
       ok(/1\s*\n?\s*charge to confirm/.test(t) && /3\s*\n?\s*past lessons not marked/.test(t), mode + " owner: pending items shown");
       ok(!/S\$|\$\d/.test(t), mode + " owner: no money on the page");
       ok((await tabs(page, phone)).slice(0, 4).join("|") === "Home|Timetable|Students|Attendance" || (phone && (await tabs(page, true)).slice(0, 4).join("|") === "Home|Timetable|Students|Attendance"), mode + " owner: tabs Home · Timetable · Students · Attendance (got " + (await tabs(page, phone)).join("|") + ")");
-      ok(await page.locator(".soon-pill").filter({ visible: true }).count() === 3, mode + " owner: three tabs marked soon");
+      ok(await page.locator(".soon-pill").filter({ visible: true }).count() === 2, mode + " owner: two tabs marked soon (Students is built)");
       ok(await page.locator(".org-sw").count() === 0, mode + " owner: no chip for an empty solo shell");
       if (SC) await page.screenshot({ path: path.join(SC, "home-" + mode + ".png"), fullPage: false });
       // coming-next tab: a real page, not a dead link
