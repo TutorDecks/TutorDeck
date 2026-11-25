@@ -101,10 +101,11 @@ window.TL = (function () {
 
   // Build sidebar + topbar around the page's <div id="view">
   function mountShell(active, email, title, sub) {
+    var pageId = active;   // the page's own id (the menu may show a centre's items instead, T12c)
     var mode = roleMode(), G = mode === "tutor-only" ? TUTOR_GROUPS : GROUPS;
-    var grp = groupOf(active, G);
     var extras = (mode === "tutor-only" ? [] : mode === "both" ? [TUTOR_EXTRA].concat(EXTRA) : EXTRA)
       .filter(function (n) { return !n.ownerOnly || isOwner; });
+    var grp = groupOf(active, G);
     var onExtra = extras.some(function (n) { return n.id === active; });
 
     // Desktop top bar: brand · the four groups · Settings/Materials icons + account menu.
@@ -197,7 +198,7 @@ window.TL = (function () {
     scrim.addEventListener("click", function () { setSheet(false); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") { setSheet(false); acctWrap.classList.remove("open"); } });
     // Client view: one floating eye on every page. Tap = hide money instantly (no reload), tap again = show.
-    CV_ACTIVE = active;
+    CV_ACTIVE = pageId;
     if (!document.getElementById("td-cv")) {
       var cvb = document.createElement("button");
       cvb.type = "button"; cvb.id = "td-cv"; cvb.className = "cv-fab";
@@ -377,6 +378,17 @@ window.TL = (function () {
     }
   }
   // ======== end T12b ========
+
+  // ======== T12c: solo pages see ONLY the current solo organisation; centres get their own menu ========
+  // Pure logic in assets/js/org-scope.js (unit-tested). Id unknown (organisation tables missing, as on LIVE today), or any error = NO filter,
+  // exactly what the pages did before. See docs/orchestrator/T12c-notes.md for every call site.
+  var OS = window.OrgScope || null;
+  function scope(q) { try { return OS ? OS.scope(q, org()) : q; } catch (e) { return q; } }                 // reads: TL.scope(sb.from("x").select("…")).order(…)
+  function orgFields(r) { try { return OS ? OS.fields(r, org()) : r; } catch (e) { return r; } }             // inserts: TL.orgFields({…}) or TL.orgFields([{…}])
+  function orgId() { try { return OS ? OS.soloId(org()) : null; } catch (e) { return null; } }
+  function inCentre() { try { var o = org(); return !!(o && o.kind === "centre" && o.id); } catch (e) { return false; } }
+  function centreRedirect(active) { try { return OS ? OS.centreRedirect(org(), active) : null; } catch (e) { return null; } }
+  // ======== end T12c ========
 
   // Old builds kept these unscoped, so a second account in the same browser inherited the first one's
   // state (e.g. "Not logged" hidden, Google Calendar "connected"). Nobody can tell whose they were — drop them.
@@ -1189,16 +1201,16 @@ window.TL = (function () {
   // Flip any "scheduled" lesson whose time has passed to "done" (unpaid),
   // so completed lessons show up as owed without needing a background server.
   async function promotePastLessons() {
-    if (!window.sb) return;
+    if (!window.sb || inCentre()) return;   // T12c: this is the solo pages' job; a centre's lessons follow attendance, set by the system
     var n = new Date(), p = function (x) { return (x < 10 ? "0" : "") + x; };
     var today = n.getFullYear() + "-" + p(n.getMonth() + 1) + "-" + p(n.getDate());
     var nowT = p(n.getHours()) + ":" + p(n.getMinutes()) + ":" + p(n.getSeconds());
     try {
       // past dates: always promote
-      await window.sb.from("lessons").update({ status: "done" })
+      await scope(window.sb.from("lessons").update({ status: "done" }))
         .eq("status", "scheduled").lt("lesson_date", today);
       // today: promote only those whose end time has already passed
-      await window.sb.from("lessons").update({ status: "done" })
+      await scope(window.sb.from("lessons").update({ status: "done" }))
         .eq("status", "scheduled").eq("lesson_date", today).lte("end_time", nowT);
     } catch (e) { /* non-fatal */ }
   }
@@ -1221,14 +1233,14 @@ window.TL = (function () {
   // unpaid. Never creates an invoice; invoices replaced by a newer one are left as they were (same as the Ledger).
   async function syncInvoicesForLessons(ids, paidDate) {
     ids = (ids || []).map(String);
-    var q = await window.sb.from("invoices").select("id,data,status");
+    var q = await scope(window.sb.from("invoices").select("id,data,status"));
     if (q.error) return;
     var hits = (q.data || []).filter(function (v) {
       var lids = (v.data && v.data.lesson_ids) || [];
       return !(v.data && v.data.replaced_by) && lids.some(function (x) { return ids.indexOf(String(x)) > -1; });
     });
     for (var i = 0; i < hits.length; i++) {
-      var v = hits[i], chk = await window.sb.from("lessons").select("id,paid").in("id", v.data.lesson_ids);
+      var v = hits[i], chk = await scope(window.sb.from("lessons").select("id,paid")).in("id", v.data.lesson_ids);
       var got = chk.data || [], allPaid = got.length > 0 && got.every(function (l) { return l.paid; });
       if (allPaid && v.status !== "paid") await window.sb.from("invoices").update({ status: "paid", paid_date: paidDate || todayISO() }).eq("id", v.id);
       else if (!allPaid && v.status === "paid") await window.sb.from("invoices").update({ status: "issued", paid_date: null }).eq("id", v.id);
@@ -1275,7 +1287,7 @@ window.TL = (function () {
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
-           store: store, org: org, orgs: orgList, roleMode: roleMode, setRole: setRole, detectRole: detectRole, tutorOnlyRedirect: tutorOnlyRedirect, uid: function () { return UID; }, plural: plural,
+           store: store, org: org, orgs: orgList, scope: scope, orgFields: orgFields, orgId: orgId, roleMode: roleMode, setRole: setRole, detectRole: detectRole, tutorOnlyRedirect: tutorOnlyRedirect, uid: function () { return UID; }, plural: plural,
            confirm: tlConfirm, alert: tlAlert, prompt: tlPrompt, freeLimit: tlFreeLimit,
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,

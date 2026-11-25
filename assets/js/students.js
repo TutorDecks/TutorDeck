@@ -34,7 +34,7 @@
     $("m-save").disabled=true;
     var res=editingId
       ? await window.sb.from("students").update(fields).eq("id",editingId)
-      : await window.sb.from("students").insert(Object.assign({tutor_id:userId},fields)).select("id").single();
+      : await window.sb.from("students").insert(TL.orgFields(Object.assign({tutor_id:userId},fields))).select("id").single();
     $("m-save").disabled=false;
     if(res.error){
       if(await TL.freeLimit(res.error)){msg.textContent="Your free plan covers 5 active students.";msg.className="msg err";return;}
@@ -239,7 +239,7 @@
   window.addEventListener("scroll",function(){ if(Math.abs(window.scrollY-menuY)>24) closeMenus(); },{passive:true});
   window.addEventListener("resize",closeMenus);
   async function load(){
-    var res=await window.sb.from("students").select("id,name,kind,level,contact,location,notes,active,recipient_name,end_date,pay_by_bank").order("name");
+    var res=await TL.scope(window.sb.from("students").select("id,name,kind,level,contact,location,notes,active,recipient_name,end_date,pay_by_bank")).order("name");
     if(res.error){$("s-count").textContent="Couldn't load students: "+res.error.message;return;}
     students=res.data||[];
     fillStuFilters();
