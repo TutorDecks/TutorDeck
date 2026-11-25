@@ -105,6 +105,7 @@ window.TL = (function () {
     var mode = roleMode(), G = mode === "tutor-only" ? TUTOR_GROUPS : GROUPS;
     var extras = (mode === "tutor-only" ? [] : mode === "both" ? [TUTOR_EXTRA].concat(EXTRA) : EXTRA)
       .filter(function (n) { return !n.ownerOnly || isOwner; });
+    if (mode !== "tutor-only" && inCentre()) { var cm = centreMenu(active); G = cm.groups; extras = cm.extras; active = cm.active; }   // T12c: a centre has its own menu
     var grp = groupOf(active, G);
     var onExtra = extras.some(function (n) { return n.id === active; });
 
@@ -388,6 +389,21 @@ window.TL = (function () {
   function orgId() { try { return OS ? OS.soloId(org()) : null; } catch (e) { return null; } }
   function inCentre() { try { var o = org(); return !!(o && o.kind === "centre" && o.id); } catch (e) { return false; } }
   function centreRedirect(active) { try { return OS ? OS.centreRedirect(org(), active) : null; } catch (e) { return null; } }
+  // Menu while the current organisation is a centre (a person who is only a tutor there gets My lessons, as a tutor-only login does).
+  var CENTRE_GROUPS = [
+    { id: "orghome", label: "Centre home", ic: "home",     pages: [ { id: "orghome", label: "Centre home", href: "org" } ] },
+    { id: "orglist", label: "Centres",     ic: "students", pages: [ { id: "orglist", label: "Centres", href: "org" } ] }
+  ];
+  function centreMenu(active) {
+    var o = org(), G;
+    if (o.role === "tutor") G = TUTOR_GROUPS;
+    else {
+      var home = "org?id=" + encodeURIComponent(o.id);
+      G = CENTRE_GROUPS.map(function (g, i) { return Object.assign({}, g, { pages: [ Object.assign({}, g.pages[0], { href: i === 0 ? home : "org" }) ] }); });
+    }
+    var on = active === "org" ? (/[?&]id=/.test(location.search) ? "orghome" : "orglist") : active;
+    return { groups: G, active: on, extras: EXTRA.filter(function (n) { return n.id === "settings"; }) };
+  }
   // ======== end T12c ========
 
   // Old builds kept these unscoped, so a second account in the same browser inherited the first one's
@@ -708,6 +724,8 @@ window.TL = (function () {
     // The decision only reads the role we just settled; tutorOnlyRedirect() never fires on a doubt, and never for "tutor" itself.
     var goTo = tutorOnlyRedirect(active, roleMode());
     if (goTo) { location.replace(goTo); return; }
+    // T12c: while the current organisation is a centre, a solo page's address leads to the centre home instead (never for tutor-only, handled above).
+    if (roleMode() !== "tutor-only") { var cgo = centreRedirect(active); if (cgo) { location.replace(cgo); return; } }
     // Brand the top bar with this tutor's business name. Draw the page straight away with the name we saw
     // last time on this browser (no blank screen while the profile loads); fix it up if it has changed.
     // First visit on a browser: wait for the profile as before.
