@@ -73,10 +73,11 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T20 | Plan card shows card on file (brand, last4, expiry; "No card on file"; Update card) | DONE on branch, untested vs real Stripe | `claude/t20-card-on-file` |
 | T12a | T12 step 1: DB same-organisation guard (migration_org_separation) | DONE on branch (migration + SQL tests; DEV apply status to confirm) | `claude/t12a-org-guard` |
 | T18a | T18 step 1: mark unbuilt settings `soon` | DONE on branch (v263, six settings marked soon) | `claude/t18a-honest-settings` |
-| T22 | Assemble bundle 2 (T19+T15+T20+T12a+T18a) into one PR to dev; owner approved 2026-11-24; orchestrator merges after CI + owner go | doing | NEW worker / `claude/bundle-2` |
+| T22 | Assemble bundle 2 (T19+T15+T20+T12a+T18a) into one PR to dev; owner approved 2026-11-24; orchestrator merges after CI + owner go | MERGED into dev 2026-11-25 (#126, v264, CI green) | `claude/bundle-2` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
+- 2026-11-25: bundle 2 (#126: T19 password rules, T15 tutor redirect, T20 card on plan card, T12a org guard, T18a soon flags; v264) MERGED into `dev`. Migration org_separation applied to DEV only, NOT LIVE.
 - 2026-11-24: owner tested Stripe sandbox checkout + portal + account deletion on the integration preview: all work. Finding -> T20 (card on file not shown in app).
 - 2026-11-24: #125 and #124 MERGED into `dev` (owner approved; first test bundle, deploys staging). #123 MERGED too (conflict fixed by worker). `dev` now = v260 + sign-up hint + Calendar test stub. Owner told to test (list sent).
 - Previews use DEV, production uses LIVE; demo logins + seed (v260).
