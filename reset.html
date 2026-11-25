@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Reset password · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=271">
+<link rel="stylesheet" href="assets/css/app.css?v=273">
 <style>
   .rs-wrap{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}
   .rs-card{max-width:420px;width:100%;background:#fff;border:1px solid var(--line);border-radius:16px;
@@ -37,6 +37,15 @@
   .rs-brand b{font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
   .rs-h{text-align:center;color:var(--ink);font-weight:800;letter-spacing:-.01em}
   .rs-p{text-align:center}
+  /* password checklist: same look as the sign-up page (grey until met, then tick + teal; red only after a refused submit) */
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .pw-list{list-style:none;margin:8px 0 0;padding:0;font-size:12.5px;color:var(--muted)}
+  .pw-list li{display:flex;align-items:center;gap:8px;line-height:1.4;padding:2px 0}
+  .pw-list .pw-ico{flex:0 0 16px;width:16px;height:16px;box-sizing:border-box;border:1.5px solid currentColor;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;line-height:1}
+  .pw-list li.met{color:var(--accent);font-weight:700}
+  .pw-list li.met .pw-ico{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pw-list li.met .pw-ico::before{content:"\2713"}
+  .pw-list li.bad{color:var(--owed)}
   @media(max-width:520px){ .rs-wrap{padding:16px} .rs-card{padding:26px 20px 22px} }
 </style>
 </head>
@@ -47,11 +56,12 @@
 
     <!-- set-new-password form -->
     <div id="rs-form">
-      <h1 class="rs-h">Set a new password</h1>
-      <p class="rs-p">Choose a new password for your account.</p>
+      <h1 class="rs-h" id="rs-title">Set a new password</h1>
+      <p class="rs-p" id="rs-intro">Choose a new password for your account.</p>
       <div class="field">
         <label for="pw1">New password</label>
-        <input id="pw1" type="password" autocomplete="new-password" placeholder="••••••••">
+        <input id="pw1" type="password" autocomplete="new-password" placeholder="••••••••" aria-describedby="pw-hint">
+        <ul class="pw-list" id="pw-hint" aria-live="polite" aria-label="Password rules"></ul>
       </div>
       <div class="field">
         <label for="pw2">Confirm password</label>
@@ -64,9 +74,9 @@
     <!-- success -->
     <div id="rs-done" style="display:none;text-align:center">
       <div class="ok-check">✓</div>
-      <h1 class="rs-h">Password updated</h1>
-      <p class="rs-p">You can now sign in with your new password.</p>
-      <a class="rs-link" href="login">Go to sign in</a>
+      <h1 class="rs-h" id="rs-done-title">Password updated</h1>
+      <p class="rs-p" id="rs-done-text">You can now sign in with your new password.</p>
+      <a class="rs-link" id="rs-done-link" href="login">Go to sign in</a>
     </div>
 
     <!-- invalid / expired link -->
@@ -79,8 +89,9 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=271"></script>
-<script src="assets/js/supabase.js?v=271"></script>
+<script src="assets/js/config.js?v=273"></script>
+<script src="assets/js/supabase.js?v=273"></script>
+<script src="assets/js/password-rules.js?v=273"></script>
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };
@@ -100,20 +111,84 @@
   }
   setTimeout(guard, 500);
 
+  // ?welcome=1 = the link in an invite email (api/send-invite.js): same page, same rules, welcome wording; on success the person is
+  // already signed in by the recovery link, so they go straight to the app (Home sends a centre tutor to My lessons) instead of "sign in".
+  var welcome = new URLSearchParams(location.search).get("welcome") === "1";
+  if (welcome) {
+    $("rs-title").textContent = "Welcome to TutorDeck";
+    $("rs-intro").textContent = "Choose a password to finish setting up your account.";
+    $("rs-save").textContent = "Set my password";
+    $("rs-bad").querySelector(".rs-h").textContent = "This invite link has expired";
+    $("rs-bad").querySelector(".rs-p").textContent = "Invite links work once and expire after 24 hours. Ask the person who invited you to send it again.";
+  }
+
+  // Breached-password check, same as sign-up (Have I Been Pwned k-anonymity: only the first 5 characters of the SHA-1 leave this page).
+  // Returns the number of breaches, or 0 if clean / the check couldn't run (a network hiccup never blocks the change).
+  async function pwnedCount(pw) {
+    try {
+      var buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(pw));
+      var hex = Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("").toUpperCase();
+      var ctrl = new AbortController(); setTimeout(function () { ctrl.abort(); }, 3000);
+      var res = await fetch("https://api.pwnedpasswords.com/range/" + hex.slice(0, 5), { signal: ctrl.signal, headers: { "Add-Padding": "true" } });
+      if (!res.ok) return 0;
+      var suffix = hex.slice(5), lines = (await res.text()).split("\n");
+      for (var i = 0; i < lines.length; i++) { var p = lines[i].trim().split(":"); if (p[0] === suffix) return parseInt(p[1], 10) || 0; }
+      return 0;
+    } catch (e) { return 0; }
+  }
+
+  // The checklist under the password box: every rule always listed (rules come from assets/js/password-rules.js, shared with sign-up).
+  var submitted = false;
+  function updateHint(fromSubmit) {
+    var el = $("pw-hint"), items = PasswordRules.checklist($("pw1").value);
+    submitted = fromSubmit === true;
+    if (el.children.length !== items.length) {
+      el.innerHTML = items.map(function () { return '<li><span class="pw-ico" aria-hidden="true"></span><span class="pw-txt"></span><span class="sr-only"></span></li>'; }).join("");
+    }
+    items.forEach(function (it, i) {
+      var li = el.children[i];
+      li.className = it.ok ? "met" : (submitted ? "bad" : "");
+      li.children[1].textContent = it.label;
+      li.children[2].textContent = it.ok ? " (done)" : " (not yet)";
+    });
+  }
+  $("pw1").addEventListener("input", function () { updateHint(); });
+  updateHint();
+  // Supabase's own refusal (it checks the same rules on the server), in plain words
+  function weakMessage(e) {
+    var r = (e && e.weak_password && e.weak_password.reasons) || [];
+    if (!r.length && !(e && e.code === "weak_password")) return null;
+    var out = [];
+    if (r.indexOf("length") >= 0) out.push("be at least " + PasswordRules.MIN + " characters");
+    if (r.indexOf("characters") >= 0) out.push("include a lowercase and an uppercase letter, a number and a symbol");
+    if (r.indexOf("pwned") >= 0) out.push("not be one that has appeared in a data breach");
+    return out.length ? "Your password needs to " + out.join(", ") + "." : null;
+  }
+
   $("rs-save").onclick = async function () {
     var a = $("pw1").value, b = $("pw2").value;
-    if (!a || a.length < 6) { show("Password must be at least 6 characters.", false); return; }
+    var need = PasswordRules.problems(a);
+    if (need.length) { updateHint(true); show("Your password is missing: " + need.join(", ") + ".", false); $("pw1").focus(); return; }
     if (a !== b) { show("The passwords don't match.", false); return; }
     $("rs-save").disabled = true;
     try {
+      var leaked = await pwnedCount(a);
+      if (leaked > 0) { show("That password has appeared in " + leaked.toLocaleString() + " known data breaches — please choose a different one.", false); $("rs-save").disabled = false; return; }
       var r = await window.sb.auth.updateUser({ password: a });
       if (r.error) throw r.error;
       $("rs-form").style.display = "none";
       $("rs-done").style.display = "block";
-      // end the recovery session so the next visit is a clean sign-in
-      window.sb.auth.signOut();
+      if (welcome) {
+        $("rs-done-title").textContent = "Password set";
+        $("rs-done-text").textContent = "Taking you to your lessons…";
+        $("rs-done-link").textContent = "Continue"; $("rs-done-link").setAttribute("href", "home");
+        setTimeout(function () { location.replace("home"); }, 1200);
+      } else {
+        // end the recovery session so the next visit is a clean sign-in
+        window.sb.auth.signOut();
+      }
     } catch (e) {
-      show(e.message || "Couldn't update the password.", false);
+      show(weakMessage(e) || e.message || "Couldn't update the password.", false);
       $("rs-save").disabled = false;
     }
   };

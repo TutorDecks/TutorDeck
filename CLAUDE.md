@@ -138,8 +138,8 @@ There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it hol
   sends them to /tutor; "both" adds My lessons to More. Any doubt or error = "solo" (the usual menu), so nothing solo tutors have can disappear.
 - Live schema snapshot: `db/baseline_2026-11.sql`. Test SQL with `bash tests/sql/run.sh` (throwaway Postgres), never live.
 - Dev Supabase project: `tuzxsqkfzrjssnpcoale` (baseline + org_foundation + billing + attendance + tutor_access + org_delete + function_lockdown migrations applied; org_separation not yet). Live: `rnjvswkejbrhbaytutai`
-  (NONE of the org/billing/attendance/delete migrations are on live yet). Migration order everywhere: org_foundation → billing → attendance → tutor_access → org_delete → function_lockdown → org_separation
-  (undo in reverse); `bash tests/sql/run.sh` runs all seven and the undo checks.
+  (NONE of the org/billing/attendance/delete migrations are on live yet). Migration order everywhere: org_foundation → billing → attendance → tutor_access → org_delete → function_lockdown → org_separation → invites
+  (undo in reverse); `bash tests/sql/run.sh` runs all eight and the undo checks.
 
 ## Open threads
 - T-Leng has past lessons wrongly showing ✦ one-off: an old slot deletion (before `one_off`

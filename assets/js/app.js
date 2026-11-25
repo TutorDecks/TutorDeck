@@ -291,6 +291,16 @@ window.TL = (function () {
     return null;
   }
   function setRole(v) { store.set("role", JSON.stringify({ v: v, at: Date.now() })); }
+  // An invited person is linked to the centre by org_claim_invites() (a CONFIRMED email claims its waiting invite). It must run on every page
+  // an invited login can land on (T7: it used to run only on /org, so an invited tutor who went straight to /tutor was never linked).
+  // At most every 30 minutes per login (a stored time), so it adds no waiting to normal page loads; when it links something, the remembered
+  // menu type and organisation list are forgotten so the next lines of requireAuth see the new membership. Any error = nothing to claim.
+  async function claimInvites() {
+    if ((+store.get("claimed_at") || 0) > Date.now() - 30 * 60e3) return;
+    var r = await window.sb.rpc("org_claim_invites");
+    store.set("claimed_at", Date.now());                  // also after an error (organisation tables not installed): don't ask again on every page
+    if (!r.error && r.data > 0) { store.remove("role"); store.remove("orgs"); }
+  }
   async function detectRole() {
     var c = roleMode(); if (c) return c;
     try {
@@ -726,6 +736,7 @@ window.TL = (function () {
       }
     } catch (e) { /* MFA unavailable — proceed as normal */ }
     // Which menu does this login get? (instant when remembered; one query about every 12 hours; any doubt = the usual menu)
+    try { await claimInvites(); } catch (e) { /* nothing to claim */ }
     try { await detectRole(); } catch (e) { /* keep the usual menu */ }
     try { await detectOrgs(); } catch (e) { /* solo organisation, as always */ }
     // A tutor-only login who types a solo page's address (students, ledger, planner …) goes to My lessons, like Home does.
