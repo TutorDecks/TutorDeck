@@ -65,3 +65,37 @@ test("landing: solo → home; centre → its page; a centre tutor → My lessons
   assert.strictEqual(OC.landing({ kind: "centre", id: "c3", role: "tutor" }), "tutor");
   assert.strictEqual(OC.landing(null), "home");
 });
+
+test("centre owner with an empty solo organisation: solo is dropped, centre is the default, no chip", () => {
+  const l = OC.dropEmptySolo(OC.list([SOLO, CA]), 0);
+  assert.deepStrictEqual(ids(l), ["c1"]);
+  assert.strictEqual(OC.pick(l).id, "c1");
+  assert.strictEqual(OC.showSwitcher(l, "solo"), false);
+  assert.strictEqual(OC.pick(l, "s1").id, "c1");   // a remembered solo choice is no longer valid
+});
+test("empty solo + two owned centres: chip shows for the centres only", () => {
+  const CO = Object.assign({}, CB, { role: "owner" });
+  const l = OC.dropEmptySolo(OC.list([SOLO, CA, CO]), 0);
+  assert.deepStrictEqual(ids(l), ["c1", "c2"]);
+  assert.strictEqual(OC.showSwitcher(l, "solo"), true);
+});
+test("a solo tutor with students is never moved; doubt or error keeps solo", () => {
+  const l = OC.list([SOLO, CA]);
+  for (const n of [1, 5, null, undefined, NaN, "0", -1]) assert.deepStrictEqual(ids(OC.dropEmptySolo(l, n)), ["s1", "c1"], String(n));
+  assert.strictEqual(OC.pick(OC.dropEmptySolo(l, 3)).id, "s1");
+});
+test("empty solo but only a tutor/staff role at the centre: solo is kept (not an owner)", () => {
+  assert.deepStrictEqual(ids(OC.dropEmptySolo(OC.list([SOLO, CB]), 0)), ["s1", "c2"]);
+  assert.deepStrictEqual(ids(OC.dropEmptySolo(OC.list([SOLO, CT]), 0)), ["s1", "c3"]);
+  assert.deepStrictEqual(ids(OC.dropEmptySolo(OC.list([SOLO]), 0)), ["s1"]);
+  assert.strictEqual(OC.dropEmptySolo(null, 0), null);
+});
+test("Home redirects only owners/admins whose current organisation is a centre", () => {
+  assert.strictEqual(OC.homeRedirect("dashboard", { kind: "centre", id: "c1", role: "owner" }), "org?id=c1");
+  assert.strictEqual(OC.homeRedirect("dashboard", { kind: "centre", id: "c2", role: "staff" }), "org?id=c2");
+  assert.strictEqual(OC.homeRedirect("dashboard", { kind: "centre", id: "c3", role: "tutor" }), null);
+  assert.strictEqual(OC.homeRedirect("dashboard", { kind: "solo", id: "s1", role: "owner" }), null);
+  assert.strictEqual(OC.homeRedirect("dashboard", { kind: "solo", id: null, role: null }), null);
+  assert.strictEqual(OC.homeRedirect("ledger", { kind: "centre", id: "c1", role: "owner" }), null);
+  for (const bad of [null, undefined, {}, "x"]) assert.strictEqual(OC.homeRedirect("dashboard", bad), null);
+});

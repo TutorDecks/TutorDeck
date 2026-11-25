@@ -38,6 +38,24 @@
   }
   function choose(rows, remembered) { return pick(list(rows), remembered); }
 
+  // A centre owner's own solo organisation is an empty shell when they have no students of their own (it is created at sign-up).
+  // Then it is not a place they work in: leave it out, so the centre is their default and they get no chip for a shell.
+  // soloStudents must be the number 0 (a real count); anything else (unknown, error, >0) keeps the solo organisation: a solo tutor
+  // with students is never moved.
+  function dropEmptySolo(orgs, soloStudents) {
+    if (!Array.isArray(orgs) || soloStudents !== 0) return orgs;
+    var ownsCentre = orgs.some(function (o) { return o.kind === "centre" && o.role === "owner"; });
+    if (!ownsCentre) return orgs;
+    return orgs.filter(function (o) { return o.kind !== "solo"; });
+  }
+
+  // Home is the solo dashboard. When the current organisation is a centre the person owns or administers, Home sends them to
+  // that centre's page instead. Only the "dashboard" page; anything else or any doubt = null (stay).
+  function homeRedirect(active, org) {
+    if (active !== "dashboard" || !org || org.kind !== "centre" || !org.id) return null;
+    return org.role === "owner" || org.role === "staff" ? landing(org) : null;
+  }
+
   // The switcher is for people with more than one organisation. A tutor-only login (one menu item) never gets one.
   function showSwitcher(orgs, mode) {
     return Array.isArray(orgs) && orgs.length > 1 && mode !== "tutor-only";
@@ -49,5 +67,5 @@
     return org.role === "tutor" ? "tutor" : "org?id=" + encodeURIComponent(org.id);
   }
 
-  return { list: list, pick: pick, choose: choose, showSwitcher: showSwitcher, landing: landing };
+  return { list: list, dropEmptySolo: dropEmptySolo, homeRedirect: homeRedirect, pick: pick, choose: choose, showSwitcher: showSwitcher, landing: landing };
 });

@@ -334,7 +334,15 @@ window.TL = (function () {
     var list = [];
     try {
       var m = await window.sb.from("memberships").select("org_id,role,status,organisations(id,kind,trading_name)").eq("user_id", UID).eq("status", "active");
-      if (!m.error) list = OC.list(m.data);          // an error (organisation tables not installed here yet) is remembered as "no organisations" = solo
+      if (!m.error) {                                 // an error (organisation tables not installed here yet) is remembered as "no organisations" = solo
+        list = OC.list(m.data);
+        var solo = list.filter(function (o) { return o.kind === "solo"; })[0];
+        if (solo && list.some(function (o) { return o.kind === "centre" && o.role === "owner"; })) {
+          // a centre owner: does their own solo organisation have any students? (error or doubt = yes, keep it)
+          var st = await window.sb.from("students").select("id", { count: "exact", head: true }).eq("org_id", solo.id);
+          list = OC.dropEmptySolo(list, st.error ? null : st.count);
+        }
+      }
     } catch (e) {}
     store.set("orgs", JSON.stringify({ list: list, at: Date.now() }));
   }
@@ -696,6 +704,8 @@ window.TL = (function () {
     // The decision only reads the role we just settled; tutorOnlyRedirect() never fires on a doubt, and never for "tutor" itself.
     var goTo = tutorOnlyRedirect(active, roleMode());
     if (goTo) { location.replace(goTo); return; }
+    // T12b: a centre owner/admin whose current organisation is a centre lands on the centre page, not the solo dashboard.
+    try { var homeTo = OC && OC.homeRedirect(active, org()); if (homeTo) { location.replace(homeTo); return; } } catch (e) {}
     // Brand the top bar with this tutor's business name. Draw the page straight away with the name we saw
     // last time on this browser (no blank screen while the profile loads); fix it up if it has changed.
     // First visit on a browser: wait for the profile as before.
