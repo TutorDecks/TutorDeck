@@ -38,6 +38,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 - ~~Settings stays reachable for tutor-only logins (T15).~~ CHANGED 2026-11-25: Settings is for solo, both and centre owner only, NOT for tutors under an org (T24). My lessons NOT added for solo tutors. DEV Supabase password rules set to match LIVE (lower, upper, digit, symbol).
 - Bundle rule: second test bundle proposed = T19 + T15 + T20 + T12a (+T18a); owner says go.
 
+- 2026-11-25 T12b decisions: hide switcher chip + default current org = centre when the person owns a centre and has no solo students; tutor-only never gets a chip; phone chip at top of page; null current org (LIVE today, no org tables) = no filtering.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -79,6 +81,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T12b | T12 step 2: TL.org() current organisation + switcher (hidden for single-org users) | DONE on branch (v267), 4 non-blocking decisions | `claude/t12b-current-org` |
 | T18b | T18 step 2: SG public holiday library (selectable, never auto-applied; 2026+2027 verified vs MOM) | DONE on branch (v268); 2027 dates re-check before main | `claude/t18b-holiday-library` |
 | T3 | Plan for staff screens for centres (plan only, owner approves) | plan DONE (`claude/t3-plan`), 6 owner decisions pending; start only after T12 steps 1-4 on dev | `claude/t3-plan` |
+| T12c | T12 steps 3+4: solo pages filter by current org (null = no filter), centre menu + redirect, centre home | doing | NEW worker / `claude/t12c-org-filter` (v269), builds on `claude/t12b-current-org` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
