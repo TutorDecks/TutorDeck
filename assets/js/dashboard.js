@@ -397,7 +397,7 @@
   }
   async function loadInner(){
     await TL.promotePastLessons();
-    var st=await window.sb.from("students").select("id,name,contact");
+    var st=await TL.scope(window.sb.from("students").select("id,name,contact"));
     var nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
     nameByIdM=nameById;
 
@@ -411,9 +411,9 @@
     fyStart=(pr.data&&pr.data.fy_start_month)||1;
     homeProfile=hasOnb?(pr.data||{}):null;
 
-    var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
+    var sl=await TL.scope(window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split")).eq("active",true);
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,amount,paid,status,subject,level,topics,homework,remarks,subject_notes,compensation");
+    var ls=await TL.scope(window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,amount,paid,status,subject,level,topics,homework,remarks,subject_notes,compensation"));
     var lessons=ls.data||[];
     // A cancelled lesson's billable amount is its compensation (0 if none) — every KPI/
     // chart below reads plain l.amount, so normalizing it once here keeps that code simple.
@@ -465,7 +465,7 @@
     setText("inc-hint","Collected YTD "+TL.sgd(ytd));
     if(window.Chart&&$("incomeChart"))chartObj=drawStacked("incomeChart",MONTHS,collected,pending,upcoming,chartObj);
 
-    var ex=await window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,max_score");
+    var ex=await TL.scope(window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,max_score"));
     var exams=ex.data||[];
     if($("teach-view")){
       renderExams(exams,nameById,"teach-exam-list",null);

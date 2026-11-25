@@ -17,12 +17,12 @@ const TL = loadTL();
 const R = TL.tutorOnlyRedirect;
 
 test("tutor-only logins are sent to My lessons from every solo page", () => {
-  for (const p of ["dashboard", "insights", "students", "student", "ledger", "planner", "calendar", "invoices", "exams", "org", "materials"])
+  for (const p of ["dashboard", "insights", "students", "student", "ledger", "planner", "calendar", "invoices", "exams", "org", "materials", "settings"])
     assert.strictEqual(R(p, "tutor-only"), "tutor", p);
 });
-test("tutor-only logins may stay on My lessons and Settings (no redirect loop)", () => {
+test("tutor-only logins may stay on My lessons only (no redirect loop); Settings now redirects", () => {
   assert.strictEqual(R("tutor", "tutor-only"), null);
-  assert.strictEqual(R("settings", "tutor-only"), null);
+  assert.strictEqual(R("settings", "tutor-only"), "tutor");
 });
 test("solo, both and unknown logins are never redirected, on any page", () => {
   for (const mode of ["solo", "both", null, undefined, "", "TUTOR-ONLY", "tutor", "centre", 1, {}])

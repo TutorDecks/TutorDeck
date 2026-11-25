@@ -147,12 +147,12 @@
   }
 
   async function load(){
-    var st=await window.sb.from("students").select("id,name,active,contact,end_date").order("name");
+    var st=await TL.scope(window.sb.from("students").select("id,name,active,contact,end_date")).order("name");
     if(!st.error){
       allStudents=st.data||[];students=allStudents.filter(function(s){return s.active!==false && !TL.isEnded(s.end_date);});studentOptions();
       hhById={};allStudents.forEach(function(s){hhById[s.id]=hhKey(s.contact);});
     }
-    var res=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
+    var res=await TL.scope(window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split")).eq("active",true);
     if(res.error){$("p-total").textContent="Couldn't load schedule: "+res.error.message;return;}
     allSlots=res.data||[];
     // Only show slots for active students — a discontinued student (or one whose scheduled
@@ -190,7 +190,7 @@
     $("m-save").disabled=true;
     var res=editingId
       ? await window.sb.from("recurring_slots").update(payload).eq("id",editingId)
-      : await window.sb.from("recurring_slots").insert(payload);
+      : await window.sb.from("recurring_slots").insert(TL.orgFields(payload));
     $("m-save").disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
     var wasNew=!editingId;

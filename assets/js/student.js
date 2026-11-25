@@ -18,20 +18,20 @@
     if(!sid){$("p-head").innerHTML='<div class="card"><p>No student selected. <a href="students">Back to students</a>.</p></div>';return;}
     await TL.promotePastLessons();
 
-    var sres=await window.sb.from("students").select("id,name,kind,level,contact,location,recipient_name,notes,active,pay_by_bank,end_date").eq("id",sid).single();
+    var sres=await TL.scope(window.sb.from("students").select("id,name,kind,level,contact,location,recipient_name,notes,active,pay_by_bank,end_date")).eq("id",sid).single();
     if(sres.error||!sres.data){$("p-head").innerHTML='<div class="card"><p>Couldn\'t load this student. <a href="students">Back to students</a>.</p></div>';return;}
     student=sres.data;setTitle(student.name);
 
     var LCOLS="id,slot_id,slot_date,lesson_date,start_time,end_time,subject,level,amount,paid,status,topics,homework,remarks,subject_notes,compensation";
-    var lres=await window.sb.from("lessons").select(LCOLS+",charge_note").eq("student_id",sid);
-    if(lres.error) lres=await window.sb.from("lessons").select(LCOLS).eq("student_id",sid);   // charge_note migration not run yet
+    var lres=await TL.scope(window.sb.from("lessons").select(LCOLS+",charge_note")).eq("student_id",sid);
+    if(lres.error) lres=await TL.scope(window.sb.from("lessons").select(LCOLS)).eq("student_id",sid);   // charge_note migration not run yet
     lessons=lres.data||[];
     // A cancelled lesson's billable amount is its compensation (0 if none) — every KPI/
     // table below reads plain l.amount, so normalizing it once here keeps that code simple.
     lessons.forEach(function(l){ if(l.status==="cancelled") l.amount=Number(l.compensation)||0; });
-    var xres=await window.sb.from("exams").select("id,exam_date,assessment_type,subject,topics,remarks,score,max_score").eq("student_id",sid);
+    var xres=await TL.scope(window.sb.from("exams").select("id,exam_date,assessment_type,subject,topics,remarks,score,max_score")).eq("student_id",sid);
     exams=xres.data||[];
-    var slres=await window.sb.from("recurring_slots").select("id,weekday,start_time,end_time,subject,level,rate").eq("student_id",sid).eq("active",true);
+    var slres=await TL.scope(window.sb.from("recurring_slots").select("id,weekday,start_time,end_time,subject,level,rate")).eq("student_id",sid).eq("active",true);
     slots=slres.data||[];
     if(schM==null){ var nn=new Date(); schY=nn.getFullYear(); schM=nn.getMonth(); }
 
@@ -484,9 +484,9 @@
       var shared={assessment_type:$("x-type").value.trim()||null,remarks:$("x-remarks").value.trim()||null,
         score:null,max_score:$("x-maxscore").value!==""?parseFloat($("x-maxscore").value):null};
       var bb=$("x-save");bb.disabled=true;
-      var ins=await window.sb.from("exams").insert(picks.map(function(p){
+      var ins=await window.sb.from("exams").insert(TL.orgFields(picks.map(function(p){
         return Object.assign({tutor_id:userId,student_id:sid,exam_date:p.exam_date,subject:p.subject,topics:p.topics},shared);
-      }));
+      })));
       bb.disabled=false;
       if(ins.error){msg.textContent=ins.error.message;msg.className="msg err";return;}
       closeExam();load();return;
@@ -500,7 +500,7 @@
     var b=$("x-save");b.disabled=true;
     var res=examId
       ? await window.sb.from("exams").update(fields).eq("id",examId)
-      : await window.sb.from("exams").insert(Object.assign({tutor_id:userId,student_id:sid},fields));
+      : await window.sb.from("exams").insert(TL.orgFields(Object.assign({tutor_id:userId,student_id:sid},fields)));
     b.disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
     closeExam();load();

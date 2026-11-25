@@ -52,9 +52,9 @@
       var shared={assessment_type:$("m-type").value.trim()||null,remarks:$("m-remarks").value.trim()||null,
         score:null,max_score:$("m-maxscore").value!==""?parseFloat($("m-maxscore").value):null};
       $("m-save").disabled=true;
-      var ins=await window.sb.from("exams").insert(picks.map(function(p){
+      var ins=await window.sb.from("exams").insert(TL.orgFields(picks.map(function(p){
         return Object.assign({tutor_id:userId,student_id:sid,exam_date:p.exam_date,subject:p.subject,topics:p.topics},shared);
-      }));
+      })));
       $("m-save").disabled=false;
       if(ins.error){msg.textContent=ins.error.message;msg.className="msg err";return;}
       openModal(false);load();return;
@@ -68,7 +68,7 @@
     $("m-save").disabled=true;
     var res=editingId
       ? await window.sb.from("exams").update(fields).eq("id",editingId)
-      : await window.sb.from("exams").insert(Object.assign({tutor_id:userId},fields));
+      : await window.sb.from("exams").insert(TL.orgFields(Object.assign({tutor_id:userId},fields)));
     $("m-save").disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
     openModal(false);load();
@@ -141,17 +141,17 @@
   }
 
   async function load(){
-    var st=await window.sb.from("students").select("id,name,active").order("name");
+    var st=await TL.scope(window.sb.from("students").select("id,name,active")).order("name");
     students=st.data||[];nameById={};students.forEach(function(s){nameById[s.id]=s.name;});
     studentOptions();
 
-    var sl=await window.sb.from("recurring_slots").select("student_id,subject").eq("active",true);
+    var sl=await TL.scope(window.sb.from("recurring_slots").select("student_id,subject")).eq("active",true);
     slotSubj={}; slotRows={};
     (sl.data||[]).forEach(function(r){
       (slotRows[r.student_id]=slotRows[r.student_id]||[]).push(r);
       var first=TL.subjectsOf(r)[0]; if(first&&!slotSubj[r.student_id]) slotSubj[r.student_id]=first.name;
     });
-    var res=await window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,remarks,score,max_score");
+    var res=await TL.scope(window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,remarks,score,max_score"));
     if(res.error){$("x-count").textContent="Couldn't load exams: "+res.error.message;return;}
     exams=res.data||[];
     var today=todayISO();

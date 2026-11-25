@@ -237,14 +237,14 @@
   }
 
   async function load(){
-    var st=await window.sb.from("students").select("id,name");
+    var st=await TL.scope(window.sb.from("students").select("id,name"));
     nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
     var cols="id,student_id,invoice_no,issued_date,total,status,paid_date,proof_path,data";
-    var res=await window.sb.from("invoices").select(cols+",sent_at").order("issued_date",{ascending:false}).order("created_at",{ascending:false});
+    var res=await TL.scope(window.sb.from("invoices").select(cols+",sent_at")).order("issued_date",{ascending:false}).order("created_at",{ascending:false});
     // Before db/migration_invoice_sent.sql is run there's no sent_at column — fall back and hide "Sent".
     if(res.error&&/sent_at/.test(res.error.message||"")){
       hasSent=false;
-      res=await window.sb.from("invoices").select(cols).order("issued_date",{ascending:false}).order("created_at",{ascending:false});
+      res=await TL.scope(window.sb.from("invoices").select(cols)).order("issued_date",{ascending:false}).order("created_at",{ascending:false});
     } else hasSent=true;
     if(res.error){$("i-count").textContent="Couldn't load invoices: "+res.error.message;return;}
     invoices=res.data||[];render();

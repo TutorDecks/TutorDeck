@@ -73,11 +73,11 @@
   // ---- data ----
   async function loadStatic(){
     var r=await Promise.all([
-      window.sb.from("students").select("id,name,location,contact,active,level,end_date"),
-      window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true),
-      window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,score,max_score,remarks"),
+      TL.scope(window.sb.from("students").select("id,name,location,contact,active,level,end_date")),
+      TL.scope(window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split")).eq("active",true),
+      TL.scope(window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,score,max_score,remarks")),
       // setup check: has this tutor ever confirmed a lesson? (one tiny query)
-      window.sb.from("lessons").select("id").limit(1)
+      TL.scope(window.sb.from("lessons").select("id")).limit(1)
     ]);
     students=r[0].error?[]:(r[0].data||[]);
     nameById={}; locById={}; hhById={}; endById={};
@@ -116,8 +116,8 @@
     if(pending[key]) return pending[key];
     var p=key.split("-"), y=+p[0], m=+p[1]-1;
     var first=iso(new Date(y,m,1)), last=iso(new Date(y,m+1,0));
-    pending[key]=window.sb.from("lessons")
-      .select("id,slot_id,slot_date,student_id,lesson_date,start_time,end_time,subject,level,amount,rate,split,paid,status,postponed,compensation,one_off")
+    pending[key]=TL.scope(window.sb.from("lessons")
+      .select("id,slot_id,slot_date,student_id,lesson_date,start_time,end_time,subject,level,amount,rate,split,paid,status,postponed,compensation,one_off"))
       .gte("lesson_date",first).lte("lesson_date",last)
       .then(function(ls){
         var rows=ls.error?[]:(ls.data||[]);
@@ -614,7 +614,7 @@
     var row={ tutor_id:userId, student_id:b.studentId, slot_id:b.slotId, lesson_date:b.dateISO, slot_date:b.dateISO,
       start_time:b.startHM, end_time:b.endHM, subject:b.subject, level:b.level, rate:b.rate, split:b.split||1,
       amount:splitAmt(b.rate,b.startHM,b.endHM,b.split), status:statusFor(b.dateISO,b.endHM), paid:false };
-    var res=await window.sb.from("lessons").insert(row); if(!res.error) gAuto();
+    var res=await window.sb.from("lessons").insert(TL.orgFields(row)); if(!res.error) gAuto();
     if(res.error){TL.alert("Couldn't log: "+res.error.message);return;}
     refreshAfterMutation();
   }
@@ -698,7 +698,7 @@
       start_time:b.startHM, end_time:b.endHM, subject:b.subject, level:b.level, rate:b.rate, split:b.split||1,
       amount:splitAmt(b.rate,b.startHM,b.endHM,b.split), status:statusFor(b.dateISO,b.endHM), paid:false }; });
     btn.disabled=true;
-    var res=await window.sb.from("lessons").insert(rows); if(!res.error) gAuto();
+    var res=await window.sb.from("lessons").insert(TL.orgFields(rows)); if(!res.error) gAuto();
     btn.disabled=false;
     if(res.error){ TL.alert("Couldn't log: "+res.error.message); return; }
     refreshAfterMutation();
@@ -758,7 +758,7 @@
       paid:paid, paid_date:paid?date:null, one_off:true };   // manual add from the calendar = one-off
     if(caPick) Object.assign(row,caPick.fields());   // one or several subjects
     var b=$("ca-save"); b.disabled=true;
-    var res=await window.sb.from("lessons").insert(row); if(!res.error) gAuto();
+    var res=await window.sb.from("lessons").insert(TL.orgFields(row)); if(!res.error) gAuto();
     b.disabled=false;
     if(res.error){ err(res.error.message); return; }
     closeAdd(); refreshAfterMutation();
@@ -1111,9 +1111,9 @@
   }
   function gCtx(cal){
     return { owner:userId, cal:cal||gcalTarget(), today:TDGcalCore.sgToday(), names:nameById, locs:locById, google:gapi,
-      lessons:async function(a,b){ var r=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id,one_off").eq("tutor_id", userId).gte("lesson_date", a).lte("lesson_date", b); return r.error?null:(r.data||[]); },
-      ownLessonIds:async function(ids){ var r=await window.sb.from("lessons").select("id").eq("tutor_id", userId).in("id", ids); return r.error?null:(r.data||[]).map(function(x){ return x.id; }); },
-      lastLessonDate:async function(from){ var r=await window.sb.from("lessons").select("lesson_date").eq("tutor_id", userId).gte("lesson_date", from).order("lesson_date",{ascending:false}).limit(1); return (!r.error && r.data && r.data[0] && r.data[0].lesson_date)||null; },
+      lessons:async function(a,b){ var r=await TL.scope(window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id,one_off")).eq("tutor_id", userId).gte("lesson_date", a).lte("lesson_date", b); return r.error?null:(r.data||[]); },
+      ownLessonIds:async function(ids){ var r=await TL.scope(window.sb.from("lessons").select("id")).eq("tutor_id", userId).in("id", ids); return r.error?null:(r.data||[]).map(function(x){ return x.id; }); },
+      lastLessonDate:async function(from){ var r=await TL.scope(window.sb.from("lessons").select("lesson_date")).eq("tutor_id", userId).gte("lesson_date", from).order("lesson_date",{ascending:false}).limit(1); return (!r.error && r.data && r.data[0] && r.data[0].lesson_date)||null; },
       progress:function(label){ gStatus("Syncing "+label+"…"); } };
   }
   function listAppEvents(cal, tmin, tmax){ return TDGcalCore.listAppEvents(gCtx(cal), tmin, tmax); }
@@ -1198,7 +1198,7 @@
     });
     var own={};
     for(var a=0;a<ask.length;a+=100){
-      var q=await window.sb.from("lessons").select("id").eq("tutor_id", userId).in("id", ask.slice(a,a+100));
+      var q=await TL.scope(window.sb.from("lessons").select("id")).eq("tutor_id", userId).in("id", ask.slice(a,a+100));
       if(q.error) throw q.error;
       (q.data||[]).forEach(function(r){ own[String(r.id)]=1; });
     }
