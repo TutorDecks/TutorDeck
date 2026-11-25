@@ -111,8 +111,10 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | Queue | T3.3 attendance (after T3.2), T3.4 pending charges, T3.5 trial flag, T24c.3 payout permission+centre list, then bundle 4 for owner test | queued | |
 | T3.2b | T3.2 first session never started (stuck PENDING 2h); restarted as session_01CPTfbDdz9FJJgAAa8kuWYi; old session_01CPTfbBFWEs2Fsxsigsnx6g to archive later | DONE on branch `claude/t3-2-students` (smoke 70 loads green); migration_staff_students.sql NOT on DEV | |
 | T24c.3 | Payout permission view_payout_details + centre list/reveal (step 4) | DONE on branch (5 owner decisions pending; migration NOT on DEV) | session_01CPTfbDq6dGgWnAJwiB6aUY / `claude/t24c-3-payout-admin` |
-| T3.3 | T3 step 3: staff attendance view/mark/correct + close the integrity hole (trigger) | doing | NEW worker / `claude/t3-3-attendance` (on t3-2) |
-| T24c.5 | T24b step 5: leave-centre / remove tutor, DB only (+ audit scrub, Former tutor) | doing | NEW worker / `claude/t24c-5-leave` (on t24c-3) |
+| T3.3 | T3 step 3: staff attendance view/mark/correct + close the integrity hole (trigger) | DONE on branch (v285, 6 owner decisions to collect, migration_staff_attendance.sql NOT on DEV) | `claude/t3-3-attendance` (on t3-2) |
+| T24c.5 | T24b step 5: leave-centre / remove tutor, DB only (+ audit scrub, Former tutor) | first session stuck PENDING 2.5h; RESTARTED as new session (see T24c.5r) | `claude/t24c-5-leave` (on t24c-3) |
+| T24c.5r | restart of T24c.5 | doing | NEW worker / `claude/t24c-5-leave`; stuck session session_01CPTfbDBuVSpWbTtCfHzUaq to archive |
+| T3.4 | T3 step 4: pending charges (issue_invoices, suggested charge pre-fill) | doing | NEW worker / `claude/t3-4-charges` (on t3-3) |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
