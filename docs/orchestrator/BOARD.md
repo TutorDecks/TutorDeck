@@ -49,6 +49,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-25 OWNER GO: merge bundle 3 (#127) into dev as soon as CI is green (contrast fix in progress), then send the owner the test list. (Owner go given in own words: "fix, deploy and tell me what to test".)
 
+- 2026-11-25 owner: "continue with the rest first, I will test later" => workers continue in parallel; bundle 3 test list already sent; nothing else needs merging until owner tests.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -92,9 +94,10 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T3 | Plan for staff screens for centres (plan only, owner approves) | plan DONE (`claude/t3-plan`), 6 owner decisions pending; start only after T12 steps 1-4 on dev | `claude/t3-plan` |
 | T12c | T12 steps 3+4: solo pages filter by current org (null = no filter), centre menu + redirect, centre home | doing | NEW worker / `claude/t12c-org-filter` (v269), builds on `claude/t12b-current-org` |
 | T24b | Plan: Settings for centre tutors (profile, password, payout details PayNow/bank, delete account) | doing (plan only) | NEW worker / `claude/t24b-plan` |
-| T24c | Build tutor settings page per T24b plan (7 steps, DB first) | todo; start after bundle 3 (T12 on dev) | |
+| T24c | Build tutor settings page per T24b plan (7 steps, DB first). Step 1-2 (page shell, profile, change password) | doing | NEW worker / `claude/t24c-1-profile`; steps 3-8 later |
 | T25 | Assemble bundle 3 (T23 + T24 + T12b + T12c + T18b) into one PR to dev; owner OK needed to MERGE | MERGED into dev 2026-11-25 (#127, v271, CI green after contrast fix) | `claude/bundle-3` |
 | T3.1 | T3 step 1: staff seed logins + centre Home (staff_home) | doing | NEW worker / `claude/t3-1-staff-home` |
+| T7.2 | T7 code: reset page uses password rules (E2), invite email api/send-invite (E4), admin Resend invite button (E5), owner-steps doc; owner does E1/E3 (Supabase SMTP) later | doing | NEW worker / `claude/t7-2-invites` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
