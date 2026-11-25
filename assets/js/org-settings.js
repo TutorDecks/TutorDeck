@@ -22,6 +22,9 @@
   ];
 
   function o(v, l) { return [v, l]; }
+  // Nothing in the app reads these settings yet (T18 plan, 2026-11-24): shown as "coming soon" so the wizard promises nothing it does not do.
+  var CREDITS_SOON = "Make-up credits come in a later update; for now a make-up is added as a normal lesson.";
+  var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
   // Field: { path, label, type, options?, help?, soon?, show?(s) }
   // types: text, email, color, toggle, select, number, money (cents), percent (bp), days, list (number list)
   var STEPS = [
@@ -44,7 +47,7 @@
       { path: "profile.reply_to_email", label: "Reply-to email for parent emails", type: "email" }
     ]},
     { id: "calendar", n: 2, title: "Branches, rooms and calendar", custom: "calendar", fields: [
-      { path: "calendar.skip_holidays", label: "Don't generate lessons on centre holidays", type: "toggle" }
+      { path: "calendar.skip_holidays", label: "Don't generate lessons on centre holidays", type: "toggle", soon: true, help: HOLIDAYS_SOON }
     ]},
     { id: "users", n: 3, title: "Users and permissions", custom: "users", fields: [] },
     { id: "billing", n: 4, title: "How lessons are billed", fields: [
@@ -57,9 +60,9 @@
         show: function (s) { return s.billing.model === "fixed_in_advance"; } },
       { path: "billing.pay_per_lesson_grouping", label: "Invoice", type: "select", options: [o("lesson", "Every lesson"), o("week", "Every week")],
         show: function (s) { return s.billing.model === "pay_per_lesson"; } },
-      { path: "billing.low_balance_credits", label: "Warn parents when credits fall to", type: "number",
+      { path: "billing.low_balance_credits", label: "Warn parents when credits fall to", type: "number", soon: true, help: CREDITS_SOON,
         show: function (s) { return s.billing.model === "prepaid_packages"; } },
-      { path: "billing.credit_expiry_days", label: "Credits expire after (days, 0 = never)", type: "days",
+      { path: "billing.credit_expiry_days", label: "Credits expire after (days, 0 = never)", type: "days", soon: true, help: CREDITS_SOON,
         show: function (s) { return s.billing.model === "prepaid_packages"; } },
       { path: "billing.fee_plans_note", label: "Fee plans (per lesson / month / term, by level, subject, class type or duration)", type: "note", soon: true,
         help: "You'll set up fee plans with your classes." },
@@ -67,9 +70,9 @@
         o("charged", "Charged"), o("not_charged", "Not charged"), o("charged_unless_notice", "Charged unless notice was given")] },
       { path: "billing.absences.notice_hours", label: "Notice needed (hours before)", type: "number",
         show: function (s) { return s.billing.absences.mode === "charged_unless_notice"; } },
-      { path: "billing.makeups.allowed", label: "Makeup lessons allowed", type: "toggle" },
-      { path: "billing.makeups.per_period", label: "Makeups per period", type: "number", show: function (s) { return s.billing.makeups.allowed; } },
-      { path: "billing.makeups.uses_credit", label: "A makeup uses a credit", type: "toggle", show: function (s) { return s.billing.makeups.allowed; } },
+      { path: "billing.makeups.allowed", label: "Makeup lessons allowed", type: "toggle", soon: true, help: CREDITS_SOON },
+      { path: "billing.makeups.per_period", label: "Makeups per period", type: "number", soon: true, help: CREDITS_SOON, show: function (s) { return s.billing.makeups.allowed; } },
+      { path: "billing.makeups.uses_credit", label: "A makeup uses a credit", type: "toggle", soon: true, help: CREDITS_SOON, show: function (s) { return s.billing.makeups.allowed; } },
       { path: "billing.proration", label: "Joining or leaving mid-period", type: "select", options: [
         o("by_remaining", "Prorate by remaining lessons"), o("full", "Charge the full period"), o("skip", "Skip the partial period")] },
       { path: "billing.sibling_discount.type", label: "Sibling discount (2nd child onwards)", type: "select", options: [

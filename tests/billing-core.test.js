@@ -61,3 +61,12 @@ test("only one free trial per organisation", () => {
   assert.strictEqual(B.trialDaysFor({ trial_end: "2026-12-01T00:00:00Z", stripe_subscription_id: null }, 30), 0);
   assert.strictEqual(B.trialDaysFor({ trial_end: null, stripe_subscription_id: "sub_1" }, 30), 0);
 });
+
+test("cardSummary: keeps only brand, last4, expiry; rejects junk", () => {
+  const C = require("../api/_billing-core");
+  assert.deepStrictEqual(C.cardSummary({ card: { brand: "visa", last4: "4242", exp_month: 8, exp_year: 2029, fingerprint: "x" } }), { brand: "Visa", last4: "4242", exp_month: 8, exp_year: 2029 });
+  assert.strictEqual(C.cardSummary({ card: { brand: "newbrand", last4: "1111", exp_month: 1, exp_year: 2030 } }).brand, "Card");
+  assert.strictEqual(C.cardSummary("pm_123"), null);      // un-expanded id
+  assert.strictEqual(C.cardSummary(null), null);
+  assert.strictEqual(C.cardSummary({ card: { brand: "visa", last4: "12" } }), null);
+});
