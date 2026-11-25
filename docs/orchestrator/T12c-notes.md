@@ -84,7 +84,7 @@ Crawl of 9 solo pages x 4 demo logins, base (T12b) vs this branch:
 - solo.tutor: students, ledger, planner, invoices, exams, calendar, settings, insights text IDENTICAL; home figures identical (only differed by still-loading placeholders at the 3 s mark).
 - both.tutor (solo org): all 9 pages identical.
 - tutor.one: unchanged (one-item menu, /tutor, settings allowed).
-- centre.owner: before, solo pages showed centre students/money (students 541 chars, ledger 639, calendar 700 vs solo-only); after, no centre names or money anywhere; with T12b's default the owner lands on `/org?id=…`, all solo pages redirect there, menu `Centre home | Centres | Settings` (desktop and 390px phone, no horizontal overflow); `/org` highlights Centres.
+- centre.owner: before, solo pages showed centre students/money (students 541 chars, ledger 639, calendar 700 vs solo-only); after, no centre names or money anywhere; with T12b's default the owner lands on `/org?id=…`, all solo pages redirect there, menu `Centre home | Centre (or Centres when the person has more than one) | Settings` (desktop and 390px phone, no horizontal overflow); `/org` highlights Centres.
 - both.tutor switcher: chip shows, menu lists "Your tuition" and the centre; choosing the centre (role tutor) lands on `/tutor` with the My lessons menu; `students` typed while there redirects to `/tutor`.
 - No console/page errors in any run. `node --test tests/*.test.js`: 120 pass, 0 fail.
 

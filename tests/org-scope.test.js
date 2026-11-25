@@ -57,6 +57,15 @@ test("solo, unknown or odd organisations never redirect", () => {
   assert.strictEqual(OS.centreRedirect(CENTRE, undefined), null);
 });
 
+test("second centre menu item: \"Centre\" for one centre, \"Centres\" for more than one", () => {
+  const solo = { id: SID, kind: "solo" }, a = { id: CID, kind: "centre" }, b = { id: "33333333-3333-4333-8333-333333333333", kind: "centre" };
+  assert.strictEqual(OS.centresLabel([a]), "Centre");
+  assert.strictEqual(OS.centresLabel([solo, a]), "Centre");
+  assert.strictEqual(OS.centresLabel([solo, a, b]), "Centres");
+  assert.strictEqual(OS.centresLabel([a, b]), "Centres");
+  for (const x of [[], null, undefined, "x"]) assert.strictEqual(OS.centresLabel(x), "Centre");
+});
+
 // ---- guard against a page being edited and a call site forgotten ----
 const JS = path.join(__dirname, "..", "assets", "js");
 const PAGES = ["students", "ledger", "dashboard", "planner", "invoices", "student", "exams", "settings", "calendar"];

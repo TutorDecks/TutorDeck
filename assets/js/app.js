@@ -407,7 +407,8 @@ window.TL = (function () {
     if (o.role === "tutor") G = TUTOR_GROUPS;
     else {
       var home = "org?id=" + encodeURIComponent(o.id);
-      G = CENTRE_GROUPS.map(function (g, i) { return Object.assign({}, g, { pages: [ Object.assign({}, g.pages[0], { href: i === 0 ? home : "org" }) ] }); });
+      var lab = OS ? OS.centresLabel(orgList()) : "Centres";   // "Centre" for one centre, "Centres" for more
+      G = CENTRE_GROUPS.map(function (g, i) { return Object.assign({}, g, i === 0 ? {} : { label: lab }, { pages: [ Object.assign({}, g.pages[0], i === 0 ? { href: home } : { href: "org", label: lab }) ] }); });
     }
     var on = active === "org" ? (/[?&]id=/.test(location.search) ? "orghome" : "orglist") : active;
     return { groups: G, active: on, extras: EXTRA.filter(function (n) { return n.id === "settings"; }) };

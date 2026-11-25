@@ -53,5 +53,12 @@
     } catch (e) { return null; }
   }
 
-  return { NULL_IS_MINE: NULL_IS_MINE, soloId: soloId, scope: scope, fields: fields, centreRedirect: centreRedirect, CENTRE_PAGES: CENTRE_PAGES };
+  // Label of the second centre menu item (owner's decision): "Centre" when the person has one centre, "Centres" when more than one.
+  function centresLabel(orgs) {
+    var n = 0;
+    try { (Array.isArray(orgs) ? orgs : []).forEach(function (o) { if (o && o.kind === "centre") n++; }); } catch (e) {}
+    return n > 1 ? "Centres" : "Centre";
+  }
+
+  return { centresLabel: centresLabel, NULL_IS_MINE: NULL_IS_MINE, soloId: soloId, scope: scope, fields: fields, centreRedirect: centreRedirect, CENTRE_PAGES: CENTRE_PAGES };
 });
