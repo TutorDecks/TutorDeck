@@ -15,10 +15,10 @@
   function has(pw, set) { for (var i = 0; i < pw.length; i++) if (set.indexOf(pw.charAt(i)) >= 0) return true; return false; }
   // Each rule: `need` is what the "Still needed" line says when it is missing.
   var RULES = [
-    { key: "lower", need: "a lowercase letter", ok: function (p) { return has(p, LOWER); } },
-    { key: "upper", need: "an uppercase letter", ok: function (p) { return has(p, UPPER); } },
-    { key: "digit", need: "a number", ok: function (p) { return has(p, DIGITS); } },
-    { key: "symbol", need: "a symbol (like ! ? # @)", ok: function (p) { return has(p, SYMBOLS); } }
+    { key: "lower", label: "A lowercase letter", need: "a lowercase letter", ok: function (p) { return has(p, LOWER); } },
+    { key: "upper", label: "An uppercase letter", need: "an uppercase letter", ok: function (p) { return has(p, UPPER); } },
+    { key: "digit", label: "A number", need: "a number", ok: function (p) { return has(p, DIGITS); } },
+    { key: "symbol", label: "A symbol", need: "a symbol (like ! ? # @)", ok: function (p) { return has(p, SYMBOLS); } }
   ];
   // Plain-words list of what is missing, in order; [] means the password is acceptable.
   function problems(pw) {
@@ -28,6 +28,13 @@
     RULES.forEach(function (r) { if (!r.ok(pw)) out.push(r.need); });
     return out;
   }
+  // Every rule as a checklist line (length first, then RULES in order): [{ key, label, ok }]. Used by the sign-up checklist.
+  function checklist(pw) {
+    pw = String(pw == null ? "" : pw);
+    var out = [{ key: "length", label: "At least " + MIN + " characters", ok: pw.length >= MIN }];
+    RULES.forEach(function (r) { out.push({ key: r.key, label: r.label, ok: r.ok(pw) }); });
+    return out;
+  }
   function summary() { return "At least " + MIN + " characters, with a lowercase and an uppercase letter, a number and a symbol"; }
-  return { MIN: MIN, SYMBOLS: SYMBOLS, RULES: RULES, problems: problems, summary: summary };
+  return { MIN: MIN, SYMBOLS: SYMBOLS, RULES: RULES, problems: problems, checklist: checklist, summary: summary };
 });

@@ -38,3 +38,21 @@ test("rule list drives the summary", () => {
   assert.match(P.summary(), /8 characters/);
   assert.strictEqual(P.RULES.length, 4);
 });
+
+test("checklist lists all five rules in order with their own state", () => {
+  const labels = ["At least 8 characters", "A lowercase letter", "An uppercase letter", "A number", "A symbol"];
+  assert.deepStrictEqual(P.checklist("").map((r) => r.label), labels);
+  assert.ok(P.checklist("").every((r) => r.ok === false));
+  assert.ok(P.checklist(null).every((r) => r.ok === false));
+  assert.ok(P.checklist("Abcdef1!").every((r) => r.ok === true));
+  const only = (pw) => P.checklist(pw).filter((r) => r.ok).map((r) => r.key);
+  assert.deepStrictEqual(only("abcdefgh"), ["length", "lower"]);
+  assert.deepStrictEqual(only("ABCDEFGH"), ["length", "upper"]);
+  assert.deepStrictEqual(only("12345678"), ["length", "digit"]);
+  assert.deepStrictEqual(only("!!!!!!!!"), ["length", "symbol"]);
+  assert.deepStrictEqual(only("a"), ["lower"]);
+});
+test("checklist agrees with problems() for any password", () => {
+  for (const pw of ["", "abc", "ABCDEF1!", "abcdef1!", "Abcdefg!", "Abcdefg1", "Abcdef1 ", "Abcdef1!", "Ab1!"])
+    assert.strictEqual(P.checklist(pw).every((r) => r.ok), P.problems(pw).length === 0, pw);
+});
