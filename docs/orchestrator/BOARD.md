@@ -42,6 +42,9 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-25 T3 plan decisions, all six YES (owner replied six yeses; read as the T3 list): admins with manage_timetable may correct any mark with a required reason (audit-logged), tutors never; pending charges typed by `issue_invoices`; staff can always mark/correct (attendance_by only governs tutors); group classes light (shared session_id); absence-charge setting only pre-fills, admin confirms; start only after T12 steps 1-4 are on dev, ship steps 1-5 as "centre staff v1". T3 build NOT started until T12 is on dev.
 
+- 2026-11-25 T7 decisions: all five YES (invite landing = reuse /reset welcome variant; link expiry 24h; Brevo free plan for now (stay on Brevo, Resend not worth switching: Resend free = 100/day, 3000/month, Pro US$20; Brevo free = 300/day); previews only email @tutordeck.com.sg + allow-list; centre name in display name, address stays noreply@). ADDED REQUIREMENT: admin must have a Resend-invite option for invites not accepted in time. STILL NEEDED: the monitored reply-to address.
+- 2026-11-25 T24 CHANGED AGAIN: tutors under a centre SHOULD have settings (name, password, payout details bank/PayNow, delete account). Solo Settings page stays closed to tutor-only; a small tutor settings page is planned (T24b). T24 branch (v266 redirect) stays valid.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -84,6 +87,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T18b | T18 step 2: SG public holiday library (selectable, never auto-applied; 2026+2027 verified vs MOM) | DONE on branch (v268); 2027 dates re-check before main | `claude/t18b-holiday-library` |
 | T3 | Plan for staff screens for centres (plan only, owner approves) | plan DONE (`claude/t3-plan`), 6 owner decisions pending; start only after T12 steps 1-4 on dev | `claude/t3-plan` |
 | T12c | T12 steps 3+4: solo pages filter by current org (null = no filter), centre menu + redirect, centre home | doing | NEW worker / `claude/t12c-org-filter` (v269), builds on `claude/t12b-current-org` |
+| T24b | Plan: Settings for centre tutors (profile, password, payout details PayNow/bank, delete account) | doing (plan only) | NEW worker / `claude/t24b-plan` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
