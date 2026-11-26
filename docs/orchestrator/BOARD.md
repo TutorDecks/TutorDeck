@@ -24,7 +24,7 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 - (superseded by the rule above) 2026-11-24: owner approved merging #123 and #124 into `dev` after T11 (Calendar test stub) finishes — but a merge into `dev` auto-deploys staging, which conflicts with the rule above: HOLD until the owner confirms.
 - Solo plan: free ≤ 5 **active students**; Solo Pro S$14.90/mo or S$149/yr; 30-day trial (once per organisation, no card to start); **existing solo tutors keep unlimited** (grandfathered).
 - TutorDeck is **not GST-registered** (prices carry no GST); centres choose GST settings themselves.
-- Centre fee: S$100 + S$0.40 × billable students (previous month's active students, rounded to nearest 10, halves up). Active = non-trial lesson attended, absent or late-cancelled that month. **Under review** vs SchoolTracs (~S$148/branch at 400 students); owner chose to keep it for now.
+- Centre fee: S$100 + S$0.40 × billable students (SUPERSEDED 2026-11-26: now S$100 + S$0.50, see T30) (previous month's active students, rounded to nearest 10, halves up). Active = non-trial lesson attended, absent or late-cancelled that month. **Under review** vs SchoolTracs (~S$148/branch at 400 students); owner chose to keep it for now.
 - **Product principle:** anything that depends on a centre's own process is a setting at sign-up; we build every option; unbuilt ones are marked "coming soon".
 - Absent and cancelled lessons are billed like today: lesson becomes cancelled, billed at its **compensation** (a number; 0 if not charged; empty = charge pending). Who types the charge, who flags trials, who marks cancellations, attendance window, who marks attendance, remarks required: all centre settings (defaults: admin / admin / admin / 14 days / tutor / no).
 - Tutors see no parent phone by default (setting); tutors have **no table access**, only two database functions.
@@ -64,6 +64,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-26 T6 decisions: owner YES to 1-5 (tutor-made lesson price = rate of that student's latest staff-made slot/lesson, else price pending and staff must fill before invoicing; assigned students = explicit student_tutors list maintained by staff; build both direct and propose, direct first; tutor cancels in advance = no charge + amber flag for staff, no automatic make-up credit; family notice: build the who-must-be-told list now, emails with T7). #6 time zones: owner asked what it means; recommendation: ask Opus whether any tutors/students are outside Singapore; if yes add per-student time zone BEFORE the tutor scheduling step. T6 build starts after T3 steps 6-8.
 - 2026-11-26 T3.4b worker started to fix one failing SQL assertion (charges test ~line 138) on claude/t3-4-charges.
+
+- 2026-11-26 OWNER: centre fee changes to S$100 + S$0.50 x billable students (T30). Owner list of Opus gaps: deposits (50% of first month, held until the student leaves, refunds tracked), tutor pay rate storage + 'percentage of the parent's fee', recurring late fee (charge again each month an invoice stays unpaid), plus the not-built list (tutor-moved lessons, make-up credits, emails/reminders, statement matching, CSV import, full tutor pay). T4 plan worker covers deposits, tutor pay rates, late fees, invoicing. OWNER ACTION later: create a NEW Stripe sandbox price S$0.50 for centre_student_monthly (steps in docs/orchestrator/T30-stripe-steps.md once written); the docs (Product Guide, SERVICE-AGREEMENT-FACTS, BOARD history) still say 0.40: update after PR #128 merges.
 
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
@@ -128,6 +130,8 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T3.4b | Fix failing assertion in charges SQL test (line 138) | doing | NEW worker / `claude/t3-4-charges` |
 | T3.5 | T3 step 5: trial flag (staff toggle, badge, filters, excluded from billable count) | doing | NEW worker / `claude/t3-5-trials` (on t3-4) |
 | Chain | owner 'just build it' 2026-11-26: T3.6 timetable read -> T3.7 slots with tutors + generator + student_tutors -> T3.8 reassign/replacement -> T29 time zones (per-student/tutor) -> T6 tutor scheduling (direct first, then propose); check-ins scheduled every 2/4/6h | queued | |
+| T30 | Centre fee S$0.40 -> S$0.50 per billable student (code, SQL migration, tests, UI, docs, Stripe steps for owner) | doing | NEW worker / `claude/t30-fee-050` |
+| T4 | Plan: deposits, tutor pay rates (incl. % of parent's fee), recurring late fee, centre invoicing (plan only) | doing | NEW worker / `claude/t4-plan` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
