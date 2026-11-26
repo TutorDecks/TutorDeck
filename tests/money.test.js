@@ -4,10 +4,10 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const M = require("../assets/js/money.js");
 
-test("TutorDeck fee: the brief's worked examples (S$100 base + 40c × billable students)", () => {
-  const plan = { base_cents: 10000, per_student_cents: 40 };
-  const cases = [[98, 100, 14000], [250, 250, 20000], [398, 400, 26000], [403, 400, 26000],
-                 [405, 410, 26400], [500, 500, 30000], [1000, 1000, 50000]];
+test("TutorDeck fee: the brief's worked examples (S$100 base + 50c × billable students)", () => {
+  const plan = { base_cents: 10000, per_student_cents: 50 };
+  const cases = [[98, 100, 15000], [250, 250, 22500], [398, 400, 30000], [403, 400, 30000],
+                 [405, 410, 30500], [500, 500, 35000], [1000, 1000, 60000]];
   for (const [active, billable, fee] of cases) {
     const r = M.platformFee(active, plan);
     assert.equal(r.billable, billable, active + " active → " + billable + " billable");
@@ -60,4 +60,17 @@ test("discounts, proration, tutor pay", () => {
   assert.equal(M.tutorPay("per_lesson", 5000, {}), 5000);
   assert.equal(M.divRound(5, 2), 3);
   assert.equal(M.divRound(-5, 2), -3);
+});
+
+// Shared vectors: tests/gst-vectors.csv is read by this test AND by tests/sql/centre_money_test.sql (the SQL function centre_gst_totals),
+// so the browser maths and the database maths cannot drift apart.
+test("GST vectors shared with the SQL function (tests/gst-vectors.csv)", () => {
+  const lines = require("node:fs").readFileSync(require("node:path").join(__dirname, "gst-vectors.csv"), "utf8").trim().split("\n");
+  assert.equal(lines[0], "name,subtotal_cents,rate_bp,inclusive,registered,net_cents,gst_cents,total_cents");
+  assert.ok(lines.length > 15, "enough vectors");
+  for (const row of lines.slice(1)) {
+    const [name, sub, rate, inc, reg, net, gst, total] = row.split(",");
+    const r = M.gstForInvoice(Number(sub), Number(rate), inc === "t", reg === "t");
+    assert.deepEqual(r, { net: Number(net), gst: Number(gst), total: Number(total) }, name);
+  }
 });

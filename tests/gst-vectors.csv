@@ -1,0 +1,19 @@
+name,subtotal_cents,rate_bp,inclusive,registered,net_cents,gst_cents,total_cents
+three lessons of 33.35 excl,10005,900,f,t,10005,900,10905
+half-up edge 50c,50,900,f,t,50,5,55
+inclusive 109.00,10900,900,t,t,10000,900,10900
+not registered,10000,900,f,f,10000,0,10000
+credit note negative,-50,900,f,t,-50,-5,-55
+1c excl rounds down,1,900,f,t,1,0,1
+5c excl 0.45 rounds down,5,900,f,t,5,0,5
+6c excl 0.54 rounds up,6,900,f,t,6,1,7
+inclusive 100.00,10000,900,t,t,9174,826,10000
+inclusive 1c,1,900,t,t,1,0,1
+inclusive 109c exact,109,900,t,t,100,9,109
+inclusive negative,-10900,900,t,t,-10000,-900,-10900
+rate 0 registered,12345,0,f,t,12345,0,12345
+large,99999999,900,f,t,99999999,9000000,108999999
+zero,0,900,f,t,0,0,0
+other rate 8pct excl,12345,800,f,t,12345,988,13333
+inclusive 8pct,12345,800,t,t,11431,914,12345
+unregistered inclusive flag ignored,10900,900,t,f,10900,0,10900

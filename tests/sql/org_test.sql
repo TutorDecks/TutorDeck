@@ -152,7 +152,7 @@ select t.eq((select count(*) from audit_log where table_name = 'lessons' and act
 insert into platform_admins values ('00000000-0000-0000-0000-0000000000f1');
 select t.as('00000000-0000-0000-0000-0000000000f1'); set role authenticated;
 select t.ok((select count(*) >= 3 from platform_orgs()), 'platform admin lists organisations');
-select t.ok((select plan_code = 'centre' and base_cents = 10000 and per_student_cents = 40 from platform_orgs() where org_id = t.id('centre')), 'centre plan S$100 + 40c');
+select t.ok((select plan_code = 'centre' and base_cents = 10000 and per_student_cents = 40 from platform_orgs() where org_id = t.id('centre')), 'centre plan S$100 + 40c (the foundation default; migration_fee_050.sql later moves it to 50c)');
 select t.eq((select count(*) from students where org_id = t.id('centre')), 0, 'platform admin can''t read student records without a grant');
 reset role;
 select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;

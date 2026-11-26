@@ -2,13 +2,17 @@
 -- DEMO DATA FOR THE DEV DATABASE ONLY (project tuzxsqkfzrjssnpcoale). NEVER run this on the live project.
 -- Fictional people and made-up phone numbers. Gives previews something to click through:
 --   centre.owner@example.test   owner of "Demo Learning Centre" (a launched tuition centre)
+--   centre.staff@example.test   centre staff with every staff permission (students, timetable, tutors, invoices, payments, revenue, tutor pay, audit log)  → centre Home, all tabs
+--   centre.frontdesk@example.test  centre staff with students only (manage_students)                        → centre Home shows only the student count; only Students in the menu
 --   tutor.one@example.test      centre tutor with lessons today, to mark, cancelled, old and upcoming  → lands on My lessons (tutor-only menu)
 --   tutor.two@example.test      second centre tutor (sees only their own lessons)
 --   both.tutor@example.test     a solo tutor (2 students) who ALSO teaches at the centre              → My lessons appears in More
 --   solo.tutor@example.test     a solo tutor on the free plan with exactly 5 active students           → adding a 6th shows the upgrade prompt
--- All five sign in with the password  Demo-Pass-2026
--- Needs every migration applied first (org_foundation, billing, attendance, tutor_access, org_delete, function_lockdown).
--- Safe to read; to run twice, first remove the previous demo users (delete from auth.users where email like '%@example.test').
+-- All seven sign in with the password  Demo-Pass-2026
+-- Needs every migration applied first (org_foundation, billing, attendance, tutor_access, org_delete, function_lockdown, staff_home).
+-- Safe to run twice: the first block does nothing when the demo is already there, and the staff block at the end only adds what is missing
+-- (so a DEV database seeded before the two staff logins existed just gets them). To start completely fresh, first remove the demo users
+-- (delete from auth.users where email like '%@example.test').
 -- =====================================================================================================
 do $$
 declare
@@ -28,6 +32,10 @@ declare
     "tutor_pay":{"mode":"report","payable_when":"parent_paid"},"data":{}}';
   r record;
 begin
+  if exists (select 1 from auth.users where email = 'centre.owner@example.test') then
+    raise notice 'Demo data is already there; only the staff logins below are added if missing.';
+    return;
+  end if;
   -- ---------------------------------------------------------------- five confirmed email logins
   for r in select * from (values (owner_id, 'centre.owner@example.test', 'Demo Centre Owner'), (tutor1_id, 'tutor.one@example.test', 'Demo Tutor One'),
       (tutor2_id, 'tutor.two@example.test', 'Demo Tutor Two'), (solo_id, 'solo.tutor@example.test', 'Demo Solo Tutor'), (both_id, 'both.tutor@example.test', 'Demo Both Tutor')) v(id, email, name) loop
@@ -90,4 +98,49 @@ begin
     select both_id, s.id, today - 3, '10:00', '11:00', 'English', 50, 50, 'done', false from students s where s.tutor_id = both_id;
 
   perform set_config('request.jwt.claims', '', false);
+end $$;
+
+-- =====================================================================================================
+-- T3 step 1: two staff logins for the demo centre. Runs on its own and only adds what is missing, so it is safe to run again.
+--   centre.staff     every permission in the catalogue (assets/js/org-settings.js)
+--   centre.frontdesk manage_students only: the person who answers the phone and adds students, nothing about the timetable or money
+-- =====================================================================================================
+do $$
+declare
+  staff_id uuid := '00000000-0000-0000-0000-00000000d106';
+  front_id uuid := '00000000-0000-0000-0000-00000000d107';
+  c uuid;
+  n int;
+  found_list text;
+  r record;
+begin
+  -- The demo centre is found by its MEMBERS, never by its name (it may have been renamed): the centre where tutor.one@ and tutor.two@
+  -- are active tutors and centre.owner@ is an active owner. Exactly one must match; several = stop and ask, never guess.
+  select count(*), string_agg(o.trading_name || ' (' || o.id || ')', '; ' order by o.created_at), (array_agg(o.id order by o.created_at))[1]
+    into n, found_list, c
+    from organisations o
+    where o.kind = 'centre'
+      and exists (select 1 from memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'owner' and m.status = 'active' and u.email = 'centre.owner@example.test')
+      and exists (select 1 from memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'tutor' and m.status = 'active' and u.email = 'tutor.one@example.test')
+      and exists (select 1 from memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'tutor' and m.status = 'active' and u.email = 'tutor.two@example.test');
+  if n = 0 then raise exception 'MISSING demo centre: no centre has tutor.one@ and tutor.two@ as tutors and centre.owner@ as owner (run the demo seed above, db/seed_dev_demo.sql, first).'; end if;
+  if n > 1 then raise exception using message = 'AMBIGUOUS: ' || n || ' centres match the demo centre (' || found_list || '). Not guessing: ask the project owner which one the demo staff logins belong to.'; end if;
+  raise notice 'Demo centre used for the staff logins: % (%)', (select trading_name from organisations where id = c), c;
+  for r in select * from (values (staff_id, 'centre.staff@example.test', 'Demo Centre Staff'), (front_id, 'centre.frontdesk@example.test', 'Demo Front Desk')) v(id, email, name) loop
+    if not exists (select 1 from auth.users where email = r.email) then
+      insert into auth.users(instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, confirmation_token, recovery_token, email_change_token_new,
+          email_change, email_change_token_current, reauthentication_token, phone_change, phone_change_token, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+      values ('00000000-0000-0000-0000-000000000000', r.id, 'authenticated', 'authenticated', r.email, extensions.crypt('Demo-Pass-2026', extensions.gen_salt('bf')), now(),
+          '', '', '', '', '', '', '', '', '{"provider":"email","providers":["email"]}', jsonb_build_object('full_name', r.name, 'email_verified', true), now(), now());
+      insert into auth.identities(id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+      values (gen_random_uuid(), r.id, jsonb_build_object('sub', r.id::text, 'email', r.email, 'email_verified', true, 'phone_verified', false), 'email', r.id::text, now(), now(), now());
+    end if;
+  end loop;
+  insert into memberships(org_id, user_id, display_name, role, permissions, status)
+    select c, u.id, v.name, 'staff', v.perms, 'active'
+    from (values ('centre.staff@example.test', 'Demo Centre Staff',
+                  array['manage_timetable','manage_students','manage_tutors','issue_invoices','record_payments','view_revenue','run_tutor_pay','view_audit_log']),
+                 ('centre.frontdesk@example.test', 'Demo Front Desk', array['manage_students'])) v(email, name, perms)
+    join auth.users u on u.email = v.email
+    where not exists (select 1 from memberships m where m.org_id = c and m.user_id = u.id);
 end $$;

@@ -13,15 +13,16 @@ function reset(o) {
   writes = [];
   st = Object.assign({
     orgs: [{ id: ORG }], snapshots: [], active: { [ORG]: 403 },
-    plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 40, effective_from: "2026-10-01" }] },
+    plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 50, effective_from: "2026-10-01" }] },
     subs: { [ORG]: "sub_1" }, qty: { sub_1: 100 }, failStripePost: false }, o || {});
 }
 const stripeSub = (id) => ({ id, status: "active", currency: "sgd", items: { data: [
   { id: "si_base", quantity: 1, current_period_start: st.periodStart, price: { lookup_key: "centre_base_monthly", unit_amount: 10000 } },
-  { id: "si_stu", quantity: st.qty[id], current_period_start: st.periodStart, price: { lookup_key: "centre_student_monthly", unit_amount: 40 } }] } });
+  { id: "si_stu", quantity: st.qty[id], current_period_start: st.periodStart, price: { lookup_key: "centre_student_monthly", unit_amount: st.stuCents || 50 } }] } });
 global.fetch = async (url, opt) => {
   opt = opt || {}; const u = String(url), method = opt.method || "GET";
   const json = (code, obj) => ({ ok: code < 400, status: code, json: async () => obj, text: async () => JSON.stringify(obj) });
+  if (st.invoiceOrgs && st.invoiceOrgs.length && u.includes("stripe.com")) throw new Error("Stripe must not be called when an invoice centre is the subject: " + u);
   if (u.includes("/rest/v1/organisations")) return json(200, st.orgs);
   if (u.includes("/rest/v1/platform_fee_snapshots")) {
     if (method === "POST") { writes.push(["snapshot", JSON.parse(opt.body)]); return { ok: true, status: 201, text: async () => "" }; }
@@ -51,12 +52,12 @@ test("real run: counts last month, updates Stripe, writes the snapshot last", as
   reset();
   const r = await run("/api/billing-cron");
   assert.strictEqual(r.statusCode, 200); assert.strictEqual(r.body.month, MONTH); assert.strictEqual(r.body.counted_month, COUNTED);
-  assert.deepStrictEqual(r.body.centres[0], { org_id: ORG, active: 403, billable: 400, fee_cents: 26000, quantity_before: 100, result: "updated" });
+  assert.deepStrictEqual(r.body.centres[0], { org_id: ORG, active: 403, billable: 400, fee_cents: 30000, quantity_before: 100, result: "updated" });
   assert.deepStrictEqual(writes.map((w) => w[0]), ["count", "stripe", "snapshot"], "snapshot is the last write");
   assert.strictEqual(writes[0][1].p_month, COUNTED);
   assert.strictEqual(st.qty.sub_1, 400);
   assert.ok(decodeURIComponent(writes[1][1]).includes("proration_behavior=none"));
-  assert.deepStrictEqual(writes[2][1], { org_id: ORG, month: MONTH, active_students: 403, billable_students: 400, base_cents: 10000, per_student_cents: 40, fee_cents: 26000 });
+  assert.deepStrictEqual(writes[2][1], { org_id: ORG, month: MONTH, active_students: 403, billable_students: 400, base_cents: 10000, per_student_cents: 50, fee_cents: 30000 });
 });
 test("running again after success does nothing", async () => {
   reset({ snapshots: [ORG] });
@@ -66,7 +67,7 @@ test("running again after success does nothing", async () => {
 test("dry run touches nothing, and can look at another month", async () => {
   reset();
   let r = await run("/api/billing-cron?dry=1");
-  assert.strictEqual(r.body.centres[0].result, "dry:would_update"); assert.strictEqual(r.body.centres[0].fee_cents, 26000);
+  assert.strictEqual(r.body.centres[0].result, "dry:would_update"); assert.strictEqual(r.body.centres[0].fee_cents, 30000);
   assert.deepStrictEqual(writes.map((w) => w[0]), ["count"]); assert.strictEqual(st.qty.sub_1, 100);
   r = await run("/api/billing-cron?dry=1&month=2027-03"); assert.strictEqual(r.body.month, "2027-03-01"); assert.strictEqual(r.body.counted_month, "2027-02-01");
   assert.strictEqual((await run("/api/billing-cron?month=2027-03")).statusCode, 400, "a real run can't be pointed at another month");
@@ -78,7 +79,7 @@ test("quantity already right: no Stripe write, snapshot still recorded", async (
   assert.strictEqual(r.body.centres[0].result, "already_correct"); assert.deepStrictEqual(writes.map((w) => w[0]), ["count", "snapshot"]);
 });
 test("Stripe failure: no snapshot (so tomorrow retries), job reports failure, other centres still processed", async () => {
-  reset({ orgs: [{ id: ORG }, { id: ORG2 }], active: { [ORG]: 403, [ORG2]: 50 }, plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 40, effective_from: "2026-10-01" }], [ORG2]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 40, effective_from: "2026-10-01" }] },
+  reset({ orgs: [{ id: ORG }, { id: ORG2 }], active: { [ORG]: 403, [ORG2]: 50 }, plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 50, effective_from: "2026-10-01" }], [ORG2]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 50, effective_from: "2026-10-01" }] },
     subs: { [ORG]: "sub_1", [ORG2]: "sub_2" }, qty: { sub_1: 100, sub_2: 50 }, failStripePost: true });
   const r = await run("/api/billing-cron");
   assert.strictEqual(r.statusCode, 500); assert.strictEqual(r.body.failed, 1);
@@ -92,6 +93,12 @@ test("skips centres with no subscription yet, and flags a price mismatch as a fa
   reset({ plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 30, effective_from: "2026-10-01" }] } });
   r = await run("/api/billing-cron"); assert.strictEqual(r.statusCode, 500); assert.strictEqual(r.body.centres[0].result, "skipped:price_mismatch");
   assert.ok(!writes.some((w) => w[0] === "stripe" || w[0] === "snapshot"));
+  // T30: Stripe still on the OLD S$0.40 price while the plan says 50c (the owner hasn't swapped the price yet) → refuse, change nothing
+  reset({ plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 50, effective_from: "2026-10-01" }] } });
+  // the stub builds the Stripe price from `st.stuCents` (default 50)
+  st.stuCents = 40;
+  r = await run("/api/billing-cron"); assert.strictEqual(r.statusCode, 500); assert.strictEqual(r.body.centres[0].result, "skipped:price_mismatch", "plan 50c vs Stripe 40c");
+  assert.ok(!writes.some((w) => w[0] === "stripe" || w[0] === "snapshot"));
 });
 
 test("renewal already invoiced this month: no Stripe write, no snapshot, flagged as a failure", async () => {
@@ -103,4 +110,92 @@ test("renewal already invoiced this month: no Stripe write, no snapshot, flagged
   assert.strictEqual(st.qty.sub_1, 100, "quantity untouched");
   reset({ periodStart: Math.floor(Date.now() / 1000) - 40 * 86400 });   // period began 40 days ago: normal
   assert.strictEqual((await run("/api/billing-cron")).statusCode, 200);
+});
+
+// ---- T31a: two billing methods. 'invoice' centres only record the snapshot; 'stripe' (default) centres behave exactly as above.
+const planOf = (method) => [{ plan_code: "centre", billing_method: method, base_cents: 10000, per_student_cents: 50, effective_from: "2026-10-01" }];
+test("invoice centre: records the snapshot and NEVER calls Stripe (no subscription row needed)", async () => {
+  reset({ plans: { [ORG]: planOf("invoice") }, subs: {}, invoiceOrgs: [ORG] });
+  const r = await run("/api/billing-cron");
+  assert.strictEqual(r.statusCode, 200);
+  assert.deepStrictEqual(r.body.centres[0], { org_id: ORG, method: "invoice", active: 403, billable: 400, fee_cents: 30000, result: "recorded" });
+  assert.deepStrictEqual(writes.map((w) => w[0]), ["count", "snapshot"]);
+  assert.deepStrictEqual(writes[1][1], { org_id: ORG, month: MONTH, active_students: 403, billable_students: 400, base_cents: 10000, per_student_cents: 50, fee_cents: 30000 });
+});
+test("invoice centre: ignores a price that differs from Stripe, a renewal already billed, and a missing Stripe price (those checks are Stripe-only)", async () => {
+  reset({ plans: { [ORG]: planOf("invoice") }, invoiceOrgs: [ORG], stuCents: 30, periodStart: Math.floor(Date.now() / 1000) });
+  const r = await run("/api/billing-cron"); assert.strictEqual(r.statusCode, 200); assert.strictEqual(r.body.centres[0].result, "recorded"); assert.strictEqual(r.body.failed, 0);
+});
+test("invoice centre: dry run and the done-already rule work the same", async () => {
+  reset({ plans: { [ORG]: planOf("invoice") }, invoiceOrgs: [ORG] });
+  assert.strictEqual((await run("/api/billing-cron?dry=1")).body.centres[0].result, "dry:would_record"); assert.deepStrictEqual(writes.map((w) => w[0]), ["count"]);
+  reset({ plans: { [ORG]: planOf("invoice") }, invoiceOrgs: [ORG], snapshots: [ORG] });
+  assert.strictEqual((await run("/api/billing-cron")).body.centres[0].result, "already_done"); assert.strictEqual(writes.length, 0);
+});
+test("explicit 'stripe' centre behaves exactly like the default: Stripe quantity updated, then the snapshot", async () => {
+  reset({ plans: { [ORG]: planOf("stripe") } });
+  const r = await run("/api/billing-cron");
+  assert.strictEqual(r.body.centres[0].result, "updated"); assert.deepStrictEqual(writes.map((w) => w[0]), ["count", "stripe", "snapshot"]); assert.strictEqual(st.qty.sub_1, 400);
+});
+test("one invoice centre and one stripe centre in the same run: each follows its own method", async () => {
+  reset({ orgs: [{ id: ORG }, { id: ORG2 }], active: { [ORG]: 403, [ORG2]: 403 }, plans: { [ORG]: planOf("invoice"), [ORG2]: planOf("stripe") }, subs: { [ORG2]: "sub_2" }, qty: { sub_2: 100 } });
+  const r = await run("/api/billing-cron");
+  assert.strictEqual(r.statusCode, 200); assert.strictEqual(r.body.centres[0].result, "recorded"); assert.strictEqual(r.body.centres[1].result, "updated");
+  assert.strictEqual(writes.filter((w) => w[0] === "stripe").length, 1, "Stripe touched for the stripe centre only"); assert.strictEqual(writes.filter((w) => w[0] === "snapshot").length, 2);
+});
+
+// ---- T36: billing start date + first-month agreed number (the month under test is always the CURRENT Singapore month)
+const addMonths = (m, n) => { const y = Number(m.slice(0, 4)), k = Number(m.slice(5, 7)) - 1 + n; return (y + Math.floor(k / 12)) + "-" + String((k % 12 + 12) % 12 + 1).padStart(2, "0") + "-01"; };
+const startPlan = (extra, method) => [Object.assign({ plan_code: "centre", billing_method: method || "invoice", base_cents: 10000, per_student_cents: 50, effective_from: "2026-10-01" }, extra)];
+test("T36 no start date: exactly the old behaviour", async () => {
+  reset({ plans: { [ORG]: startPlan({ billing_starts_on: null, first_month_billable_override: null }) }, invoiceOrgs: [ORG], subs: {} });
+  const r = await run("/api/billing-cron");
+  assert.deepStrictEqual(r.body.centres[0], { org_id: ORG, method: "invoice", active: 403, billable: 400, fee_cents: 30000, result: "recorded" });
+  assert.deepStrictEqual(writes[1][1], { org_id: ORG, month: MONTH, active_students: 403, billable_students: 400, base_cents: 10000, per_student_cents: 50, fee_cents: 30000 });
+});
+test("T36 pilot month (before the start): recorded for information, not billable, fee 0, Stripe never contacted", async () => {
+  for (const method of ["invoice", "stripe"]) {
+    reset({ plans: { [ORG]: startPlan({ billing_starts_on: addMonths(MONTH, 1), first_month_billable_override: 80 }, method) }, invoiceOrgs: [ORG] });
+    const r = await run("/api/billing-cron");
+    assert.strictEqual(r.statusCode, 200, method);
+    assert.deepStrictEqual(r.body.centres[0], { org_id: ORG, method, active: 403, billable: 400, fee_cents: 0, start: "pilot", result: "recorded" });
+    assert.deepStrictEqual(writes.map((w) => w[0]), ["count", "snapshot"], method + ": no Stripe write");
+    assert.deepStrictEqual(writes[1][1], { org_id: ORG, month: MONTH, active_students: 403, billable_students: 400, base_cents: 10000, per_student_cents: 50, fee_cents: 0, billable: false, waived_reason: "pilot" });
+  }
+});
+test("T36 pilot: idempotent, a second run does nothing", async () => {
+  reset({ plans: { [ORG]: startPlan({ billing_starts_on: addMonths(MONTH, 2) }) }, invoiceOrgs: [ORG] });
+  await run("/api/billing-cron");
+  reset({ plans: { [ORG]: startPlan({ billing_starts_on: addMonths(MONTH, 2) }) }, invoiceOrgs: [ORG], snapshots: [ORG] });
+  assert.strictEqual((await run("/api/billing-cron")).body.centres[0].result, "already_done"); assert.strictEqual(writes.length, 0);
+});
+test("T36 first billed month WITH an agreed number: it is used (rounded), the real count is kept", async () => {
+  reset({ plans: { [ORG]: startPlan({ billing_starts_on: MONTH, first_month_billable_override: 85 }) }, invoiceOrgs: [ORG] });
+  const r = await run("/api/billing-cron");
+  assert.deepStrictEqual(r.body.centres[0], { org_id: ORG, method: "invoice", active: 403, billable: 90, fee_cents: 14500, start: "first_month_agreed_number", result: "recorded" });
+  assert.deepStrictEqual(writes[1][1], { org_id: ORG, month: MONTH, active_students: 403, billable_students: 90, base_cents: 10000, per_student_cents: 50, fee_cents: 14500, override_students: 85 });
+});
+test("T36 first billed month with an agreed number, Stripe centre: the Stripe quantity is the agreed (rounded) number", async () => {
+  reset({ plans: { [ORG]: startPlan({ billing_starts_on: MONTH, first_month_billable_override: 85 }, "stripe") } });
+  const r = await run("/api/billing-cron");
+  assert.strictEqual(r.body.centres[0].result, "updated"); assert.strictEqual(r.body.centres[0].start, "first_month_agreed_number");
+  assert.strictEqual(st.qty.sub_1, 90); assert.deepStrictEqual(writes.map((w) => w[0]), ["count", "stripe", "snapshot"]);
+  assert.strictEqual(writes[2][1].active_students, 403); assert.strictEqual(writes[2][1].override_students, 85); assert.strictEqual(writes[2][1].fee_cents, 14500);
+});
+test("T36 first billed month WITHOUT an agreed number: the normal count", async () => {
+  reset({ plans: { [ORG]: startPlan({ billing_starts_on: MONTH, first_month_billable_override: null }) }, invoiceOrgs: [ORG] });
+  const r = await run("/api/billing-cron");
+  assert.deepStrictEqual(r.body.centres[0], { org_id: ORG, method: "invoice", active: 403, billable: 400, fee_cents: 30000, result: "recorded" });
+  assert.deepStrictEqual(writes[1][1], { org_id: ORG, month: MONTH, active_students: 403, billable_students: 400, base_cents: 10000, per_student_cents: 50, fee_cents: 30000 });
+});
+test("T36 a later month: the normal rule, the agreed number is not reused", async () => {
+  reset({ plans: { [ORG]: startPlan({ billing_starts_on: addMonths(MONTH, -1), first_month_billable_override: 85 }) }, invoiceOrgs: [ORG] });
+  const r = await run("/api/billing-cron");
+  assert.strictEqual(r.body.centres[0].fee_cents, 30000); assert.strictEqual(r.body.centres[0].start, undefined); assert.strictEqual(writes[1][1].override_students, undefined);
+});
+test("T36 closed month: an agreed number set AFTER the month's snapshot exists changes nothing (the month is never recomputed)", async () => {
+  reset({ plans: { [ORG]: startPlan({ billing_starts_on: MONTH, first_month_billable_override: 85 }) }, invoiceOrgs: [ORG], snapshots: [ORG] });
+  const r = await run("/api/billing-cron");
+  assert.strictEqual(r.body.centres[0].result, "already_done"); assert.strictEqual(writes.length, 0, "no count, no write: the closed snapshot stays as it was");
+  // (the database also refuses to set or change a start once a snapshot exists for that month or later: tests/sql/centre_billing_start_test.sql)
 });

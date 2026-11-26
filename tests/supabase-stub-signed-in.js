@@ -60,8 +60,8 @@
   var orgData={organisations:orgs,memberships:memberships,
     branches:[{id:"b1",org_id:"o2",name:"Tampines",address:"1 Tampines Ave",created_at:"1"}],rooms:[{id:"r1",org_id:"o2",branch_id:"b1",name:"Room 1",capacity:8}],
     terms:[{id:"t1",org_id:"o2",name:"Term 1 2027",starts_on:"2027-01-02",ends_on:"2027-03-14"}],holidays:[{id:"h1",org_id:"o2",name:"Chinese New Year",starts_on:"2027-02-06",ends_on:"2027-02-07"}],
-    org_plans:[{id:"pl1",org_id:"o3",plan_code:"centre",base_cents:10000,per_student_cents:40,effective_from:"2026-10-01"}],
-    platform_fee_snapshots:[{org_id:"o3",month:"2026-11-01",active_students:403,billable_students:400,base_cents:10000,per_student_cents:40,fee_cents:26000}],
+    org_plans:[{id:"pl1",org_id:"o3",plan_code:"centre",base_cents:10000,per_student_cents:50,effective_from:"2026-10-01"}],
+    platform_fee_snapshots:[{org_id:"o3",month:"2026-11-01",active_students:403,billable_students:400,base_cents:10000,per_student_cents:50,fee_cents:30000}],
     audit_log:[{id:2,org_id:"o3",actor:U,action:"update",table_name:"org_settings",after:{version:2,effective_from:"2026-12-01"},at:"2026-11-02T09:00:00Z"},
       {id:1,org_id:"o3",actor:U,action:"insert",table_name:"organisations",after:{trading_name:"Live Demo Centre"},at:"2026-10-01T09:00:00Z"}]};
   var orgSettings={schema_version:1,preset:"centre",profile:{trading_name:"Demo Learning Centre",uen:"202600000A",gst_registered:true,gst_number:"M90000000X",gst_rate_bp:900,brand_color:"#1D4ED8",invoice_prefix:"DLC",next_invoice_number:1},
@@ -85,7 +85,7 @@
       getUser:function(){return Promise.resolve({data:{user:user},error:null});},
       onAuthStateChange:function(){return {data:{subscription:{unsubscribe:function(){}}}};},
       mfa:{getAuthenticatorAssuranceLevel:function(){return Promise.resolve({data:{currentLevel:"aal1",nextLevel:"aal1"},error:null});},listFactors:function(){return Promise.resolve({data:{totp:[]},error:null});}}},
-    from:q, rpc:function(n){return Promise.resolve({data:n==="org_settings_on"?JSON.parse(JSON.stringify(orgSettings)):(n==="org_plan_status"?{kind:"solo",tier:"free",status:"none",grandfathered:false,has_pro:false,active_students:4,free_limit:5,can_add_student:true}:null),error:null});}, functions:{invoke:function(){return Promise.resolve({data:null,error:null});}},
+    from:q, rpc:function(n){if(n==="tutor_my_profile")return Promise.resolve({data:[{membership_id:"m4",org_id:"o2",org_name:"Demo Learning Centre",display_name:"Ravi",phone:"+6591234567",email:"ravi@demo.test"}],error:null});return Promise.resolve({data:n==="org_settings_on"?JSON.parse(JSON.stringify(orgSettings)):(n==="org_plan_status"?{kind:"solo",tier:"free",status:"none",grandfathered:false,has_pro:false,active_students:4,free_limit:5,can_add_student:true}:null),error:null});}, functions:{invoke:function(){return Promise.resolve({data:null,error:null});}},
     storage:{from:function(){return {createSignedUrl:function(){return Promise.resolve({data:null});},list:function(){return Promise.resolve({data:[],error:null});}};}}
   };}};
 })();

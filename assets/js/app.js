@@ -12,6 +12,7 @@ window.TL = (function () {
     schedule: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/>',
     students: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
     money:    '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+    check:    '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
     more:     '<circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/><circle cx="5" cy="12" r="1.4"/>',
     settings: '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
     materials:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
@@ -36,14 +37,20 @@ window.TL = (function () {
   // A login that is ONLY a centre tutor (no students of their own) sees a one-page menu instead of the solo-tutor screens;
   // a solo tutor who also teaches at a centre gets "My lessons" in the More sheet. See roleMode() / detectRole().
   var TUTOR_GROUPS = [
-    { id: "tutor", label: "My lessons", ic: "schedule", pages: [ { id: "tutor", label: "My lessons", href: "tutor" } ] }
+    { id: "tutor", label: "My lessons", ic: "schedule", pages: [ { id: "tutor", label: "My lessons", href: "tutor" } ], also: ["tutor-settings"] },
+    { id: "tutor-schedule", label: "Schedule", ic: "schedule", pages: [ { id: "tutor-schedule", label: "Schedule", href: "tutor-schedule" } ] }   // T6: read-only week + weekly slots
   ];
   var TUTOR_EXTRA = { id: "tutor", label: "My lessons", href: "tutor", ic: "schedule" };
+  var TUTOR_SCHEDULE_EXTRA = { id: "tutor-schedule", label: "Schedule", href: "tutor-schedule", ic: "schedule" };
+  var TUTOR_SETTINGS_EXTRA = { id: "tutor-settings", label: "My tutor profile", href: "tutor-settings", ic: "settings" };   // T24c: profile and password of a centre tutor
   // Secondary destinations: sidebar footer on desktop, "More" sheet on phones.
   var EXTRA = [
     { id: "materials", label: "Materials", href: "https://mugcornersg.com", ic: "materials", ext: true, hint: "Materials on MugCorner (opens in a new tab)" },
     { id: "settings",  label: "Settings",  href: "settings",  ic: "settings" }
   ];
+  // A menu entry whose screen isn't built yet (T3 centre tabs): a visible "soon" pill, and the same words for screen readers. The link still goes
+  // to a real page that says "Coming next", never a dead end.
+  function soonTag(g) { return g && g.soon ? '<em class="soon-pill" aria-hidden="true">soon</em><span class="sr-only"> (coming next)</span>' : ""; }
   // External destinations (e.g. Materials → MugCorner) open in a new tab.
   function extAttr(n) { return n.ext ? ' target="_blank" rel="noopener"' : ""; }
   function groupOf(active, list) {
@@ -103,7 +110,7 @@ window.TL = (function () {
   function mountShell(active, email, title, sub) {
     var pageId = active;   // the page's own id (the menu may show a centre's items instead, T12c)
     var mode = roleMode(), G = mode === "tutor-only" ? TUTOR_GROUPS : GROUPS;
-    var extras = (mode === "tutor-only" ? [] : mode === "both" ? [TUTOR_EXTRA].concat(EXTRA) : EXTRA)
+    var extras = (mode === "tutor-only" ? [] : mode === "both" ? [TUTOR_EXTRA, TUTOR_SCHEDULE_EXTRA, TUTOR_SETTINGS_EXTRA].concat(EXTRA) : EXTRA)
       .filter(function (n) { return !n.ownerOnly || isOwner; });
     if (mode !== "tutor-only" && inCentre()) { var cm = centreMenu(active); G = cm.groups; extras = cm.extras; active = cm.active; }   // T12c: a centre has its own menu
     var grp = groupOf(active, G);
@@ -111,8 +118,8 @@ window.TL = (function () {
 
     // Desktop top bar: brand · the four groups · Settings/Materials icons + account menu.
     var side = G.map(function (g) {
-      return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "active" : "") + '"' +
-             (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 18) + '<span>' + g.label + '</span></a>';
+      return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "active" : "") + (g.soon ? " is-soon" : "") + '"' +
+             (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 18) + '<span>' + g.label + soonTag(g) + '</span></a>';
     }).join("");
     var sideExtra = extras.map(function (n) {
       return '<a href="' + n.href + '" class="tn-ic' + (n.id === active ? " active" : "") + '" title="' + (n.hint || n.label) +
@@ -122,8 +129,8 @@ window.TL = (function () {
 
     // Phone bottom bar: the four groups + More.
     var bar = G.map(function (g) {
-      return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "on" : "") + '"' +
-             (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 22) + '<span>' + g.label + '</span></a>';
+      return '<a href="' + g.pages[0].href + '" class="' + (grp === g ? "on" : "") + (g.soon ? " is-soon" : "") + '"' +
+             (grp === g ? ' aria-current="page"' : "") + '>' + icon(g.ic, 22) + '<span>' + g.label + soonTag(g) + '</span></a>';
     }).join("") +
       '<button type="button" id="tl-more" class="' + (onExtra ? "on" : "") + '" aria-haspopup="dialog" aria-expanded="false">' +
       icon("more", 22) + '<span>More</span></button>';
@@ -291,6 +298,16 @@ window.TL = (function () {
     return null;
   }
   function setRole(v) { store.set("role", JSON.stringify({ v: v, at: Date.now() })); }
+  // An invited person is linked to the centre by org_claim_invites() (a CONFIRMED email claims its waiting invite). It must run on every page
+  // an invited login can land on (T7: it used to run only on /org, so an invited tutor who went straight to /tutor was never linked).
+  // At most every 30 minutes per login (a stored time), so it adds no waiting to normal page loads; when it links something, the remembered
+  // menu type and organisation list are forgotten so the next lines of requireAuth see the new membership. Any error = nothing to claim.
+  async function claimInvites() {
+    if ((+store.get("claimed_at") || 0) > Date.now() - 30 * 60e3) return;
+    var r = await window.sb.rpc("org_claim_invites");
+    store.set("claimed_at", Date.now());                  // also after an error (organisation tables not installed): don't ask again on every page
+    if (!r.error && r.data > 0) { store.remove("role"); store.remove("orgs"); }
+  }
   async function detectRole() {
     var c = roleMode(); if (c) return c;
     try {
@@ -305,11 +322,11 @@ window.TL = (function () {
       setRole(mode); return mode;
     } catch (e) { return null; }
   }
-  // The only page a tutor-only login may open is My lessons (owner's rule, T24: Settings is for solo, both and centre
+  // The only pages a tutor-only login may open are My lessons and its read-only Schedule (owner's rule, T24 + T6: Settings is for solo, both and centre
   // owner/staff logins, not for a tutor under a centre). Everything else, Settings included, sends them to My lessons.
   // Returns the address to go to, or null to stay. Only a CONFIRMED "tutor-only" ever redirects: "solo", "both", null and
   // anything unexpected stay put, so no solo tutor can be moved by a doubt or an error.
-  var TUTOR_ONLY_PAGES = ["tutor"];
+  var TUTOR_ONLY_PAGES = ["tutor", "tutor-schedule", "tutor-settings"];   // T24c: their own profile and password page; /settings stays closed
   function tutorOnlyRedirect(active, mode) {
     if (mode !== "tutor-only") return null;
     if (!active || TUTOR_ONLY_PAGES.indexOf(active) >= 0) return null;
@@ -335,12 +352,12 @@ window.TL = (function () {
     if (!OC || orgCache()) return;
     var list = [];
     try {
-      var m = await window.sb.from("memberships").select("org_id,role,status,organisations(id,kind,trading_name)").eq("user_id", UID).eq("status", "active");
+      var m = await window.sb.from("memberships").select("org_id,role,status,permissions,organisations(id,kind,trading_name)").eq("user_id", UID).eq("status", "active");
       if (!m.error) {                                 // an error (organisation tables not installed here yet) is remembered as "no organisations" = solo
         list = OC.list(m.data);
         var solo = list.filter(function (o) { return o.kind === "solo"; })[0];
-        if (solo && list.some(function (o) { return o.kind === "centre" && o.role === "owner"; })) {
-          // a centre owner: does their own solo organisation have any students? (error or doubt = yes, keep it)
+        if (solo && list.some(function (o) { return o.kind === "centre" && (o.role === "owner" || o.role === "staff"); })) {
+          // a centre owner or staff member: does their own solo organisation have any students? (error or doubt = yes, keep it)
           var st = await window.sb.from("students").select("id", { count: "exact", head: true }).eq("org_id", solo.id);
           list = OC.dropEmptySolo(list, st.error ? null : st.count);
         }
@@ -406,11 +423,18 @@ window.TL = (function () {
     var o = org(), G;
     if (o.role === "tutor") G = TUTOR_GROUPS;
     else {
-      var home = "org?id=" + encodeURIComponent(o.id);
-      G = CENTRE_GROUPS.map(function (g, i) { return Object.assign({}, g, { pages: [ Object.assign({}, g.pages[0], { href: i === 0 ? home : "org" }) ] }); });
+      // (T3) owner / staff: Home · Timetable · Students · Attendance, then More. Which tabs: OrgCurrent.centreTabs (follows the staff permissions).
+      G = (OC ? OC.centreTabs(o) : []).map(function (t) { return { id: t.id, label: t.label, ic: t.ic, soon: t.soon, tab: t.tab, page: t.page, pages: [ { id: t.id, label: t.label, href: t.href } ] }; });
+      if (!G.length) G = CENTRE_GROUPS;
     }
-    var on = active === "org" ? (/[?&]id=/.test(location.search) ? "orghome" : "orglist") : active;
-    return { groups: G, active: on, extras: EXTRA.filter(function (n) { return n.id === "settings"; }) };
+    var tabQ = (/[?&]tab=([a-z]+)/.exec(location.search) || [])[1] || "";
+    var on = (active === "centre-students" || active === "centre-attendance" || active === "centre-timetable" || active === "centre-money") ? (G.filter(function (g) { return g.page === active; })[0] || G[0] || {}).id
+           : active === "centre" ? (G.filter(function (g) { return (g.tab || "") === tabQ; })[0] || G[0] || {}).id
+           : active === "org" ? (/[?&]id=/.test(location.search) ? "orgsettings" : "orglist") : active;
+    var more = [];
+    if (o.role !== "tutor") more.push({ id: "orgsettings", label: "Centre settings", href: "org?id=" + encodeURIComponent(o.id), ic: "settings" },
+                                      { id: "orglist", label: "Your centres", href: "org", ic: "students" });
+    return { groups: G, active: on, extras: more.concat(EXTRA.filter(function (n) { return n.id === "settings"; })) };
   }
   // ======== end T12c ========
 
@@ -696,8 +720,15 @@ window.TL = (function () {
                  calendar: ["Calendar", "Lessons across the week"],
                  ledger: ["Ledger", "Lessons, payments & projections"],
                  settings: ["Settings", "Business, payments & your account"],
+                 centre: ["Centre home", "Today at your centre"],
+                 "centre-students": ["Students", "Your students and their families"],
+                 "centre-attendance": ["Attendance", "Mark lessons and correct marks"],
+                 "centre-timetable": ["Timetable", "The week at your centre"],
+                 "centre-money": ["Money", "Invoice run"],
                  org: ["Organisation", "Your tuition centre, set up your way"],
                  tutor: ["My lessons", "Your classes and attendance"],
+                 "tutor-schedule": ["Schedule", "Your week and weekly slots"],
+                 "tutor-settings": ["Your settings", "Profile and password"],
                  exams: ["Exams", "Upcoming assessments"],
                  invoices: ["Invoices", "Saved invoices"],
                  materials: ["Teaching materials", "Your resource library"],
@@ -726,6 +757,7 @@ window.TL = (function () {
       }
     } catch (e) { /* MFA unavailable — proceed as normal */ }
     // Which menu does this login get? (instant when remembered; one query about every 12 hours; any doubt = the usual menu)
+    try { await claimInvites(); } catch (e) { /* nothing to claim */ }
     try { await detectRole(); } catch (e) { /* keep the usual menu */ }
     try { await detectOrgs(); } catch (e) { /* solo organisation, as always */ }
     // A tutor-only login who types a solo page's address (students, ledger, planner …) goes to My lessons, like Home does.

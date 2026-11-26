@@ -37,6 +37,25 @@ function renewedInMonth(sub, monthStart) {
   return Number.isFinite(start) && start >= sgMonthStartSec(monthStart);
 }
 
+// T36: the centre's billing start (org_plans.billing_starts_on, always a 1st; null = no restriction, exactly as before).
+//   month BEFORE the start      → kind "pilot":    recorded for information only (billable=false, waived_reason 'pilot', fee 0), Stripe never touched
+//   the first billed month      → kind "override": if first_month_billable_override is set, THAT number is counted (same rounding as any count)
+//   anything else               → kind "normal":   the usual rule
+// Returns the count to price (countFor), the real count (active), and the fee to record.
+function startRule(plan, monthStart, active) {
+  const start = plan && plan.billing_starts_on ? String(plan.billing_starts_on).slice(0, 7) + "-01" : null;
+  const ov = plan ? plan.first_month_billable_override : null;
+  if (start && monthStart < start) {
+    const f = Money.platformFee(active, plan);
+    return { kind: "pilot", active, countFor: active, fee: { active, billable: f.billable, fee_cents: 0 } };
+  }
+  if (start && monthStart === start && ov != null) {
+    const f = Money.platformFee(ov, plan);
+    return { kind: "override", active, countFor: ov, override: ov, fee: { active, billable: f.billable, fee_cents: f.fee_cents } };
+  }
+  return { kind: "normal", active, countFor: active, fee: Money.platformFee(active, plan) };
+}
+
 // What to do for one centre. Returns { skip: reason } or { fee, itemId, currentQty, targetQty, needsUpdate }.
 // The Stripe prices must equal the organisation's plan (org_plans is the source of truth) — if they differ, we don't guess.
 function decide(sub, plan, activeStudents, monthStart) {
@@ -47,14 +66,27 @@ function decide(sub, plan, activeStudents, monthStart) {
   if (!stu || !base) return { skip: "missing_price_items" };
   if (sub.currency !== "sgd" || stu.price.unit_amount !== plan.per_student_cents || base.price.unit_amount !== plan.base_cents) return { skip: "price_mismatch" };
   if (monthStart && renewedInMonth(sub, monthStart)) return { skip: "renewal_already_billed" };
-  const fee = Money.platformFee(activeStudents, plan);
-  return { fee, itemId: stu.id, currentQty: stu.quantity, targetQty: fee.billable, needsUpdate: stu.quantity !== fee.billable };
+  const rule = startRule(plan, monthStart, activeStudents), fee = rule.fee;
+  return { fee, rule, itemId: stu.id, currentQty: stu.quantity, targetQty: fee.billable, needsUpdate: stu.quantity !== fee.billable };
+}
+
+// An 'invoice' centre (managed: TutorDeck invoices it, it pays by PayNow) never touches Stripe: just the fee to record.
+// The method comes from org_plans.billing_method ('stripe' is the default and means today's behaviour).
+const isInvoice = (plan) => !!plan && plan.billing_method === "invoice";
+function decideInvoice(plan, activeStudents, monthStart) {
+  if (!plan || plan.plan_code !== "centre") return { skip: "no_centre_plan" };
+  const rule = startRule(plan, monthStart || "", activeStudents);
+  return { fee: rule.fee, rule };
 }
 
 // What goes in platform_fee_snapshots (the row that marks this centre + month as done).
-function snapshotRow(orgId, monthStart, plan, fee) {
-  return { org_id: orgId, month: monthStart, active_students: fee.active, billable_students: fee.billable,
+// With a T36 rule that is not "normal" it also says why (billable / waived_reason / override_students); a normal month has exactly the old columns.
+function snapshotRow(orgId, monthStart, plan, fee, rule) {
+  const row = { org_id: orgId, month: monthStart, active_students: fee.active, billable_students: fee.billable,
     base_cents: plan.base_cents, per_student_cents: plan.per_student_cents, fee_cents: fee.fee_cents };
+  if (rule && rule.kind === "pilot") { row.billable = false; row.waived_reason = "pilot"; }
+  if (rule && rule.kind === "override") row.override_students = rule.override;
+  return row;
 }
 
-module.exports = { renewedInMonth, sgMonthStart, prevMonthStart, validMonth, planFor, itemByKey, decide, snapshotRow, STUDENT_PRICE_KEY, BASE_PRICE_KEY };
+module.exports = { startRule, renewedInMonth, sgMonthStart, prevMonthStart, validMonth, planFor, itemByKey, decide, decideInvoice, isInvoice, snapshotRow, STUDENT_PRICE_KEY, BASE_PRICE_KEY };

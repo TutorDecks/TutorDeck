@@ -38,8 +38,99 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/lockdown_test.sql
 $P -f db/migration_org_separation.sql
 $P -f db/migration_org_separation.sql                       # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_separation_test.sql
+$P -f db/migration_staff_home.sql
+$P -f db/migration_staff_home.sql                           # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_home_test.sql
+$P -f db/migration_staff_students.sql
+$P -f db/migration_staff_students.sql                       # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_students_test.sql
+$P -f db/migration_staff_attendance.sql
+$P -f db/migration_staff_attendance.sql                     # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_attendance_test.sql
+$P -f db/migration_staff_charges.sql
+$P -f db/migration_staff_charges.sql                        # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_charges_test.sql
+$P -f db/migration_staff_trials.sql
+$P -f db/migration_staff_trials.sql                         # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_trials_test.sql
+$P -f db/migration_staff_timetable.sql
+$P -f db/migration_staff_timetable.sql                      # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_timetable_test.sql
+$P -f db/migration_staff_slots.sql
+$P -f db/migration_staff_slots.sql                          # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_slots_test.sql
+$P -f db/migration_staff_reassign.sql
+$P -f db/migration_staff_reassign.sql                       # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_reassign_test.sql
+$P -f db/migration_tutor_schedule.sql
+$P -f db/migration_tutor_schedule.sql                       # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_schedule_test.sql
+$P -f db/migration_money_settings.sql
+$P -f db/migration_money_settings.sql                         # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/money_settings_test.sql
+$P -f db/migration_centre_money.sql
+$P -f db/migration_centre_money.sql                         # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_money_test.sql
+$P -f db/migration_centre_invoice_run.sql
+$P -f db/migration_centre_invoice_run.sql                   # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_invoice_run_test.sql
+$P -f db/migration_centre_payments.sql
+$P -f db/migration_centre_payments.sql                      # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_payments_test.sql
+$P -f db/migration_invites.sql
+$P -f db/migration_invites.sql                              # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/invites_test.sql
+$P -f db/migration_invites_down.sql
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/fee_050_before.sql
+$P -f db/migration_fee_050.sql
+$P -f db/migration_fee_050.sql                              # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/fee_050_test.sql
+$P -f db/migration_centre_billing_method.sql
+$P -f db/migration_centre_billing_method.sql                # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_billing_method_test.sql
+$P -f db/migration_centre_billing_start.sql
+$P -f db/migration_centre_billing_start.sql                 # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_billing_start_test.sql
+$P -f db/migration_centre_billing_start_down.sql
+$P -f db/migration_centre_billing_start.sql                 # and again, so the shipped state is what the undo chain unwinds
+$P -f db/migration_centre_billing_start_down.sql
+$P -f db/migration_centre_billing_method_down.sql
+$P -f db/migration_centre_billing_method.sql                # and again, so the shipped state is what the undo chain unwinds
+$P -f db/migration_centre_billing_method_down.sql
+$P -f db/migration_fee_050_down.sql
 $P -f db/migration_org_separation_down.sql
 $P -f db/migration_org_separation.sql                       # and again, so the shipped state is what the undo chain below unwinds
+$P -f db/migration_tutor_profile.sql
+$P -f db/migration_tutor_profile.sql                        # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_profile_test.sql
+$P -f db/migration_tutor_payout.sql
+$P -f db/migration_tutor_payout.sql                         # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_payout_test.sql
+$P -f db/migration_payout_permission.sql
+$P -f db/migration_payout_permission.sql                    # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/payout_permission_test.sql
+$P -f db/migration_payout_permission_down.sql
+$P -f db/migration_payout_permission.sql                    # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_payout_permission_down.sql
+$P -f db/migration_tutor_payout_down.sql
+$P -f db/migration_tutor_payout.sql                         # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_tutor_payout_down.sql
+$P -f db/migration_tutor_profile_down.sql
+$P -f db/migration_tutor_profile.sql                        # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_tutor_profile_down.sql
+$P -f db/migration_centre_payments_down.sql
+$P -f db/migration_centre_invoice_run_down.sql
+$P -f db/migration_centre_money_down.sql
+$P -f db/migration_money_settings_down.sql
+$P -f db/migration_tutor_schedule_down.sql
+$P -f db/migration_staff_reassign_down.sql
+$P -f db/migration_staff_slots_down.sql
+$P -f db/migration_staff_timetable_down.sql
+$P -f db/migration_staff_trials_down.sql
+$P -f db/migration_staff_charges_down.sql
+$P -f db/migration_staff_attendance_down.sql
+$P -f db/migration_staff_students_down.sql
+$P -f db/migration_staff_home_down.sql
 $P -f db/migration_org_separation_down.sql
 $P -f db/migration_function_lockdown_down.sql
 $P -f db/migration_org_delete_down.sql

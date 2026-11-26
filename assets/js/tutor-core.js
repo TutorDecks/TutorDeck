@@ -144,6 +144,75 @@
     return out;
   }
 
-  return { addDays: addDays, dateLabel: dateLabel, timeLabel: timeLabel, timeRange: timeRange, chip: chip, lockReason: lockReason,
+  // ================= T6 step 1: the read-only Schedule (tutor_my_schedule / tutor_my_slots). No money anywhere in these rows. =================
+  var WD_LONG = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  // the Monday of the week that holds this date ("2026-11-26" → "2026-11-23")
+  function weekStart(iso) { var d = new Date(iso + "T00:00:00Z"), k = (d.getUTCDay() + 6) % 7; return addDays(iso, -k); }
+  function weekTitle(start, today) {
+    var cur = weekStart(today);
+    if (start === cur) return "This week";
+    if (start === addDays(cur, 7)) return "Next week";
+    if (start === addDays(cur, -7)) return "Last week";
+    var a = parts(start), b = parts(addDays(start, 6));
+    return a.d + " " + a.m + " – " + b.d + " " + b.m;
+  }
+  // The days of one range that have something to show, in date order: { date, holidays: [names], lessons: [...] }.
+  // A day with a whole-centre holiday is listed even with no lesson (a grey band); a lesson on a holiday keeps its row.
+  function scheduleDays(data, from, to) {
+    var days = {}, order = [];
+    function day(d) { if (!days[d]) { days[d] = { date: d, holidays: [], lessons: [] }; order.push(d); } return days[d]; }
+    ((data && data.holidays) || []).forEach(function (h) {
+      for (var d = h.starts_on < from ? from : h.starts_on, end = h.ends_on > to ? to : h.ends_on, n = 0; d <= end && n < 70; d = addDays(d, 1), n++) {
+        var x = day(d); if (x.holidays.indexOf(h.name) < 0) x.holidays.push(h.name);
+      }
+    });
+    ((data && data.lessons) || []).forEach(function (l) { day(l.lesson_date).lessons.push(l); });
+    return order.sort().map(function (d) { return days[d]; });
+  }
+  // The badge on a schedule row (one word) and the small facts under the name. Nothing here says anything about money.
+  function scheduleChip(l) {
+    if (l.cancelled) return { text: "Cancelled", tone: "muted" };
+    if (l.attendance === "attended") return { text: "Attended", tone: "ok" };
+    if (l.attendance === "absent") return { text: "Absent", tone: "muted" };
+    if (STAFF_SET[l.attendance]) return { text: STAFF_SET[l.attendance], tone: "muted" };
+    if (l.postponed) return { text: "Moved", tone: "muted" };
+    if (l.covering) return { text: "Covering", tone: "muted" };
+    if (l.trial) return { text: "Trial", tone: "muted" };
+    return null;
+  }
+  function scheduleFacts(l, withCentre) {
+    var f = [l.student_level, l.subject];
+    if (l.trial) f.push("Trial");
+    if (l.covering) f.push("Covering for another tutor");
+    if (l.postponed) f.push("Moved from its usual day");
+    if (withCentre) f.push(l.org_name);
+    return f.filter(Boolean);
+  }
+  // The note under the week. Step 1 can't change anything, whatever the centre chose; the database says which value the centre has.
+  function editNote(editing) {
+    return (editing || "admin_only") === "admin_only"
+      ? "Your centre handles changes: ask an admin."
+      : "Changing your own lessons here is coming soon. For now, ask an admin.";
+  }
+  function rangeLabel(a, b) { var x = parts(a), y = parts(b); return x.d + " " + x.m + " – " + y.d + " " + y.m; }
+  function weekdayName(i) { return WD_LONG[i] || ""; }
+  // my weekly slots, one entry per class (a group class shares a session_key), in week order
+  function slotList(rows) {
+    var out = [], by = {};
+    (rows || []).forEach(function (r) {
+      var k = r.session_key || r.slot_id;
+      if (!by[k]) { by[k] = { key: k, weekday: r.weekday, start_time: r.start_time, end_time: r.end_time, subject: r.subject, org_name: r.org_name, students: [] }; out.push(by[k]); }
+      by[k].students.push({ name: r.student_name, level: r.student_level });
+    });
+    return out.sort(function (a, b) { return a.weekday - b.weekday || (a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : 0); });
+  }
+  function scheduleErrorText(err) {
+    var m = /^([A-Z_]+)(?::|$)/.exec(String((err && err.message) || ""));
+    if (m && m[1] === "NOT_FOUND") return "This page is for tutors at a centre. If you should have lessons here, ask your centre's admin.";
+    return "Your schedule isn't available right now. Please try again in a few minutes.";
+  }
+
+  return { weekStart: weekStart, weekTitle: weekTitle, scheduleDays: scheduleDays, scheduleChip: scheduleChip, scheduleFacts: scheduleFacts, editNote: editNote,
+           weekdayName: weekdayName, rangeLabel: rangeLabel, slotList: slotList, scheduleErrorText: scheduleErrorText, addDays: addDays, dateLabel: dateLabel, timeLabel: timeLabel, timeRange: timeRange, chip: chip, lockReason: lockReason,
            remarksDue: remarksDue, attendanceOptions: attendanceOptions, parseCharge: parseCharge, needsCharge: needsCharge, adminChargeNote: adminChargeNote, group: group, errorText: errorText, changes: changes };
 });

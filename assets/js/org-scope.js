@@ -42,14 +42,14 @@
   }
 
   // Pages a centre login may open. Everything else is a solo-tutor page.
-  var CENTRE_PAGES = ["org", "settings", "tutor"];
+  var CENTRE_PAGES = ["org", "settings", "tutor", "tutor-schedule", "centre", "centre-students", "centre-attendance", "centre-timetable", "centre-money", "tutor-settings"];
 
   // → the address to go to, or null to stay. Only a CONFIRMED centre (known id) ever redirects, and never away from its own pages.
   function centreRedirect(org, active) {
     try {
       if (!org || org.kind !== "centre" || !org.id) return null;
       if (!active || CENTRE_PAGES.indexOf(active) >= 0) return null;
-      return org.role === "tutor" ? "tutor" : "org?id=" + encodeURIComponent(org.id);
+      return org.role === "tutor" ? "tutor" : "centre?id=" + encodeURIComponent(org.id);
     } catch (e) { return null; }
   }
 

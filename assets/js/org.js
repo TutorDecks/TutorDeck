@@ -4,7 +4,7 @@
 //   org?id=…       → wizard while status = 'setup', settings tabs once active
 // All rules are enforced in the database (owner-only settings, versioned & effective-dated, audited).
 (function () {
-  var S = window.OrgSettings, M = window.Money;
+  var S = window.OrgSettings, M = window.Money, IS = window.InviteStatus;
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function sb() { return window.sb; }
@@ -12,9 +12,11 @@
   function missing(err) { return err && (err.code === "42P01" || err.code === "PGRST205" || err.code === "42883" || /does not exist|Could not find/i.test(err.message || "")); }
   function prettyDate(iso) { return new Date(iso + "T00:00:00").toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" }); }
 
-  var st = { lib: undefined, libBusy: false, org: null, role: null, saved: null, draft: null, step: "profile", members: [], branches: [], rooms: [], terms: [], holidays: [] };
+  var st = { mail: null, perms: [], lib: undefined, libBusy: false, org: null, role: null, saved: null, draft: null, step: "profile", members: [], branches: [], rooms: [], terms: [], holidays: [] };
   var EXTRA_TABS = [["plan", "Plan"], ["audit", "Audit log"]];
   function isOwner() { return st.role === "owner"; }
+  // who may email / re-email invites: the owner, or a staff admin with "manage tutors" (the same rule org_invite_mail_reserve() enforces in SQL)
+  function canMail() { return st.role === "owner" || (st.role === "staff" && st.perms.indexOf("manage_tutors") >= 0); }
   function setup() { return st.org && st.org.status === "setup"; }
 
   // ------------------------------------------------------------------ entry
@@ -26,8 +28,8 @@
     if (r.error) return missing(r.error) ? notReady() : fail(r.error);
     if (!r.data) return fail({ message: "Organisation not found, or you're not a member." });
     st.org = r.data;
-    var m = await sb().from("memberships").select("role").eq("org_id", id).eq("user_id", TL.uid()).maybeSingle();
-    st.role = m.data && m.data.role;
+    var m = await sb().from("memberships").select("role,permissions").eq("org_id", id).eq("user_id", TL.uid()).maybeSingle();
+    st.role = m.data && m.data.role; st.perms = (m.data && m.data.permissions) || [];
     var s = await sb().rpc("org_settings_on", { p_org: id, p_day: "9999-12-31" });   // latest version (incl. ones starting next cycle)
     st.saved = S.withDefaults(s.data || {}, st.org.preset);
     st.draft = JSON.parse(JSON.stringify(st.saved));
@@ -46,7 +48,12 @@
       sb().from("terms").select("*").eq("org_id", id).order("starts_on"),
       sb().from("holidays").select("*").eq("org_id", id).order("starts_on")
     ]);
-    st.members = q[0].data || []; st.branches = q[1].data || []; st.rooms = q[2].data || []; st.terms = q[3].data || []; st.holidays = q[4].data || [];
+    st.members = q[0].data || []; st.mail = null;
+    if (canMail() && st.members.some(function (x) { return x.status === "invited" && !x.user_id; })) {
+      // when each waiting invite was last emailed (null = the invite-email migration isn't installed here: then no Resend button)
+      try { var ms = await sb().rpc("org_invite_mail_status", { p_org: id }); if (!ms.error) { st.mail = {}; (ms.data || []).forEach(function (x) { st.mail[x.member_id] = x; }); } } catch (e) {}
+    }
+    st.branches = q[1].data || []; st.rooms = q[2].data || []; st.terms = q[3].data || []; st.holidays = q[4].data || [];
     if (st.lib === undefined) {
       try { var lr = await fetch("assets/data/sg-public-holidays.json", { cache: "no-cache" }); st.lib = lr.ok ? await lr.json() : null; } catch (e) { st.lib = null; }
     }
@@ -129,10 +136,11 @@
     return t ? '<p class="og-sub">' + t + "</p>" : "";
   }
   function fieldHtml(f) {
-    var s = st.draft, v = S.get(s, f.path), id = "f-" + f.path.replace(/\./g, "-"), lock = !isOwner() || f.soon;
-    if (f.show && !f.show(s)) return "";
+    var s = st.draft, v = f.path ? S.get(s, f.path) : undefined, id = f.path ? "f-" + f.path.replace(/\./g, "-") : "", lock = !isOwner() || f.soon;
+    if (!S.isVisible(f, s)) return "";
     var soon = f.soon ? '<span class="og-soon">Coming soon</span>' : "";
     var help = f.help ? '<span class="og-help">' + esc(f.help) + "</span>" : "";
+    if (f.type === "group") return '<div class="og-group' + (f.soon ? " og-off" : "") + '"><h3>' + esc(f.label) + soon + "</h3>" + (f.help ? '<span class="og-help">' + esc(f.help) + "</span>" : "") + "</div>";
     if (f.type === "note") return '<div class="og-note' + (f.soon ? " og-off" : "") + '">' + (f.label ? "<b>" + esc(f.label) + "</b>" + soon + "<br>" : "") + esc(f.help || "") + "</div>";
     if (f.type === "toggle")
       return '<label class="og-check' + (f.soon ? " og-off" : "") + '"><input type="checkbox" id="' + id + '" data-path="' + f.path + '"' + (v ? " checked" : "") + (lock ? " disabled" : "") + "> <span>" + esc(f.label) + soon + "</span></label>" + help;
@@ -142,8 +150,10 @@
         return '<label class="og-check' + (so ? " og-off" : "") + '"><input type="checkbox" data-multi="' + f.path + '" value="' + esc(op[0]) + '"' + (on ? " checked" : "") + (lock || so ? " disabled" : "") + "> <span>" + esc(op[1]) + (so ? '<span class="og-soon">Coming soon</span>' : "") + "</span></label>";
       }).join("") + "</div>" + help;
     var input;
-    if (f.type === "select") {
-      input = '<select id="' + id + '" data-path="' + f.path + '"' + (lock ? " disabled" : "") + ">" + f.options.map(function (op) {
+    if (f.type === "textarea") {
+      input = '<textarea id="' + id + '" data-path="' + f.path + '" data-type="text" rows="4" maxlength="1000"' + (lock ? " disabled" : "") + ">" + esc(v == null ? "" : v) + "</textarea>";
+    } else if (f.type === "select") {
+      input = '<select id="' + id + '" data-path="' + f.path + '"' + (lock ? " disabled" : "") + ">" + S.visibleOptions(f, s).map(function (op) {
         var so = (f.soonOptions || []).indexOf(op[0]) > -1;
         return '<option value="' + esc(JSON.stringify(op[0])) + '"' + (op[0] === v ? " selected" : "") + (so ? " disabled" : "") + ">" + esc(op[1]) + (so ? " (coming soon)" : "") + "</option>";
       }).join("") + "</select>";
@@ -375,10 +385,15 @@
     var can = isOwner();
     var list = st.members.map(function (m) {
       var role = { owner: "Owner", staff: "Staff admin", tutor: "Tutor", parent: "Parent" }[m.role];
+      var waiting = m.status === "invited" && !m.user_id, inv = waiting && IS ? IS.describe(m, st.mail && st.mail[m.id]) : null;
       return '<div class="og-item" style="align-items:flex-start"><div class="grow"><b>' + esc(m.display_name) + "</b> " +
         (m.status === "invited" ? '<span class="og-badge grey">Invited</span>' : m.status === "disabled" ? '<span class="og-badge grey">Off</span>' : "") +
         '<div class="meta">' + esc(role) + (m.employment_type ? " · " + esc(m.employment_type) : "") + (m.invited_email ? " · " + esc(m.invited_email) : "") + "</div>" +
-        (m.role === "staff" ? permBoxes("mp-" + m.id, m.permissions || [], !can) : "") + "</div>" +
+        (inv ? '<div class="meta">' + esc(inv.invited) + (st.mail ? ' · <span class="' + (inv.expired || inv.neverSent ? "og-warn" : "") + '">' + esc(inv.hint) + "</span>" : "") + "</div>" : "") +
+        (m.role === "staff" ? permBoxes("mp-" + m.id, m.permissions || [], !can) : "") +
+        (m.role === "tutor" && st.org.kind === "centre" ? '<div class="og-pay" data-pay="' + esc(m.id) + '" aria-live="polite"></div>' : "") + "</div>" +
+        (inv && st.mail && canMail() ? '<button class="og-resend" data-resend="' + esc(m.id) + '"' + (inv.canPress ? "" : " disabled") + ' title="' +
+          esc(inv.dailyLimit ? "Five emails a day is the limit for one invite. Try again tomorrow." : inv.waitMinutes ? "You can send it again in " + inv.waitMinutes + " minute" + (inv.waitMinutes === 1 ? "" : "s") + "." : "Emails a new link to " + (m.invited_email || "them") + ". The old link stops working.") + '">' + esc(inv.buttonLabel) + "</button>" : "") +
         (can && m.role !== "owner" ? '<button class="og-x" data-mstatus="' + esc(m.id) + '" title="' + (m.status === "disabled" ? "Turn back on" : "Turn off access") + '">' + (m.status === "disabled" ? "↺" : "×") + "</button>" : "") + "</div>";
     }).join("");
     return '<div class="og-list">' + list + "</div>" + (can ?
@@ -387,11 +402,29 @@
       '<div class="og-row"><div class="field"><label for="i-role">Role</label><select id="i-role"><option value="tutor">Tutor</option><option value="staff">Staff admin</option></select></div>' +
       '<div class="field" id="i-emp-w"><label for="i-emp">Employment</label><select id="i-emp"><option value="freelancer">Freelancer</option><option value="employee">Employee</option></select></div></div>' +
       '<div id="i-perms-w" style="display:none"><label style="font-size:13px;font-weight:700">Permissions</label>' + permBoxes("ip", ["manage_timetable", "manage_students"], false) + "</div>" +
-      '<button class="btn" id="i-go" style="margin-top:10px">Send invite</button><span class="og-help" style="margin:8px 0 0">They’re linked when they sign in with that email. Invite emails come with the email provider (coming soon) — for now, tell them to sign up.</span>' +
+      '<button class="btn" id="i-go" style="margin-top:10px">Send invite</button><span class="og-help" style="margin:8px 0 0">They get an email with a link to choose a password, and they’re linked to this centre when they sign in with that email. The link works for 24 hours; use Resend invite if it runs out.</span>' +
       '<p class="og-help" style="margin-top:12px">Tutor CSV import is in step 9.</p>' : "");
+  }
+  // Asks the server (api/send-invite.js) to email the invite. The server decides who may and how often; this only words the answer.
+  async function emailInvite(memberId, name, again) {
+    var saved = again ? "" : name + " invited. ";
+    try {
+      var se = await sb().auth.getSession(), jwt = se && se.data && se.data.session && se.data.session.access_token;
+      var r = await fetch("/api/send-invite", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + jwt }, body: JSON.stringify({ membership_id: memberId }) });
+      var d = await r.json().catch(function () { return {}; });
+      if (r.ok && d.sent) return again ? "Invite emailed to " + name : saved + "Email sent.";
+      if (r.ok && d.blocked === "preview") return saved + "This test site doesn’t email real people, so nothing was sent.";
+      if (r.status === 429) return saved + (d.error === "too_soon" ? "Already emailed a moment ago. Try again in " + (d.retry_minutes || 10) + " min." :
+        d.error === "daily_limit" ? "That’s five emails today for this invite. Try again tomorrow." : "Too many invites just now. Try again in an hour.");
+      if (r.status === 403) return saved + "You don’t have permission to email invites.";
+      if (r.status === 409) return saved + "This invite isn’t waiting any more.";
+      if (r.status === 503) return saved + "Email isn’t switched on yet. They’re linked when they sign in with that email.";
+    } catch (e) { /* fall through */ }
+    return saved + "The email didn’t send. Use Resend invite to try again.";
   }
   function bindUsers() {
     var body = $("og-body");
+    loadPayouts();
     if ($("i-role")) $("i-role").onchange = function () {
       var staff = $("i-role").value === "staff"; $("i-perms-w").style.display = staff ? "" : "none"; $("i-emp-w").style.display = staff ? "none" : "";
     };
@@ -401,8 +434,17 @@
       var perms = []; body.querySelectorAll("[data-ip]:checked").forEach(function (c) { perms.push(c.getAttribute("data-ip")); });
       var r = await sb().rpc("org_invite", { p_org: st.org.id, p_email: email, p_name: name, p_role: role, p_perms: role === "staff" ? perms : null, p_employment: role === "tutor" ? $("i-emp").value : null });
       if (r.error) return TL.alert(r.error.message);
-      await loadSide(); renderStep(S.STEPS[2]); TL.toast(name + " invited");
+      var said = await emailInvite(r.data, name);      // the first email goes out now; if it can't, the invite is still saved and Resend is there
+      await loadSide(); renderStep(S.STEPS[2]); TL.toast(said);
     };
+    body.querySelectorAll("[data-resend]").forEach(function (b) {
+      b.onclick = async function () {
+        var m = st.members.filter(function (x) { return x.id === b.getAttribute("data-resend"); })[0]; if (!m) return;
+        b.disabled = true;
+        var said = await emailInvite(m.id, m.display_name, true);
+        await loadSide(); renderStep(S.STEPS[2]); TL.toast(said);
+      };
+    });
     st.members.forEach(function (m) {
       var boxes = body.querySelectorAll("[data-mp-" + m.id + "]");
       boxes.forEach(function (c) {
@@ -426,6 +468,51 @@
     });
   }
 
+  // ------------------------------------------------------------------ tutors' payout details (T24c step 4; separate block)
+  // Owner, or staff with "view_payout_details": a MASKED value per tutor, an amber chip for 7 days after a change, and an explicit Reveal (audited by the database).
+  // Any other staff member: only "Provided" / "Not provided". Nothing is asked of the database unless this is a centre. If the migration is not on the project yet, the line stays empty.
+  var PAY_METHOD = { paynow_mobile: "PayNow mobile", paynow_uen: "PayNow UEN", bank: "Bank account" };
+  function canSeePayouts() {
+    if (isOwner()) return true;
+    var me = st.members.filter(function (m) { return m.user_id === TL.uid() && m.status === "active"; })[0];
+    return !!me && me.role === "staff" && (me.permissions || []).indexOf("view_payout_details") > -1;
+  }
+  function shortStamp(ts) { return new Date(ts).toLocaleDateString("en-SG", { day: "numeric", month: "short" }); }
+  async function loadPayouts() {
+    var slots = $("og-body").querySelectorAll("[data-pay]");
+    if (!slots.length) return;
+    var full = canSeePayouts();
+    var r = await sb().rpc(full ? "org_tutor_payouts" : "org_tutor_payout_status", { p_org: st.org.id });
+    if (r.error) {
+      if (!missing(r.error)) slots.forEach(function (el) { el.innerHTML = '<span class="og-pay-no">Payout details could not be loaded.</span>'; });
+      return;
+    }
+    var by = {}; (r.data || []).forEach(function (x) { by[x.membership_id] = x; });
+    slots.forEach(function (el) {
+      var id = el.getAttribute("data-pay"), x = by[id], m = st.members.filter(function (y) { return y.id === id; })[0];
+      if (!x || !m) return;
+      if (!x.has_payout) { el.innerHTML = '<span class="og-pay-no">Payout details: not provided</span>'; return; }
+      if (!full) { el.innerHTML = '<span class="og-pay-yes">Payout details: provided</span>'; return; }
+      el.innerHTML = '<span class="og-pay-yes">Payout: <b>' + esc(PAY_METHOD[x.method] || x.method) + (x.bank_name ? " · " + esc(x.bank_name) : "") + " " + esc(x.masked || "") + "</b></span>" +
+        (x.changed_recently ? ' <span class="og-badge amber" title="Changed in the last 7 days. If you were not expecting this, check with the tutor before paying.">Changed ' + esc(shortStamp(x.changed_at)) + "</span>" : "") +
+        ' <button type="button" class="og-link" data-reveal="' + esc(id) + '" aria-label="Reveal payout details for ' + esc(m.display_name) + '">Reveal</button>' +
+        '<div class="meta">Updated ' + esc(shortStamp(x.changed_at)) + (x.changed_by_name ? " by " + esc(x.changed_by_name) : "") + '</div><div class="og-revealed" data-revealed="' + esc(id) + '" hidden></div>';
+      el.querySelector("[data-reveal]").onclick = function () { revealPayout(el, id, m.display_name); };
+    });
+  }
+  async function revealPayout(el, id, name) {
+    if (!(await TL.confirm({ title: "Show " + name + "’s full payout details?", message: "This is recorded in the audit log with your name and the time (never the number itself).", confirmText: "Show" }))) return;
+    var r = await sb().rpc("org_reveal_payout", { p_membership: id });
+    if (r.error) return TL.alert(/NO_PAYOUT/.test(r.error.message || "") ? "This tutor has not added payout details." : "Could not show the details. Please try again.");
+    var d = (r.data || [])[0]; if (!d) return;
+    var box = el.querySelector("[data-revealed]"), btn = el.querySelector("[data-reveal]"), timer;
+    function hide() { clearTimeout(timer); box.hidden = true; box.textContent = ""; btn.hidden = false; }
+    var lines = d.method === "bank" ? [d.bank_name, "Account " + d.account_no, "Name " + d.account_holder] : [(PAY_METHOD[d.method] || d.method) + " " + d.paynow_id];
+    box.textContent = ""; lines.forEach(function (t) { var l = document.createElement("div"); l.textContent = t; box.appendChild(l); });
+    var hb = document.createElement("button"); hb.type = "button"; hb.className = "og-link"; hb.textContent = "Hide"; hb.onclick = hide; box.appendChild(hb);
+    box.hidden = false; btn.hidden = true; timer = setTimeout(hide, 30000);   // closes by itself after 30 seconds
+  }
+
   // ------------------------------------------------------------------ step 9: import (coming soon)
   function importHtml() {
     return '<div class="og-note og-off"><b>CSV import</b><span class="og-soon">Coming soon</span><br>Templates for tutors, students (level, subjects, class, fee plan), parents and households, and classes. ' +
@@ -437,7 +524,7 @@
   function reviewHtml() {
     var errs = S.validate(st.draft);
     var sum = S.STEPS.filter(function (x) { return x.n < 10; }).map(function (x) {
-      var rows = x.fields.filter(function (f) { return f.type !== "note" && (!f.show || f.show(st.draft)); }).map(function (f) {
+      var rows = x.fields.filter(function (f) { return f.type !== "note" && f.type !== "group" && S.isVisible(f, st.draft); }).map(function (f) {
         return "<tr><td>" + esc(f.label) + (f.soon ? ' <span class="og-soon">Soon</span>' : "") + "</td><td>" + esc(S.display(f, S.get(st.draft, f.path))) + "</td></tr>";
       });
       if (x.id === "calendar") rows.unshift("<tr><td>Branches / terms / holidays</td><td>" + st.branches.length + " / " + st.terms.length + " / " + st.holidays.length + "</td></tr>");
@@ -500,11 +587,29 @@
     if (!plan) { $("pl").textContent = isOwner() ? "No plan yet." : "Only the owner sees the plan."; return; }
     var ex = [98, 250, 405].map(function (n) { var f = M.platformFee(n, plan); return n + " students → " + f.billable + " billable → " + M.format(f.fee_cents); });
     $("pl").className = "";
-    $("pl").innerHTML = '<p class="og-sub">' + M.format(plan.base_cents) + " a month + " + M.format(plan.per_student_cents) + " per billable student. " +
+    // Two billing methods (org_plans.billing_method): "stripe" (default, self-serve) and "invoice" (managed: TutorDeck invoices, the centre pays by PayNow).
+    // Every centre gets the friendly Contact card; an "invoice" centre is also told how it is billed.
+    var invoice = plan.billing_method === "invoice";
+    var contact = (invoice ? '<div class="og-note" id="pl-method"><b>Your account is billed by invoice and PayNow.</b></div>' : "") +
+      '<div class="og-note" id="pl-contact"><b>Want a hand?</b><br>Contact us for assisted setup, invoicing and PayNow.<div style="margin-top:10px">' +
+      '<a class="btn btn-primary" id="pl-contact-btn" href="' + esc(window.TDContact.centreBillingMailto(st.org.trading_name)) + '">Contact us</a> ' +
+      '<span class="muted" style="font-size:13px">' + esc(window.TDContact.EMAIL) + "</span></div></div>";
+    // T36: billing start date (a free pilot before it) and an agreed number for the first billed month, in plain words
+    var startNote = "";
+    if (plan.billing_starts_on) {
+      var sd = new Date(plan.billing_starts_on + "T00:00:00"), pretty = sd.toLocaleDateString("en-SG", { day: "numeric", month: "long", year: "numeric" });
+      startNote = '<div class="og-note" id="pl-start"><b>Billing starts on ' + esc(pretty) + ".</b>" +
+        (todayISO() < plan.billing_starts_on ? " Until then you are on a free pilot: nothing is charged." : "") +
+        (plan.first_month_billable_override != null && !snaps.some(function (s) { return s.month >= plan.billing_starts_on; }) ?
+          " Your first billed month uses an agreed starting number of " + esc(plan.first_month_billable_override) + " students." : "") + "</div>";
+    }
+    $("pl").innerHTML = contact + startNote + '<p class="og-sub">' + M.format(plan.base_cents) + " a month + " + M.format(plan.per_student_cents) + " per billable student. " +
       "Billable students are last month’s active students (anyone with an attended, absent or late-cancelled lesson, not trials), rounded to the nearest 10.</p>" +
       '<div class="og-note">For example: ' + ex.join(" · ") + "</div>" +
       (snaps.length ? '<table class="og-sum"><tbody>' + snaps.map(function (s) {
-        return "<tr><td>" + esc(new Date(s.month + "T00:00:00").toLocaleDateString("en-SG", { month: "long", year: "numeric" })) + "</td><td>" + esc(s.active_students) + " active → " + esc(s.billable_students) + " billable → <b>" + M.format(s.fee_cents) + "</b></td></tr>";
+        return "<tr><td>" + esc(new Date(s.month + "T00:00:00").toLocaleDateString("en-SG", { month: "long", year: "numeric" })) + "</td><td>" + (s.billable === false ? "<b>Pilot: not charged</b> (" + esc(s.active_students) + " active students counted)"
+          : s.override_students != null ? "<b>Agreed starting number:</b> " + esc(s.override_students) + " students → " + esc(s.billable_students) + " billable → <b>" + M.format(s.fee_cents) + "</b> (" + esc(s.active_students) + " active that month)"
+          : esc(s.active_students) + " active → " + esc(s.billable_students) + " billable → <b>" + M.format(s.fee_cents) + "</b>") + "</td></tr>";
       }).join("") + "</tbody></table>" : '<p class="og-sub" style="margin:0">Your first monthly count appears here after your first full month.</p>');
   }
 

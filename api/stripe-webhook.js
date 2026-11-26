@@ -1,6 +1,8 @@
 // Stripe → TutorDeck webhook. POST https://<host>/api/stripe-webhook  (register this URL in Stripe → Developers → Webhooks)
 // Events to send: checkout.session.completed, customer.subscription.created, customer.subscription.updated,
 //                 customer.subscription.deleted, invoice.paid, invoice.payment_failed
+// Centres on the 'invoice' billing method (org_plans.billing_method) are billed by TutorDeck, not Stripe: an event that resolves to one is
+// logged and ignored, never written. Centres on 'stripe' (the default) and solo tutors are handled as before.
 // Design: the event only tells us WHICH subscription changed; we then fetch its current state from Stripe and write
 // that, so late or out-of-order deliveries can't leave a wrong status. Each event id is processed once.
 "use strict";
@@ -17,6 +19,16 @@ async function syncSubscription(subId, orgHint) {
   if (org && /^[0-9a-f-]{36}$/i.test(org)) q = "org_id=eq." + org;
   else if (row.stripe_customer_id) q = "stripe_customer_id=eq." + encodeURIComponent(row.stripe_customer_id);
   if (!q) return "no_org";
+  const own = await B.svc("GET", "org_subscriptions?select=org_id,tier&" + q);
+  const ownRow = own.ok && own.data && own.data[0];
+  if (ownRow && ownRow.tier === "centre") {
+    const pl = await B.svc("GET", "org_plans?select=billing_method&plan_code=eq.centre&org_id=eq." + ownRow.org_id + "&order=effective_from.desc&limit=1");
+    if (!pl.ok) throw new Error("plan lookup " + pl.status);
+    if (pl.data && pl.data[0] && pl.data[0].billing_method === "invoice") {
+      console.error("stripe-webhook: ignored subscription " + sub.id + ": the centre is billed by invoice, not Stripe");
+      return "ignored_invoice_centre";
+    }
+  }
   // Never let one subscription overwrite a row that holds a DIFFERENT live one: a late "cancelled" event for an old
   // subscription, or the loser of two checkouts opened at once, must not flip a paying tutor to cancelled. The rule is part
   // of the write itself (one atomic request): allowed when the row has no subscription yet, is this same subscription,
