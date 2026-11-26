@@ -37,6 +37,9 @@ developers AND we both use the app live for our own tuition businesses.
 - Work on short-lived `feature/<short-name>` branches off `dev` → PR into `dev` → test
   on the preview link → PR `dev` → `main`.
 - Never suggest pushing straight to main or force-pushing.
+- **CI policy (owner, 2026-11-26: the repo is private, Actions minutes are limited):** `.github/workflows/checks.yml` runs ONLY on pull requests into `main` and by manual
+  dispatch (`workflow_dispatch`), never on pushes or on PRs into `dev`. So workers must run `node --test tests/*.test.js`, `bash tests/sql/run.sh`, the static checks and the
+  smoke suite LOCALLY before pushing. The orchestrator starts the manual run when an owner-approved bundle is about to merge and for every go-live PR (`dev` → `main`).
 
 ## Vercel builds only dev and main (T39, owner's rule 2026-11-26)
 - `vercel.json` → `git.deploymentEnabled`: `"**": false, "main": true, "dev": true`. Only `main` (production) and `dev` (staging) are built; `claude/*` and `feature/*`
@@ -58,7 +61,7 @@ There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it hol
 - Any new `db/migration_*.sql`: apply it to DEV first (previews need it there), and run it on LIVE in the Supabase SQL editor BEFORE the code that needs it is merged to `main`,
   or production pages will error with "column does not exist". (Previews no longer touch live, so LIVE only needs it at the moment of shipping to `main`.)
 - Nightly encrypted DB backups run via GitHub Actions (.github/workflows/db-backup.yml, 30-day artifacts).
-  The repo is PUBLIC: never commit dumps, never print data in workflow logs. Restore steps: README → Backups.
+  The repo is PRIVATE (since 2026-11-26), but still never commit dumps, secrets or real student data, and never print data in workflow logs. Restore steps: README → Backups.
 
 ## Conventions
 - Bump the cache-buster (`?v=N`) in every page when CSS/JS changes: `bash bump-version.sh <N>`.
