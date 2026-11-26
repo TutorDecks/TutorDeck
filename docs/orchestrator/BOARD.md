@@ -71,6 +71,9 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 - (earlier same day, superseded) B2B (centres paying TutorDeck) = INVOICING + PAYNOW, NOT Stripe. Only solo tutors use Stripe. Centres see 'Contact us'. Consequences: no centre Stripe price/subscription (T30's Stripe price step for centres is NOT needed; solo prices unchanged); monthly job only records the fee snapshot; TutorDeck needs its own invoicing to centres (T31b plan) and a Contact constant (tutordeck admin Gmail for now). T4 plan (centre -> parent money) unchanged.
 - T4 plan decisions asked 2026-11-26 (deposits as liability, % pay base, new centre_* tables, refund approval, late fees as proposals, first release S0-S5+S7-S8+S6, retention, opening balances): waiting on owner (recommendations all yes).
 
+- 2026-11-26 OWNER ANSWERS: Supabase connector now reaches both TutorDeck projects (DEV and LIVE): orchestrator may apply DEV SQL via it once the pack is final; NEVER touch LIVE. No Stripe price needed for the first managed centre (the self-serve centre Stripe path stays built; no action). Nobody is outside Singapore: T29 time zones CANCELLED. Bundle 4 test: ok when ready. Commercial/customer details live in a private chat only: NEVER put customer names, prices agreed with customers, or contact numbers into this PUBLIC repo.
+- BUILD PRIORITY (first managed centre, go-live early Feb 2027, data import in December): DEV SQL + staff screens (T3), T4 invoicing/payments/deposits/late fees, CSV import, TutorDeck invoicing of centres (T31b) before the first invoice, tutor scheduling (T6), email, statement matching, makeups, tutor pay + bulk bank file before the first pay run. Performance check at 400 students / 200 tutors.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
