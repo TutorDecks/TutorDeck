@@ -67,8 +67,8 @@ select 'PRE-CHECK', 'demo centre (found by its members; needed by the last part)
 union all
 select 'PRE-CHECK', 'NEW OBJECTS ALREADY THERE', ((
     (select count(*) from (values ('student_tutors'),('centre_invoice_lines'),('centre_invoices'),('centre_payment_allocations'),('centre_payments'),('org_counters'),('centre_family_credit'),('centre_invoice_share'),('org_invite_mail_log'),('tutor_payout_details')) v(n) where exists (select 1 from pg_class c where c.relnamespace='public'::regnamespace and c.relname=v.n and c.relkind='r'))
-  + (select count(*) from (values ('staff_home'),('staff_clean_guardian'),('staff_save_student'),('staff_set_student_end'),('staff_student'),('staff_students'),('staff_students_gate'),('lessons_attendance_guard'),('staff_attendance_gate'),('staff_correct_attendance'),('staff_lessons'),('staff_mark_attendance'),('charge_suggestion_cents'),('lesson_price_cents'),('pending_charge_count'),('staff_charges_gate'),('staff_pending_charges'),('staff_set_charge'),('staff_set_charges'),('staff_set_trial'),('staff_timetable'),('org_tutor_same_org_guard'),('staff_generate_lessons'),('staff_pick_students'),('staff_save_slot'),('staff_set_student_link'),('staff_set_student_tutors'),('staff_slots'),('staff_slots_gate'),('staff_stop_slot'),('staff_student_tutors'),('tutor_lesson_links'),('lesson_locked_reason'),('staff_reassign_lesson'),('tutor_my_schedule'),('tutor_my_slots'),('org_validate_settings'),('centre_alloc_guard'),('centre_counter_guard'),('centre_div_round'),('centre_gst_totals'),('centre_invoice_gst'),('centre_invoice_guard'),('centre_line_guard'),('centre_money_audit'),('centre_money_deleting'),('centre_money_org_guard'),('centre_next_number'),('centre_payment_guard'),('centre_payment_reversal_check'),('centre_revenue_totals'),('centre_set_opening_number'),('centre_invoice_approve'),('centre_invoice_approve_all'),('centre_invoice_discard_draft'),('centre_invoice_get'),('centre_invoice_issue_draft'),('centre_invoice_list'),('centre_invoice_model_note'),('centre_invoice_month'),('centre_invoice_numbering'),('centre_invoice_run_create_drafts'),('centre_invoice_run_prepare'),('centre_invoice_run_preview'),('centre_invoice_run_rows'),('centre_invoicing_gate'),('centre_balance_rows'),('centre_credit_balance'),('centre_credit_subtotal'),('centre_family_credit_get'),('centre_family_credit_guard'),('centre_fmt_money'),('centre_invoice_account_get'),('centre_invoice_account_list'),('centre_invoice_household'),('centre_invoice_public'),('centre_invoice_share_link'),('centre_invoice_whatsapp'),('centre_issue_credit_note'),('centre_money_gate'),('centre_overpay_mode'),('centre_pay_status'),('centre_record_payment'),('centre_refund_family_credit'),('centre_reverse_payment'),('centre_share_audit'),('centre_sync_invoice_excess'),('org_invite_mail_reserve'),('org_invite_mail_status'),('org_create_centre'),('org_default_centre_plan'),('org_set_billing_method'),('org_set_billing_start'),('tutor_my_profile'),('tutor_save_profile'),('td_my_centre_tutor'),('td_payout_audit'),('td_payout_mask'),('tutor_clear_payout'),('tutor_my_payout'),('tutor_payout_guard'),('tutor_reveal_payout'),('tutor_save_payout'),('org_invite'),('org_reveal_payout'),('org_tutor_payout_status'),('org_tutor_payouts'),('org_update_member'),('td_payout_viewer')) v(n) where exists (select 1 from pg_proc p where p.pronamespace='public'::regnamespace and p.proname=v.n)))::text
-  || ' of 119 (already applied parts are fine: the pack is safe to re-run)')
+  + (select count(*) from (values ('staff_home'),('staff_clean_guardian'),('staff_save_student'),('staff_set_student_end'),('staff_student'),('staff_students'),('staff_students_gate'),('lessons_attendance_guard'),('staff_attendance_gate'),('staff_correct_attendance'),('staff_lessons'),('staff_mark_attendance'),('charge_suggestion_cents'),('lesson_price_cents'),('pending_charge_count'),('staff_charges_gate'),('staff_pending_charges'),('staff_set_charge'),('staff_set_charges'),('staff_set_trial'),('staff_timetable'),('org_tutor_same_org_guard'),('staff_generate_lessons'),('staff_pick_students'),('staff_save_slot'),('staff_set_student_link'),('staff_set_student_tutors'),('staff_slots'),('staff_slots_gate'),('staff_stop_slot'),('staff_student_tutors'),('tutor_lesson_links'),('lesson_locked_reason'),('staff_reassign_lesson'),('tutor_my_schedule'),('tutor_my_slots'),('org_validate_settings'),('centre_alloc_guard'),('centre_counter_guard'),('centre_div_round'),('centre_gst_totals'),('centre_invoice_gst'),('centre_invoice_guard'),('centre_line_guard'),('centre_money_audit'),('centre_money_deleting'),('centre_money_org_guard'),('centre_next_number'),('centre_payment_guard'),('centre_payment_reversal_check'),('centre_revenue_totals'),('centre_set_opening_number'),('centre_invoice_approve'),('centre_invoice_approve_all'),('centre_invoice_discard_draft'),('centre_invoice_get'),('centre_invoice_issue_draft'),('centre_invoice_list'),('centre_invoice_model_note'),('centre_invoice_month'),('centre_invoice_numbering'),('centre_invoice_run_create_drafts'),('centre_invoice_run_prepare'),('centre_invoice_run_preview'),('centre_invoice_run_rows'),('centre_invoicing_gate'),('centre_balance_rows'),('centre_credit_balance'),('centre_credit_subtotal'),('centre_family_credit_get'),('centre_family_credit_guard'),('centre_fmt_money'),('centre_invoice_account_get'),('centre_invoice_account_list'),('centre_invoice_household'),('centre_invoice_public'),('centre_invoice_share_link'),('centre_invoice_whatsapp'),('centre_issue_credit_note'),('centre_money_gate'),('centre_overpay_mode'),('centre_pay_status'),('centre_record_payment'),('centre_refund_family_credit'),('centre_reverse_payment'),('centre_share_audit'),('centre_sync_invoice_excess'),('org_invite_mail_reserve'),('org_invite_mail_status'),('org_create_centre'),('org_default_centre_plan'),('org_set_billing_method'),('org_set_billing_start'),('tutor_my_profile'),('tutor_save_profile'),('td_my_centre_tutor'),('td_payout_audit'),('td_payout_mask'),('tutor_clear_payout'),('tutor_my_payout'),('tutor_payout_guard'),('tutor_reveal_payout'),('tutor_save_payout'),('org_invite'),('org_reveal_payout'),('org_tutor_payout_status'),('org_tutor_payouts'),('org_update_member'),('td_payout_viewer'),('lesson_change_blocker'),('staff_generate_core'),('staff_holiday_cancel'),('staff_people'),('staff_slot_student'),('staff_stop_slot_from')) v(n) where exists (select 1 from pg_proc p where p.pronamespace='public'::regnamespace and p.proname=v.n)))::text
+  || ' of 125 (already applied parts are fine: the pack is safe to re-run)')
 union all
 select 'PRE-CHECK', 'OVERALL', case when
     to_regclass('public.memberships') is not null and to_regprocedure('public.org_can(uuid,text)') is not null
@@ -1979,118 +1979,7 @@ grant execute on function public.staff_timetable(uuid, date, date, uuid, uuid, u
 -- ### source branch: claude/b4-fix   file: db/migration_reassign_link.sql   undo: db/migration_reassign_link_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
--- =====================================================================================================
--- B4-FIX — reassign + "also make them the assigned tutor": keep the old tutor's link when they still teach the student elsewhere
--- undo: migration_reassign_link_down.sql        Run AFTER migration_staff_reassign.sql. Run on DEV first. Safe to run twice. Reads/changes no row by itself.
--- =====================================================================================================
--- BEFORE: ticking "Also make them <student>'s assigned tutor" always ended the OLD tutor's link, even when that tutor still taught the student in
--- another weekly slot or has other upcoming lessons with them. NOW: the link is ended only when the old tutor teaches the student nowhere else
--- (no other active weekly slot, no other upcoming non-cancelled lesson that is not from the slot being moved). The result and the audit entry carry
--- 'links_kept' (how many old links were kept). Everything else in the function is unchanged.
-
-create or replace function public.staff_reassign_lesson(p_lesson uuid, p_new_tutor uuid, p_mode text, p_reason text default null,
-                                                        p_update_links boolean default false) returns jsonb
-language plpgsql security definer set search_path = public as $$
-declare l lessons; cl lessons; today date; md text := lower(trim(coalesce(p_mode, ''))); why text := nullif(trim(coalesce(p_reason, '')), '');
-        nt memberships; cfg jsonb; allowed boolean; ids uuid[]; locked text; orig uuid; new_cf uuid; old_tutor uuid;
-        sid uuid; ended int := 0; added int := 0; kept int := 0; still boolean; moved_slots uuid[]; n_ended int; before_j jsonb := '[]'::jsonb; link_ids uuid[];
-begin
-  if auth.uid() is null then raise exception 'NOT_FOUND' using errcode = 'P0001'; end if;
-  select * into l from lessons where id = p_lesson;
-  if not found then raise exception 'NOT_FOUND' using errcode = 'P0001'; end if;
-  today := staff_slots_gate(l.org_id, true);                                            -- NOT_FOUND for strangers, NOT_ALLOWED without manage_timetable
-
-  if md not in ('reassign', 'cover') then raise exception 'BAD_MODE: choose cover or reassign' using errcode = 'P0001'; end if;
-  if p_new_tutor is null then raise exception 'PICK_TUTOR: choose who will teach this lesson' using errcode = 'P0001'; end if;
-  if why is not null and length(why) > 500 then raise exception 'TOO_LONG: keep the reason under 500 characters' using errcode = 'P0001'; end if;
-  if coalesce(p_update_links, false) and md = 'cover' then
-    raise exception 'LINK_NOT_FOR_COVER: a cover is one lesson only, so it never changes who a student is assigned to' using errcode = 'P0001'; end if;
-
-  select * into nt from memberships m where m.id = p_new_tutor and m.org_id = l.org_id and m.role in ('tutor', 'staff', 'owner') and m.status = 'active';
-  if not found then raise exception 'NOT_AVAILABLE: that person can''t be given lessons at this centre (they must be an active member here)' using errcode = 'P0001'; end if;
-  if l.taught_by is not distinct from p_new_tutor then
-    raise exception 'NO_CHANGE: that tutor already teaches this lesson' using errcode = 'P0001'; end if;
-
-  if l.taught_by is null then
-    if md = 'cover' then raise exception 'NO_TUTOR_TO_COVER: this lesson has no tutor yet, so there is nobody to cover for. Use Assign instead' using errcode = 'P0001'; end if;
-  else
-    -- a lesson that already has a tutor changing hands is a replacement: the centre's own rule decides (read as of today)
-    cfg := org_settings_on(l.org_id, today) #> '{lessons,replacement_tutors}';
-    allowed := case when jsonb_typeof(cfg) = 'boolean' then (cfg #>> '{}')::boolean else true end;      -- missing = on (the default)
-    if not allowed then
-      raise exception 'REPLACEMENT_OFF: this centre doesn''t allow replacement tutors. An owner can switch this on in the centre settings' using errcode = 'P0001'; end if;
-    if why is null then raise exception 'REASON_REQUIRED: say why this lesson is changing tutor. It is kept on record' using errcode = 'P0001'; end if;
-  end if;
-
-  -- the lesson, or the whole class of that day (lessons sharing a session_id): all or nothing
-  select coalesce(array_agg(x.id order by x.id), array[l.id]) into ids from lessons x
-   where x.org_id = l.org_id and (x.id = l.id or (l.session_id is not null and x.session_id = l.session_id));
-  perform 1 from lessons x where x.id = any(ids) order by x.id for update;
-  foreach sid in array ids loop
-    locked := lesson_locked_reason(sid);
-    if locked is not null then
-      raise exception '%', case locked
-        when 'MARKED'    then 'ALREADY_MARKED: this lesson is already marked, so it stays with the tutor who taught it'
-        when 'CANCELLED' then 'CANCELLED: this lesson was cancelled'
-        when 'PAID'      then 'PAID: this lesson is already paid, so it can''t change hands'
-        else                  'INVOICED: this lesson is on an invoice, so it can''t change hands' end
-        || case when array_length(ids, 1) > 1 then ' (it is part of a class that moves together)' else '' end using errcode = 'P0001';
-    end if;
-  end loop;
-
-  -- move them
-  for cl in select * from lessons x where x.id = any(ids) order by x.id loop
-    before_j := before_j || jsonb_build_object('lesson_id', cl.id, 'taught_by', cl.taught_by, 'covered_for', cl.covered_for);
-    if md = 'cover' then
-      orig := coalesce(cl.covered_for, cl.taught_by);                                    -- who it was meant for stays the same however often it is covered
-      new_cf := case when orig is distinct from p_new_tutor then orig end;              -- handed back to the original tutor = nobody is covering
-    else new_cf := null; end if;
-    update lessons set taught_by = p_new_tutor, covered_for = new_cf where id = cl.id;
-  end loop;
-
-  -- reassign only, and only when asked: the student's assigned-tutor link follows (the old tutor's ends, the new tutor's starts)
-  if coalesce(p_update_links, false) then
-    for sid in select distinct x.student_id from lessons x where x.id = any(ids) loop
-      old_tutor := (select (e ->> 'taught_by')::uuid from jsonb_array_elements(before_j) e
-                     join lessons y on y.id = (e ->> 'lesson_id')::uuid where y.student_id = sid limit 1);
-      if old_tutor is not null then
-        -- the old tutor stays this student's assigned tutor when they still teach the student somewhere else: another weekly slot, or another
-        -- upcoming lesson that does not come from the slot of the lesson(s) being moved (a reassign leaves those weekly slots alone)
-        select coalesce(array_agg(distinct x.slot_id) filter (where x.slot_id is not null), '{}') into moved_slots from lessons x where x.id = any(ids) and x.student_id = sid;
-        still := exists (select 1 from recurring_slots rs where rs.org_id = l.org_id and rs.student_id = sid and rs.taught_by = old_tutor and rs.active
-                           and not (rs.id = any(moved_slots)))
-              or exists (select 1 from lessons y where y.org_id = l.org_id and y.student_id = sid and y.taught_by = old_tutor and y.lesson_date >= today
-                           and y.status is distinct from 'cancelled' and not (y.id = any(ids)) and (y.slot_id is null or not (y.slot_id = any(moved_slots))));
-        if still then kept := kept + 1;
-        else
-          update student_tutors set active = false, until = today where org_id = l.org_id and student_id = sid and membership_id = old_tutor and active;
-          get diagnostics n_ended = row_count; ended := ended + n_ended;
-        end if;
-      end if;
-      if not exists (select 1 from student_tutors x where x.org_id = l.org_id and x.student_id = sid and x.membership_id = p_new_tutor and x.active) then
-        insert into student_tutors(org_id, student_id, membership_id, since, created_by) values (l.org_id, sid, p_new_tutor, today, auth.uid());
-        added := added + 1;
-      end if;
-    end loop;
-  end if;
-
-  insert into audit_log(org_id, actor, action, table_name, row_id, before, after)
-  values (l.org_id, auth.uid(), 'staff_reassign_lesson', 'lessons', l.id::text,
-          jsonb_build_object('lessons', before_j),
-          jsonb_build_object('mode', md, 'new_tutor', p_new_tutor, 'new_tutor_name', nt.display_name, 'lessons', to_jsonb(ids), 'reason', why,
-                             'covered_for', (select covered_for from lessons where id = l.id),
-                             'links_updated', coalesce(p_update_links, false), 'links_ended', ended, 'links_added', added, 'links_kept', kept));
-  return jsonb_build_object('lesson_id', l.id, 'lessons', array_length(ids, 1), 'mode', md, 'tutor_id', p_new_tutor,
-                            'tutor_name', coalesce(nt.display_name, 'Tutor'), 'covered_for', (select covered_for from lessons where id = l.id),
-                            'links_ended', ended, 'links_added', added, 'links_kept', kept);
-end $$;
-
-revoke all on function public.staff_reassign_lesson(uuid, uuid, text, text, boolean) from public, anon;
-grant execute on function public.staff_reassign_lesson(uuid, uuid, text, text, boolean) to authenticated;
-
--- #####################################################################################################
--- ### PART 10 of 23 — tutor Schedule tab (read only)
--- ### source branch: claude/t6-1-tutor-schedule   file: db/migration_tutor_schedule.sql   undo: db/migration_tutor_schedule_down.sql
+-- ==============================================================================================-- ### source branch: claude/t6-1-tutor-schedule   file: db/migration_tutor_schedule.sql   undo: db/migration_tutor_schedule_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
 -- =====================================================================================================
@@ -4012,112 +3901,7 @@ grant execute on function public.centre_invoice_public(uuid) to anon, authentica
 -- ### source branch: claude/b4-fix   file: db/migration_payment_fix.sql   undo: db/migration_payment_fix_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
--- =====================================================================================================
--- B4-FIX — "Record payment" failed with "Something went wrong" (PostgREST error 21000)   undo: migration_payment_fix_down.sql
--- =====================================================================================================
--- Run order: AFTER migration_centre_payments.sql (any time after; it only replaces one function). Run on the DEV project first. Safe to run twice.
--- Needs no data change and reads/changes no row.
---
--- CAUSE: centre_record_payment cleared its scratch table with `delete from _td_pay_open;` (no WHERE). Supabase's API layer runs the pg-safeupdate
--- extension, which refuses any DELETE or UPDATE without a WHERE clause with SQLSTATE 21000 ("DELETE requires a WHERE clause"). The throwaway test
--- Postgres has no such extension, so the SQL tests passed. Only this one statement was affected (every other DELETE / UPDATE in the migrations has a WHERE).
--- FIX: the same function with `delete from _td_pay_open where true;` (the scratch table is per-transaction, so it is empty on a first call anyway).
--- Behaviour is otherwise identical; grants are kept by CREATE OR REPLACE and restated below.
--- =====================================================================================================
-
-create or replace function public.centre_record_payment(p_org uuid, p_household uuid, p_method text, p_amount_cents bigint, p_received_on date,
-  p_reference text default null, p_invoice_ids uuid[] default null, p_payer_name text default null, p_note text default null) returns jsonb
-language plpgsql security definer set search_path = public, pg_temp as $$
-declare today date := centre_money_gate(p_org, 'record_payments'); s jsonb; partial boolean; mode text; modes jsonb;
-  hh uuid := p_household; pid uuid := gen_random_uuid(); ref text := nullif(trim(coalesce(p_reference, '')), ''); payer text := nullif(trim(coalesce(p_payer_name, '')), '');
-  note text := nullif(trim(coalesce(p_note, '')), ''); explicit boolean := coalesce(cardinality(p_invoice_ids), 0) > 0; r record; bad record;
-  remaining bigint; take bigint; allocated jsonb := '[]'::jsonb; n_alloc int := 0; excess bigint := 0; hh_i uuid; ids uuid[]; open_n int;
-begin
-  if p_method is null or p_method not in ('manual_paynow', 'bank', 'cash', 'cheque', 'other') then
-    raise exception 'BAD_VALUE: choose how it was paid (PayNow, bank transfer, cash, cheque or other)' using errcode = 'P0001'; end if;
-  if p_amount_cents is null or p_amount_cents <= 0 then raise exception 'BAD_VALUE: the amount must be more than S$0.00' using errcode = 'P0001'; end if;
-  if p_amount_cents > 100000000 then raise exception 'BAD_VALUE: that amount is too large to be right (over S$1,000,000)' using errcode = 'P0001'; end if;
-  if p_received_on is null then raise exception 'BAD_VALUE: say the date it was received' using errcode = 'P0001'; end if;
-  if p_received_on > today then raise exception 'BAD_VALUE: the date received can''t be in the future' using errcode = 'P0001'; end if;
-  if p_received_on < today - 1825 then raise exception 'BAD_VALUE: the date received is too far back (over 5 years)' using errcode = 'P0001'; end if;
-  if length(coalesce(ref, '')) > 120 or length(coalesce(payer, '')) > 120 or length(coalesce(note, '')) > 300 then
-    raise exception 'TOO_LONG: keep the reference and name under 120 characters and the note under 300' using errcode = 'P0001'; end if;
-  s := org_settings_on(p_org, today);
-  if s is null then raise exception 'NOT_FOUND' using errcode = 'P0001'; end if;
-  partial := coalesce((s#>>'{payments,partial_payments}')::boolean, true);
-  mode := centre_overpay_mode(s);
-  modes := coalesce(s#>'{payments,modes}', '[]'::jsonb);
-  if p_method = 'manual_paynow' and not (modes ? 'manual_paynow') then
-    raise exception 'NOT_ALLOWED: manual PayNow isn''t switched on in this centre''s payment settings (cash, bank transfer and cheque still can be recorded)' using errcode = '42501'; end if;
-
-  -- which household? (from the chosen invoices when it isn't given)
-  if explicit then
-    select array(select distinct x from unnest(p_invoice_ids) x) into ids;
-    for r in select i.id, i.status, i.kind, i.number_text, centre_invoice_household(i.id) as hid from centre_invoices i where i.org_id = p_org and i.id = any(ids) loop
-      if r.status <> 'issued' or r.kind = 'credit_note' then raise exception 'NOT_ALLOWED: % can''t be paid (only an issued invoice can)', coalesce(r.number_text, 'that document') using errcode = '42501'; end if;
-      if hh is null then hh := r.hid; end if;
-      if r.hid is distinct from hh then raise exception 'NOT_ALLOWED: those invoices belong to different families; record one payment per family' using errcode = '42501'; end if;
-    end loop;
-    if (select count(*) from centre_invoices where org_id = p_org and id = any(ids)) <> cardinality(ids) then raise exception 'NOT_FOUND' using errcode = 'P0001'; end if;
-  end if;
-  if hh is null then raise exception 'BAD_VALUE: choose which family paid' using errcode = 'P0001'; end if;
-  if not exists (select 1 from households h where h.id = hh and h.org_id = p_org) then raise exception 'NOT_FOUND' using errcode = 'P0001'; end if;
-  perform pg_advisory_xact_lock(hashtextextended(hh::text, 4));      -- two people recording for the same family: one waits
-
-  -- the invoices this payment may cover, in the order money is applied: oldest issued first (issue date, then number)
-  create temp table if not exists _td_pay_open(invoice_id uuid, number_text text, total_cents bigint, balance_cents bigint, ord int) on commit drop;
-  delete from _td_pay_open where true;                                 -- Supabase refuses a DELETE with no WHERE (pg-safeupdate, SQLSTATE 21000)
-  insert into _td_pay_open
-    select i.id, i.number_text, i.total_cents, b.balance_cents, (row_number() over (order by i.issue_date, i.number_seq))::int
-      from centre_invoices i, lateral centre_balance_rows(p_org, array[i.id]) b
-     where i.org_id = p_org and i.status = 'issued' and i.kind <> 'credit_note'
-       and (case when explicit then i.id = any(ids)
-                 else (i.household_id = hh or (i.household_id is null and i.student_id in (select s2.id from students s2 where s2.household_id = hh and s2.org_id = p_org))) end);
-  if explicit then
-    select * into bad from _td_pay_open where balance_cents = 0 limit 1;
-    if bad.invoice_id is not null then raise exception 'NOT_ALLOWED: % is already paid in full', bad.number_text using errcode = '42501'; end if;
-  end if;
-  select count(*) into open_n from _td_pay_open where balance_cents > 0;
-
-  -- partial payments switched off: the money must cover whole invoices (the first one it can't finish is named)
-  if not partial and open_n > 0 then
-    remaining := p_amount_cents;
-    for r in select * from _td_pay_open where balance_cents > 0 order by ord loop
-      if remaining < r.balance_cents then
-        raise exception 'PART_NOT_ALLOWED: this centre doesn''t accept part payments, so a payment has to cover whole invoices. % still owes %.', r.number_text, centre_fmt_money(r.balance_cents) using errcode = '42501';
-      end if;
-      remaining := remaining - r.balance_cents;
-    end loop;
-  end if;
-
-  insert into centre_payments(id, org_id, kind, household_id, method, amount_cents, received_on, reference, payer_name, note)
-  values (pid, p_org, 'payment', hh, p_method, p_amount_cents, p_received_on, ref, payer, note);
-  remaining := p_amount_cents;
-  for r in select * from _td_pay_open where balance_cents > 0 order by ord loop
-    exit when remaining <= 0;
-    take := least(remaining, r.balance_cents);
-    insert into centre_payment_allocations(org_id, payment_id, invoice_id, cents) values (p_org, pid, r.invoice_id, take);
-    remaining := remaining - take; n_alloc := n_alloc + 1;
-    allocated := allocated || jsonb_build_object('invoice_id', r.invoice_id, 'number', r.number_text, 'cents', take, 'balance_after_cents', r.balance_cents - take);
-  end loop;
-  excess := remaining;
-  if excess > 0 then
-    insert into centre_family_credit(org_id, household_id, kind, handling, cents, payment_id, reason)
-    values (p_org, hh, 'overpayment', mode, excess, pid, case when open_n = 0 then 'Paid in advance: nothing was owed' else 'More than the open invoices came to' end);
-  end if;
-  insert into audit_log(org_id, actor, action, table_name, row_id, before, after)
-  values (p_org, auth.uid(), 'centre_payment_record', 'centre_payments', pid::text, null,
-          jsonb_build_object('method', p_method, 'amount_cents', p_amount_cents, 'received_on', p_received_on, 'invoices_covered', n_alloc, 'excess_cents', excess, 'excess_handling', case when excess > 0 then mode end));
-  return jsonb_build_object('payment_id', pid, 'household_id', hh, 'amount_cents', p_amount_cents, 'allocated', allocated, 'excess_cents', excess,
-                            'excess_handling', case when excess > 0 then mode end, 'credit_balance_cents', centre_credit_balance(p_org, hh));
-end $$;
-
-revoke all on function public.centre_record_payment(uuid, uuid, text, bigint, date, text, uuid[], text, text) from public, anon;
-grant execute on function public.centre_record_payment(uuid, uuid, text, bigint, date, text, uuid[], text, text) to authenticated, service_role;
-
--- #####################################################################################################
--- ### PART 16 of 23 — invite email log + status
--- ### source branch: claude/t7-2-invites   file: db/migration_invites.sql   undo: db/migration_invites_down.sql
+-- ==============================================================================================-- ### source branch: claude/t7-2-invites   file: db/migration_invites.sql   undo: db/migration_invites_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
 -- T7: invite emails. Needs db/migration_org_foundation.sql (memberships, org_can, audit_row).
@@ -4816,7 +4600,8 @@ with want(kind, name) as (values
   ('function','td_payout_audit'),('function','td_payout_mask'),('function','tutor_clear_payout'),('function','tutor_my_payout'),
   ('function','tutor_payout_guard'),('function','tutor_reveal_payout'),('function','tutor_save_payout'),('function','org_invite'),
   ('function','org_reveal_payout'),('function','org_tutor_payout_status'),('function','org_tutor_payouts'),('function','org_update_member'),
-  ('function','td_payout_viewer')
+  ('function','td_payout_viewer'),('function','lesson_change_blocker'),('function','staff_generate_core'),('function','staff_holiday_cancel'),
+  ('function','staff_people'),('function','staff_slot_student'),('function','staff_stop_slot_from')
 ), seen as (
   select 'POST-CHECK'::text as step, w.kind || ' ' || w.name as item,
          case when w.kind = 'table' then exists (select 1 from pg_class c where c.relnamespace = 'public'::regnamespace and c.relname = w.name and c.relkind = 'r')
@@ -4834,5 +4619,5 @@ with want(kind, name) as (values
 )
 select step, item, case when ok then 'present' else 'MISSING' end as state from seen
 union all
-select 'POST-CHECK', 'OVERALL', case when (select bool_and(ok) from seen) then 'OK - all 119 objects and 7 demo logins present' else 'NOT OK - see the MISSING lines above' end
+select 'POST-CHECK', 'OVERALL', case when (select bool_and(ok) from seen) then 'OK - all 125 objects and 7 demo logins present' else 'NOT OK - see the MISSING lines above' end
 order by 1, 3 desc, 2;

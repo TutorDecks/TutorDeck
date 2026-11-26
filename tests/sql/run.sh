@@ -132,6 +132,14 @@ $P -f db/migration_centre_late_fees_down.sql
 $P -f db/migration_centre_refunds_down.sql
 $P -f db/migration_centre_deposits_down.sql
 $P -f db/migration_fee_050_down.sql                         # fee_050 is unwound here (it was already undone once above; safe to repeat)
+$P -f db/migration_invites.sql                              # (the People list reads the invite send log; the invites test above undid it)
+$P -f db/migration_slot_changes.sql
+$P -f db/migration_slot_changes.sql                         # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/slot_changes_test.sql
+$P -f db/migration_slot_changes_down.sql
+$P -f db/migration_slot_changes.sql                         # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_slot_changes_down.sql
+$P -f db/migration_invites_down.sql
 $P -f db/migration_payout_permission_down.sql
 $P -f db/migration_payout_permission.sql                    # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_payout_permission_down.sql

@@ -82,7 +82,7 @@
 
   // ---- the answer of the generator, in the plain words the button shows ----
   // "12 created, 0 skipped, 2 holidays" + a second line only when there is something to say
-  function generateMessage(res) {
+  function generateMessage(res, fmt) {
     res = res || {};
     var created = Number(res.created) || 0, skipped = Number(res.skipped) || 0, hol = Number(res.holidays) || 0;
     var head = created + " created, " + skipped + " skipped, " + plural(hol, "holiday", "holidays");
@@ -92,16 +92,86 @@
     if (Number(res.ended) > 0) more.push(plural(Number(res.ended), "lesson was", "lessons were") + " left out because the student has finished.");
     if (Number(res.no_tutor) > 0) more.push(plural(Number(res.no_tutor), "new lesson has", "new lessons have") + " no tutor yet. Give the weekly slot a tutor, or pick one in Timetable.");
     if (Number(res.on_holiday) > 0) more.push(plural(Number(res.on_holiday), "new lesson falls", "new lessons fall") + " on a holiday, because this centre doesn’t skip holidays.");
-    return { head: head, more: more, text: [head].concat(more).join(" ") };
+    // (T3.9) a clear line about the period it covered: "26 weeks, 29 Nov to 28 May". Not part of `text`, which keeps its old wording.
+    var days = Number(res.days) || 0, period = days > 0 ? "Covers " + weeksText(days) + (res.from && res.to && fmt ? ", " + fmt(res.from) + " to " + fmt(res.to) : "") + "." : "";
+    return { head: head, more: more, text: [head].concat(more).join(" "), period: period };
   }
+  // ---- how far "Create lessons" goes (T3.9): from today to a chosen day, at most 26 weeks (182 days) ----
+  var MAX_DAYS = 182;
+  function isoDays(a, b) { return Math.round((new Date(b + "T00:00:00Z") - new Date(a + "T00:00:00Z")) / 86400000); }
+  function addDays(iso, n) { var d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  function weeksText(days) { var w = Math.ceil(days / 7); return w + (w === 1 ? " week" : " weeks"); }
+  // today / to = "YYYY-MM-DD". → { ok, days, to, error }  (days counts both ends: today to today = 1)
+  function genRange(today, to) {
+    if (!today) return { ok: false, days: 0, to: to, error: "Reload the page and try again." };
+    if (!to) return { ok: false, days: 0, to: to, error: "Pick the last day to create lessons for." };
+    var n = isoDays(today, to) + 1;
+    if (!(n >= 1)) return { ok: false, days: n, to: to, error: "Pick today or a day to come." };
+    if (n > MAX_DAYS) return { ok: false, days: n, to: to, error: "That is more than 26 weeks. Pick a day up to " + 26 + " weeks from today." };
+    return { ok: true, days: n, to: to, error: "" };
+  }
+  function genLabel(days) { return days > 0 ? "Create lessons for the next " + weeksText(days) : "Create lessons"; }
   function savedText(res, mode) {
-    if (mode === "add") { var n = Number(res && res.added) || 1; return n > 1 ? "Weekly slot added for " + n + " students" : "Weekly slot added"; }
+    if (mode === "add") { var n = Number(res && res.added) || 1; return (n > 1 ? "Weekly slot added for " + n + " students" : "Weekly slot added") + assignedNote(res && res.assigned); }
     var left = Number(res && res.lessons_left) || 0;
     return "Weekly slot changed" + (left ? ". " + plural(left, "lesson", "lessons") + " already created keep the old time and tutor." : "");
+  }
+  // (T3.9) "Tutor One was added to Kid 1's assigned tutors." / "Tutor One was added to 2 students' assigned tutors."
+  function assignedNote(list) {
+    list = Array.isArray(list) ? list : [];
+    if (!list.length) return "";
+    var tut = list[0].tutor_name || "The tutor";
+    return ". " + tut + " was added to " + (list.length === 1 ? (list[0].student_name || "the student") + "’s" : list.length + " students’") + " assigned tutors.";
   }
   function stoppedText(res) {
     var left = Number(res && res.lessons_left) || 0;
     return "Weekly slot stopped" + (left ? ". " + plural(left, "upcoming lesson", "upcoming lessons") + " already created stay in the timetable." : "");
+  }
+
+  // ---- stop from a day, add / remove a student on a slot (T3.9) ----
+  // `res` is the answer of the database's preview (dry run) or of the real call; `day` is the date as already formatted.
+  function stopPreview(res, remove, day) {
+    res = res || {}; var free = Number(res.removable) || 0, kept = Number(res.kept) || 0;
+    var head = "No lessons will be created from " + day + " on.";
+    var base = remove ? (free ? " " + plural(free, "lesson", "lessons") + " from that day will be removed." : " There are no lessons from that day to remove.")
+                      : (free + kept ? " " + plural(free + kept, "lesson", "lessons") + " already created from that day stay" + (free ? ", unless you tick the box" : "") + "." : "");
+    return head + base + (kept ? " " + plural(kept, "lesson", "lessons") + " stay because " + (kept === 1 ? "it is" : "they are") + " marked, paid or invoiced." : "");
+  }
+  function stoppedFromText(res) {
+    res = res || {}; var rm = Number(res.removed) || 0, kept = Number(res.kept) || 0;
+    var t = "Weekly slot " + (res.stop_from ? "stops from that day" : "stopped");
+    if (rm) t += ". " + plural(rm, "lesson", "lessons") + " removed";
+    if (kept) t += ". " + plural(kept, "lesson", "lessons") + " stay (marked, paid or invoiced)";
+    return t;
+  }
+  function memberPreview(action, res, name, day) {
+    res = res || {};
+    if (action === "add") {
+      var n = Number(res.would_create) || 0;
+      return res.already ? name + " is already in this slot." : name + " joins from " + day + ". " + (n ? plural(n, "lesson", "lessons") + " will be created for them." : "No lessons are made yet. Press Create lessons later.");
+    }
+    var free = Number(res.removable) || 0, kept = Number(res.kept) || 0;
+    return name + " leaves from " + day + ". " + (free ? plural(free, "lesson", "lessons") + " from that day will be removed." : "There are no lessons from that day to remove.") +
+      (kept ? " " + plural(kept, "lesson", "lessons") + " stay because " + (kept === 1 ? "it is" : "they are") + " marked, paid or invoiced." : "");
+  }
+  function memberDone(action, res, name) {
+    res = res || {};
+    if (action === "add") {
+      if (res.already) return name + " is already in this slot";
+      return name + " added to the slot. " + plural(Number(res.created) || 0, "lesson", "lessons") + " created" + assignedNote(res.assigned);
+    }
+    var rm = Number(res.lessons_removed) || 0;
+    return name + " removed from the slot. " + plural(rm, "lesson", "lessons") + " removed" + (Number(res.kept) ? ", " + Number(res.kept) + " stay (marked, paid or invoiced)" : "");
+  }
+  // a student's mark in the member list: "joins 12 Dec" / "leaves 3 Jan"
+  function memberTag(s, today, fmt) {
+    if (s.stops_on) return "leaves " + fmt(s.stops_on);
+    if (s.starts_on && s.starts_on > today) return "joins " + fmt(s.starts_on);
+    return "";
+  }
+  function holidayCancelText(res) {
+    res = res || {}; var n = Number(res.cancel) || 0, kept = Number(res.kept) || 0;
+    return plural(n, "lesson", "lessons") + " on those days will be cancelled with no charge" + (kept ? ". " + plural(kept, "lesson", "lessons") + " stay because " + (kept === 1 ? "it is" : "they are") + " marked, paid or invoiced" : "") + ".";
   }
 
   // ---- assigned tutors and the online link ----
@@ -126,6 +196,7 @@
       [/BAD_RATE: type/, "Type the rate per hour."],
       [/BAD_RATE/, "The rate per hour must be between 0 and 1000."],
       [/BAD_STUDENTS: pick/, "Pick at least one student."],
+      [/BAD_STUDENTS: this is the only/, "This is the only student in the slot. Stop the slot instead."],
       [/BAD_STUDENTS: a class/, "A class has at most 30 students."],
       [/BAD_STUDENTS/, "To change who is in a slot, stop it and add a new one."],
       [/BAD_TUTORS/, "A student has at most 20 assigned tutors."],
@@ -136,6 +207,10 @@
       [/STUDENT_ENDED: (.+?)['’]s lessons have ended/, null],
       [/SLOT_CLASH: (.+?) already has/, null],
       [/BAD_RANGE: lessons can/, "Lessons can’t be created for days that have passed."],
+      [/BAD_RANGE: create at most 26/, "That is more than 26 weeks. Pick an earlier last day."],
+      [/BAD_RANGE: give a start/, "Check the start and end days."],
+      [/BAD_DATE/, "Pick today or a day to come."],
+      [/BAD_ACTION/, "That choice isn’t available. Refresh the page and try again."],
       [/BAD_RANGE/, "Choose a shorter period."],
       [/BAD_SEARCH|BAD_PAGE/, "That choice isn’t available. Refresh the page and try again."]
     ];
@@ -150,7 +225,9 @@
   }
   function isMissing(err) { return CA.isMissing(err); }
 
-  return { DAYS: DAYS, DAY_SHORT: DAY_SHORT, MAX_STUDENTS: MAX_STUDENTS, PAGE_SIZE: PAGE_SIZE, hm: hm, minutesBetween: minutesBetween, isoWeekday: isoWeekday,
+  return { MAX_DAYS: MAX_DAYS, genRange: genRange, genLabel: genLabel, weeksText: weeksText, addDays: addDays, isoDays: isoDays, assignedNote: assignedNote,
+           stopPreview: stopPreview, stoppedFromText: stoppedFromText, memberPreview: memberPreview, memberDone: memberDone, memberTag: memberTag, holidayCancelText: holidayCancelText,
+           DAYS: DAYS, DAY_SHORT: DAY_SHORT, MAX_STUDENTS: MAX_STUDENTS, PAGE_SIZE: PAGE_SIZE, hm: hm, minutesBetween: minutesBetween, isoWeekday: isoWeekday,
            validate: validate, saveArgs: saveArgs, rateText: rateText, studentsText: studentsText, kindText: kindText, tutorLine: tutorLine, timeText: timeText,
            byDay: byDay, countText: countText, emptyText: emptyText, generateMessage: generateMessage, savedText: savedText, stoppedText: stoppedText,
            assignedText: assignedText, sameSet: sameSet, linkProblem: linkProblem, errorText: errorText, isMissing: isMissing,

@@ -104,6 +104,25 @@
   .sl-bar{display:flex;gap:10px;flex-wrap:wrap}
   .sl-bar[hidden],.sl-result[hidden],.sl-pick[hidden]{display:none}
   .sl-bar .btn{min-height:44px}
+  .sl-gen{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;flex:1 1 280px}
+  .sl-gen .field{margin:0;flex:0 1 170px}
+  .sl-gen label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
+  .sl-gen input{width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font:inherit;background:#fff;color:var(--ink);min-height:44px}
+  #sl-to-err[hidden]{display:none}
+  .sl-mem{margin:0 0 14px}
+  .sl-mem[hidden],.sl-panel[hidden]{display:none}
+  .sl-mhead,.sl-ph{margin:0 0 6px;font-size:13px;font-weight:800;color:var(--ink)}
+  .sl-ph{font-size:15px;margin-bottom:10px}
+  .sl-mrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+  .sl-mrow:first-of-type{border-top:0}
+  .sl-mname{min-width:0;overflow-wrap:anywhere}
+  .sl-mname em{font-style:normal;font-size:12px;font-weight:700;color:var(--warn);margin-left:4px}
+  .sl-mini{min-height:40px;padding:0 12px;font-size:13px;flex:0 0 auto}
+  .sl-mem>.sl-mini{margin-top:8px}
+  .sl-panel{margin:0 0 14px;padding:14px;border:1px solid var(--line);border-radius:12px;background:#FBFAF7}
+  .sl-check{display:flex;gap:10px;align-items:flex-start;margin:4px 0 10px;font-size:14px;line-height:1.4;font-weight:600;color:var(--ink)}
+  .sl-form .sl-check input{width:20px;height:20px;min-height:0;padding:0;flex:0 0 auto;margin:1px 0 0}
+  .sl-pre{margin:0 0 12px;font-size:13.5px;line-height:1.5;color:var(--muted)}
   .sl-result{padding:12px 14px;border-radius:12px;background:var(--accent-soft);color:var(--ink);font-size:14px;line-height:1.5}
   .sl-result b,.sl-result span{display:block}
   .sl-result b{font-size:15px}
@@ -194,8 +213,12 @@
   <div class="tt-wrap" id="sl" hidden>
     <div class="sl-bar" id="sl-bar" hidden>
       <button class="btn btn-primary" id="sl-add" type="button">Add weekly slot</button>
-      <button class="btn" id="sl-gen" type="button">Create lessons for the next 4 weeks</button>
+      <div class="sl-gen">
+        <div class="field"><label for="sl-to">Create lessons up to</label><input id="sl-to" type="date"></div>
+        <button class="btn" id="sl-gen" type="button">Create lessons for the next 4 weeks</button>
+      </div>
     </div>
+    <div class="sl-err" id="sl-to-err" role="alert" hidden></div>
     <div class="sl-result" id="sl-result" role="status" aria-live="polite" hidden></div>
     <div class="tt-ctl">
       <label class="sr-only" for="sl-tutor">Tutor</label>
