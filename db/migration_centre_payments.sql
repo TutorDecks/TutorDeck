@@ -277,7 +277,7 @@ begin
 
   -- the invoices this payment may cover, in the order money is applied: oldest issued first (issue date, then number)
   create temp table if not exists _td_pay_open(invoice_id uuid, number_text text, total_cents bigint, balance_cents bigint, ord int) on commit drop;
-  delete from _td_pay_open;
+  delete from _td_pay_open where true;
   insert into _td_pay_open
     select i.id, i.number_text, i.total_cents, b.balance_cents, (row_number() over (order by i.issue_date, i.number_seq))::int
       from centre_invoices i, lateral centre_balance_rows(p_org, array[i.id]) b

@@ -1333,6 +1333,7 @@ html[data-theme="dark"] .cm-h{color:var(--muted)}
 html[data-theme="dark"] .cm-n{color:var(--muted)}
 html[data-theme="dark"] .cm-note{color:var(--muted)}
 html[data-theme="dark"] .cm-note.err{color:var(--owed)}
+html[data-theme="dark"] .cm-note.warn{color:var(--warn)}
 html[data-theme="dark"] .cm-row{border-top:1px solid var(--line)}
 html[data-theme="dark"] .cm-row:first-child{border-top:none}
 html[data-theme="dark"] button.cm-row:hover{background:#1E2531}

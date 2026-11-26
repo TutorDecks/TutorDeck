@@ -57,7 +57,8 @@
     if (!p || !p.built) return { kind: null };
     var ready = (p.totals && p.totals.ready) || 0, drafts = (invoices || []).filter(function (i) { return i.status === "draft"; }).length;
     var issueNow = p.review_before_sending === false;
-    if (ready > 0) return { kind: "create", count: ready, label: (issueNow ? "Create and issue " : "Create ") + ready + " " + plural(ready, issueNow ? "invoice" : "draft", issueNow ? "invoices" : "drafts") };
+    var deps = (p.totals && p.totals.deposits) || 0, withDeps = deps > 0 ? " and " + deps + " " + plural(deps, "deposit", "deposits") : "";
+    if (ready > 0) return { kind: "create", count: ready, label: (issueNow ? "Create and issue " : "Create ") + ready + " " + plural(ready, issueNow ? "invoice" : "draft", issueNow ? "invoices" : "drafts") + withDeps };
     if (drafts > 0) return { kind: "approve", count: drafts, label: "Approve " + (drafts === 1 ? "the draft" : "all " + drafts + " drafts") };
     return { kind: null };
   }
@@ -77,12 +78,14 @@
     var parts = [];
     if (r.created) parts.push(r.created + " " + plural(r.created, "draft", "drafts") + " created" + (r.issued ? " and issued" : ""));
     else parts.push("Nothing new to create");
+    if (r.deposits) parts.push(r.deposits + " refundable " + plural(r.deposits, "deposit", "deposits") + (r.deposits_issued ? " issued" : " drafted"));
     if (r.already_drafted) parts.push(r.already_drafted + " already " + plural(r.already_drafted, "has a draft", "have drafts"));
     if (r.held_back) parts.push(r.held_back + " held back until " + plural(r.held_back, "its charge is", "their charges are") + " set");
     return parts.join(". ") + ".";
   }
   function approvedText(r) {
-    if (r.issued != null) return r.issued + " " + plural(r.issued, "invoice", "invoices") + " issued (" + r.first_number + (r.last_number !== r.first_number ? " to " + r.last_number : "") + ").";
+    if (r.issued != null) return r.issued + " " + plural(r.issued, "invoice", "invoices") + " issued (" + r.first_number + (r.last_number !== r.first_number ? " to " + r.last_number : "") + ")" +
+      (r.deposits ? ", " + r.deposits + " of them " + plural(r.deposits, "a refundable deposit", "refundable deposits") : "") + ".";
     return "Invoice " + r.number + " issued.";
   }
 

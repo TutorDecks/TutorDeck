@@ -134,18 +134,31 @@ test("T4 S0: every new yes/no and number has the same limits in the form and in 
   for (const b of BOOLS) assert.equal(typeof S.get(S.defaults(), b), "boolean", b);
 });
 
-test("T4 S0: deposit, late-fee, trial and percentage-pay options are 'coming soon' until their step ships (honesty)", () => {
-  const soonPaths = ["billing.one_off_fees.deposit_cents", "billing.trials.charged", "billing.late_fee.enabled", "billing.late_fee.amount_cents", "billing.late_fee.after_days",
-    "billing.deposit.mode", "billing.deposit.percent_bp", "billing.deposit.taxable", "billing.deposit.due", "billing.deposit.waived_by", "billing.deposit.top_up",
-    "billing.deposit.release", "billing.deposit.forfeit_notice_days", "billing.deposit.set_off_unpaid", "billing.deposit.final_month", "billing.deposit.refund_approved_by",
-    "billing.late_fee.repeat", "billing.late_fee.type", "billing.late_fee.percent_bp", "billing.late_fee.cap_cents", "billing.late_fee.show_as", "billing.late_fee.waived_by",
+test("T4 S0/S4/S6: trial, percentage-pay and the unbuilt deposit options are 'coming soon' until their step ships (honesty)", () => {
+  const soonPaths = ["billing.trials.charged",
+    "billing.deposit.top_up",
+    "billing.deposit.set_off_unpaid", "billing.deposit.final_month",
     "tutor_pay.percent_base", "tutor_pay.part_payments", "tutor_pay.cancelled_lessons", "tutor_pay.group_count", "tutor_pay.rates_note"];
   for (const p of soonPaths) assert.equal(field(p).soon, true, p + " must be soon");
   assert.ok(field("tutor_pay.rate_model").soonOptions.includes("percent_of_fee"));
   assert.ok(field("billing.deposit.due").soonOptions.includes("before_first_lesson"));
   assert.ok(field("tutor_pay.part_payments").soonOptions.includes("pro_rata"));
-  // the sub-headings carry the same badge and say what is missing
-  for (const g of S.STEPS.flatMap((s) => s.fields).filter((f) => f.type === "group")) { assert.equal(g.soon, true, g.label); assert.match(g.help, /later update/); }
+  // the sub-headings carry the same badge and say what is missing (the deposit heading is live from S4: it says what is still to come)
+  for (const g of S.STEPS.flatMap((s) => s.fields).filter((f) => f.type === "group")) { if (g.label !== "Refundable deposit" && g.label !== "Late fees") assert.equal(g.soon, true, g.label); assert.match(g.help, /later update/); }
+  // T4 S6: every late-fee option is built (proposals a person approves or waives); only "a line on the next invoice" is still to come
+  for (const p of ["billing.late_fee.enabled", "billing.late_fee.repeat", "billing.late_fee.type", "billing.late_fee.amount_cents", "billing.late_fee.percent_bp", "billing.late_fee.after_days",
+    "billing.late_fee.cap_cents", "billing.late_fee.show_as", "billing.late_fee.waived_by"]) assert.ok(!field(p).soon, p + " is built in S6");
+  assert.deepEqual(field("billing.late_fee.show_as").soonOptions, ["next_invoice_line"], "the own-invoice placement is built; the line on the next invoice is not");
+  assert.match(S.STEPS.flatMap((s) => s.fields).find((f) => f.type === "group" && f.label === "Late fees").help, /later update/);
+  // T4 S4: what the invoice run now does with deposits is NOT 'soon'
+  for (const p of ["billing.deposit.mode", "billing.one_off_fees.deposit_cents", "billing.deposit.percent_bp", "billing.deposit.taxable", "billing.deposit.due", "billing.deposit.waived_by"]) assert.ok(!field(p).soon, p + " is built in S4");
+  // T4 S5: release, the forfeit notice and who approves a refund are built (refunds, family credit, keeping a deposit)
+  for (const p of ["billing.deposit.release", "billing.deposit.forfeit_notice_days", "billing.deposit.refund_approved_by"]) assert.ok(!field(p).soon, p + " is built in S5");
+  // the fixed amount is only asked for in fixed mode, the percentage only in percent mode
+  const d = S.defaults("centre");
+  d.billing.deposit.mode = "none"; assert.ok(!field("billing.one_off_fees.deposit_cents").show(d) && !field("billing.deposit.percent_bp").show(d));
+  d.billing.deposit.mode = "fixed"; assert.ok(field("billing.one_off_fees.deposit_cents").show(d) && !field("billing.deposit.percent_bp").show(d));
+  d.billing.deposit.mode = "percent_first_month"; assert.ok(!field("billing.one_off_fees.deposit_cents").show(d) && field("billing.deposit.percent_bp").show(d));
   // options that already work are not marked soon by accident
   for (const p of ["lessons.class_type", "profile.next_invoice_number", "billing.one_off_fees.registration_cents"]) assert.ok(!field(p).soon, p);
 });
@@ -158,7 +171,7 @@ test("T4 S0: the defaults are the owner's rules", () => {
   assert.equal(d.billing.deposit.mode, "none");
   assert.equal(d.tutor_pay.percent_base, "billed_after_discounts");       // after discounts, before GST
   assert.equal(d.tutor_pay.part_payments, "after_full");                  // payable only when the invoice line is fully paid
-  assert.equal(d.billing.late_fee.show_as, "next_invoice_line");
+  assert.equal(d.billing.late_fee.show_as, "own_invoice");               // a default must be something that is built
   assert.equal(d.billing.trials.charged, false);
   assert.equal(d.lessons.class_type, "both");                            // nothing changes for existing centres
 });

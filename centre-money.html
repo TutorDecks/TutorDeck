@@ -34,6 +34,7 @@
   .cm-h2{font-size:17px;font-weight:800;margin:0 0 6px}
   .cm-note{font-size:13.5px;color:var(--muted);margin:0 2px 8px;line-height:1.5}
   .cm-note.err{color:var(--owed)}
+  .cm-note.warn{color:var(--warn);font-weight:600}
   .cm-list{display:flex;flex-direction:column;padding:0;overflow:hidden;margin:0}
   .cm-row{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border-top:1px solid var(--line);min-height:56px}
   button.cm-row{cursor:pointer}
@@ -125,6 +126,8 @@
   .cm-credit{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:rgba(15,118,110,.08);color:var(--accent-ink);font-size:14px;font-weight:600}
   .cm-acts.col .btn.quiet{border-color:transparent;background:transparent;text-decoration:underline;min-height:40px}
   @media(max-width:820px){.cm-f{padding:10px 14px}}
+  /* ---- deposits (S4) ---- */
+  .cd-big{font-size:30px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 </style>
 <link rel="stylesheet" href="assets/css/dark.css?v=346">
 </head>
@@ -134,7 +137,11 @@
     <div class="cm-tabs" role="tablist" aria-label="Money">
       <button class="cm-tab" id="cm-tab-run" role="tab" type="button" aria-selected="true" aria-controls="cm-run">Invoice run</button>
       <button class="cm-tab" id="cm-tab-inv" role="tab" type="button" aria-selected="false" aria-controls="cm-inv" tabindex="-1">Invoices &amp; payments</button>
+      <button class="cm-tab" id="cm-tab-dep" role="tab" type="button" aria-selected="false" aria-controls="cm-dep" tabindex="-1">Deposits</button>
+      <button class="cm-tab" id="cm-tab-ref" role="tab" type="button" aria-selected="false" aria-controls="cm-ref" tabindex="-1">Refunds</button>
+      <button class="cm-tab" id="cm-tab-late" role="tab" type="button" aria-selected="false" aria-controls="cm-late" tabindex="-1">Late fees</button>
     </div>
+    <div id="cm-notices" aria-live="polite"></div>
     <div class="cm-msg" id="cm-msg" role="status" aria-live="polite"></div>
     <div class="cm-panel" id="cm-run" role="tabpanel" aria-labelledby="cm-tab-run">
       <div class="cm-nav">
@@ -147,6 +154,9 @@
       <div id="cm-num"></div>
     </div>
     <div class="cm-panel" id="cm-inv" role="tabpanel" aria-labelledby="cm-tab-inv" hidden></div>
+    <div class="cm-panel" id="cm-dep" role="tabpanel" aria-labelledby="cm-tab-dep" hidden></div>
+    <div class="cm-panel" id="cm-ref" role="tabpanel" aria-labelledby="cm-tab-ref" hidden></div>
+    <div class="cm-panel" id="cm-late" role="tabpanel" aria-labelledby="cm-tab-late" hidden></div>
   </div>
 
   <!-- invoice sheet -->
@@ -163,15 +173,21 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=346"></script>
-<script src="assets/js/supabase.js?v=346"></script>
-<script src="assets/js/org-current.js?v=346"></script>
-<script src="assets/js/org-scope.js?v=346"></script>
-<script src="assets/js/app.js?v=346"></script>
-<script src="assets/js/money.js?v=346"></script>
-<script src="assets/js/centre-money-core.js?v=346"></script>
-<script src="assets/js/centre-payments-core.js?v=346"></script>
-<script src="assets/js/centre-money.js?v=346"></script>
-<script src="assets/js/centre-payments.js?v=346"></script>
+<script src="assets/js/config.js?v=353"></script>
+<script src="assets/js/supabase.js?v=353"></script>
+<script src="assets/js/org-current.js?v=353"></script>
+<script src="assets/js/org-scope.js?v=353"></script>
+<script src="assets/js/app.js?v=353"></script>
+<script src="assets/js/money.js?v=353"></script>
+<script src="assets/js/centre-money-core.js?v=353"></script>
+<script src="assets/js/centre-payments-core.js?v=353"></script>
+<script src="assets/js/centre-deposits-core.js?v=353"></script>
+<script src="assets/js/centre-refunds-core.js?v=353"></script>
+<script src="assets/js/centre-late-fees-core.js?v=353"></script>
+<script src="assets/js/centre-money.js?v=353"></script>
+<script src="assets/js/centre-payments.js?v=353"></script>
+<script src="assets/js/centre-deposits.js?v=353"></script>
+<script src="assets/js/centre-refunds.js?v=353"></script>
+<script src="assets/js/centre-late-fees.js?v=353"></script>
 </body>
 </html>

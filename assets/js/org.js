@@ -153,10 +153,11 @@
     if (f.type === "textarea") {
       input = '<textarea id="' + id + '" data-path="' + f.path + '" data-type="text" rows="4" maxlength="1000"' + (lock ? " disabled" : "") + ">" + esc(v == null ? "" : v) + "</textarea>";
     } else if (f.type === "select") {
+      var fe = f.path === "billing.deposit.refund_approved_by" ? S.fourEyes(st.members) : null;     // four-eyes needs a second approver
       input = '<select id="' + id + '" data-path="' + f.path + '"' + (lock ? " disabled" : "") + ">" + S.visibleOptions(f, s).map(function (op) {
-        var so = (f.soonOptions || []).indexOf(op[0]) > -1;
-        return '<option value="' + esc(JSON.stringify(op[0])) + '"' + (op[0] === v ? " selected" : "") + (so ? " disabled" : "") + ">" + esc(op[1]) + (so ? " (coming soon)" : "") + "</option>";
-      }).join("") + "</select>";
+        var so = (f.soonOptions || []).indexOf(op[0]) > -1, nb = !!fe && op[0] === "four_eyes" && !fe.ready;
+        return '<option value="' + esc(JSON.stringify(op[0])) + '"' + (op[0] === v ? " selected" : "") + (so || nb ? " disabled" : "") + ">" + esc(op[1]) + (so ? " (coming soon)" : nb ? " (needs a second approver)" : "") + "</option>";
+      }).join("") + "</select>" + (fe && !fe.ready ? '<span class="og-help" id="og-fe-why">' + esc(fe.reason) + "</span>" : "");
     } else {
       var shown = f.type === "money" ? (v == null ? "" : M.format(v, { symbol: false }).replace(/,/g, "")) : f.type === "percent" ? (v == null ? "" : String(v / 100))
         : f.type === "list" ? (v || []).join(", ") : (v == null ? "" : v);
@@ -217,8 +218,11 @@
     var e = S.validate(st.draft);
     if (e.length) { var m = $("og-msg"); if (m) { m.textContent = e.join(" "); m.className = "msg err"; } return false; }
     if (JSON.stringify(st.draft) !== JSON.stringify(st.saved)) {
+      if (S.get(st.draft, "billing.deposit.refund_approved_by") === "four_eyes" && !S.fourEyes(st.members).ready) {
+        var fm = $("og-msg"); if (fm) { fm.textContent = S.fourEyes(st.members).reason; fm.className = "msg err"; } return false;
+      }
       var r = await sb().rpc("org_save_settings", { p_org: st.org.id, p_settings: st.draft, p_effective_from: effective });
-      if (r.error) { $("og-msg").textContent = r.error.message; $("og-msg").className = "msg err"; return false; }
+      if (r.error) { $("og-msg").textContent = String(r.error.message || "").replace(/^FOUR_EYES_UNAVAILABLE: /, ""); $("og-msg").className = "msg err"; return false; }
       var p = st.draft.profile;     // keep the organisation's own columns in step with the profile
       var u = await sb().from("organisations").update({ trading_name: p.trading_name, legal_name: p.legal_name || null, uen: p.uen || null,
         address: p.address || null, brand_color: p.brand_color || null, reply_to_email: p.reply_to_email || null }).eq("id", st.org.id).select("*").single();
