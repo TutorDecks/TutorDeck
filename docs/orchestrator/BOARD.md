@@ -126,6 +126,8 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T27 | Product Guide = SPEC OF THE FINAL PRODUCT (owner: "of the final product not what we have now"): all functions/workflows per role + every centre option; one appendix "Build status" | doing | NEW worker / `claude/t27-product-guide` (docs/product/TutorDeck-Product-Guide.md); then offer Docs/Word/PDF version |
 | T28 | Docs-only bundle to dev (current board, all plans, Product Guide, docs/INDEX.md of every unmerged branch, docs/business/SERVICE-AGREEMENT-FACTS.md) so any Claude chat can read it; owner approved merge 2026-11-26 once CI green | doing | NEW worker / `claude/docs-bundle` |
 | T3.4b | Fix failing assertion in charges SQL test (line 138) | doing | NEW worker / `claude/t3-4-charges` |
+| T3.5 | T3 step 5: trial flag (staff toggle, badge, filters, excluded from billable count) | doing | NEW worker / `claude/t3-5-trials` (on t3-4) |
+| Chain | owner 'just build it' 2026-11-26: T3.6 timetable read -> T3.7 slots with tutors + generator + student_tutors -> T3.8 reassign/replacement -> T29 time zones (per-student/tutor) -> T6 tutor scheduling (direct first, then propose); check-ins scheduled every 2/4/6h | queued | |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
