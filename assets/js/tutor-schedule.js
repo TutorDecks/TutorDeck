@@ -1,11 +1,15 @@
-// Schedule — a centre tutor's own week and weekly slots, READ ONLY (T6 step 1). The page calls two database functions
-// (tutor_my_schedule, tutor_my_slots) and never reads a table. Neither returns anything about money. Nothing on this page changes data:
-// changes are the centre's admins' job until later T6 steps. Pure logic lives in assets/js/tutor-core.js (unit-tested).
+// Schedule — a centre tutor's own week and weekly slots (T6). The page calls database functions only and never reads a table: tutor_my_schedule and
+// tutor_my_slots to look, and (T6 step 2, only when the centre has switched it on) tutor_postpone_lesson, tutor_revert_lesson and tutor_cancel_lesson to
+// move a lesson, put it back, or cancel it in advance. Nothing here returns, shows or sends anything about money: a move keeps the lesson's length, and a
+// cancel is "no charge to the family" decided by the database. Every button shown comes from the database's own answer (can_postpone / can_revert /
+// can_cancel), so the screen can't offer what the rules refuse. Pure logic lives in assets/js/tutor-core.js (unit-tested).
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
-  var TC = window.TutorCore, today = "", start = "", data = null, byId = {}, manyOrgs = false, editing = "admin_only", opener = null, seq = 0;
+  var TC = window.TutorCore, today = "", start = "", data = null, byId = {}, manyOrgs = false, editing = "admin_only", opener = null, seq = 0, cur = null, busy = false;
+  function orgOf(l) { return ((data && data.orgs) || []).filter(function (o) { return o.org_id === (l && l.org_id); })[0] || ((data && data.orgs) || [])[0] || {}; }
+  function hhmm(t) { return String(t || "").slice(0, 5); }
 
   function chev() { return '<svg class="tt-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>'; }
 
@@ -44,13 +48,18 @@
     }).join("") + '</div>';
   }
 
-  function note() { var n = $("sc-note"); n.textContent = TC.editNote(editing); n.hidden = false; }
+  function note() { var n = $("sc-note"); n.textContent = TC.editNote(editing, ((data && data.orgs) || [])[0]); n.hidden = false; }
 
   function openSheet(l, trigger) {
-    opener = trigger || null;
+    if (trigger) opener = trigger;
+    cur = l;
     $("ts-title").textContent = l.student_name;
     $("ts-sub").textContent = TC.dateLabel(l.lesson_date, today) + " · " + TC.timeRange(l);
-    var c = TC.scheduleChip(l), url = /^https:\/\/\S+$/.test(l.online_link || "") ? l.online_link : null;
+    var c = TC.scheduleChip(l), url = /^https:\/\/\S+$/.test(l.online_link || "") ? l.online_link : null, o = orgOf(l);
+    var acts = (l.can_postpone ? '<button type="button" class="tt-opt" data-act="move">Move</button>' : '') +
+               (l.can_revert ? '<button type="button" class="tt-opt" data-act="revert">Put back to usual time</button>' : '') +
+               (l.can_cancel ? '<button type="button" class="tt-opt danger" data-act="cancel">Cancel lesson</button>' : '');
+    var why = !acts && o.can_edit && l.change_block ? TC.blockText(l.change_block, o) : "";
     $("ts-body").innerHTML = '<div class="tt-facts">' +
       (l.student_level || l.subject ? '<div><span>Class</span><span>' + esc([l.student_level, l.subject].filter(Boolean).join(" · ")) + '</span></div>' : '') +
       '<div><span>Length</span><span>' + esc(l.minutes) + ' minutes</span></div>' +
@@ -62,9 +71,69 @@
       (l.covering ? '<div><span>Covering</span><span>You are covering this lesson for another tutor</span></div>' : '') +
       (l.postponed ? '<div><span>Moved</span><span>This lesson was moved from its usual day</span></div>' : '') +
       (l.holiday ? '<div><span>Holiday</span><span>' + esc(l.holiday) + '</span></div>' : '') +
-      '</div><p class="tt-note">' + esc(TC.editNote(editing)) + '</p>';
+      '</div>' +
+      (acts ? (l.class_size > 1 ? '<p class="tt-hint">This lesson is part of a class of ' + esc(l.class_size) + '. A change here changes the whole class.</p>' : '') +
+              '<div class="tt-opts" id="ts-actions">' + acts + '</div><p class="tt-note">' + esc(TC.editNote(editing, o)) + '</p>'
+            : '<p class="tt-note">' + esc(why || TC.editNote(editing, o)) + '</p>');
     $("tt-sheet").classList.add("on"); document.body.classList.add("sheet-lock");
     setTimeout(function () { try { $("ts-close").focus({ preventScroll: true }); } catch (e) {} }, 60);
+  }
+
+  // The form for one change. The reason is required (the centre keeps it); a move keeps the lesson's length, so only the day and start are asked.
+  var FORM = {
+    move:   { title: "Move this lesson", go: "Move lesson", cls: "btn-primary" },
+    revert: { title: "Put this lesson back to its usual time", go: "Put back", cls: "btn-primary" },
+    cancel: { title: "Cancel this lesson", go: "Cancel lesson", cls: "btn-danger" }
+  };
+  function showForm(act) {
+    var l = cur, f = FORM[act], html = '<p class="tt-ro"><small>' + esc(f.title) + '</small>' + esc(l.student_name) + ' · ' + esc(TC.dateLabel(l.lesson_date, today)) + ' · ' + esc(TC.timeRange(l)) + '</p>';
+    if (act === "move") {
+      html += '<label class="tt-lbl" for="ts-date">New day</label><input class="tt-in" type="date" id="ts-date" min="' + esc(today) + '" value="' + esc(l.lesson_date) + '">' +
+              '<label class="tt-lbl" for="ts-start" style="margin-top:12px">New start time</label><input class="tt-in" type="time" id="ts-start" value="' + esc(hhmm(l.start_time)) + '">' +
+              '<p class="tt-hint" id="ts-end"></p>';
+    } else if (act === "revert") {
+      html += '<p class="tt-hint">It goes back to the day and time it normally has. Your centre is told.</p>';
+    } else {
+      html += '<p class="tt-hint">The family is not charged for a lesson you cancel in advance. Your centre is told and decides what happens next.</p>';
+    }
+    html += '<label class="tt-lbl" for="ts-reason">Why? (your centre sees this)</label><textarea class="tt-ta" id="ts-reason" maxlength="300" rows="3"></textarea>' +
+            (l.class_size > 1 ? '<p class="tt-hint">This changes the whole class of ' + esc(l.class_size) + '.</p>' : '') +
+            '<div class="msg err" id="ts-msg" role="alert" aria-live="assertive"></div>' +
+            '<button class="btn ' + f.cls + '" id="ts-go" type="button" data-act="' + act + '" style="width:100%;min-height:46px;margin-bottom:8px">' + esc(f.go) + '</button>' +
+            '<button class="btn" id="ts-back" type="button" style="width:100%;min-height:46px">Back</button>';
+    $("ts-body").innerHTML = html;
+    if (act === "move") { endHint(); $("ts-date").addEventListener("input", endHint); $("ts-start").addEventListener("input", endHint); }
+    setTimeout(function () { var first = act === "move" ? $("ts-date") : $("ts-reason"); try { first.focus({ preventScroll: true }); } catch (e) {} }, 30);
+  }
+  function endHint() {
+    var h = $("ts-end"); if (!h) return;
+    var e = TC.endTime($("ts-start").value, cur.minutes);
+    h.textContent = e ? "It stays " + cur.minutes + " minutes: it will end at " + TC.timeLabel(e + ":00") + "." : "That start time would run past midnight.";
+  }
+  async function submit(act) {
+    if (busy) return;                                           // one press, one request
+    var msg = $("ts-msg"), reason = ($("ts-reason").value || "").trim(), r, args = { p_lesson: cur.lesson_id, p_reason: reason }, fn;
+    msg.textContent = "";
+    if (reason.length < 3) { msg.textContent = TC.changeErrorText({ message: "REASON_REQUIRED" }); $("ts-reason").focus(); return; }
+    if (act === "move") {
+      args.p_date = $("ts-date").value; args.p_start = $("ts-start").value;
+      if (!args.p_date || !args.p_start) { msg.textContent = TC.changeErrorText({ message: "BAD_DATE" }); return; }
+      if (args.p_date < today) { msg.textContent = TC.changeErrorText({ message: "BAD_DATE" }); return; }
+      if (!TC.endTime(args.p_start, cur.minutes)) { msg.textContent = TC.changeErrorText({ message: "BAD_TIME" }); return; }
+      fn = "tutor_postpone_lesson";
+    } else fn = act === "revert" ? "tutor_revert_lesson" : "tutor_cancel_lesson";
+    busy = true; $("ts-go").disabled = true; $("ts-back").disabled = true;
+    try { r = await window.sb.rpc(fn, args); } catch (e) { r = { error: e }; }
+    busy = false;
+    if (r.error) {
+      msg.textContent = TC.changeErrorText(r.error);
+      var g = $("ts-go"), b = $("ts-back"); if (g) g.disabled = false; if (b) b.disabled = false;
+      loadWeek();                                               // the lesson may have changed under us: refresh the buttons behind this sheet
+      return;
+    }
+    var d = r.data || {}, said = act === "cancel" ? "Lesson cancelled. The family isn't charged, and your centre has been told."
+      : (act === "revert" ? "Put back to " : "Moved to ") + TC.dateLabel(d.lesson_date, today) + ", " + TC.timeLabel(d.start_time) + ".";
+    closeSheet(); TL.toast(said); loadWeek();
   }
   function closeSheet() {
     $("tt-sheet").classList.remove("on"); document.body.classList.remove("sheet-lock");
@@ -103,6 +172,12 @@
     $("sc-today").addEventListener("click", function () { go(TC.weekStart(today)); });
     $("sc-week").addEventListener("click", function (e) { var b = e.target.closest(".tt-row"); if (b && byId[b.getAttribute("data-id")]) openSheet(byId[b.getAttribute("data-id")], b); });
     $("ts-close").addEventListener("click", closeSheet);
+    $("ts-body").addEventListener("click", function (e) {
+      var a = e.target.closest("[data-act]"), back = e.target.closest("#ts-back");
+      if (back) { if (!busy) openSheet(cur); return; }
+      if (!a) return;
+      if (a.id === "ts-go") submit(a.getAttribute("data-act")); else showForm(a.getAttribute("data-act"));
+    });
     $("tt-sheet").addEventListener("click", function (e) { if (e.target === $("tt-sheet")) closeSheet(); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("tt-sheet").classList.contains("on")) closeSheet(); });
     loadWeek().then(function () { if (data) loadSlots(); });

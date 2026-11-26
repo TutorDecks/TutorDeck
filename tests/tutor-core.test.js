@@ -188,13 +188,14 @@ test("schedule: the badge and the small facts say what the database flagged, and
   assert.deepStrictEqual(T.scheduleFacts({ student_level: "P5", subject: "Math", trial: true, covering: true, postponed: true, org_name: "Test" }, true),
     ["P5", "Math", "Trial", "Covering for another tutor", "Moved from its usual day", "Test"]);
   assert.deepStrictEqual(T.scheduleFacts({ student_level: null, subject: null }, false), []);
-  const everything = JSON.stringify([T.scheduleChip({ cancelled: true }), T.scheduleFacts({ trial: true, covering: true, postponed: true }, false), T.editNote("admin_only"), T.editNote("tutors_own"), T.scheduleErrorText({ message: "NOT_FOUND" })]);
+  const everything = JSON.stringify([T.scheduleChip({ cancelled: true }), T.scheduleFacts({ trial: true, covering: true, postponed: true }, false), T.editNote("admin_only"), T.editNote("tutors_propose"), T.editNote("tutors_direct", { can_postpone: true, can_cancel: true, min_notice_hours: 24, changes_left: 3 }), T.scheduleErrorText({ message: "NOT_FOUND" })]);
   assert.ok(!/\b(rate|price|amount|paid|compensation|charge|fee|cents)\b/i.test(everything), "no money word in anything the Schedule says");
 });
 test("schedule: the note about changes, the weekly slots and the plain error words", () => {
   assert.strictEqual(T.editNote("admin_only"), "Your centre handles changes: ask an admin.");
   assert.strictEqual(T.editNote(undefined), "Your centre handles changes: ask an admin.");
-  assert.ok(/coming soon/.test(T.editNote("tutors_own")));
+  assert.ok(/coming soon/.test(T.editNote("tutors_propose")));
+  assert.ok(/ask an admin/.test(T.editNote("tutors_own")), "the old unbuilt key falls back to the safe note");
   assert.strictEqual(T.weekdayName(0), "Monday"); assert.strictEqual(T.weekdayName(6), "Sunday"); assert.strictEqual(T.weekdayName(9), "");
   const rows = [
     { slot_id: "s3", weekday: 3, start_time: "17:00:00", end_time: "18:00:00", student_name: "C", student_level: "P3", subject: "Sci", org_name: "O" },
@@ -206,4 +207,46 @@ test("schedule: the note about changes, the weekly slots and the plain error wor
   assert.ok(/for tutors at a centre/.test(T.scheduleErrorText({ message: "NOT_FOUND" })));
   assert.ok(/isn't available right now/.test(T.scheduleErrorText({ message: "boom" })));
   assert.ok(/isn't available right now/.test(T.scheduleErrorText(null)));
+});
+
+test("T6.2 the note under the week says what THIS centre lets a tutor do, in plain words", () => {
+  const both = T.editNote("tutors_direct", { can_postpone: true, can_cancel: true, min_notice_hours: 24, changes_left: null });
+  assert.ok(/move or cancel your own lessons/.test(both) && /at least 24 hours before it starts/.test(both) && !/more change/.test(both), both);
+  assert.ok(/You can move your own lessons/.test(T.editNote("tutors_direct", { can_postpone: true, can_cancel: false, min_notice_hours: 1 })) && /at least 1 hour before/.test(T.editNote("tutors_direct", { can_postpone: true, min_notice_hours: 1 })));
+  assert.ok(/You can cancel your own lessons/.test(T.editNote("tutors_direct", { can_postpone: false, can_cancel: true })));
+  assert.ok(!/at least/.test(T.editNote("tutors_direct", { can_postpone: true, min_notice_hours: 0 })), "no notice = no sentence about it");
+  assert.ok(/make 1 more change this month/.test(T.editNote("tutors_direct", { can_postpone: true, changes_left: 1 })));
+  assert.ok(/make 0 more changes this month/.test(T.editNote("tutors_direct", { can_postpone: true, changes_left: 0 })));
+  assert.ok(/not switched on/.test(T.editNote("tutors_direct", { can_postpone: false, can_cancel: false })), "tutors_direct with both switches off");
+  assert.ok(/ask an admin/i.test(T.editNote("admin_only", { can_postpone: true })), "admin_only never offers anything, whatever else arrives");
+});
+test("T6.2 every refusal of a move, put-back or cancel is said in plain words; nothing raw is shown; no money word", () => {
+  const codes = ["NOT_FOUND", "NOT_ALLOWED", "SWITCH_OFF", "ALREADY_MARKED", "CANCELLED", "LOCKED", "NOT_MOVED", "NO_SLOT", "SLOT_CHANGED", "PAST", "REASON_REQUIRED", "TOO_LONG",
+    "BAD_DATE", "BAD_TIME", "NO_CHANGE", "GROUP_NOT_YOURS"];
+  const seen = new Set();
+  for (const c of codes) {
+    const t = T.changeErrorText({ message: c + ": raw database words that must not be shown" });
+    assert.ok(t && !/raw database|[A-Z]{3,}_[A-Z]+/.test(t), c + " -> " + t);
+    assert.ok(!/\b(rate|price|amount|paid|compensation|charge|fee|cents|invoice|invoiced)\b/i.test(t), c + " says no money word: " + t);
+    seen.add(t);
+  }
+  assert.strictEqual(seen.size, codes.length, "each code has its own words");
+  // four carry a detail the database knows, so its own sentence is used
+  assert.strictEqual(T.changeErrorText({ message: "TOO_LATE: a lesson can only be changed 24 hours or more before it starts. Ask an admin" }), "A lesson can only be changed 24 hours or more before it starts. Ask an admin.");
+  assert.ok(/Founders' Day is a holiday/.test(T.changeErrorText({ message: "HOLIDAY: Founders' Day is a holiday at this centre. Pick another day" })));
+  assert.ok(/already teach Kid Four at that time/.test(T.changeErrorText({ message: "CLASH: you already teach Kid Four at that time. Pick another time" })));
+  assert.ok(/used your 2 schedule changes/.test(T.changeErrorText({ message: "LIMIT: you have used your 2 schedule changes for this month. Ask an admin" })));
+  // a lesson in a class: the note is added to the fixed words, and stripped from the detail ones
+  assert.ok(/part of a class that changes together/.test(T.changeErrorText({ message: "LOCKED: closed (it is part of a class that changes together)" })));
+  assert.ok(!/class that changes together/.test(T.changeErrorText({ message: "TOO_LATE: a lesson can only be changed 24 hours or more before it starts. Ask an admin (it is part of a class that changes together)" })));
+  assert.ok(/couldn't change that just now/.test(T.changeErrorText({ message: "boom" })) && /couldn't change that just now/.test(T.changeErrorText(null)) && /couldn't change/.test(T.changeErrorText({ message: "" })));
+  assert.ok(!/boom/.test(T.changeErrorText({ message: "boom" })));
+});
+test("T6.2 why a lesson shows no button, and the end of a moved lesson", () => {
+  assert.ok(/less than 24 hours/.test(T.blockText("TOO_LATE", { min_notice_hours: 24 })) && /less than 1 hour,/.test(T.blockText("TOO_LATE", { min_notice_hours: 1 })));
+  assert.ok(/already marked/.test(T.blockText("ALREADY_MARKED")) && /closed/.test(T.blockText("LOCKED")) && /already started/.test(T.blockText("PAST")) && /all the changes/.test(T.blockText("LIMIT")));
+  assert.strictEqual(T.blockText("NOT_FOUND"), ""); assert.strictEqual(T.blockText("SOMETHING_ELSE"), ""); assert.strictEqual(T.blockText(null), "");
+  for (const c of ["TOO_LATE", "PAST", "ALREADY_MARKED", "CANCELLED", "LOCKED", "LIMIT"]) assert.ok(!/\b(rate|price|amount|paid|compensation|charge|fee|cents|invoice|invoiced)\b/i.test(T.blockText(c, { min_notice_hours: 24 })), c);
+  assert.strictEqual(T.endTime("16:30:00", 90), "18:00"); assert.strictEqual(T.endTime("09:00", 60), "10:00"); assert.strictEqual(T.endTime("22:59", 60), "23:59");
+  assert.strictEqual(T.endTime("23:30", 60), null, "past midnight"); assert.strictEqual(T.endTime("", 60), null); assert.strictEqual(T.endTime("10:00", 0), null); assert.strictEqual(T.endTime("nope", 60), null);
 });

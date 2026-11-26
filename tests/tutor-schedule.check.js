@@ -1,4 +1,5 @@
-// Browser check for the tutor's read-only Schedule page (T6 step 1). Not part of CI: needs Playwright + `python3 tests/server.py 8765`.
+// Browser check for the tutor's Schedule page (T6 step 1: read only; step 2: Move / Put back / Cancel when the centre allows it). Not part of CI:
+// needs Playwright + `python3 tests/server.py 8765`.
 //   node tests/tutor-schedule.check.js [screenshot-dir]
 // The database is stubbed (tutor_my_schedule / tutor_my_slots answer from the scenario); the real isolation between tutors and the
 // "no money" rule are proved by tests/sql/tutor_schedule_test.sql on a real Postgres.
@@ -22,7 +23,7 @@ function override(cfg) {
     var iso = function (n) { var d = new Date(); d.setDate(d.getDate() + n); var p = function (x) { return (x < 10 ? "0" : "") + x; }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); };
     var L = function (id, off, o) { return Object.assign({ lesson_id: id, org_id: "o2", org_name: "Test Tuition", student_id: "s" + id, student_name: "Pupil " + id, student_level: "P5", parent_contact: null,
       lesson_date: iso(off), start_time: "16:00:00", end_time: "17:00:00", minutes: 60, subject: "Math", trial: false, attendance: null, status: "scheduled", cancelled: false,
-      postponed: false, covering: false, online_link: null, holiday: null }, o || {}); };
+      postponed: false, covering: false, online_link: null, holiday: null, can_postpone: false, can_revert: false, can_cancel: false, change_block: null, class_size: 0 }, o || {}); };
     var lessons = (cfg.lessons || []).map(function (x) { return L(x[0], x[1], x[2]); });
     var origRpc = c.rpc.bind(c), origFrom = c.from.bind(c);
     c.rpc = function (n, a) {
@@ -32,7 +33,13 @@ function override(cfg) {
         if (cfg.rpcError) return Promise.resolve({ data: null, error: { message: "boom" } });
         var inr = lessons.filter(function (l) { return l.lesson_date >= a.p_from && l.lesson_date <= a.p_to; }).sort(function (x, y) { return x.lesson_date < y.lesson_date ? -1 : x.lesson_date > y.lesson_date ? 1 : x.start_time < y.start_time ? -1 : 0; });
         var hol = (cfg.holidays || []).map(function (h) { return { org_id: "o2", name: h[2], starts_on: iso(h[0]), ends_on: iso(h[1]) }; }).filter(function (h) { return h.starts_on <= a.p_to && h.ends_on >= a.p_from; });
-        return Promise.resolve({ data: { today: iso(0), from: a.p_from, to: a.p_to, orgs: [{ org_id: "o2", name: "Test Tuition", today: iso(0), timetable_editing: cfg.editing || "admin_only", can_edit: false }], lessons: inr, holidays: hol }, error: null });
+        return Promise.resolve({ data: { today: iso(0), from: a.p_from, to: a.p_to, orgs: [{ org_id: "o2", name: "Test Tuition", today: iso(0), timetable_editing: cfg.editing || "admin_only", can_edit: !!(cfg.canPostpone || cfg.canCancel), can_postpone: !!cfg.canPostpone, can_cancel: !!cfg.canCancel,
+          min_notice_hours: 24, max_changes_per_month: cfg.changesLeft == null ? 0 : 5, changes_left: cfg.changesLeft == null ? null : cfg.changesLeft }], lessons: inr, holidays: hol }, error: null });
+      }
+      if (n === "tutor_postpone_lesson" || n === "tutor_revert_lesson" || n === "tutor_cancel_lesson") {
+        if (cfg.changeError) return Promise.resolve({ data: null, error: { message: cfg.changeError } });
+        return new Promise(function (res) { setTimeout(function () { res({ data: { lesson_id: a.p_lesson, lessons: 1, what: n === "tutor_cancel_lesson" ? "cancelled" : n === "tutor_revert_lesson" ? "reverted" : "moved",
+          lesson_date: a.p_date || iso(2), start_time: (a.p_start || "15:00") + ":00", end_time: "16:00:00", cancelled: n === "tutor_cancel_lesson" }, error: null }); }, 150); });
       }
       if (n === "tutor_my_slots") return Promise.resolve({ data: (cfg.slots || []).map(function (s, i) { return { slot_id: "sl" + i, org_id: "o2", org_name: "Test Tuition", weekday: s[0], start_time: s[1], end_time: s[2], subject: s[3], student_id: "x" + i, student_name: s[4], student_level: s[5], session_key: null, timetable_editing: "admin_only" }; }), error: null });
       if (n === "tutor_my_lessons") return Promise.resolve({ data: [], error: null });
@@ -117,9 +124,86 @@ const MONEY = /(S\$|\$\s?\d|\bprice\b|\brate\b|\bpaid\b|\bamount\b|\bcompensatio
     await page.click("#sc-today"); await page.waitForTimeout(500);
     ok((await page.textContent("#sc-title")).startsWith("This week"), "Today goes back to this week");
     await ctx.close(); }
-  // ---------- C. the centre's setting only changes the note (nothing can be edited in this step)
-  { const { ctx, page } = await open(b, "phone", "light", Object.assign({}, CFG, { editing: "tutors_own" }), "tutor-schedule");
-    ok(/coming soon/.test(await page.textContent("#sc-note")) && (await page.$$("[data-page='tutor-schedule'] input, [data-page='tutor-schedule'] textarea, [data-page='tutor-schedule'] select")).length === 0, "a centre that lets tutors edit: a 'coming soon' note, still read-only"); await ctx.close(); }
+  // ---------- C. a centre whose setting is not built yet only changes the note
+  { const { ctx, page } = await open(b, "phone", "light", Object.assign({}, CFG, { editing: "tutors_propose" }), "tutor-schedule");
+    ok(/coming soon/.test(await page.textContent("#sc-note")) && (await page.$$("[data-page='tutor-schedule'] input, [data-page='tutor-schedule'] textarea, [data-page='tutor-schedule'] select")).length === 0, "a centre where tutors ask and an admin approves (not built): a 'coming soon' note, still read-only"); await ctx.close(); }
+  // ---------- F. T6 step 2: a centre that lets its tutors change lessons (tutors_direct)
+  const DIRECT = Object.assign({}, CFG, { editing: "tutors_direct", canPostpone: true, canCancel: true, changesLeft: 2,
+    lessons: [["a", mon + 8, { start_time: "16:00:00", can_postpone: true, can_cancel: true }], ["r", mon + 8, { start_time: "18:00:00", postponed: true, can_postpone: true, can_revert: true, can_cancel: true, student_name: "Moved pupil" }],
+              ["k", mon + 9, { start_time: "16:00:00", can_postpone: true, can_cancel: true, class_size: 3, student_name: "Class pupil" }],
+              ["t", mon + 8, { start_time: "19:00:00", change_block: "TOO_LATE", student_name: "Soon pupil" }], ["m", mon + 9, { start_time: "10:00:00", attendance: "attended", change_block: "ALREADY_MARKED", student_name: "Marked pupil" }]] });
+  const goNext = async (page) => { await page.click("#sc-next"); await page.waitForTimeout(500); };
+  for (const theme of ["light", "dark"]) {
+    const { ctx, page, errs } = await open(b, "phone", theme, DIRECT, "tutor-schedule"); await goNext(page);
+    const tag = "direct/" + theme;
+    ok(/move or cancel your own lessons/.test(await page.textContent("#sc-note")) && /at least 24 hours/.test(await page.textContent("#sc-note")) && /2 more changes this month/.test(await page.textContent("#sc-note")), tag + ": the note says what a tutor can do, the notice and the changes left");
+    await page.click('.tt-row[data-id="a"]'); await page.waitForTimeout(350);
+    const acts = await page.$$eval("#ts-actions [data-act]", (e) => e.map((x) => x.textContent.trim()));
+    ok(acts.join("|") === "Move|Cancel lesson", tag + ": an ordinary lesson offers Move and Cancel lesson (" + acts.join("|") + ")");
+    ok(!MONEY.test(await page.textContent("#tt-sheet")), tag + ": no money word in the sheet");
+    if (SC) await page.screenshot({ path: path.join(SC, `tutor-schedule-direct-sheet-${theme}.png`) });
+    await axeCheck(page, tag + " sheet");
+    await page.click('#ts-actions [data-act="move"]'); await page.waitForTimeout(250);
+    ok(await page.isVisible("#ts-date") && await page.isVisible("#ts-start") && await page.isVisible("#ts-reason") && /stays 60 minutes: it will end at 5:00 pm/.test(await page.textContent("#ts-end")), tag + ": the move form asks a day, a start time and why; the end is worked out (the length never changes)");
+    ok((await page.$$eval("#ts-body input, #ts-body textarea", (e) => e.map((x) => x.id))).join(",") === "ts-date,ts-start,ts-reason", tag + ": only those three fields (no end time, no price)");
+    await page.fill("#ts-start", "23:30"); ok(/run past midnight/.test(await page.textContent("#ts-end")), tag + ": a start that would pass midnight is called out");
+    await page.fill("#ts-start", "17:00"); ok(/end at 6:00 pm/.test(await page.textContent("#ts-end")), tag + ": and the end follows the start");
+    await page.click("#ts-go"); await page.waitForTimeout(150);
+    ok(/say why/.test(await page.textContent("#ts-msg")) && (await page.evaluate(() => window.__calls.filter((c) => /tutor_(postpone|cancel|revert)_lesson/.test(c[0])).length)) === 0, tag + ": no reason: a plain message, nothing sent");
+    if (SC) await page.screenshot({ path: path.join(SC, `tutor-schedule-direct-form-${theme}.png`) });
+    await axeCheck(page, tag + " form");
+    await page.fill("#ts-reason", "Student has a school event");
+    await page.click("#ts-go"); await page.click("#ts-go").catch(() => {});           // a double press
+    await page.waitForTimeout(700);
+    const calls = await page.evaluate(() => window.__calls.filter((c) => /tutor_postpone_lesson/.test(c[0])));
+    ok(calls.length === 1 && calls[0][1].p_lesson === "a" && calls[0][1].p_start === "17:00" && calls[0][1].p_reason === "Student has a school event" && /^\d{4}-\d\d-\d\d$/.test(calls[0][1].p_date), tag + ": ONE request for a double press, with the lesson, day, start and reason: " + JSON.stringify(calls[0] && calls[0][1]));
+    ok(!(await page.isVisible("#tt-sheet.on")) && /Moved to/.test(await page.textContent("#td-toast")), tag + ": the sheet closes and a toast says what happened");
+    ok((await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_my_schedule").length)) >= 3, tag + ": the week is read again afterwards");
+    ok(!/Cancel lesson|\bMove\b/.test(await page.evaluate(() => document.querySelector("#sc-week").innerText)) && errs.length === 0, tag + ": no script errors" + (errs.length ? " " + errs.join("|") : ""));
+    await ctx.close();
+  }
+  { const { ctx, page } = await open(b, "phone", "light", DIRECT, "tutor-schedule"); await goNext(page);
+    await page.click('.tt-row[data-id="r"]'); await page.waitForTimeout(300);
+    ok((await page.$$eval("#ts-actions [data-act]", (e) => e.map((x) => x.textContent.trim()))).join("|") === "Move|Put back to usual time|Cancel lesson", "a moved lesson also offers 'Put back to usual time'");
+    await page.click('#ts-actions [data-act="revert"]'); await page.waitForTimeout(200);
+    ok((await page.$$("#ts-body input")).length === 0 && /usual day and time|normally has/.test(await page.textContent("#ts-body")), "put back: no date to pick, only why");
+    await page.fill("#ts-reason", "Parent changed their mind"); await page.click("#ts-go"); await page.waitForTimeout(500);
+    const c = await page.evaluate(() => window.__calls.filter((x) => x[0] === "tutor_revert_lesson").map((x) => x[1]));
+    ok(c.length === 1 && c[0].p_lesson === "r" && c[0].p_reason === "Parent changed their mind" && /Put back to/.test(await page.textContent("#td-toast")), "put back sends the lesson and the reason, and says what happened");
+    await ctx.close(); }
+  { const { ctx, page } = await open(b, "phone", "light", DIRECT, "tutor-schedule"); await goNext(page);
+    await page.click('.tt-row[data-id="k"]'); await page.waitForTimeout(300);
+    ok(/part of a class of 3/.test(await page.textContent("#ts-body")), "a lesson in a class says a change changes the whole class");
+    await page.click('#ts-actions [data-act="cancel"]'); await page.waitForTimeout(200);
+    ok(/not charged/.test(await page.textContent("#ts-body")) && /Your centre is told/.test(await page.textContent("#ts-body")) && /whole class of 3/.test(await page.textContent("#ts-body")), "cancel: says the family isn't charged, the centre is told, and it is the whole class");
+    ok((await page.$$("#ts-body input")).length === 0 && /btn-danger/.test(await page.getAttribute("#ts-go", "class")), "cancel: only why, and the red button");
+    await page.fill("#ts-reason", "I am unwell"); await page.click("#ts-go"); await page.waitForTimeout(500);
+    const c = await page.evaluate(() => window.__calls.filter((x) => x[0] === "tutor_cancel_lesson").map((x) => x[1]));
+    ok(c.length === 1 && c[0].p_lesson === "k" && /Lesson cancelled/.test(await page.textContent("#td-toast")) && !MONEY.test(await page.textContent("#td-toast")), "cancel sends the lesson and the reason; the toast has no money in it");
+    await ctx.close(); }
+  { const { ctx, page } = await open(b, "phone", "light", DIRECT, "tutor-schedule"); await goNext(page);
+    await page.click('.tt-row[data-id="t"]'); await page.waitForTimeout(300);
+    ok((await page.$$("#ts-actions")).length === 0 && /less than 24 hours, so only an admin can change it/.test(await page.textContent("#ts-body")), "a lesson inside the notice: no buttons, and it says why");
+    await page.keyboard.press("Escape"); await page.waitForTimeout(250);
+    await page.click('.tt-row[data-id="m"]'); await page.waitForTimeout(300);
+    ok((await page.$$("#ts-actions")).length === 0 && /already marked/.test(await page.textContent("#ts-body")), "a marked lesson: no buttons, and it says why");
+    await ctx.close(); }
+  for (const [err, want] of [["TOO_LATE: a lesson can only be changed 24 hours or more before it starts. Ask an admin", /24 hours or more before it starts/], ["CLASH: you already teach Kid Four at that time. Pick another time", /already teach Kid Four/], ["boom", /couldn't change that just now/], ["HOLIDAY: Founders' Day is a holiday at this centre. Pick another day", /Founders' Day is a holiday/]]) {
+    const { ctx, page } = await open(b, "phone", "light", Object.assign({}, DIRECT, { changeError: err }), "tutor-schedule"); await goNext(page);
+    await page.click('.tt-row[data-id="a"]'); await page.waitForTimeout(250); await page.click('#ts-actions [data-act="move"]'); await page.waitForTimeout(200);
+    await page.fill("#ts-reason", "Because"); await page.click("#ts-go"); await page.waitForTimeout(500);
+    const t = await page.textContent("#ts-msg");
+    ok(want.test(t) && !/boom|[A-Z]{3,}_[A-Z]+/.test(t) && (await page.isVisible("#tt-sheet.on")) && !(await page.$eval("#ts-go", (e) => e.disabled)), "a refusal (" + err.split(":")[0] + ") is shown in plain words, the sheet stays open and the button works again: " + t);
+    await page.click("#ts-back"); await page.waitForTimeout(200);
+    ok(/Length/.test(await page.textContent("#ts-body")), "Back returns to the lesson");
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways scroll with the sheet open");
+    await ctx.close(); }
+  // switches: only Move on
+  { const { ctx, page } = await open(b, "phone", "light", Object.assign({}, DIRECT, { canCancel: false, lessons: [["a", mon + 8, { can_postpone: true, can_cancel: false }]] }), "tutor-schedule"); await goNext(page);
+    ok(/You can move your own lessons/.test(await page.textContent("#sc-note")) && !/cancel/.test(await page.textContent("#sc-note")), "with only 'move' switched on the note says only that");
+    await page.click('.tt-row[data-id="a"]'); await page.waitForTimeout(250);
+    ok((await page.$$eval("#ts-actions [data-act]", (e) => e.map((x) => x.textContent.trim()))).join("|") === "Move", "and only Move is offered");
+    await ctx.close(); }
   // ---------- D. errors and empty states
   { const { ctx, page } = await open(b, "phone", "light", { notFound: true }, "tutor-schedule");
     ok(/for tutors at a centre/.test(await page.textContent("#sc-week")) && !/NOT_FOUND/.test(await page.evaluate(() => document.body.innerText)), "someone who isn't a centre tutor: a plain message, never the raw code"); await ctx.close(); }

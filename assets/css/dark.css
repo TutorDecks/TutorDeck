@@ -1109,6 +1109,8 @@ html[data-theme="dark"] .sc-wd{color:var(--muted)}
 html[data-theme="dark"] .sc-row{border-top:1px solid var(--line)}
 html[data-theme="dark"] .sc-row:first-child{border-top:none}
 html[data-theme="dark"] .tt-ro small{color:var(--muted)}
+html[data-theme="dark"] .tt-opt.danger{color:var(--owed);border-color:var(--owed)}
+html[data-theme="dark"] .tt-opt.danger:focus-visible{outline-color:var(--owed)}
 /* from centre.html */
 html[data-theme="dark"] .ch-date{color:var(--muted)}
 html[data-theme="dark"] .ch-h{color:var(--muted)}
@@ -1121,6 +1123,14 @@ html[data-theme="dark"] .ch-tile.todo.zero .n{color:var(--ink)}
 html[data-theme="dark"] .ch-note{color:var(--muted)}
 html[data-theme="dark"] .ch-soon p{color:var(--muted)}
 html[data-theme="dark"] .ch-pill{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+html[data-theme="dark"] .ch-chg{border-top:1px solid var(--line);color:inherit}
+html[data-theme="dark"] .ch-chg:first-child{border-top:none}
+html[data-theme="dark"] .ch-chg:hover{background:#1E2531}
+html[data-theme="dark"] .ch-chg:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+html[data-theme="dark"] .ch-chg-t{color:var(--ink)}
+html[data-theme="dark"] .ch-chg-d{color:var(--muted)}
+html[data-theme="dark"] .ch-chip{background:rgba(180,83,9,0.228);color:#F4985F}
+html[data-theme="dark"] .ch-ago{color:var(--muted)}
 /* from centre-students.html */
 html[data-theme="dark"] .cs-search{border:1px solid var(--line);background:#172235;color:var(--ink)}
 html[data-theme="dark"] .cs-hint{color:var(--muted)}

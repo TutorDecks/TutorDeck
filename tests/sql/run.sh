@@ -140,6 +140,12 @@ $P -f db/migration_slot_changes_down.sql
 $P -f db/migration_slot_changes.sql                         # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_slot_changes_down.sql
 $P -f db/migration_invites_down.sql
+$P -f db/migration_tutor_moves.sql
+$P -f db/migration_tutor_moves.sql                          # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_moves_test.sql
+$P -f db/migration_tutor_moves_down.sql
+$P -f db/migration_tutor_moves.sql                          # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_tutor_moves_down.sql
 $P -f db/migration_payout_permission_down.sql
 $P -f db/migration_payout_permission.sql                    # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_payout_permission_down.sql

@@ -22,6 +22,7 @@ BRANCH = {
     "centre_billing_method": "t31a-centre-invoice-billing", "centre_billing_start": "t36-billing-start", "tutor_profile": "t24c-1-profile",
     "tutor_payout": "t24c-2-payout", "payout_permission": "t24c-3-payout", "slot_changes": "t3-9-timetable-nav",
     "reassign_link": "b4-fix", "payment_fix": "b4-fix",
+    "tutor_moves": "t6-2-tutor-moves",
 }
 WHAT = {
     "staff_home": "centre Home numbers", "staff_students": "centre students, households, tutor links", "staff_attendance": "centre attendance + guard",
@@ -33,6 +34,7 @@ WHAT = {
     "tutor_profile": "tutor's own profile", "tutor_payout": "tutor payout details (masked, audited)", "payout_permission": "payout permission + centre list/reveal",
     "reassign_link": "reassign keeps the old tutor's link when they still teach the student", "payment_fix": "Record payment fix (DELETE without WHERE refused by Supabase)",
     "slot_changes": "slot stop dates, class members, 26-week lessons, holiday cancel, People list",
+    "tutor_moves": "tutors move, put back and cancel their own lessons (centre option)",
 }
 
 

@@ -188,11 +188,68 @@
     if (withCentre) f.push(l.org_name);
     return f.filter(Boolean);
   }
-  // The note under the week. Step 1 can't change anything, whatever the centre chose; the database says which value the centre has.
-  function editNote(editing) {
-    return (editing || "admin_only") === "admin_only"
-      ? "Your centre handles changes: ask an admin."
-      : "Changing your own lessons here is coming soon. For now, ask an admin.";
+  // The note under the week, in plain words, for what THIS centre lets a tutor do. `org` is the centre's entry of tutor_my_schedule (may be missing).
+  // admin_only = ask an admin. tutors_direct = tap a lesson, with the centre's notice and what is left of the month's changes. tutors_propose is not built yet.
+  function editNote(editing, org) {
+    var e = editing || "admin_only", o = org || {};
+    if (e === "tutors_direct" && (o.can_postpone || o.can_cancel)) {
+      var what = o.can_postpone && o.can_cancel ? "move or cancel" : o.can_postpone ? "move" : "cancel";
+      var n = o.min_notice_hours == null ? 24 : o.min_notice_hours;
+      var t = "You can " + what + " your own lessons: tap a lesson. " + (n > 0 ? "It must be at least " + n + " hour" + (n === 1 ? "" : "s") + " before it starts. " : "") +
+              "Your centre is told about every change.";
+      if (o.changes_left != null) t += " You can make " + o.changes_left + " more change" + (o.changes_left === 1 ? "" : "s") + " this month.";
+      return t;
+    }
+    if (e === "tutors_direct") return "Your centre has not switched on changes by tutors yet. Ask an admin to change a lesson.";
+    if (e === "tutors_propose") return "At your centre tutors ask for changes and an admin approves them. That is coming soon. For now, ask an admin.";
+    return "Your centre handles changes: ask an admin.";
+  }
+  // The refusals of the three change functions. Most say it in fixed words; four carry a detail the database knows (the hours, the number, the holiday, the
+  // student) so those use the database's own plain sentence. Anything unknown gets one generic line and is never shown raw.
+  var CHANGE_FIXED = {
+    NOT_FOUND: "That lesson isn't one of yours any more. Pull to refresh.",
+    NOT_ALLOWED: "At your centre the admins change the timetable. Please ask them.",
+    SWITCH_OFF: "Your centre doesn't let tutors do that. Please ask an admin.",
+    ALREADY_MARKED: "That lesson is already marked, so only an admin can change it.",
+    CANCELLED: "That lesson was cancelled.",
+    LOCKED: "Your centre has already closed that lesson, so only an admin can change it.",
+    NOT_MOVED: "That lesson is already at its usual time.",
+    NO_SLOT: "That lesson has no usual time to go back to. Please ask an admin.",
+    SLOT_CHANGED: "The usual time for that lesson has changed. Please ask an admin.",
+    PAST: "That lesson has already started, so it can't be changed here.",
+    REASON_REQUIRED: "Please say why, in a few words. Your centre keeps it on record.",
+    TOO_LONG: "Please keep the reason under 300 characters.",
+    BAD_DATE: "Please pick a date and a start time that are still to come, within the next year.",
+    BAD_TIME: "That start time would run past midnight. Please pick an earlier one.",
+    NO_CHANGE: "That lesson is already at that time.",
+    GROUP_NOT_YOURS: "That lesson is part of a class that includes lessons that aren't yours. Please ask an admin."
+  };
+  var CHANGE_DETAIL = { TOO_LATE: 1, LIMIT: 1, HOLIDAY: 1, CLASH: 1 };
+  function changeCode(err) { var m = /^([A-Z_]+)(?::|$)/.exec(String((err && err.message) || "")); return m ? m[1] : ""; }
+  function changeErrorText(err) {
+    var msg = String((err && err.message) || ""), c = changeCode(err);
+    if (CHANGE_DETAIL[c]) {
+      var rest = msg.slice(c.length + 1).trim().replace(/\s*\(it is part of a class that changes together\)\s*$/, "");
+      if (rest) return rest.charAt(0).toUpperCase() + rest.slice(1) + (/[.!?]$/.test(rest) ? "" : ".");
+    }
+    var base = CHANGE_FIXED[c];
+    if (base && /\(it is part of a class that changes together\)/.test(msg)) base += " (This lesson is part of a class that changes together.)";
+    return base || "We couldn't change that just now. Please try again.";
+  }
+  // Why a lesson shows no change button when the centre HAS switched changes on (the code the database sent as change_block).
+  function blockText(code, org) {
+    var n = org && org.min_notice_hours != null ? org.min_notice_hours : 24;
+    var t = { TOO_LATE: "It starts in less than " + n + " hour" + (n === 1 ? "" : "s") + ", so only an admin can change it.", PAST: "It has already started.",
+      ALREADY_MARKED: "It is already marked, so only an admin can change it.", CANCELLED: "It was cancelled.", LOCKED: "Your centre has already closed it, so only an admin can change it.", LIMIT: "You have made all the changes your centre allows this month. Ask an admin.", NOT_FOUND: "" };
+    return t[code] || "";
+  }
+  // "16:30" + 90 minutes = "18:00"; null when it would pass midnight or the input isn't a time. Used to preview a move (the length never changes).
+  function endTime(start, minutes) {
+    var m = /^(\d{1,2}):(\d{2})/.exec(String(start || ""));
+    if (!m || !(minutes > 0)) return null;
+    var tot = (+m[1]) * 60 + (+m[2]) + (+minutes);
+    if (tot >= 24 * 60) return null;
+    return ("0" + Math.floor(tot / 60)).slice(-2) + ":" + ("0" + (tot % 60)).slice(-2);
   }
   function rangeLabel(a, b) { var x = parts(a), y = parts(b); return x.d + " " + x.m + " – " + y.d + " " + y.m; }
   function weekdayName(i) { return WD_LONG[i] || ""; }
@@ -213,6 +270,6 @@
   }
 
   return { weekStart: weekStart, weekTitle: weekTitle, scheduleDays: scheduleDays, scheduleChip: scheduleChip, scheduleFacts: scheduleFacts, editNote: editNote,
-           weekdayName: weekdayName, rangeLabel: rangeLabel, slotList: slotList, scheduleErrorText: scheduleErrorText, addDays: addDays, dateLabel: dateLabel, timeLabel: timeLabel, timeRange: timeRange, chip: chip, lockReason: lockReason,
+           weekdayName: weekdayName, rangeLabel: rangeLabel, slotList: slotList, scheduleErrorText: scheduleErrorText, changeErrorText: changeErrorText, blockText: blockText, endTime: endTime, addDays: addDays, dateLabel: dateLabel, timeLabel: timeLabel, timeRange: timeRange, chip: chip, lockReason: lockReason,
            remarksDue: remarksDue, attendanceOptions: attendanceOptions, parseCharge: parseCharge, needsCharge: needsCharge, adminChargeNote: adminChargeNote, group: group, errorText: errorText, changes: changes };
 });
