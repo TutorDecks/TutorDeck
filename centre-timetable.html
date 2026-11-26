@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Centre timetable · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=310">
+<link rel="stylesheet" href="assets/css/app.css?v=325">
 <script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   .tt-wrap{max-width:820px;display:flex;flex-direction:column;gap:14px}
@@ -57,6 +57,7 @@
   .tt-chip.ok{background:rgba(15,118,110,.12);color:var(--accent-ink)}
   .tt-chip.warn{background:rgba(180,83,9,.12);color:var(--warn)}
   .tt-chip.trial{background:rgba(19,35,63,.08);color:var(--ink)}
+  .tt-chip.cover{background:#F1EFEA;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
   .tt-chev{flex:none;color:#B9BDC6}
   .tt-empty{padding:34px 20px;text-align:center;color:var(--muted)}
   .tt-empty h3{color:var(--ink);font-size:17px;margin:0 0 6px}
@@ -130,11 +131,21 @@
   .sl-chip{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:700}
   .sl-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .sl-more{margin:0;font-size:13px;color:var(--muted)}
+  .tt-modes{border:0;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .tt-modes legend{padding:0;margin:0 0 6px}
+  .tt-mode-opt{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;margin:0}
+  .tt-mode-opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+  .tt-mode-opt input{width:20px;height:20px;min-height:0;padding:0;margin:2px 0 0;flex:none;accent-color:var(--accent)}
+  .tt-mode-opt b{display:block;font-size:14px;font-weight:700;color:var(--ink)}
+  .tt-mode-opt span span{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:2px}
+  .tt-chk{display:flex;gap:10px;align-items:flex-start;margin:0 0 12px;font-size:13.5px;font-weight:500;color:var(--ink);cursor:pointer}
+  .tt-chk[hidden]{display:none}
+  .tt-chk input{width:20px;height:20px;min-height:0;padding:0;margin:1px 0 0;flex:none;accent-color:var(--accent)}
   .sl-acts{display:flex;flex-direction:column;gap:10px;margin-top:16px}
   .sl-acts .btn{width:100%;min-height:48px;justify-content:center}
   .sl-stop{color:var(--owed)}
 </style>
-<link rel="stylesheet" href="assets/css/dark.css?v=310">
+<link rel="stylesheet" href="assets/css/dark.css?v=325">
 </head>
 <body>
 <div id="view" data-page="centre-timetable">
@@ -227,15 +238,15 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=310"></script>
-<script src="assets/js/supabase.js?v=310"></script>
-<script src="assets/js/org-current.js?v=310"></script>
-<script src="assets/js/org-scope.js?v=310"></script>
-<script src="assets/js/app.js?v=310"></script>
-<script src="assets/js/centre-attendance-core.js?v=310"></script>
-<script src="assets/js/centre-timetable-core.js?v=310"></script>
-<script src="assets/js/centre-slots-core.js?v=310"></script>
-<script src="assets/js/centre-slots.js?v=310"></script>
-<script src="assets/js/centre-timetable.js?v=310"></script>
+<script src="assets/js/config.js?v=325"></script>
+<script src="assets/js/supabase.js?v=325"></script>
+<script src="assets/js/org-current.js?v=325"></script>
+<script src="assets/js/org-scope.js?v=325"></script>
+<script src="assets/js/app.js?v=325"></script>
+<script src="assets/js/centre-attendance-core.js?v=325"></script>
+<script src="assets/js/centre-timetable-core.js?v=325"></script>
+<script src="assets/js/centre-slots-core.js?v=325"></script>
+<script src="assets/js/centre-slots.js?v=325"></script>
+<script src="assets/js/centre-timetable.js?v=325"></script>
 </body>
 </html>

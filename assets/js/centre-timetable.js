@@ -4,7 +4,8 @@
 // assets/js/centre-timetable-core.js holds the pure logic (days, chips, filters, wording) and is unit-tested.
 //   centre-timetable?id=<centre>[&date=yyyy-mm-dd][&view=day|next14][&tutor=<id>][&student=<id>][&branch=<id>][&f=notutor][&mode=slots]
 // T3 step 7 adds the "Weekly slots" view (assets/js/centre-slots.js): add / change / stop a weekly slot with its tutor and create the next 4 weeks of
-// lessons. The lessons view below stays a list; changing ONE lesson (move, cover) comes later.
+// lessons. The lessons view below stays a list. T3 step 8 adds "Reassign or cover" to the lesson sheet (staff_reassign_lesson); moving a lesson to
+// another day comes later.
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
@@ -115,24 +116,81 @@
     $("tt-count").textContent = TT.errorText(err);
   }
 
-  // ---------------------------------------------------------------- the sheet (read only)
+  // ---------------------------------------------------------------- the lesson sheet
   function lockBody(on) { document.body.classList.toggle("sheet-lock", on); }
   function openSheet(trigger) { sheetOpener = trigger || sheetOpener; $("tt-sheet").classList.add("on"); lockBody(true); $("tt-sx").focus(); }
   function closeSheet() { $("tt-sheet").classList.remove("on"); lockBody(false); cur = null; if (sheetOpener && sheetOpener.focus && document.contains(sheetOpener)) sheetOpener.focus(); sheetOpener = null; }
   function find(id) { var rows = (lastRes && lastRes.rows) || []; for (var i = 0; i < rows.length; i++) if (rows[i].lesson_id === id) return rows[i]; return null; }
   function open(id, trigger) {
     var r = find(id); if (!r) return;
-    cur = r;
+    cur = r; reForm = null;
     $("tt-st").textContent = r.student_name;
     $("tt-sm").textContent = TT.dayLabel(r.lesson_date, today);
+    var ra = TT.reassignState(lastRes, r);
     var html = '<div class="tt-h">Lesson</div><div class="tt-facts">' + TT.facts(r).map(function (f) {
       return '<div><span>' + esc(f[0]) + '</span><span' + (f[0] === "Tutor" && r.no_tutor ? ' class="warn"' : '') + '>' + esc(f[1]) + '</span></div>';
     }).join("") + '</div><div class="tt-acts">' +
       '<a class="btn" href="centre-attendance?id=' + encodeURIComponent(orgId) + '&date=' + esc(r.lesson_date) + '&view=day">Open in Attendance</a>' +
       '<button type="button" class="btn" id="tt-onlyst">Show only ' + esc(r.student_name) + '</button>' +
-      (r.tutor_id ? '<button type="button" class="btn" id="tt-onlytu">Show only ' + esc(r.tutor_name || "this tutor") + '</button>' : '') + '</div>' +
-      '<p class="tt-ro">To change the day, time or tutor of a weekly lesson, use <b>Weekly slots</b>. Moving or covering a single lesson is coming next.</p>';
+      (r.tutor_id ? '<button type="button" class="btn" id="tt-onlytu">Show only ' + esc(r.tutor_name || "this tutor") + '</button>' : '') +
+      (ra.label ? '<button type="button" class="btn btn-primary" id="tt-reassign">' + esc(ra.label) + '</button>' : '') + '</div>' +
+      (ra.note ? '<p class="tt-ro" id="tt-ranote">' + esc(ra.note) + '</p>' : '') +
+      '<p class="tt-ro">To change the day, time or tutor of every lesson in a weekly slot, use <b>Weekly slots</b>. Moving a lesson to another day is coming next.</p>';
     $("tt-sb").innerHTML = html; openSheet(trigger);
+  }
+
+  // ---------------------------------------------------------------- Reassign or cover (one lesson)
+  var reForm = null, reBusy = false;
+  function reHtml(r, ra) {
+    var opts = TT.coverOptions(lastRes, r), first = !r.tutor_id, isClass = !!r.session_id;
+    var h = '<form class="sl-form" id="tt-rf" novalidate><div class="tt-h">' + esc(ra.label) + '</div>' +
+      '<p class="tt-note" style="margin:0 0 12px">' + esc(r.student_name) + ' · ' + esc(TT.dayLabel(r.lesson_date, today)) + ' · ' + esc(TT.timeRange(r)) +
+      (first ? '. Nobody teaches it yet.' : '. Taught by ' + esc(r.tutor_name || "a former tutor") + '.') + '</p>' +
+      '<div class="field"><label for="tt-rt">' + (first ? 'Tutor' : 'New tutor') + '</label><select id="tt-rt"><option value="">Choose a tutor</option>' +
+      opts.map(function (t) { return '<option value="' + esc(t.id) + '"' + (reForm.tutor === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>'; }).join("") +
+      '</select><div class="sl-err" id="tt-re-tutor" role="alert" hidden></div></div>';
+    if (!first) {
+      h += '<fieldset class="tt-modes"><legend class="tt-h">What should happen?</legend>' +
+        '<label class="tt-mode-opt"><input type="radio" name="tt-rm" value="cover"' + (reForm.mode === "cover" ? ' checked' : '') + '><span><b>Cover this lesson only</b>' +
+        '<span>' + esc(r.tutor_name || "The tutor") + ' stays on the weekly slot. Next week is unchanged.</span></span></label>' +
+        '<label class="tt-mode-opt"><input type="radio" name="tt-rm" value="reassign"' + (reForm.mode === "reassign" ? ' checked' : '') + '><span><b>Give this lesson to them</b>' +
+        '<span>It becomes theirs. The weekly slot is not changed.</span></span></label></fieldset>' +
+        '<label class="tt-chk" id="tt-rlw"' + (reForm.mode === "reassign" ? '' : ' hidden') + '><input type="checkbox" id="tt-rl"' + (reForm.links ? ' checked' : '') + '><span>Also make them ' +
+        esc(r.student_name) + '’s assigned tutor instead of ' + esc(r.tutor_name || "the old tutor") + '</span></label>';
+    }
+    h += '<div class="field"><label for="tt-rr">Reason' + (first ? ' <span class="opt">Optional</span>' : '') + '</label><input id="tt-rr" type="text" maxlength="' + TT.REASON_MAX + '" autocomplete="off" ' +
+      'placeholder="e.g. Tutor is unwell" value="' + esc(reForm.reason) + '"><div class="sl-err" id="tt-re-reason" role="alert" hidden></div></div>' +
+      (isClass ? '<p class="tt-note" style="margin:0 0 4px">This lesson is part of a class: every student’s lesson that day moves together.</p>' : '') +
+      '<div class="sl-err" id="tt-re" role="alert" hidden></div>' +
+      '<div class="sl-acts"><button class="btn btn-primary" type="submit" id="tt-rs">' + (first ? 'Assign tutor' : 'Save') + '</button>' +
+      '<button class="btn" type="button" id="tt-rb">Back</button></div></form>';
+    return h;
+  }
+  function openReassign() {
+    var r = cur; if (!r) return;
+    var ra = TT.reassignState(lastRes, r); if (!ra.label) return;
+    reForm = { tutor: "", mode: "cover", reason: "", links: false };
+    $("tt-sb").innerHTML = reHtml(r, ra);
+    $("tt-rt").focus();
+  }
+  function reRead() {
+    reForm.tutor = $("tt-rt").value; reForm.reason = $("tt-rr").value;
+    var m = $("tt-sb").querySelector('input[name="tt-rm"]:checked'); if (m) reForm.mode = m.value;
+    reForm.links = !!($("tt-rl") && $("tt-rl").checked && reForm.mode === "reassign");
+  }
+  function reShow(id, msg) { var e = $(id); if (!e) return; e.hidden = !msg; e.textContent = msg || ""; }
+  async function reSave(e) {
+    if (e) e.preventDefault();
+    if (!reForm || !cur || reBusy) return;
+    var r = cur; reRead();
+    ["tt-re-tutor", "tt-re-reason", "tt-re"].forEach(function (i) { reShow(i, ""); });
+    var bad = TT.checkReassign(r, reForm);
+    if (bad) { var f = !reForm.tutor || reForm.tutor === r.tutor_id ? "tt-re-tutor" : "tt-re-reason"; reShow(f, bad); $(f === "tt-re-tutor" ? "tt-rt" : "tt-rr").focus(); return; }
+    reBusy = true; var b = $("tt-rs"); b.disabled = true;
+    var res = await window.sb.rpc("staff_reassign_lesson", TT.reassignArgs(r, reForm));
+    reBusy = false; b.disabled = false;
+    if (res.error) { reShow("tt-re", TT.reassignErrorText(res.error)); $("tt-re").scrollIntoView({ block: "nearest" }); return; }
+    var form = reForm; closeSheet(); TL.toast(TT.reassignedText(res.data, form), "ok"); load();
   }
 
   // ---------------------------------------------------------------- Lessons | Weekly slots
@@ -172,6 +230,12 @@
       if (!cur) return;
       if (e.target.id === "tt-onlyst") { var s = cur.student_id; closeSheet(); pick({ student: s }); }
       if (e.target.id === "tt-onlytu") { var t = cur.tutor_id; closeSheet(); pick({ tutor: t }); }
+      if (e.target.closest("#tt-reassign")) openReassign();
+      if (e.target.id === "tt-rb") open(cur.lesson_id);
+    });
+    $("tt-sb").addEventListener("submit", reSave);
+    $("tt-sb").addEventListener("change", function (e) {
+      if (e.target.name === "tt-rm") { var on = e.target.value === "reassign"; if ($("tt-rlw")) { $("tt-rlw").hidden = !on; if (!on && $("tt-rl")) $("tt-rl").checked = false; } }
     });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("tt-sheet").classList.contains("on")) closeSheet(); });
   }
