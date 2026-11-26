@@ -172,6 +172,9 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T6.1 | T6 step 1: read-only Schedule tab for centre tutors (tutor_my_schedule, tutor_my_slots) | DONE on branch (66 new checks, smoke clean) | `claude/t6-1-tutor-schedule` (on t3-8) |
 | T4-S3 | T4 step S3: record payment, part payment, credit note, status chips, share link, WhatsApp text | DONE on branch (smoke 84 loads clean; migration NOT on DEV) | `claude/t4-s3-payments` (on t4-s2) |
 | T40 | Assemble bundle 4 (T3 staff chain + T6.1 + T4 S0-S3 + tutor settings/payout + invites + fee/billing/start) into one branch + PR, final DEV SQL pack, owner test list; orchestrator merges after a manual check run + DEV SQL applied | doing | NEW worker / `claude/bundle-4` |
+| T33-I0 | Import step I0: templates, CSV reader, validator, report UI (no DB), fixture generator 400/200 | doing | NEW worker / `claude/t33-i0-import-core` (on dev) |
+| T4-S4 | T4 step S4: deposits (ledger as liability, deposit invoice with first run, held report, opening kind + students.start_date) | doing | NEW worker / `claude/t4-s4-deposits` (on t4-s3) |
+| T24c.5 | Leave-centre DB (never started twice; retry when infrastructure allows) | stuck/todo | |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
