@@ -213,3 +213,21 @@ test("T4 S0: billing and pay changes (including the new options) start next cycl
   const c = JSON.parse(JSON.stringify(a)); c.lessons.class_type = "one_to_one";
   assert.equal(S.effectiveFrom(a, c, "2026-11-26"), "2026-11-26");
 });
+
+// ---------------------------------------------------------------------------------------------------- T3.9: assigned tutors follow a weekly slot
+test("T3.9: 'a weekly slot adds its tutor to the student' is a setting: default on, built (not soon), and a yes/no the database reads as of today", () => {
+  const fields = {};
+  S.STEPS.forEach((st) => st.fields.forEach((f) => { fields[f.path] = f; }));
+  const f = fields["lessons.auto_assign_tutors"];
+  assert.ok(f, "the field exists in the wizard");
+  assert.equal(f.type, "toggle", "a yes/no (no enum: the SQL treats a missing or non-boolean value as on)");
+  assert.ok(!f.soon, "it is built (db/migration_slot_changes.sql, tests/sql/slot_changes_test.sql), so it is not marked soon");
+  assert.match(f.help, /nobody is taken off/i);
+  assert.strictEqual(S.defaults("centre").lessons.auto_assign_tutors, true, "default on");
+  assert.strictEqual(S.defaults("solo").lessons.auto_assign_tutors, true);
+  const s = S.defaults("centre"); s.profile.trading_name = "T"; s.lessons.auto_assign_tutors = false;
+  assert.deepEqual(S.validate(s), [], "off is valid");
+  // an older saved document without the key is still valid (the SQL reads a missing key as on)
+  const old = S.defaults("centre"); old.profile.trading_name = "T"; delete old.lessons.auto_assign_tutors;
+  assert.deepEqual(S.validate(old), []);
+});

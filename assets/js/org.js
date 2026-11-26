@@ -344,8 +344,29 @@
   }
   async function addRow(table, row) {
     var r = await sb().from(table).insert(Object.assign({ org_id: st.org.id }, row));
-    if (r.error) { TL.alert(r.error.message); return; }
+    if (r.error) { TL.alert(r.error.message); return false; }
     await loadSide(); var y = window.scrollY; renderStep(S.STEPS[1]); window.scrollTo(0, y);
+    return true;
+  }
+  // (T3.9) After a holiday is added by hand: offer to cancel the lessons already on those days. The database counts first (a dry run), and only
+  // lessons nobody has marked, paid or invoiced can be cancelled, with no charge. Anything unexpected (older database, no permission, nothing to
+  // cancel) stays silent: the holiday is saved either way.
+  async function offerHolidayCancel(name, a, b) {
+    if (!st.org || st.org.kind !== "centre") return;
+    var args = { p_org: st.org.id, p_from: a, p_to: b, p_name: name };
+    var d = await sb().rpc("staff_holiday_cancel", Object.assign({ p_dry: true }, args));
+    var n = d.data && Number(d.data.cancel) || 0, kept = d.data && Number(d.data.kept) || 0;
+    if (d.error || !n) return;
+    var one = n === 1;
+    var yes = await TL.confirm({ title: "Also cancel " + (one ? "the lesson" : n + " lessons") + " already on " + (a === b ? "that day" : "those days") + "?",
+      message: n + (one ? " lesson is" : " lessons are") + " already planned on the days of " + name + ". They would be cancelled with no charge." +
+        (kept ? " " + kept + (kept === 1 ? " lesson stays" : " lessons stay") + " because " + (kept === 1 ? "it is" : "they are") + " marked, paid or invoiced." : "") +
+        " Lessons in the past are never changed.", confirmText: "Cancel the lesson" + (one ? "" : "s"), cancelText: "Keep them" });
+    if (!yes) return;
+    var r = await sb().rpc("staff_holiday_cancel", Object.assign({ p_dry: false }, args));
+    if (r.error) return TL.alert("The holiday is saved, but the lessons could not be cancelled: " + r.error.message);
+    var c = Number(r.data && r.data.cancel) || 0;
+    TL.toast(c + (c === 1 ? " lesson" : " lessons") + " cancelled with no charge.", "ok");
   }
   function bindCalendar() {
     var body = $("og-body"); if (st.lib && HL) bindLibrary();
@@ -356,7 +377,7 @@
         var n = $(x[0] + "-name").value.trim(), a = $(x[0] + "-from").value, b = $(x[0] + "-to").value || a;
         if (!n || !a) return TL.alert("Give it a name and a start date.");
         if (b < a) return TL.alert("The end date is before the start date.");
-        addRow(x[1], { name: n, starts_on: a, ends_on: b });
+        addRow(x[1], { name: n, starts_on: a, ends_on: b }).then(function (saved) { if (saved && x[1] === "holidays") return offerHolidayCancel(n, a, b); });
       };
     });
     body.querySelectorAll("[data-addroom]").forEach(function (b) {

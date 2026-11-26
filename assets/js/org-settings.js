@@ -190,6 +190,8 @@
       { path: "lessons.missed_remarks_reminders", label: "Remind tutors about missing remarks", type: "toggle", soon: true,
         help: "Reminders go by email, which comes with the email provider. Until then the My lessons page shows what's overdue." },
       { path: "lessons.replacement_tutors", label: "Admins can give one lesson to a replacement tutor", type: "toggle" },
+      { path: "lessons.auto_assign_tutors", label: "A weekly slot with a tutor also adds that tutor to the student's assigned tutors", type: "toggle",
+        help: "Only ever adds: nobody is taken off. Switch it off to choose assigned tutors by hand on the student's page." },
       { path: "lessons.tutors_see_parent_contact", label: "Tutors can see parents' contact details", type: "toggle",
         help: "Tutors always see student names and levels." }
     ]},
@@ -249,7 +251,7 @@
       payments: { modes: ["manual_paynow"], paynow: { type: "uen", id: "" }, statement_bank: "DBS", hitpay: { paynow: true, cards: false },
         gateway_fees: "absorb", partial_payments: true, overpayments: "credit" },
       lessons: { class_type: "both", timetable_editing: "admin_only", attendance_by: "tutor", attendance_window_days: 14, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
-        missed_remarks_reminders: true, replacement_tutors: true, tutors_see_parent_contact: false },
+        missed_remarks_reminders: true, replacement_tutors: true, auto_assign_tutors: true, tutors_see_parent_contact: false },
       tutor_pay: { mode: "report", payable_when: "parent_paid", rate_model: "per_hour", percent_base: "billed_after_discounts", part_payments: "after_full", cancelled_lessons: "pay_if_charged", group_count: "attended", adjustments: true,
         cycle: { cutoff_day: 31, pay_day: 7 }, payout_method: "manual_list", tutor_visibility: "closed_only" },
       data: {}
