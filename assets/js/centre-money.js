@@ -2,13 +2,15 @@
 // one or all. Every read and write goes through database functions (centre_invoice_run_preview, _create_drafts, centre_invoice_list, _get,
 // _approve, _approve_all, _discard_draft, _numbering); this page never touches a table. Who may, what is billed and the numbers are decided there
 // (db/migration_centre_invoice_run.sql); assets/js/centre-money-core.js only words the answers and saves a round trip.
-//   centre-money?id=<centre>[&month=yyyy-mm]
+//   centre-money?id=<centre>[&month=yyyy-mm][&tab=invoices]
+// S3 adds a second tab, Invoices & payments (assets/js/centre-payments.js): this file owns the tabs, the message line and the side sheet, and
+// hands an issued invoice to window.CentrePay (record payment, credit note, reverse, share link, WhatsApp).
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
   var CM = window.CentreMoneyCore;
-  var orgId = null, month = null, today = "", seq = 0, busy = false, sheetOpener = null, prev = null, invs = [], numb = null, urlMonth = false;
+  var orgId = null, month = null, today = "", seq = 0, busy = false, sheetOpener = null, prev = null, invs = [], numb = null, urlMonth = false, tab = "run", ranRun = false;
 
   function card(inner) { $("cm-body").innerHTML = '<div class="card cm-block">' + inner + '</div>'; $("cm-num").innerHTML = ""; }
   function say(text, bad) { var m = $("cm-msg"); m.textContent = text || ""; m.className = "cm-msg" + (text ? (bad ? " err" : " ok") : ""); }
@@ -93,7 +95,10 @@
     if (CM.isMissing(err)) return card('<h2 class="cm-h2">Not switched on yet</h2><p class="cm-note">Money needs <b>db/migration_centre_invoice_run.sql</b> run first.</p>');
     var m = (err && err.message) || "";
     if (/NOT_FOUND/.test(m) && !prev) return card('<h2 class="cm-h2">Centre not available</h2><p class="cm-note">This centre doesn’t exist, or you aren’t an owner or staff member there.</p>');
-    if (/NOT_ALLOWED/.test(m) && !prev) return card('<h2 class="cm-h2">Money isn’t switched on for your account</h2><p class="cm-note">Ask the centre owner to give you the “Issue invoices” permission.</p>');
+    if (/NOT_ALLOWED/.test(m) && !prev) {
+      if (window.CentrePay && !failure.tried) { failure.tried = true; return setTab("inv"); }            // someone who only records payments lands on the payments tab
+      return card('<h2 class="cm-h2">Money isn’t switched on for your account</h2><p class="cm-note">Ask the centre owner to give you the “Issue invoices” or “Record payments” permission.</p>');
+    }
     say(CM.errorText(err), true);
   }
   async function load(keepMsg) {
@@ -114,7 +119,7 @@
     prev = pv.data; today = pv.data.today; invs = (ls.data && ls.data.rows) || []; numb = nb.error ? null : nb.data;
     draw(); syncUrl();
   }
-  function syncUrl() { try { history.replaceState(null, "", location.pathname + "?" + CM.toQuery(orgId, month)); } catch (e) {} }
+  function syncUrl() { try { history.replaceState(null, "", location.pathname + "?" + (tab === "inv" ? "id=" + encodeURIComponent(orgId) + "&tab=invoices" : CM.toQuery(orgId, month))); } catch (e) {} }
 
   // ---------------------------------------------------------------- actions
   async function act(fn) {
@@ -194,6 +199,7 @@
   }
   async function showInvoice(i, trigger) {
     var x = invs[i]; if (!x) return;
+    if (x.status === "issued" && window.CentrePay) return window.CentrePay.open(x.id, trigger);               // an issued invoice has an account: payments, credit notes, link
     $("cm-st").textContent = x.name; $("cm-sm").textContent = (x.number ? x.number + " · " : "") + CM.chip(x).text;
     $("cm-sb").innerHTML = '<p class="cm-note">Loading…</p>'; openSheet(trigger);
     var r = await window.sb.rpc("centre_invoice_get", { p_invoice: x.id });
@@ -208,8 +214,25 @@
     if (di) di.addEventListener("click", function () { discardOne(x.id, x.name); });
   }
 
+  // ---------------------------------------------------------------- tabs
+  function setTab(name, focus) {
+    tab = name === "inv" ? "inv" : "run";
+    var run = tab === "run";
+    $("cm-run").hidden = !run; $("cm-inv").hidden = run;
+    [["cm-tab-run", run], ["cm-tab-inv", !run]].forEach(function (p) { var b = $(p[0]); b.setAttribute("aria-selected", p[1] ? "true" : "false"); b.tabIndex = p[1] ? 0 : -1; });
+    if (focus) $(run ? "cm-tab-run" : "cm-tab-inv").focus();
+    say("");
+    if (run && !ranRun) { ranRun = true; load(); } else if (run) syncUrl();
+    if (!run) { if (window.CentrePay) window.CentrePay.show(); syncUrl(); }
+  }
+
   // ---------------------------------------------------------------- wiring
   function wire() {
+    $("cm-tab-run").addEventListener("click", function () { setTab("run"); });
+    $("cm-tab-inv").addEventListener("click", function () { setTab("inv"); });
+    $("cm").querySelector(".cm-tabs").addEventListener("keydown", function (e) {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); setTab(tab === "run" ? "inv" : "run", true); }
+    });
     $("cm-prev").addEventListener("click", function () { month = CM.shiftMonth(month, -1); urlMonth = true; load(); });
     $("cm-next").addEventListener("click", function () { month = CM.shiftMonth(month, 1); urlMonth = true; load(); });
     $("cm-body").addEventListener("click", function (e) {
@@ -232,7 +255,16 @@
     orgId = id;
     var st = CM.fromQuery(location.search); urlMonth = !!st.month;
     month = st.month || CM.defaultMonth(localToday(), "postpaid_lessons");
-    wire(); nav(); load();
+    tab = q.get("tab") === "invoices" ? "inv" : "run";
+    wire(); nav();
+    setTab(tab);
   }
-  TL.requireAuth("centre-money", init);
+  // what the Invoices tab (assets/js/centre-payments.js) shares with this page: the side sheet, the message line, the run's own refresh
+  window.CentreMoneyUI = {
+    orgId: function () { return orgId; }, openSheet: function (t) { openSheet(t); }, closeSheet: closeSheet, say: say, esc: esc, chev: chev, chipHtml: chipHtml,
+    linesHtml: function (l) { return linesHtml(l); }, totalsHtml: function (a, b, c, d) { return totalsHtml(a, b, c, d); }, localToday: localToday,
+    refreshRun: function () { if (ranRun) return load(true); }
+  };
+  // the Invoices tab script (centre-payments.js) loads after this one: start once every script has loaded
+  TL.requireAuth("centre-money", function () { if (document.readyState === "complete") init(); else window.addEventListener("load", init); });
 })();

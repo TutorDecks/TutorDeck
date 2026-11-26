@@ -142,7 +142,9 @@
         return '<label class="og-check' + (so ? " og-off" : "") + '"><input type="checkbox" data-multi="' + f.path + '" value="' + esc(op[0]) + '"' + (on ? " checked" : "") + (lock || so ? " disabled" : "") + "> <span>" + esc(op[1]) + (so ? '<span class="og-soon">Coming soon</span>' : "") + "</span></label>";
       }).join("") + "</div>" + help;
     var input;
-    if (f.type === "select") {
+    if (f.type === "textarea") {
+      input = '<textarea id="' + id + '" data-path="' + f.path + '" data-type="text" rows="4" maxlength="1000"' + (lock ? " disabled" : "") + ">" + esc(v == null ? "" : v) + "</textarea>";
+    } else if (f.type === "select") {
       input = '<select id="' + id + '" data-path="' + f.path + '"' + (lock ? " disabled" : "") + ">" + f.options.map(function (op) {
         var so = (f.soonOptions || []).indexOf(op[0]) > -1;
         return '<option value="' + esc(JSON.stringify(op[0])) + '"' + (op[0] === v ? " selected" : "") + (so ? " disabled" : "") + ">" + esc(op[1]) + (so ? " (coming soon)" : "") + "</option>";

@@ -59,6 +59,12 @@ function override(cfg) {
         return res({ id: d.id, status: d.status, number: d.number || null, name: d.name, issue_date: d.issue_date || null, due_date: d.due_date || null, gst_registered: true, gst_rate_bp: 900, gst_inclusive: false, net_cents: d.net_cents, gst_cents: d.gst_cents, total_cents: d.total_cents, void_reason: null,
           lines: d.lines.map(function (l, i) { return { position: i + 1, student_name: l.student_name, description: l.description, qty: 1, unit_cents: l.unit_cents, line_cents: l.line_cents, kind: "lesson" }; }) });
       }
+      if (nm === "centre_invoice_account_get") {                      // S3: an issued invoice opens its account (paid / credited / balance)
+        var dd = s.drafts.concat(s.issued).filter(function (x) { return x.id === a.p_invoice; })[0]; if (!dd) return res(null, "NOT_FOUND");
+        return res({ id: dd.id, today: TODAY, status: "issued", number: dd.number, name: dd.name, issue_date: dd.issue_date, due_date: dd.due_date, pay_status: "issued", gst_registered: true, net_cents: dd.net_cents, gst_cents: dd.gst_cents, total_cents: dd.total_cents,
+          credited_cents: 0, paid_cents: 0, balance_cents: dd.total_cents, can: { record_payments: true, issue_invoices: true }, rules: { partial_payments: true, overpayments: "credit", manual_paynow: true, share_link: true }, payments: [], credit_notes: [], credit_balance_cents: 0, share: null,
+          lines: dd.lines.map(function (l, i) { return { position: i + 1, student_name: l.student_name, description: l.description, qty: 1, unit_cents: l.unit_cents, line_cents: l.line_cents, kind: "lesson" }; }) });
+      }
       if (nm === "centre_invoice_approve") {
         var di = s.drafts.map(function (x) { return x.id; }).indexOf(a.p_invoice); if (di < 0) return res(null, "NOT_DRAFT: only a draft can be approved");
         var x = s.drafts.splice(di, 1)[0]; x.number = "INV-" + (s.first + s.issued.length); x.status = "issued"; x.issue_date = TODAY; x.due_date = TODAY; s.issued.push(x); s.locked = true; save(s);
@@ -162,11 +168,11 @@ const text = (page, sel) => page.locator(sel).innerText();
   { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_students", "record_payments"])], notAllowed: true });
     await page.goto(BASE + "centre.html?id=c1"); await page.waitForSelector(".ch-tile, .ch-note");
     ok(await page.locator(".tn-links a", { hasText: "Money" }).count() === 0, "staff without issue_invoices don't see the Money tab");
-    await page.goto(BASE + "centre-money.html?id=c1"); await page.waitForSelector(".cm-block");
-    ok(/Issue invoices/.test(await text(page, "#cm-body")) && !/NOT_ALLOWED/.test(await text(page, "#cm-body")), "opened by address, they get a plain 'ask the owner' message"); await ctx.close(); }
+    await page.goto(BASE + "centre-money.html?id=c1"); await page.waitForSelector("#cm-inv .cm-block");
+    ok(/Issue invoices/.test(await text(page, "#cm-inv")) && !/NOT_ALLOWED/.test(await text(page, "#cm-inv")), "opened by address, they get a plain 'ask the owner' message"); await ctx.close(); }
   // a model that is not built yet
   { const { ctx, page } = await open(browser, Object.assign({ model: "prepaid_packages" }, OWNER));
-    await page.goto(BASE + "centre-money.html?id=c1&month=2026-10"); await page.waitForSelector(".cm-block");
+    await page.goto(BASE + "centre-money.html?id=c1&month=2026-10"); await page.waitForSelector("#cm-run .cm-block");
     ok(/Prepaid packages are coming soon/.test(await text(page, "#cm-body")) && await page.locator("#cm-go").count() === 0, "prepaid packages: 'coming soon', and no button to press"); await ctx.close(); }
   // review OFF: the run issues straight away
   { const { ctx, page } = await open(browser, Object.assign({ review: false }, OWNER));
@@ -190,7 +196,7 @@ const text = (page, sel) => page.locator(sel).innerText();
     await ctx.close(); }
   // the migration missing, a tutor-only login
   { const { ctx, page } = await open(browser, Object.assign({ missing: true }, OWNER));
-    await page.goto(BASE + "centre-money.html?id=c1"); await page.waitForSelector(".cm-block");
+    await page.goto(BASE + "centre-money.html?id=c1"); await page.waitForSelector("#cm-run .cm-block");
     ok(/migration_centre_invoice_run/.test(await text(page, "#cm-body")), "migration missing: a plain message names the file"); await ctx.close(); }
   { const { ctx, page } = await open(browser, { members: [M(C, "tutor")] });
     await page.goto(BASE + "centre-money.html?id=c1"); await page.waitForTimeout(1500);

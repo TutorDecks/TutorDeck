@@ -516,7 +516,7 @@ begin
            where a.invoice_id = p_invoice group by p.id) q;
   select coalesce(jsonb_agg(jsonb_build_object('id', n.id, 'number', n.number_text, 'issue_date', n.issue_date, 'total_cents', n.total_cents, 'reason', n.reason) order by n.number_seq), '[]'::jsonb) into cns
     from centre_invoices n where n.credits_invoice_id = p_invoice and n.status = 'issued';
-  return jsonb_build_object('id', r.id, 'status', r.status, 'number', r.number_text, 'name', r.nm, 'household_id', hh, 'student_id', r.student_id,
+  return jsonb_build_object('id', r.id, 'today', today, 'status', r.status, 'number', r.number_text, 'name', r.nm, 'household_id', hh, 'student_id', r.student_id,
     'period_start', r.period_start, 'period_end', r.period_end, 'issue_date', r.issue_date, 'due_date', r.due_date, 'kind', r.kind,
     'gst_registered', r.gst_registered, 'gst_rate_bp', r.gst_rate_bp, 'gst_inclusive', r.gst_inclusive,
     'net_cents', r.net_cents, 'gst_cents', r.gst_cents, 'total_cents', r.total_cents,
