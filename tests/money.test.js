@@ -61,3 +61,16 @@ test("discounts, proration, tutor pay", () => {
   assert.equal(M.divRound(5, 2), 3);
   assert.equal(M.divRound(-5, 2), -3);
 });
+
+// Shared vectors: tests/gst-vectors.csv is read by this test AND by tests/sql/centre_money_test.sql (the SQL function centre_gst_totals),
+// so the browser maths and the database maths cannot drift apart.
+test("GST vectors shared with the SQL function (tests/gst-vectors.csv)", () => {
+  const lines = require("node:fs").readFileSync(require("node:path").join(__dirname, "gst-vectors.csv"), "utf8").trim().split("\n");
+  assert.equal(lines[0], "name,subtotal_cents,rate_bp,inclusive,registered,net_cents,gst_cents,total_cents");
+  assert.ok(lines.length > 15, "enough vectors");
+  for (const row of lines.slice(1)) {
+    const [name, sub, rate, inc, reg, net, gst, total] = row.split(",");
+    const r = M.gstForInvoice(Number(sub), Number(rate), inc === "t", reg === "t");
+    assert.deepEqual(r, { net: Number(net), gst: Number(gst), total: Number(total) }, name);
+  }
+});
