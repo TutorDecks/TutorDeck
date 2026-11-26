@@ -36,7 +36,7 @@
     $("cp-list").innerHTML = !rows.length ? '<div class="card cm-block"><p class="cm-note">' + esc(CP.emptyText(filter, !!query.trim())) + '</p></div>' :
       '<div class="card cm-list">' + rows.map(function (x) {
         var i = list.rows.indexOf(x);
-        return '<button type="button" class="cm-row" data-i="' + i + '"><span class="cm-main"><span class="cm-name"><span class="cm-no">' + esc(x.number) + '</span> ' + esc(x.name) + (x.kind === "deposit" ? '<span class="cm-tag">Refundable deposit</span>' : '') + '</span>' +
+        return '<button type="button" class="cm-row" data-i="' + i + '"><span class="cm-main"><span class="cm-name"><span class="cm-no">' + esc(x.number) + '</span> ' + esc(x.name) + (x.kind === "deposit" ? '<span class="cm-tag">Refundable deposit</span>' : x.kind === "late_fee" ? '<span class="cm-tag">Late fee</span>' : '') + '</span>' +
           '<span class="cm-sub' + (x.pay_status === "overdue" ? ' warn' : '') + '">' + esc(CP.rowSub(x, today)) + '</span></span>' + chip(x.pay_status) +
           '<span class="cm-amt">' + esc(CM.money(CP.rowAmount(x))) + '</span>' + UI.chev() + '</button>';
       }).join("") + '</div>' + (more ? '<p class="cm-foot">Showing the newest ' + list.rows.length + '. Use the filters or search to find older ones.</p>' : '');

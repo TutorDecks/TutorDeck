@@ -26,7 +26,7 @@
   var CREDITS_SOON = "Make-up credits come in a later update; for now a make-up is added as a normal lesson.";
   // Centre money (T4, steps S0-S8): the options exist from S0 so owners can see what is coming; nothing reads them until their step ships.
   var DEPOSIT_HELP = "A refundable deposit is money you hold for the family, not income. It is invoiced separately, once, with a student's first invoice. When a student leaves, it is refunded, kept against unpaid invoices or kept by the centre, always approved and recorded step by step. A top-up, and using it as the final month's fee, come in a later update.";
-  var LATE_SOON = "Late fees come in a later update. Until then, TutorDeck adds nothing to an invoice for lateness.";
+  var LATE_HELP = "When a lesson invoice is still unpaid after its grace period, TutorDeck suggests a late fee. A person approves or waives each one (a reason is needed to waive); nothing is added to a family’s bill on its own. An approved fee is its own small invoice. Adding it as a line on the family’s next invoice comes in a later update.";
   var PAY_SOON = "Percentage pay and pay runs come in a later update.";
   var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
   // Field: { path, label, type, options?, help?, soon?, show?(s) }
@@ -122,20 +122,21 @@
       { path: "billing.deposit.refund_approved_by", label: "Refunds are approved by", type: "select", options: [
         o("owner", "The owner"), o("staff", "Any staff member who handles that kind of refund"), o("four_eyes", "Someone other than the person who asked")],
         help: "Deposit refunds are handled by the owner and staff who issue invoices; refunds of family credit by the owner and staff who record payments. A refund is paid and recorded only after it is approved." },
-      { type: "group", label: "Late fees", soon: true, help: LATE_SOON },
-      { path: "billing.late_fee.enabled", label: "Late fee", type: "toggle", soon: true },
-      { path: "billing.late_fee.repeat", label: "How often", type: "select", soon: true, options: [
+      { type: "group", label: "Late fees", help: LATE_HELP },
+      { path: "billing.late_fee.enabled", label: "Late fee", type: "toggle" },
+      { path: "billing.late_fee.repeat", label: "How often", type: "select", options: [
         o("none", "Never"), o("once", "Once per invoice"), o("monthly", "Every month the invoice stays unpaid")] },
-      { path: "billing.late_fee.type", label: "Late fee is", type: "select", soon: true, options: [
+      { path: "billing.late_fee.type", label: "Late fee is", type: "select", options: [
         o("fixed", "A fixed amount"), o("percent", "A percentage of what is still unpaid")] },
-      { path: "billing.late_fee.amount_cents", label: "Late fee amount", type: "money", soon: true },
-      { path: "billing.late_fee.percent_bp", label: "Late fee percentage", type: "percent", soon: true },
-      { path: "billing.late_fee.after_days", label: "Grace period after the due date (days)", type: "days", soon: true,
+      { path: "billing.late_fee.amount_cents", label: "Late fee amount", type: "money" },
+      { path: "billing.late_fee.percent_bp", label: "Late fee percentage", type: "percent" },
+      { path: "billing.late_fee.after_days", label: "Grace period after the due date (days)", type: "days",
         help: "Paying on the due date, or within this many days after it, is on time." },
-      { path: "billing.late_fee.cap_cents", label: "Most late fees one invoice can collect (0 = no limit)", type: "money", soon: true },
-      { path: "billing.late_fee.show_as", label: "A late fee is added as", type: "select", soon: true, options: [
-        o("next_invoice_line", "A line on the family's next invoice"), o("own_invoice", "Its own small invoice")] },
-      { path: "billing.late_fee.waived_by", label: "A late fee can be waived by", type: "select", soon: true, options: [
+      { path: "billing.late_fee.cap_cents", label: "Most late fees one invoice can collect (0 = no limit)", type: "money" },
+      { path: "billing.late_fee.show_as", label: "A late fee is added as", type: "select", options: [
+        o("next_invoice_line", "A line on the family's next invoice"), o("own_invoice", "Its own small invoice")],
+        soonOptions: ["next_invoice_line"] },
+      { path: "billing.late_fee.waived_by", label: "A late fee can be waived by", type: "select", options: [
         o("owner", "The owner"), o("issue_invoices", "Staff who issue invoices")],
         help: "TutorDeck suggests late fees; a person applies or waives each one. Make sure your terms for parents mention late fees." }
     ]},
@@ -244,7 +245,7 @@
         one_off_fees: { registration_cents: 0, deposit_cents: 0, materials_cents: 0 }, trials: { charged: false },
         deposit: { mode: "none", percent_bp: 5000, taxable: false, due: "with_first_invoice", waived_by: "owner", top_up: false, release: "admin_decides",
           forfeit_notice_days: 0, set_off_unpaid: false, final_month: false, refund_approved_by: "owner" },
-        late_fee: { enabled: false, repeat: "once", type: "fixed", amount_cents: 1000, percent_bp: 500, after_days: 7, cap_cents: 0, show_as: "next_invoice_line", waived_by: "owner" } },
+        late_fee: { enabled: false, repeat: "once", type: "fixed", amount_cents: 1000, percent_bp: 500, after_days: 7, cap_cents: 0, show_as: "own_invoice", waived_by: "owner" } },
       invoicing: { grouping: "family", generate: { mode: "day_of_month", day: 1, days_before: 7 }, due_days: 7, review_before_sending: true,
         delivery: { email: false, share_link: true },
         whatsapp_template: "Hi {name}, this is {centre}. Invoice {number} for {amount} is due on {due_date}.\nYou can see it and pay by PayNow here: {link}\nThank you!", reminders: { enabled: false, schedule: [-3, 0, 7] } },
