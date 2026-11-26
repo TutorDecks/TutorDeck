@@ -71,7 +71,7 @@
       var r = await window.sb.rpc("staff_generate_lessons", { p_org: orgId });
       if (r.error) { say(esc(SC.errorText(r.error)), "err"); return; }
       var m = SC.generateMessage(r.data);
-      say('<b>' + esc(m.head) + '</b>' + (m.more.length ? esc(m.more.join(" ")) : ""), "", '<button class="btn" type="button" id="sl-see">See the lessons</button>');
+      say('<b>' + esc(m.head) + '</b>' + (m.more.length ? '<span>' + esc(m.more.join(" ")) + '</span>' : ""), "", '<button class="btn" type="button" id="sl-see">See the lessons</button>');
       if (opts.lessonsChanged) opts.lessonsChanged();
       load();
     } finally { busy = false; b.disabled = false; b.textContent = old; }
@@ -191,7 +191,11 @@
       var rm = t.closest("[data-rm]");
       if (rm && form) { var j = form.students.indexOf(rm.dataset.rm); if (j >= 0) form.students.splice(j, 1); $("sf-chosen").innerHTML = chipsHtml(); pick($("sf-find") ? $("sf-find").value.trim() : ""); }
     });
+    var FIELD = { "sf-day": "weekday", "sf-start": "start", "sf-end": "end", "sf-subject": "subject", "sf-rate": "rate" };
+    function clearError(e) { var k = FIELD[e.target.id]; if (!k) return; var er = $("sf-e-" + k); if (er) er.hidden = true; var g = $("sf-e"); if (g) g.hidden = true; }
+    $("sl-sb").addEventListener("change", clearError);
     $("sl-sb").addEventListener("input", function (e) {
+      clearError(e);
       if (e.target.id === "sf-find") { var q = e.target.value.trim(); clearTimeout(timer); timer = setTimeout(function () { pick(q); }, 250); }
     });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("sl-sheet").classList.contains("on")) closeSheet(); });
