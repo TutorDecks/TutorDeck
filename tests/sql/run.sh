@@ -59,8 +59,12 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_timetable_test.sql
 $P -f db/migration_centre_money.sql
 $P -f db/migration_centre_money.sql                         # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_money_test.sql
+$P -f db/migration_centre_invoice_run.sql
+$P -f db/migration_centre_invoice_run.sql                   # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_invoice_run_test.sql
 $P -f db/migration_org_separation_down.sql
 $P -f db/migration_org_separation.sql                       # and again, so the shipped state is what the undo chain below unwinds
+$P -f db/migration_centre_invoice_run_down.sql
 $P -f db/migration_centre_money_down.sql
 $P -f db/migration_staff_timetable_down.sql
 $P -f db/migration_staff_trials_down.sql
