@@ -58,7 +58,7 @@ select staff_set_trial(t.id('LR'), true) as r \gset
 reset role;
 select t.ok((:'r'::jsonb->>'trial')::boolean and (select trial from lessons where id = t.id('LR')), 'staff with manage_timetable flag a lesson as a trial');
 select t.eq(pg_temp.n_active(), 1, 'Ravi''s only lesson this month is a trial, so he drops out of the active-student count');
-select t.ok((select before->>'trial' = 'false' and after->>'trial' = 'true' and actor = '00000000-0000-0000-0000-00000000a802' and created_at is not null
+select t.ok((select before->>'trial' = 'false' and after->>'trial' = 'true' and actor = '00000000-0000-0000-0000-00000000a802' and at is not null
                from audit_log where action = 'staff_set_trial' and row_id = t.id('LR')::text), 'an audit entry names who, when, the old and the new value');
 select t.as('00000000-0000-0000-0000-00000000a802'); set role authenticated;
 select staff_set_trial(t.id('LR'), false);
@@ -120,7 +120,7 @@ select t.ok((select attendance is null and status = 'scheduled' and rate = 55 an
 -- ===================================================================== trials_flagged_by governs TUTORS only; staff are never blocked
 -- value admin (the default): the tutor is refused, staff succeed
 select t.as('00000000-0000-0000-0000-00000000a804'); set role authenticated;
-select t.fails(format($q$ select tutor_mark_attendance(%L, null, null, null, null, true) $q$, t.id('LC')), 'admin setting: a tutor cannot unflag/flag');
+select t.fails(format($q$ select tutor_mark_attendance(%L, null, null, null, null, true) $q$, t.id('LM2')), 'admin setting: a tutor cannot flag a trial');
 select t.fails(format($q$ select tutor_mark_attendance(%L, null, null, null, null, false) $q$, t.id('LC')), 'admin setting: a tutor cannot unflag a trial either');
 reset role;
 select t.as('00000000-0000-0000-0000-00000000a802'); set role authenticated;

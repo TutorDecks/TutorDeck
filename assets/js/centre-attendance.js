@@ -39,7 +39,8 @@
     return '<button type="button" class="ca-row" data-id="' + esc(r.lesson_id) + '">' +
       '<span class="ca-time">' + esc(CA.timeLabel(r.start_time)) + (r.end_time ? '<span>' + esc(CA.timeLabel(r.end_time)) + '</span>' : '') + '</span>' +
       '<span class="ca-main"><span class="ca-name">' + esc(r.student_name) + (r.student_level ? ' · ' + esc(r.student_level) : '') + '</span>' +
-      '<span class="ca-sub' + (r.tutor_name ? '' : ' none') + '">' + tutor + (r.trial ? ' · Trial' : '') + '</span></span>' +
+      '<span class="ca-sub' + (r.tutor_name ? '' : ' none') + '">' + tutor + '</span></span>' +
+      (r.trial ? '<span class="ca-chip trial">Trial</span>' : '') +
       '<span class="ca-chip ' + c.tone + '">' + esc(c.text) + '</span>' +
       '<svg class="ca-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>';
   }
@@ -96,12 +97,19 @@
     $("ca-st").textContent = r.student_name;
     $("ca-sm").textContent = [CA.dayLabel(r.lesson_date, today), CA.timeRange(r)].join(" · ");
     html += '<div class="ca-h">Lesson</div><div class="ca-facts">' +
-      '<div><span>Status</span><span>' + esc(c.text) + (r.trial ? ' · Trial lesson' : '') + '</span></div>' +
+      '<div><span>Status</span><span>' + esc(c.text) + '' + '</span></div>' +
       (r.student_level ? '<div><span>Level</span><span>' + esc(r.student_level) + '</span></div>' : '') +
       (r.subject ? '<div><span>Subject</span><span>' + esc(r.subject) + '</span></div>' : '') +
       '<div><span>Tutor</span><span>' + (r.tutor_name ? esc(r.tutor_name) : 'No tutor yet') + '</span></div>' +
       (r.attendance != null ? '<div><span>Marked</span><span>' + esc(CA.markedLine(r).replace(/^Marked\s*/, "") || "Yes") + '</span></div>' : '') +
       (r.remarks ? '<div><span>Remarks</span><span>' + esc(r.remarks) + '</span></div>' : '') + '</div>';
+    // Trial: anyone may SEE it (badge above); only staff with manage_timetable get the switch (the database decides, can_mark tells us)
+    html += '<div class="ca-h">Trial lesson</div>' + (lastRes && lastRes.can_mark
+      ? '<label class="ca-opt ca-trial" for="ca-trial"><input type="checkbox" id="ca-trial"' + (r.trial ? ' checked' : '') + '><span>This is a trial lesson</span></label>'
+      : '<p class="ca-ro" style="margin-top:0">' + (r.trial ? 'This is a trial lesson.' : 'This is not a trial lesson.') + ' Ask the centre owner if you need to change it.</p>') +
+      '<p class="ca-note" style="margin-top:8px">' + esc(CA.TRIAL_HELP) + '</p>' +
+      (CA.pastMonthNote(r.lesson_date, today) ? '<p class="ca-note" style="margin-top:6px">' + esc(CA.pastMonthNote(r.lesson_date, today)) + '</p>' : '') +
+      '<div class="ca-err" id="ca-terr" role="alert"></div>';
     if (r.charge_pending) {
       var CH = window.CentreCharges, mine = CH && CH.enabled();
       html += '<p class="ca-pend">The charge for this lesson hasn’t been confirmed yet. ' + (mine ? '' : 'Whoever looks after invoicing sets it.') + '</p>' +
@@ -134,6 +142,26 @@
     if (r.error) { say("ca-merr", CA.errorText(r.error)); if (/NOT_FOUND|ALREADY_MARKED|CANCELLED|TOO_EARLY/.test(r.error.message || "")) load(); return; }
     TL.toast(name + " marked " + CA.mark(key).label.toLowerCase(), "ok");
     closeSheet(); await load();
+  }
+
+  // ---------------------------------------------------------------- the trial switch
+  async function doTrial(box) {
+    var want = box.checked, id = cur.lesson_id, name = cur.student_name;
+    say("ca-terr", ""); box.disabled = true;
+    var r = await window.sb.rpc("staff_set_trial", { p_lesson: id, p_trial: want });
+    box.disabled = false;
+    if (r.error) {
+      box.checked = !want;                                                          // nothing changed: show the truth
+      say("ca-terr", CA.isMissing(r.error) ? "Trial flags need db/migration_staff_trials.sql run first." : CA.errorText(r.error));
+      if (/NOT_FOUND|NO_CHANGE/.test(r.error.message || "")) load();
+      return;
+    }
+    TL.toast(name + (want ? " flagged as a trial lesson" : " is no longer a trial lesson"), "ok");
+    var res = await load();                                                         // the list (and the Trial count) now tell the truth
+    var fresh = find(id);
+    if (fresh && cur && cur.lesson_id === id) { cur = fresh; renderSheet(); }
+    else if (!fresh) closeSheet();                                                  // it left the current filter
+    return res;
   }
 
   // ---------------------------------------------------------------- correct a mark
@@ -175,6 +203,7 @@
     $("ca-sheet").addEventListener("click", function (e) { if (e.target === $("ca-sheet")) closeSheet(); });
     $("ca-sb").addEventListener("click", function (e) {
       if (!cur) return;
+      if (e.target.id === "ca-trial") { doTrial(e.target); return; }
       var m = e.target.closest("[data-mark]"); if (m) { doMark(m.dataset.mark); return; }
       if (e.target.id === "ca-correct") openCorrect();
       if (e.target.id === "ca-tocharges") { closeSheet(); window.CentreCharges.show(); }
@@ -196,7 +225,8 @@
     orgId = id;
     if (q.get("view") === "week") state.view = "week";
     if (CA.validISO(q.get("date"))) state.anchor = q.get("date");
-    if (q.get("f") === "unmarked" || q.get("f") === "marked") state.status = q.get("f");
+    if (q.get("f") === "unmarked" || q.get("f") === "marked" || q.get("f") === "trial") state.status = q.get("f");
+    if (q.get("view") === "month") state.view = "month";
     wire(); controls(); load();
     if (window.CentreCharges) window.CentreCharges.init(id, q.get("tab") === "charges" ? "charges" : "");   // adds the Charges tab only for people who may set charges (issue_invoices)
   }

@@ -170,7 +170,7 @@ const calls = (page, nm) => page.evaluate((n) => window.__calls.filter((c) => c[
     await a.click(); await page.waitForSelector(".cg-row"); ok(await page.locator(".cg-row").count() === 3, "…and the link lands on the queue"); await ctx.close(); }
   { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_timetable"])], noCharges: true });
     await page.goto(BASE + "centre.html?id=c1"); await page.waitForSelector(".ch-tile");
-    ok(await page.locator("a.ch-tile").count() === 0 && !/charge/.test(await page.locator("#ch").innerText()), "Home without issue_invoices: no charges tile at all"); await ctx.close(); }
+    ok(await page.locator("a.ch-tile[href*=\"tab=charges\"]").count() === 0 && !/charge/.test(await page.locator("#ch").innerText()), "Home without issue_invoices: no charges tile at all"); await ctx.close(); }
   await browser.close();
   console.log(fails ? fails + " FAILED" : "all passed"); process.exit(fails ? 1 : 0);
 })();

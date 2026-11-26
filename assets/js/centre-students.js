@@ -87,7 +87,7 @@
       (s.household ? '<div><span>Family</span><span>' + esc(s.household.name) + '</span></div>' : '') +
       ((s.subjects || []).length ? '<div><span>Subjects</span><span>' + esc(s.subjects.join(", ")) + '</span></div>' : '') +
       (s.notes ? '<div><span>Notes</span><span>' + esc(s.notes) + '</span></div>' : '') + '</div>';
-    if (s.trial) html += '<p class="cs-trial">Has a trial lesson in the last 30 days. Trial lessons are flagged on the lesson (coming in a later step).</p>';
+    if (s.trial) html += '<p class="cs-trial">Has a trial lesson in the last 30 days. To change it, open the lesson in Attendance.</p>';
     html += '<div class="cs-h">Parents and guardians</div>';
     if (!g.length) html += '<p class="cs-note">No contact yet. Use Edit to add a parent or guardian.</p>';
     html += g.map(function (c, i) {
@@ -246,6 +246,7 @@
     if (!id) { location.replace("home"); return; }                                                     // a solo login has no centre pages
     if (o && o.kind === "centre" && o.id === id && o.role === "tutor") { location.replace("tutor"); return; }
     orgId = id;
+    if (["active", "ended", "trial", "all"].indexOf(q.get("f")) >= 0) state.filter = q.get("f");
     wire(); tabs(); load();
   }
   TL.requireAuth("centre-students", init);

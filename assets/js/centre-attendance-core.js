@@ -17,13 +17,20 @@
     { key: "cancelled_early", label: "Cancelled in time",     short: "Cancelled",       tone: "muted" }
   ];
   function mark(key) { for (var i = 0; i < MARKS.length; i++) if (MARKS[i].key === key) return MARKS[i]; return null; }
-  var STATUS_FILTERS = [{ key: "all", label: "All" }, { key: "unmarked", label: "Not marked" }, { key: "marked", label: "Marked" }];
+  var STATUS_FILTERS = [{ key: "all", label: "All" }, { key: "unmarked", label: "Not marked" }, { key: "marked", label: "Marked" }, { key: "trial", label: "Trial" }];
 
   // ---- days: a view is one day or one Monday–Sunday week, anchored on any date in it (ISO yyyy-mm-dd) ----
   function addDays(iso, n) { var d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
   function weekStart(iso) { var wd = new Date(iso + "T00:00:00Z").getUTCDay(); return addDays(iso, -((wd + 6) % 7)); }   // Monday
-  function range(view, anchor) { return view === "week" ? { from: weekStart(anchor), to: addDays(weekStart(anchor), 6) } : { from: anchor, to: anchor }; }
-  function shift(view, anchor, dir) { return addDays(anchor, (view === "week" ? 7 : 1) * dir); }
+  function monthStart(iso) { return iso.slice(0, 8) + "01"; }
+  function monthEnd(iso) { var d = new Date(monthStart(iso) + "T00:00:00Z"); d.setUTCMonth(d.getUTCMonth() + 1); d.setUTCDate(0); return d.toISOString().slice(0, 10); }
+  function addMonths(iso, n) { var d = new Date(monthStart(iso) + "T00:00:00Z"); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); }   // the 1st of the month n months on
+  // a view is one day, one Monday–Sunday week or one calendar month (31 days at most, well inside the database's 62-day limit)
+  function range(view, anchor) {
+    if (view === "month") return { from: monthStart(anchor), to: monthEnd(anchor) };
+    return view === "week" ? { from: weekStart(anchor), to: addDays(weekStart(anchor), 6) } : { from: anchor, to: anchor };
+  }
+  function shift(view, anchor, dir) { return view === "month" ? addMonths(anchor, dir) : addDays(anchor, (view === "week" ? 7 : 1) * dir); }
   var WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   function parts(iso) { var d = new Date(iso + "T00:00:00Z"); return { wd: WD[d.getUTCDay()], d: d.getUTCDate(), m: MO[d.getUTCMonth()], y: d.getUTCFullYear() }; }
   function dayLabel(iso, today) {                      // "Today · Wed 25 Nov"
@@ -33,7 +40,9 @@
     if (iso === addDays(today, -1)) return "Yesterday · " + base;
     return base;
   }
+  var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   function rangeLabel(view, anchor, today) {
+    if (view === "month") { var pm = parts(anchor); return MONTHS[MO.indexOf(pm.m)] + " " + pm.y; }
     if (view !== "week") return dayLabel(anchor, today);
     var r = range("week", anchor), a = parts(r.from), b = parts(r.to);
     return a.d + " " + a.m + " – " + b.d + " " + b.m + (a.y === b.y ? "" : " " + b.y);
@@ -98,10 +107,20 @@
   // The marks a correction can change TO (everything except what it is now)
   function otherMarks(current) { return MARKS.filter(function (m) { return m.key !== current; }); }
 
+  // ---- trial flag ----
+  // A lesson in an EARLIER month than today's: a fee already worked out for that month is not recomputed (the sheet says so).
+  function pastMonthNote(lessonDate, today) {
+    if (!lessonDate || !today || String(lessonDate).slice(0, 7) >= String(today).slice(0, 7)) return "";
+    return "This lesson is in an earlier month. A fee already worked out for that month does not change.";
+  }
+  // The same one-line explanation the sheet shows under the toggle
+  var TRIAL_HELP = "A trial lesson doesn’t count towards the centre’s fee.";
+
   // ---- the database's refusals, in plain words ----
   function errorText(err) {
     var m = String((err && err.message) || err || "");
     var map = [
+      [/NO_CHANGE: the lesson is already (a trial|not a trial)/, "That lesson was already changed. Refresh the list."],
       [/NOT_ALLOWED/, "Your account can’t mark attendance at this centre."],
       [/NOT_FOUND/, "That lesson isn’t available any more. Refresh the list and try again."],
       [/TOO_EARLY/, "A lesson can be marked from its day onward, not before."],
@@ -130,15 +149,16 @@
     return from + "–" + to + " of " + total;
   }
   function emptyText(filter, view) {
-    var when = view === "week" ? "this week" : "this day";
+    var when = view === "month" ? "this month" : view === "week" ? "this week" : "this day";
     if (filter === "unmarked") return { title: "Nothing left to mark", hint: "Every lesson that has started " + when + " has a mark." };
+    if (filter === "trial") return { title: "No trial lessons " + when, hint: "Lessons flagged as a trial appear here." };
     if (filter === "marked") return { title: "Nothing marked yet", hint: "Marked lessons " + when + " appear here." };
     return { title: "No lessons " + when, hint: "Lessons made from the timetable appear here." };
   }
 
   return { PAGE_SIZE: PAGE_SIZE, REASON_MAX: REASON_MAX, REMARKS_MAX: REMARKS_MAX, MARKS: MARKS, STATUS_FILTERS: STATUS_FILTERS, mark: mark,
-           addDays: addDays, weekStart: weekStart, range: range, shift: shift, dayLabel: dayLabel, rangeLabel: rangeLabel, validISO: validISO,
+           addDays: addDays, addMonths: addMonths, monthStart: monthStart, monthEnd: monthEnd, weekStart: weekStart, range: range, shift: shift, dayLabel: dayLabel, rangeLabel: rangeLabel, validISO: validISO,
            timeLabel: timeLabel, timeRange: timeRange, chip: chip, actions: actions, markedLine: markedLine, byDay: byDay,
            checkMark: checkMark, checkCorrection: checkCorrection, otherMarks: otherMarks, errorText: errorText, isMissing: isMissing,
-           pageCount: pageCount, pagerLabel: pagerLabel, emptyText: emptyText };
+           pastMonthNote: pastMonthNote, TRIAL_HELP: TRIAL_HELP, pageCount: pageCount, pagerLabel: pagerLabel, emptyText: emptyText };
 });

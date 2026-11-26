@@ -1124,6 +1124,7 @@ html[data-theme="dark"] .ca-sub.none{color:var(--warn)}
 html[data-theme="dark"] .ca-chip{background:#282F3C;color:var(--muted)}
 html[data-theme="dark"] .ca-chip.ok{background:rgba(15,118,110,0.228);color:var(--accent-ink)}
 html[data-theme="dark"] .ca-chip.warn{background:rgba(180,83,9,0.228);color:var(--warn)}
+html[data-theme="dark"] .ca-chip.trial{background:rgba(154,175,211,0.152);color:var(--ink)}
 html[data-theme="dark"] .ca-chev{color:#767A83}
 html[data-theme="dark"] .ca-empty{color:var(--muted)}
 html[data-theme="dark"] .ca-empty h3{color:var(--ink)}

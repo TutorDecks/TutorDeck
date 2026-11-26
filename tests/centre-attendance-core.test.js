@@ -110,3 +110,32 @@ test("paging words and empty states", () => {
   assert.match(C.emptyText("unmarked", "day").title, /Nothing left to mark/); assert.match(C.emptyText("all", "week").title, /this week/);
   assert.ok(C.PAGE_SIZE >= 1 && C.PAGE_SIZE <= 100);                                              // the database refuses more than 100
 });
+
+// ---- T3 step 5: trial flag ----
+test("the Trial filter exists and says what is empty", () => {
+  assert.ok(C.STATUS_FILTERS.some(f => f.key === "trial" && f.label === "Trial"));
+  assert.strictEqual(C.emptyText("trial", "week").title, "No trial lessons this week");
+  assert.strictEqual(C.emptyText("trial", "month").title, "No trial lessons this month");
+  assert.strictEqual(C.emptyText("all", "month").title, "No lessons this month");
+});
+test("a month view covers the whole calendar month and steps by months", () => {
+  assert.deepStrictEqual(C.range("month", "2026-11-26"), { from: "2026-11-01", to: "2026-11-30" });
+  assert.deepStrictEqual(C.range("month", "2028-02-10"), { from: "2028-02-01", to: "2028-02-29" });
+  assert.deepStrictEqual(C.range("month", "2026-12-31"), { from: "2026-12-01", to: "2026-12-31" });
+  assert.strictEqual(C.shift("month", "2026-11-26", 1), "2026-12-01");
+  assert.strictEqual(C.shift("month", "2026-01-15", -1), "2025-12-01");
+  assert.strictEqual(C.rangeLabel("month", "2026-11-26", "2026-11-26"), "November 2026");
+  assert.ok(C.range("month", "2026-12-15").to > C.range("month", "2026-12-15").from);
+  const r = C.range("month", "2026-12-15"); assert.ok((new Date(r.to) - new Date(r.from)) / 86400000 <= 62);
+});
+test("a lesson in an earlier month gets the 'fee does not change' note; this month's does not", () => {
+  assert.ok(/earlier month/.test(C.pastMonthNote("2026-10-30", "2026-11-26")));
+  assert.strictEqual(C.pastMonthNote("2026-11-01", "2026-11-26"), "");
+  assert.strictEqual(C.pastMonthNote("2026-12-01", "2026-11-26"), "");
+  assert.strictEqual(C.pastMonthNote("", "2026-11-26"), "");
+  assert.ok(/fee/.test(C.TRIAL_HELP));
+});
+test("a stale trial toggle says so in plain words", () => {
+  assert.ok(/already changed/.test(C.errorText({ message: "NO_CHANGE: the lesson is already a trial lesson" })));
+  assert.ok(/NOT_ALLOWED|can.t mark/.test("NOT_ALLOWED") && /can’t mark/.test(C.errorText({ message: "NOT_ALLOWED: your account can't mark attendance at this centre" })));
+});

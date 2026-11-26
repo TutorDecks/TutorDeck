@@ -41,7 +41,7 @@
       out.push('<div class="ch-h">Needs attention</div><div class="ch-grid">' + tile(h.pending_charges, plural(h.pending_charges, "charge to confirm", "charges to confirm"), true, "centre-attendance?id=" + encodeURIComponent(h.org_id) + "&tab=charges") + '</div>');
     }
     var more = (h.can.students ? tile(h.students_active, plural(h.students_active, "active student", "active students")) : "") +
-               (tt ? tile(h.trials_this_month, plural(h.trials_this_month, "trial lesson this month", "trial lessons this month")) : "");
+               (tt ? tile(h.trials_this_month, plural(h.trials_this_month, "trial lesson this month", "trial lessons this month"), false, "centre-attendance?id=" + encodeURIComponent(h.org_id) + "&f=trial&view=month") : "");
     if (more) out.push('<div class="ch-h">At a glance</div><div class="ch-grid">' + more + '</div>');
     if (!tt && !h.can.students && !h.can.charges)
       out.push('<div class="card panel"><p class="ch-note" style="margin:0">Your account doesn’t have any centre screens switched on yet. Ask the centre owner to give you access to students or the timetable.</p></div>');
