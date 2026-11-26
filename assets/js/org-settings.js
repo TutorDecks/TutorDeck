@@ -25,7 +25,7 @@
   // Nothing in the app reads these settings yet (T18 plan, 2026-11-24): shown as "coming soon" so the wizard promises nothing it does not do.
   var CREDITS_SOON = "Make-up credits come in a later update; for now a make-up is added as a normal lesson.";
   // Centre money (T4, steps S0-S8): the options exist from S0 so owners can see what is coming; nothing reads them until their step ships.
-  var DEPOSIT_HELP = "A refundable deposit is money you hold for the family, not income. It is invoiced separately, once, with a student's first invoice. Refunding it comes in a later update.";
+  var DEPOSIT_HELP = "A refundable deposit is money you hold for the family, not income. It is invoiced separately, once, with a student's first invoice. When a student leaves, it is refunded, kept against unpaid invoices or kept by the centre, always approved and recorded step by step. A top-up, and using it as the final month's fee, come in a later update.";
   var LATE_SOON = "Late fees come in a later update. Until then, TutorDeck adds nothing to an invoice for lateness.";
   var PAY_SOON = "Percentage pay and pay runs come in a later update.";
   var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
@@ -112,15 +112,16 @@
         help: "Waiving always needs a reason." },
       { path: "billing.deposit.top_up", label: "Ask for a top-up when the required deposit goes up", type: "toggle", soon: true,
         help: "For example a returning student, or a fee increase." },
-      { path: "billing.deposit.release", label: "When a student leaves, TutorDeck suggests", type: "select", soon: true, options: [
-        o("refund_full", "Refunding the whole deposit"), o("refund_less_unpaid", "Refunding it minus any unpaid invoices"), o("admin_decides", "Nothing, an admin decides")] },
-      { path: "billing.deposit.forfeit_notice_days", label: "Notice needed to get the deposit back (days, 0 = none needed)", type: "days", soon: true,
+      { path: "billing.deposit.release", label: "When a student leaves, TutorDeck suggests", type: "select", options: [
+        o("refund_full", "Refunding the whole deposit"), o("refund_less_unpaid", "Keeping it against any unpaid invoices, refunding the rest"), o("admin_decides", "Nothing, an admin decides")],
+        help: "Only a suggestion: staff can change the amounts, and the refund still needs approval. A deposit that carried GST is refunded, never kept against invoices." },
+      { path: "billing.deposit.forfeit_notice_days", label: "Notice needed to get the deposit back (days, 0 = none needed)", type: "days",
         help: "Leaving with less notice suggests keeping the deposit. An admin always confirms." },
       { path: "billing.deposit.set_off_unpaid", label: "Staff may use the deposit to cover unpaid fees", type: "toggle", soon: true },
       { path: "billing.deposit.final_month", label: "Family may use the deposit as the final month's fee", type: "toggle", soon: true },
-      { path: "billing.deposit.refund_approved_by", label: "Deposit refunds are approved by", type: "select", soon: true, options: [
-        o("owner", "The owner"), o("staff", "Any staff member who records payments"), o("four_eyes", "Someone other than the person who asked")],
-        help: "Staff request a refund; it is paid and recorded only after it is approved." },
+      { path: "billing.deposit.refund_approved_by", label: "Refunds are approved by", type: "select", options: [
+        o("owner", "The owner"), o("staff", "Any staff member who handles that kind of refund"), o("four_eyes", "Someone other than the person who asked")],
+        help: "Deposit refunds are handled by the owner and staff who issue invoices; refunds of family credit by the owner and staff who record payments. A refund is paid and recorded only after it is approved." },
       { type: "group", label: "Late fees", soon: true, help: LATE_SOON },
       { path: "billing.late_fee.enabled", label: "Late fee", type: "toggle", soon: true },
       { path: "billing.late_fee.repeat", label: "How often", type: "select", soon: true, options: [

@@ -99,6 +99,7 @@
     var acts = '';
     if (can.record_payments && a.balance_cents > 0) acts += '<button type="button" class="btn btn-primary" id="cp-pay">Record payment</button>';
     if (can.issue_invoices && CP.creditLeft(a) > 0) acts += '<button type="button" class="btn" id="cp-credit">Issue credit note</button>';
+    if (can.record_payments && a.credit_balance_cents > 0 && a.household_id && window.CentreRefunds) acts += '<button type="button" class="btn" id="cp-famcredit">Use or refund the family’s credit</button>';
     if (can.issue_invoices && rules.share_link) {
       acts += '<button type="button" class="btn" id="cp-copy">Copy link</button>';
       if (a.balance_cents > 0) acts += '<button type="button" class="btn" id="cp-wa">Send on WhatsApp</button>';
@@ -109,6 +110,7 @@
     $("cm-sb").innerHTML = h;
     sheetMsg(msg && msg.text, msg && msg.bad);
     var b = function (id, fn) { var e = $(id); if (e) e.addEventListener("click", fn); };
+    b("cp-famcredit", function () { window.CentreRefunds.creditMenu(a, null, function (m) { open(a.id, true, m); }); });
     b("cp-pay", payForm); b("cp-credit", creditForm); b("cp-copy", function () { copyLink(false); }); b("cp-wa", whatsapp); b("cp-newlink", function () { copyLink(true); });
     $("cm-sb").querySelectorAll("[data-rev]").forEach(function (e) { e.addEventListener("click", function () { reverse(a.payments[+e.dataset.rev]); }); });
   }
@@ -219,5 +221,5 @@
     if (!cur.share || !d.phone) open(cur.id, true, d.phone ? null : { text: noPhone });
   }
 
-  window.CentrePay = { show: show, open: function (id, trigger) { UI = window.CentreMoneyUI; orgId = UI.orgId(); today = today || UI.localToday(); if (!built) frame(); return open(id, trigger); } };      // frame(): an invoice opened from another tab still refreshes this tab's list afterwards
+  window.CentrePay = { show: show, refresh: function () { if (built) load(); }, open: function (id, trigger) { UI = window.CentreMoneyUI; orgId = UI.orgId(); today = today || UI.localToday(); if (!built) frame(); return open(id, trigger); } };      // frame(): an invoice opened from another tab still refreshes this tab's list afterwards
 })();

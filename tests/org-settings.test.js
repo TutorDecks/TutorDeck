@@ -128,7 +128,7 @@ test("T4 S0: every new yes/no and number has the same limits in the form and in 
 test("T4 S0/S4: late-fee, trial, percentage-pay and deposit-release options are 'coming soon' until their step ships (honesty)", () => {
   const soonPaths = ["billing.trials.charged", "billing.late_fee.enabled", "billing.late_fee.amount_cents", "billing.late_fee.after_days",
     "billing.deposit.top_up",
-    "billing.deposit.release", "billing.deposit.forfeit_notice_days", "billing.deposit.set_off_unpaid", "billing.deposit.final_month", "billing.deposit.refund_approved_by",
+    "billing.deposit.set_off_unpaid", "billing.deposit.final_month",
     "billing.late_fee.repeat", "billing.late_fee.type", "billing.late_fee.percent_bp", "billing.late_fee.cap_cents", "billing.late_fee.show_as", "billing.late_fee.waived_by",
     "tutor_pay.percent_base", "tutor_pay.part_payments", "tutor_pay.cancelled_lessons", "tutor_pay.group_count", "tutor_pay.rates_note"];
   for (const p of soonPaths) assert.equal(field(p).soon, true, p + " must be soon");
@@ -139,6 +139,8 @@ test("T4 S0/S4: late-fee, trial, percentage-pay and deposit-release options are 
   for (const g of S.STEPS.flatMap((s) => s.fields).filter((f) => f.type === "group")) { if (g.label !== "Refundable deposit") assert.equal(g.soon, true, g.label); assert.match(g.help, /later update/); }
   // T4 S4: what the invoice run now does with deposits is NOT 'soon'
   for (const p of ["billing.deposit.mode", "billing.one_off_fees.deposit_cents", "billing.deposit.percent_bp", "billing.deposit.taxable", "billing.deposit.due", "billing.deposit.waived_by"]) assert.ok(!field(p).soon, p + " is built in S4");
+  // T4 S5: release, the forfeit notice and who approves a refund are built (refunds, family credit, keeping a deposit)
+  for (const p of ["billing.deposit.release", "billing.deposit.forfeit_notice_days", "billing.deposit.refund_approved_by"]) assert.ok(!field(p).soon, p + " is built in S5");
   // the fixed amount is only asked for in fixed mode, the percentage only in percent mode
   const d = S.defaults("centre");
   d.billing.deposit.mode = "none"; assert.ok(!field("billing.one_off_fees.deposit_cents").show(d) && !field("billing.deposit.percent_bp").show(d));

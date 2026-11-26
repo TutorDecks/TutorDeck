@@ -2,10 +2,11 @@
 // one or all. Every read and write goes through database functions (centre_invoice_run_preview, _create_drafts, centre_invoice_list, _get,
 // _approve, _approve_all, _discard_draft, _numbering); this page never touches a table. Who may, what is billed and the numbers are decided there
 // (db/migration_centre_invoice_run.sql); assets/js/centre-money-core.js only words the answers and saves a round trip.
-//   centre-money?id=<centre>[&month=yyyy-mm][&tab=invoices|deposits]
+//   centre-money?id=<centre>[&month=yyyy-mm][&tab=invoices|deposits|refunds]
 // S3 adds a second tab, Invoices & payments (assets/js/centre-payments.js): this file owns the tabs, the message line and the side sheet, and
 // hands an issued invoice to window.CentrePay (record payment, credit note, reverse, share link, WhatsApp).
 // S4 adds a third tab, Deposits (assets/js/centre-deposits.js, window.CentreDeposits), and a "Refundable deposits" section in the run's preview.
+// S5 adds a fourth tab, Refunds (assets/js/centre-refunds.js, window.CentreRefunds): deposit refunds, family-credit refunds and using credit on an invoice.
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
@@ -130,7 +131,7 @@
     prev = pv.data; today = pv.data.today; invs = (ls.data && ls.data.rows) || []; numb = nb.error ? null : nb.data;
     draw(); syncUrl();
   }
-  function syncUrl() { try { history.replaceState(null, "", location.pathname + "?" + (tab === "inv" ? "id=" + encodeURIComponent(orgId) + "&tab=invoices" : tab === "dep" ? "id=" + encodeURIComponent(orgId) + "&tab=deposits" : CM.toQuery(orgId, month))); } catch (e) {} }
+  function syncUrl() { try { history.replaceState(null, "", location.pathname + "?" + (tab === "inv" ? "id=" + encodeURIComponent(orgId) + "&tab=invoices" : tab === "dep" ? "id=" + encodeURIComponent(orgId) + "&tab=deposits" : tab === "ref" ? "id=" + encodeURIComponent(orgId) + "&tab=refunds" : CM.toQuery(orgId, month))); } catch (e) {} }
 
   // ---------------------------------------------------------------- actions
   async function act(fn) {
@@ -226,7 +227,7 @@
   }
 
   // ---------------------------------------------------------------- tabs
-  var TABS = ["run", "inv", "dep"];
+  var TABS = ["run", "inv", "dep", "ref"];
   function setTab(name, focus) {
     tab = TABS.indexOf(name) > -1 ? name : "run";
     var run = tab === "run";
@@ -236,6 +237,7 @@
     if (run && !ranRun) { ranRun = true; load(); } else if (run) syncUrl();
     if (tab === "inv") { if (window.CentrePay) window.CentrePay.show(); syncUrl(); }
     if (tab === "dep") { if (window.CentreDeposits) window.CentreDeposits.show(); syncUrl(); }
+    if (tab === "ref") { if (window.CentreRefunds) window.CentreRefunds.show(); syncUrl(); }
   }
 
   // ---------------------------------------------------------------- wiring
@@ -243,6 +245,7 @@
     $("cm-tab-run").addEventListener("click", function () { setTab("run"); });
     $("cm-tab-inv").addEventListener("click", function () { setTab("inv"); });
     $("cm-tab-dep").addEventListener("click", function () { setTab("dep"); });
+    $("cm-tab-ref").addEventListener("click", function () { setTab("ref"); });
     $("cm").querySelector(".cm-tabs").addEventListener("keydown", function (e) {
       if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); setTab(TABS[(TABS.indexOf(tab) + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length], true); }
     });
@@ -268,7 +271,7 @@
     orgId = id;
     var st = CM.fromQuery(location.search); urlMonth = !!st.month;
     month = st.month || CM.defaultMonth(localToday(), "postpaid_lessons");
-    tab = q.get("tab") === "invoices" ? "inv" : q.get("tab") === "deposits" ? "dep" : "run";
+    tab = q.get("tab") === "invoices" ? "inv" : q.get("tab") === "deposits" ? "dep" : q.get("tab") === "refunds" ? "ref" : "run";
     wire(); nav();
     setTab(tab);
   }

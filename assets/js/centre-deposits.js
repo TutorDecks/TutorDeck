@@ -104,11 +104,13 @@
     var acts = '';
     if (s.invoice_id && s.invoice_status === "issued" && window.CentrePay && s.state !== "waived") acts += '<button type="button" class="btn btn-primary" id="cd-inv">' + (s.short_cents > 0 ? 'Open the invoice to record a payment' : 'Open the invoice') + '</button>';
     if (CD.canWaive(s)) acts += '<button type="button" class="btn" id="cd-waive">Waive this deposit</button>';
+    if (s.held_cents > 0 && window.CentreRefunds) acts += '<button type="button" class="btn" id="cd-release">Release or refund the deposit</button>';
     h += acts ? '<div class="cm-acts col">' + acts + '</div>' : '';
     h += '<p class="cm-note">A deposit is held for the family and can’t be edited. A mistake is corrected with a new entry, never by changing an old one.</p>';
     $("cm-sb").innerHTML = h; sheetMsg(msg && msg.text, msg && msg.bad);
     var b = function (id, fn) { var e = $(id); if (e) e.addEventListener("click", fn); };
     b("cd-waive", waive);
+    b("cd-release", function () { window.CentreRefunds.releaseDeposit(s.student_id, d.name, null, function () { open(s.student_id, true); }); });
     b("cd-inv", function () { window.CentrePay.open(s.invoice_id, $("cd-inv")); });
   }
   async function waive() {
@@ -169,5 +171,5 @@
     var text = CD.openingText(pick.name, c.cents); toast(text); UI.closeSheet(); load(text);
   }
 
-  window.CentreDeposits = { show: show, open: function (id, trigger) { UI = window.CentreMoneyUI; orgId = UI.orgId(); return open(id, trigger); } };
+  window.CentreDeposits = { show: show, refresh: function () { if (built) load(); }, open: function (id, trigger) { UI = window.CentreMoneyUI; orgId = UI.orgId(); return open(id, trigger); } };
 })();
