@@ -19,7 +19,7 @@ Use a private window per login (or sign out in between). One line per step: **wh
 ## A. Centre Home and menu (owner, staff, front desk)
 1. [ ] Sign in as `centre.owner@` → you land on the **Centre home**. Menu: Home · Timetable · Students · Attendance · Money, then More. Tiles show counts only (lessons today, marked, to mark, no tutor next 14 days, charges to confirm, trials this month, active students). No money amounts on Home.
 2. [ ] More → **Centre settings** and **Your centres** are there.
-3. [ ] Sign in as `centre.frontdesk@` → Home shows only the student count; the menu shows **Students** only (no Timetable, Attendance, Money).
+3. [ ] Sign in as `centre.frontdesk@` → Home shows only the student count; the menu is Home · Timetable (look only, no editing) · Students. **No Attendance, no Money.** Typing the Attendance address gives a plain "not available".
 4. [ ] Sign in as `centre.staff@` → every tab is there, including Money.
 5. [ ] As `centre.staff@` → More → **Your centres** lists Demo Learning Centre; opening it works.
 
@@ -110,6 +110,6 @@ Use a private window per login (or sign out in between). One line per step: **wh
 69. [ ] Solo tutors (`solo.tutor@`, `both.tutor@`) still see Home, Calendar, Planner, Ledger, Invoices, Students exactly as before.
 
 ## What to expect and not to worry about
-- Tutor sees **no price** anywhere; staff **without Issue invoices** have **no Money tab**; staff without Manage timetable have no Timetable/Attendance; a front-desk login sees only Students.
+- Tutor sees **no price** anywhere; staff **without Issue invoices** have **no Money tab**; a front-desk login has no Attendance and no Money (Timetable is look-only).
 - Still marked **soon** on purpose: deposits, late fees, percentage tutor pay, make-up credits, tutors editing their own timetable, remarks sent to parents, reminders by email, statement matching.
 - Anything that looks wrong: note the step number, the login, and a screenshot.

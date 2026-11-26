@@ -79,7 +79,7 @@ const tabs = (page, phone) => page.locator(phone ? ".tabbar a" : ".tn-links a").
   // full staff: same as owner
   { const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_timetable", "manage_students", "issue_invoices"])], home: FULL });
     await page.goto(BASE + "home"); await page.waitForURL(/centre\?id=c1/); await page.waitForSelector(".ch-tile");
-    ok((await tabs(page)).join("|") === "Home|Timetable|Students|Attendance", "staff (full): all four tabs");
+    ok((await tabs(page)).join("|") === "Home|Timetable|Students|Attendance|Money", "staff (full, with Issue invoices): five tabs, Money included (T4 S2)");
     ok(/6\s*\n?\s*lessons today/.test(await txt(page)), "staff (full): sees the same counts as the owner");
     ok(await page.locator(".org-sw").count() === 0, "staff: empty solo shell hidden, lands in the centre");
     ok(errs.length === 0, "staff (full): no console errors " + errs.join("|")); await ctx.close(); }
