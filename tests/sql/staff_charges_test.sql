@@ -135,6 +135,9 @@ select t.put('PO', pg_temp.mk('s8', -30, 'absent', t.id('mt')));
 select t.put('PO2', pg_temp.mk('s9', -45, 'absent', t.id('mt')));            -- before any version existed: today's rule applies
 insert into org_settings(org_id, version, schema_version, effective_from, settings, created_by)
   values (t.id('sc'), 90, 1, (select today - 40 from td), jsonb_set(t.centre_settings(), '{billing,absences}', '{"mode":"not_charged","notice_hours":24}'), '00000000-0000-0000-0000-00000000b801');
+-- a later version (5 days ago, same as the mode now in force) so that yesterday's lesson is governed by it, not by the 40-day-old one
+insert into org_settings(org_id, version, schema_version, effective_from, settings, created_by)
+  values (t.id('sc'), 91, 1, (select today - 5 from td), jsonb_set(t.centre_settings(), '{billing,absences}', '{"mode":"charged_unless_notice","notice_hours":24}'), '00000000-0000-0000-0000-00000000b801');
 select t.ok(pg_temp.sugg('PO') = '0' and pg_temp.sugg('P1') = '12345', 'the rule in force on the lesson''s own day decides: a 30-day-old lesson follows the older "not charged" version, yesterday''s follows today''s rule');
 select t.ok(pg_temp.sugg('PO2') = '12345', 'a lesson older than every settings version falls back to today''s rule');
 select t.ok((select compensation is null from lessons where id in (t.id('P1'), t.id('P2'), t.id('P3')) group by 1), 'a suggestion is only a suggestion: nothing was saved by showing it');
