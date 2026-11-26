@@ -1,0 +1,16 @@
+# DEV apply pack (T26 + T26b)
+1. Open the **DEV** Supabase project (`tuzxsqkfzrjssnpcoale`) → SQL Editor → New query. NEVER LIVE (part 9 makes demo logins with a known password).
+2. Paste the first block of `dev-apply-pack.sql` (up to "PART 1") and Run: it lists which earlier migrations are present and ends with `ready` or `NOT READY`. Fix anything `MISSING` first (the demo-seed line only matters for part 9).
+3. Paste the **whole** file and Run. The editor runs it as one batch: all-or-nothing, so a failure keeps nothing; search the file for the nearest `### PART` line above the reported error line.
+4. Expected result (last query): 30 `POST-CHECK` rows, every line `present`, then the OVERALL line. Running it again is safe and changes nothing.
+5. Parts, in dependency order (each header names its branch + file):
+   1 `staff_home` (t3-1) · 2 invite emails (t7-2) · 3 tutor profile / phone (t24c-1) · 4 tutor payout details (t24c-2 `migration_tutor_payout.sql`) ·
+   5 payout permission + centre list/reveal (t24c-3 `migration_payout_permission.sql`; redefines `org_invite` / `org_update_member`, so it must come after part 2) ·
+   6 centre students (t3-2 `migration_staff_students.sql`) · 7 centre attendance + `lessons_attendance_guard` trigger (t3-3 `migration_staff_attendance.sql`) ·
+   8 centre pending charges (t3-4 `migration_staff_charges.sql`; needs part 7) · 9 demo logins `centre.staff@` / `centre.frontdesk@example.test` (password in that seed file, needs the original demo seed's Demo Learning Centre).
+6. Not included: the tutor-leave migration (`migration_tutor_leave.sql`, t24c-5). Its branch did not exist on origin when this was built; rebuild the pack when it lands. (The payout-admin branch is named `claude/t24c-3-payout`.)
+7. Undo, newest first (files live on their branches until merged): `migration_staff_charges_down.sql`, `migration_staff_attendance_down.sql`, `migration_staff_students_down.sql`, `migration_payout_permission_down.sql`, `migration_tutor_payout_down.sql`, `migration_tutor_profile_down.sql`, `migration_invites_down.sql`, `migration_staff_home_down.sql`.
+8. Undo part 9: on DEV delete the two users (`delete from auth.users where email in ('centre.staff@example.test','centre.frontdesk@example.test')`); not needed otherwise, they are dummy.
+9. Tested on a throwaway Postgres: the 7 standard migrations (each with its own test), the demo seed, then the pack applied TWICE (second run changes nothing; schema fingerprint identical), then the branch tests run against the packed result: staff_home 29, invites 39, tutor_profile 28, tutor_payout 95, payout_permission 59, staff_students 155, staff_attendance 114, staff_charges 92 assertions all passed, then the eight undo files in the order above and the standard undo chain restored the baseline structure exactly.
+10. KNOWN ISSUE (not caused by the pack): `tests/sql/staff_charges_test.sql` line 138 (the "rule in force on the lesson's own day" assertion) fails on the `claude/t3-4-charges` branch's own `run.sh` too. I ran its other 92 assertions with only that one line neutralised in a scratch copy. Needs a look by whoever owns t3-4.
+11. Needs `extensions.crypt` (present on every Supabase project) for part 9.
