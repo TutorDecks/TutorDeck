@@ -76,6 +76,7 @@
     }
     h.can = h.can || {};
     if (tab === "timetable") { location.replace("centre-timetable?id=" + encodeURIComponent(id)); return; }   // (T3 step 6) an old link or bookmark; any owner / staff may look
+    if (tab === "money" && h.can.charges) { location.replace("centre-money?id=" + encodeURIComponent(id)); return; }   // (T4 S2) the invoice run; "charges" = may issue invoices
     if (tab === "students" && h.can.students) { location.replace("centre-students?id=" + encodeURIComponent(id)); return; }   // (T3 step 2) an old link or bookmark
     if (tab === "attendance" && (h.can.timetable || h.can.charges)) { location.replace("centre-attendance?id=" + encodeURIComponent(id)); return; }   // (T3 step 3) an old link or bookmark
     if (tab) soon(h, tab); else home(h);

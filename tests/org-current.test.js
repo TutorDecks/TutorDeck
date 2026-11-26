@@ -106,25 +106,25 @@ test("Home redirects only owners/admins whose current organisation is a centre",
 // ---- T3: the centre menu (Home · Timetable · Students · Attendance) follows the staff member's permissions ----
 const SF = (perms) => Object.assign({}, CB, { permissions: perms });   // a staff membership with these permissions
 const tabs = (rows) => OC.centreTabs(OC.list(rows).filter((o) => o.kind === "centre")[0]);
-test("owner gets all four tabs, and all four are built pages", () => {
+test("owner gets all five tabs, and all five are built pages", () => {
   const t = tabs([CA]);
-  assert.deepStrictEqual(t.map((x) => x.label), ["Home", "Timetable", "Students", "Attendance"]);
-  assert.deepStrictEqual(t.map((x) => x.soon), [false, false, false, false]);
-  assert.deepStrictEqual(t.map((x) => x.href), ["centre?id=c1", "centre-timetable?id=c1", "centre-students?id=c1", "centre-attendance?id=c1"]);
+  assert.deepStrictEqual(t.map((x) => x.label), ["Home", "Timetable", "Students", "Attendance", "Money"]);
+  assert.deepStrictEqual(t.map((x) => x.soon), [false, false, false, false, false]);
+  assert.deepStrictEqual(t.map((x) => x.href), ["centre?id=c1", "centre-timetable?id=c1", "centre-students?id=c1", "centre-attendance?id=c1", "centre-money?id=c1"]);
 });
 test("staff see only the tabs their permissions allow; Home is always there", () => {
   const labels = (p) => tabs([SF(p)]).map((x) => x.label);
-  assert.deepStrictEqual(labels(["manage_students", "manage_timetable", "issue_invoices"]), ["Home", "Timetable", "Students", "Attendance"]);
+  assert.deepStrictEqual(labels(["manage_students", "manage_timetable", "issue_invoices"]), ["Home", "Timetable", "Students", "Attendance", "Money"]);
   // Timetable is view-only for every owner / staff member (T3 plan §1: "Timetable: view = any owner / staff"); the other tabs follow permissions
   assert.deepStrictEqual(labels(["manage_students"]), ["Home", "Timetable", "Students"]);          // front desk
   assert.deepStrictEqual(labels(["manage_timetable"]), ["Home", "Timetable", "Attendance"]);
-  assert.deepStrictEqual(labels(["issue_invoices"]), ["Home", "Timetable", "Attendance"]);         // the Charges tab lives on the Attendance page (T3 step 4)
-  assert.deepStrictEqual(labels(["issue_invoices", "manage_students"]), ["Home", "Timetable", "Students", "Attendance"]);
+  assert.deepStrictEqual(labels(["issue_invoices"]), ["Home", "Timetable", "Attendance", "Money"]);   // the Charges tab lives on the Attendance page (T3 step 4); Money is the invoice run (T4 S2)
+  assert.deepStrictEqual(labels(["issue_invoices", "manage_students"]), ["Home", "Timetable", "Students", "Attendance", "Money"]);
   assert.deepStrictEqual(labels(["record_payments", "view_revenue"]), ["Home", "Timetable"]);      // other permissions open nothing else yet
   assert.deepStrictEqual(labels([]), ["Home", "Timetable"]);
 });
 test("staff with permissions not known yet (older remembered list): all tabs, the database still decides", () => {
-  assert.strictEqual(tabs([CB]).length, 4);
+  assert.strictEqual(tabs([CB]).length, 5);
   assert.deepStrictEqual(OC.list([CB])[0].perms, undefined);
   assert.deepStrictEqual(OC.list([SF(["manage_students", 5, null])])[0].perms, ["manage_students"]);
 });

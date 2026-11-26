@@ -71,7 +71,7 @@
     return org.role === "tutor" ? "tutor" : "centre?id=" + encodeURIComponent(org.id);
   }
 
-  // (T3) The centre menu for an owner or staff member: Home · Timetable · Students · Attendance (then the More sheet).
+  // (T3, T4) The centre menu for an owner or staff member: Home · Timetable · Students · Attendance · Money (then the More sheet).
   // A staff member only gets the tabs their permissions allow (owners get all); Timetable is view-only for every owner / staff. All four are built (`page` = its own page);
   // a tab not built yet would carry soon:true and open a clear "Coming next" page, never a dead link. perms = undefined means "not known yet" (an older remembered list): show the tab,
   // the database refuses what a person may not do anyway. Remove `soon` from a tab the day its screen exists.
@@ -79,7 +79,8 @@
     { id: "orghome", label: "Home",       ic: "home",     tab: "",           perm: null,               soon: false },
     { id: "orgtt",   label: "Timetable",  ic: "schedule", tab: "timetable",  perm: null,               soon: false, page: "centre-timetable" },   // viewing is for any owner / staff (T3 plan §1); editing will need manage_timetable
     { id: "orgst",   label: "Students",   ic: "students", tab: "students",   perm: "manage_students",  soon: false, page: "centre-students" },
-    { id: "orgatt",  label: "Attendance", ic: "check",    tab: "attendance", perm: ["manage_timetable", "issue_invoices"], soon: false, page: "centre-attendance" }   // issue_invoices alone: the Charges tab on that page
+    { id: "orgatt",  label: "Attendance", ic: "check",    tab: "attendance", perm: ["manage_timetable", "issue_invoices"], soon: false, page: "centre-attendance" },   // issue_invoices alone: the Charges tab on that page
+    { id: "orgmoney", label: "Money",    ic: "money",    tab: "money",      perm: "issue_invoices",   soon: false, page: "centre-money" }         // (T4 S2) the invoice run; only people who may issue invoices see it
   ];
   function can(org, perm) {                                   // perm: one permission name, or a list where ANY one is enough
     if (!perm || !org) return true;
