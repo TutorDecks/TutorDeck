@@ -37,11 +37,12 @@ window.TL = (function () {
   // A login that is ONLY a centre tutor (no students of their own) sees a one-page menu instead of the solo-tutor screens;
   // a solo tutor who also teaches at a centre gets "My lessons" in the More sheet. See roleMode() / detectRole().
   var TUTOR_GROUPS = [
-    { id: "tutor", label: "My lessons", ic: "schedule", pages: [ { id: "tutor", label: "My lessons", href: "tutor" } ] },
+    { id: "tutor", label: "My lessons", ic: "schedule", pages: [ { id: "tutor", label: "My lessons", href: "tutor" } ], also: ["tutor-settings"] },
     { id: "tutor-schedule", label: "Schedule", ic: "schedule", pages: [ { id: "tutor-schedule", label: "Schedule", href: "tutor-schedule" } ] }   // T6: read-only week + weekly slots
   ];
   var TUTOR_EXTRA = { id: "tutor", label: "My lessons", href: "tutor", ic: "schedule" };
   var TUTOR_SCHEDULE_EXTRA = { id: "tutor-schedule", label: "Schedule", href: "tutor-schedule", ic: "schedule" };
+  var TUTOR_SETTINGS_EXTRA = { id: "tutor-settings", label: "My tutor profile", href: "tutor-settings", ic: "settings" };   // T24c: profile and password of a centre tutor
   // Secondary destinations: sidebar footer on desktop, "More" sheet on phones.
   var EXTRA = [
     { id: "materials", label: "Materials", href: "https://mugcornersg.com", ic: "materials", ext: true, hint: "Materials on MugCorner (opens in a new tab)" },
@@ -109,7 +110,7 @@ window.TL = (function () {
   function mountShell(active, email, title, sub) {
     var pageId = active;   // the page's own id (the menu may show a centre's items instead, T12c)
     var mode = roleMode(), G = mode === "tutor-only" ? TUTOR_GROUPS : GROUPS;
-    var extras = (mode === "tutor-only" ? [] : mode === "both" ? [TUTOR_EXTRA, TUTOR_SCHEDULE_EXTRA].concat(EXTRA) : EXTRA)
+    var extras = (mode === "tutor-only" ? [] : mode === "both" ? [TUTOR_EXTRA, TUTOR_SCHEDULE_EXTRA, TUTOR_SETTINGS_EXTRA].concat(EXTRA) : EXTRA)
       .filter(function (n) { return !n.ownerOnly || isOwner; });
     if (mode !== "tutor-only" && inCentre()) { var cm = centreMenu(active); G = cm.groups; extras = cm.extras; active = cm.active; }   // T12c: a centre has its own menu
     var grp = groupOf(active, G);
@@ -315,7 +316,7 @@ window.TL = (function () {
   // owner/staff logins, not for a tutor under a centre). Everything else, Settings included, sends them to My lessons.
   // Returns the address to go to, or null to stay. Only a CONFIRMED "tutor-only" ever redirects: "solo", "both", null and
   // anything unexpected stay put, so no solo tutor can be moved by a doubt or an error.
-  var TUTOR_ONLY_PAGES = ["tutor", "tutor-schedule"];
+  var TUTOR_ONLY_PAGES = ["tutor", "tutor-schedule", "tutor-settings"];   // T24c: their own profile and password page; /settings stays closed
   function tutorOnlyRedirect(active, mode) {
     if (mode !== "tutor-only") return null;
     if (!active || TUTOR_ONLY_PAGES.indexOf(active) >= 0) return null;
@@ -717,6 +718,7 @@ window.TL = (function () {
                  org: ["Organisation", "Your tuition centre, set up your way"],
                  tutor: ["My lessons", "Your classes and attendance"],
                  "tutor-schedule": ["Schedule", "Your week and weekly slots"],
+                 "tutor-settings": ["Your settings", "Profile and password"],
                  exams: ["Exams", "Upcoming assessments"],
                  invoices: ["Invoices", "Saved invoices"],
                  materials: ["Teaching materials", "Your resource library"],

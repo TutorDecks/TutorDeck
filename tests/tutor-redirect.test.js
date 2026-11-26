@@ -22,6 +22,7 @@ test("tutor-only logins are sent to My lessons from every solo page", () => {
 });
 test("tutor-only logins may stay on My lessons only (no redirect loop); Settings now redirects", () => {
   assert.strictEqual(R("tutor", "tutor-only"), null);
+  assert.strictEqual(R("tutor-settings", "tutor-only"), null);   // T24c: their own profile and password page is allowed
   assert.strictEqual(R("settings", "tutor-only"), "tutor");
 });
 test("T6: the read-only Schedule is allowed for tutor-only logins; solo and both are never redirected from it", () => {

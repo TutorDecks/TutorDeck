@@ -7,6 +7,7 @@ const S = require("../assets/js/org-settings.js");
 const SQL = fs.readFileSync(require.resolve("../db/migration_org_foundation.sql"), "utf8");
 const MONEY = fs.readFileSync(require.resolve("../db/migration_money_settings.sql"), "utf8");   // T4 S0: the replacement validator
 const field = (path) => S.STEPS.flatMap((s) => s.fields).find((f) => f.path === path);
+const PAYOUT_SQL = fs.readFileSync(require.resolve("../db/migration_payout_permission.sql"), "utf8");
 
 test("defaults are valid once named, for both presets", () => {
   for (const preset of ["centre", "solo"]) {
@@ -40,9 +41,16 @@ test("enums agree with org_validate_settings() in the migration", () => {
   assert.deepEqual(opts("lessons.trials_flagged_by"), enumOf(/\{lessons,trials_flagged_by\}' not in \(([^)]*)\)/));
 });
 
-test("staff permissions agree with org_invite() in the migration", () => {
-  const sqlPerms = SQL.match(/where x not in \(([^)]*)\)/)[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1)).sort();
-  assert.deepEqual(S.STAFF_PERMISSIONS.map((p) => p.key).sort(), sqlPerms);
+test("staff permissions agree with org_invite() and org_update_member() in the latest migration", () => {
+  // the catalogue is checked in two places in db/migration_payout_permission.sql (invite and update); both must equal the JS list
+  const lists = [...PAYOUT_SQL.matchAll(/where x not in \(([^)]*)\)/g)].map((m) => m[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1)).sort());
+  assert.equal(lists.length, 2);
+  const js = S.STAFF_PERMISSIONS.map((p) => p.key).sort();
+  for (const l of lists) assert.deepEqual(js, l);
+  // the first migration's list is the older catalogue: every name in it is still valid
+  const old = SQL.match(/where x not in \(([^)]*)\)/)[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1));
+  for (const k of old) assert.ok(js.includes(k), k + " must stay valid");
+  assert.ok(js.includes("view_payout_details"));
 });
 
 test("validation catches bad values", () => {

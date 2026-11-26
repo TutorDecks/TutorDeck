@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>My lessons · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=340">
+<link rel="stylesheet" href="assets/css/app.css?v=281">
 <script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   /* ---- lesson detail sheet (same component as Exams / Ledger) ---- */
@@ -37,7 +37,10 @@
     .owe-head{border-radius:20px 20px 0 0;padding:10px 18px 12px}
   }
   /* ---- the list ---- */
-  .tt-sum{display:flex;align-items:baseline;gap:8px;font-size:14px;color:var(--muted);margin-bottom:4px}
+  .tt-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+  .tt-set{display:inline-flex;align-items:center;min-height:44px;font-size:14px;font-weight:700;color:var(--accent-ink);text-decoration:none}
+  .tt-set:hover{text-decoration:underline}
+  .tt-sum{display:flex;align-items:baseline;gap:8px;font-size:14px;color:var(--muted)}
   .tt-sum b{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.02em}
   .tt-list{display:flex;flex-direction:column;padding:0;overflow:hidden}
   .tt-day{padding:9px 16px 7px;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;background:var(--bg);border-top:1px solid var(--line)}
@@ -81,11 +84,11 @@
   .tt-ro{margin:0 0 14px;font-size:14px;white-space:pre-wrap}
   .tt-ro small{display:block;color:var(--muted);font-size:12.5px;font-weight:700;margin-bottom:2px}
 </style>
-<link rel="stylesheet" href="assets/css/dark.css?v=340">
+<link rel="stylesheet" href="assets/css/dark.css?v=281">
 </head>
 <body>
 <div id="view" data-page="tutor">
-  <div class="tt-sum" id="tt-sum" aria-live="polite">Loading your lessons…</div>
+  <div class="tt-top"><div class="tt-sum" id="tt-sum" aria-live="polite">Loading your lessons…</div><a class="tt-set" href="tutor-settings">Profile &amp; password</a></div>
   <div id="tt-lists"></div>
 
   <!-- lesson sheet -->
@@ -106,12 +109,12 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=340"></script>
-<script src="assets/js/supabase.js?v=340"></script>
-<script src="assets/js/org-current.js?v=340"></script>
-<script src="assets/js/org-scope.js?v=340"></script>
-<script src="assets/js/app.js?v=340"></script>
-<script src="assets/js/tutor-core.js?v=340"></script>
-<script src="assets/js/tutor.js?v=340"></script>
+<script src="assets/js/config.js?v=281"></script>
+<script src="assets/js/supabase.js?v=281"></script>
+<script src="assets/js/org-current.js?v=281"></script>
+<script src="assets/js/org-scope.js?v=281"></script>
+<script src="assets/js/app.js?v=281"></script>
+<script src="assets/js/tutor-core.js?v=281"></script>
+<script src="assets/js/tutor.js?v=281"></script>
 </body>
 </html>
