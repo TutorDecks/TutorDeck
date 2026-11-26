@@ -5,7 +5,7 @@
 -- EXPAND step; needs migration_org_foundation.sql first. Nothing existing changes: both new columns are optional /
 -- default false, so every page that doesn't know about them keeps working, and solo tutors' lessons stay untouched.
 --
--- TutorDeck's fee for centres = S$100 + S$0.40 × BILLABLE students, where billable = the previous month's ACTIVE
+-- TutorDeck's fee for centres = S$100 + S$0.50 × BILLABLE students (was S$0.40 until T30, migration_fee_050.sql), where billable = the previous month's ACTIVE
 -- students rounded to the nearest 10 (halves up; the rounding lives in assets/js/money.js, tested).
 -- ACTIVE student in a month (owner's definition): at least one NON-TRIAL lesson that month whose attendance is
 --   attended · absent · late_cancelled

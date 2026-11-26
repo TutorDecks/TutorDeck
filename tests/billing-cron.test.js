@@ -13,12 +13,12 @@ function reset(o) {
   writes = [];
   st = Object.assign({
     orgs: [{ id: ORG }], snapshots: [], active: { [ORG]: 403 },
-    plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 40, effective_from: "2026-10-01" }] },
+    plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 50, effective_from: "2026-10-01" }] },
     subs: { [ORG]: "sub_1" }, qty: { sub_1: 100 }, failStripePost: false }, o || {});
 }
 const stripeSub = (id) => ({ id, status: "active", currency: "sgd", items: { data: [
   { id: "si_base", quantity: 1, current_period_start: st.periodStart, price: { lookup_key: "centre_base_monthly", unit_amount: 10000 } },
-  { id: "si_stu", quantity: st.qty[id], current_period_start: st.periodStart, price: { lookup_key: "centre_student_monthly", unit_amount: 40 } }] } });
+  { id: "si_stu", quantity: st.qty[id], current_period_start: st.periodStart, price: { lookup_key: "centre_student_monthly", unit_amount: st.stuCents || 50 } }] } });
 global.fetch = async (url, opt) => {
   opt = opt || {}; const u = String(url), method = opt.method || "GET";
   const json = (code, obj) => ({ ok: code < 400, status: code, json: async () => obj, text: async () => JSON.stringify(obj) });
@@ -51,12 +51,12 @@ test("real run: counts last month, updates Stripe, writes the snapshot last", as
   reset();
   const r = await run("/api/billing-cron");
   assert.strictEqual(r.statusCode, 200); assert.strictEqual(r.body.month, MONTH); assert.strictEqual(r.body.counted_month, COUNTED);
-  assert.deepStrictEqual(r.body.centres[0], { org_id: ORG, active: 403, billable: 400, fee_cents: 26000, quantity_before: 100, result: "updated" });
+  assert.deepStrictEqual(r.body.centres[0], { org_id: ORG, active: 403, billable: 400, fee_cents: 30000, quantity_before: 100, result: "updated" });
   assert.deepStrictEqual(writes.map((w) => w[0]), ["count", "stripe", "snapshot"], "snapshot is the last write");
   assert.strictEqual(writes[0][1].p_month, COUNTED);
   assert.strictEqual(st.qty.sub_1, 400);
   assert.ok(decodeURIComponent(writes[1][1]).includes("proration_behavior=none"));
-  assert.deepStrictEqual(writes[2][1], { org_id: ORG, month: MONTH, active_students: 403, billable_students: 400, base_cents: 10000, per_student_cents: 40, fee_cents: 26000 });
+  assert.deepStrictEqual(writes[2][1], { org_id: ORG, month: MONTH, active_students: 403, billable_students: 400, base_cents: 10000, per_student_cents: 50, fee_cents: 30000 });
 });
 test("running again after success does nothing", async () => {
   reset({ snapshots: [ORG] });
@@ -66,7 +66,7 @@ test("running again after success does nothing", async () => {
 test("dry run touches nothing, and can look at another month", async () => {
   reset();
   let r = await run("/api/billing-cron?dry=1");
-  assert.strictEqual(r.body.centres[0].result, "dry:would_update"); assert.strictEqual(r.body.centres[0].fee_cents, 26000);
+  assert.strictEqual(r.body.centres[0].result, "dry:would_update"); assert.strictEqual(r.body.centres[0].fee_cents, 30000);
   assert.deepStrictEqual(writes.map((w) => w[0]), ["count"]); assert.strictEqual(st.qty.sub_1, 100);
   r = await run("/api/billing-cron?dry=1&month=2027-03"); assert.strictEqual(r.body.month, "2027-03-01"); assert.strictEqual(r.body.counted_month, "2027-02-01");
   assert.strictEqual((await run("/api/billing-cron?month=2027-03")).statusCode, 400, "a real run can't be pointed at another month");
@@ -78,7 +78,7 @@ test("quantity already right: no Stripe write, snapshot still recorded", async (
   assert.strictEqual(r.body.centres[0].result, "already_correct"); assert.deepStrictEqual(writes.map((w) => w[0]), ["count", "snapshot"]);
 });
 test("Stripe failure: no snapshot (so tomorrow retries), job reports failure, other centres still processed", async () => {
-  reset({ orgs: [{ id: ORG }, { id: ORG2 }], active: { [ORG]: 403, [ORG2]: 50 }, plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 40, effective_from: "2026-10-01" }], [ORG2]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 40, effective_from: "2026-10-01" }] },
+  reset({ orgs: [{ id: ORG }, { id: ORG2 }], active: { [ORG]: 403, [ORG2]: 50 }, plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 50, effective_from: "2026-10-01" }], [ORG2]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 50, effective_from: "2026-10-01" }] },
     subs: { [ORG]: "sub_1", [ORG2]: "sub_2" }, qty: { sub_1: 100, sub_2: 50 }, failStripePost: true });
   const r = await run("/api/billing-cron");
   assert.strictEqual(r.statusCode, 500); assert.strictEqual(r.body.failed, 1);
@@ -91,6 +91,12 @@ test("skips centres with no subscription yet, and flags a price mismatch as a fa
   let r = await run("/api/billing-cron"); assert.strictEqual(r.statusCode, 200); assert.strictEqual(r.body.centres[0].result, "skipped:no_subscription");
   reset({ plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 30, effective_from: "2026-10-01" }] } });
   r = await run("/api/billing-cron"); assert.strictEqual(r.statusCode, 500); assert.strictEqual(r.body.centres[0].result, "skipped:price_mismatch");
+  assert.ok(!writes.some((w) => w[0] === "stripe" || w[0] === "snapshot"));
+  // T30: Stripe still on the OLD S$0.40 price while the plan says 50c (the owner hasn't swapped the price yet) → refuse, change nothing
+  reset({ plans: { [ORG]: [{ plan_code: "centre", base_cents: 10000, per_student_cents: 50, effective_from: "2026-10-01" }] } });
+  // the stub builds the Stripe price from `st.stuCents` (default 50)
+  st.stuCents = 40;
+  r = await run("/api/billing-cron"); assert.strictEqual(r.statusCode, 500); assert.strictEqual(r.body.centres[0].result, "skipped:price_mismatch", "plan 50c vs Stripe 40c");
   assert.ok(!writes.some((w) => w[0] === "stripe" || w[0] === "snapshot"));
 });
 

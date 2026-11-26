@@ -4,10 +4,10 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const M = require("../assets/js/money.js");
 
-test("TutorDeck fee: the brief's worked examples (S$100 base + 40c × billable students)", () => {
-  const plan = { base_cents: 10000, per_student_cents: 40 };
-  const cases = [[98, 100, 14000], [250, 250, 20000], [398, 400, 26000], [403, 400, 26000],
-                 [405, 410, 26400], [500, 500, 30000], [1000, 1000, 50000]];
+test("TutorDeck fee: the brief's worked examples (S$100 base + 50c × billable students)", () => {
+  const plan = { base_cents: 10000, per_student_cents: 50 };
+  const cases = [[98, 100, 15000], [250, 250, 22500], [398, 400, 30000], [403, 400, 30000],
+                 [405, 410, 30500], [500, 500, 35000], [1000, 1000, 60000]];
   for (const [active, billable, fee] of cases) {
     const r = M.platformFee(active, plan);
     assert.equal(r.billable, billable, active + " active → " + billable + " billable");
