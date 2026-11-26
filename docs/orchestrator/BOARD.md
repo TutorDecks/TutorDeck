@@ -60,6 +60,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-26 10:00 SGT report sent. Both T24c.5 sessions (original + restart) sat PENDING for hours and never started: infrastructure issue; recreate from `dev` base if still stuck.
 
+- 2026-11-26 owner approved the docs-only merge into dev (needs: CI green first). Purpose: owner wants a Claude chat to design a Service Agreement proposal etc, so the repo on dev must hold the facts (SERVICE-AGREEMENT-FACTS.md).
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -119,6 +121,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T3.4 | T3 step 4: pending charges (issue_invoices, suggested charge pre-fill) | DONE on branch (migration_staff_charges.sql NOT on DEV; decision: does charged mode suggest 0 for in-time cancellations?) | `claude/t3-4-charges` (on t3-3) |
 | T26b | Extend DEV apply pack with payout, payout_permission, staff_students, staff_attendance, staff_charges (+ leave if exists) | doing | NEW worker / `claude/t26b-dev-pack` |
 | T27 | Product Guide = SPEC OF THE FINAL PRODUCT (owner: "of the final product not what we have now"): all functions/workflows per role + every centre option; one appendix "Build status" | doing | NEW worker / `claude/t27-product-guide` (docs/product/TutorDeck-Product-Guide.md); then offer Docs/Word/PDF version |
+| T28 | Docs-only bundle to dev (current board, all plans, Product Guide, docs/INDEX.md of every unmerged branch, docs/business/SERVICE-AGREEMENT-FACTS.md) so any Claude chat can read it; owner approved merge 2026-11-26 once CI green | doing | NEW worker / `claude/docs-bundle` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
