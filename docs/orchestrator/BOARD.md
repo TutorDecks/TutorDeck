@@ -74,6 +74,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 - 2026-11-26 OWNER ANSWERS: Supabase connector now reaches both TutorDeck projects (DEV and LIVE): orchestrator may apply DEV SQL via it once the pack is final; NEVER touch LIVE. No Stripe price needed for the first managed centre (the self-serve centre Stripe path stays built; no action). Nobody is outside Singapore: T29 time zones CANCELLED. Bundle 4 test: ok when ready. Commercial/customer details live in a private chat only: NEVER put customer names, prices agreed with customers, or contact numbers into this PUBLIC repo.
 - BUILD PRIORITY (first managed centre, go-live early Feb 2027, data import in December): DEV SQL + staff screens (T3), T4 invoicing/payments/deposits/late fees, CSV import, TutorDeck invoicing of centres (T31b) before the first invoice, tutor scheduling (T6), email, statement matching, makeups, tutor pay + bulk bank file before the first pay run. Performance check at 400 students / 200 tutors.
 
+- 2026-11-26 OWNER: yes scrub customer name from the public repo (T32); T4 eight decisions all YES (build started: S0 settings, S1 tables in parallel); Stripe for the first managed centre: not needed; time zones (T29): build only if small, low priority after T3.8; email setup (T7 owner steps) to be guided in a separate interactive chat; bundle 4 test ok when DEV SQL is applied.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -143,6 +145,10 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T31b | Plan: TutorDeck invoices centres + records PayNow (platform admin), MVP for first customers | doing (plan only) | NEW worker / `claude/t31b-plan` |
 | T3.6 | T3 step 6: staff timetable read-only | DONE on branch (migration_staff_timetable.sql NOT on DEV) | session_01CPTfbC1Yspc24cPf4oAbSB / `claude/t3-6-timetable` (on t3-5) |
 | T3.7 | T3 step 7: slots with tutors, generator, student_tutors list | doing | NEW worker / `claude/t3-7-slots` (on t3-6) |
+| T32 | Scrub customer name from public repo (dev PR + docs commits on unmerged branches); report on git history | doing | NEW worker / `claude/t32-scrub` |
+| T4-S0 | Money settings honesty + validation (new keys, soon flags, class-type setting) | doing | NEW worker / `claude/t4-s0-settings` (on t3-6) |
+| T4-S1 | Centre money tables (invoices, lines, payments, allocations, numbering, GST fn), DB only | doing | NEW worker / `claude/t4-s1-tables` (on t3-6) |
+| Guide | Interactive owner guide chat for Brevo + Supabase DEV email setup | started | separate chat (T7 owner steps) |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
