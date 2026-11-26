@@ -349,7 +349,11 @@ window.TL = (function () {
     return { id: null, kind: "solo", role: null, name: "" };
   }
   async function detectOrgs() {
-    if (!OC || orgCache()) return;
+    if (!OC) return;
+    // Staff tabs follow the staff member's permissions, which are remembered with the list for 12 hours. So for a centre STAFF login the list is
+    // read again on every page load (one small query): a permission the owner took away (e.g. Issue invoices → Money tab) disappears at once.
+    var cached = orgCache(), refresh = !!cached && cached.some(function (o) { return o.kind === "centre" && o.role === "staff"; });
+    if (cached && !refresh) return;
     var list = [];
     try {
       var m = await window.sb.from("memberships").select("org_id,role,status,permissions,organisations(id,kind,trading_name)").eq("user_id", UID).eq("status", "active");
@@ -358,11 +362,15 @@ window.TL = (function () {
         var solo = list.filter(function (o) { return o.kind === "solo"; })[0];
         if (solo && list.some(function (o) { return o.kind === "centre" && (o.role === "owner" || o.role === "staff"); })) {
           // a centre owner or staff member: does their own solo organisation have any students? (error or doubt = yes, keep it)
-          var st = await window.sb.from("students").select("id", { count: "exact", head: true }).eq("org_id", solo.id);
-          list = OC.dropEmptySolo(list, st.error ? null : st.count);
+          if (refresh && !cached.some(function (o) { return o.kind === "solo"; })) list = OC.dropEmptySolo(list, 0);   // the empty solo shell was already left out last time: no second count
+          else {
+            var st = await window.sb.from("students").select("id", { count: "exact", head: true }).eq("org_id", solo.id);
+            list = OC.dropEmptySolo(list, st.error ? null : st.count);
+          }
         }
       }
-    } catch (e) {}
+    } catch (e) { if (refresh) return; }
+    if (refresh && !list.length) return;                  // the refresh failed or came back empty: keep what we had
     store.set("orgs", JSON.stringify({ list: list, at: Date.now() }));
   }
   function chooseOrg(id) {

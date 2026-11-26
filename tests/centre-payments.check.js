@@ -121,6 +121,11 @@ const shot = async (page, name) => { if (SC) { await page.waitForTimeout(350); a
     const { ctx, page, errs } = await open(browser, OWNER, { phone: mode === "phone", dark: mode === "dark" });
     await page.goto(BASE + "centre-money.html?id=c1&tab=invoices"); await page.waitForSelector(".cm-row");
     ok(await page.locator("#cm-tab-inv[aria-selected=true]").count() === 1 && await page.locator("#cm-inv").isVisible() && !(await page.locator("#cm-run").isVisible()), tag + "the Invoices & payments tab opens from the address");
+    ok(((await page.locator(".topbar .sub").first().textContent()) || "").trim() === "Invoices & payments", tag + "the Money subtitle names the open tab (Invoices & payments)");
+    ok(await page.locator(".cm-tabs").evaluate((e) => e.scrollHeight <= e.clientHeight + 1), tag + "the tab row has no vertical scrollbar");
+    await page.locator("#cm-tab-run").click();
+    ok(((await page.locator(".topbar .sub").first().textContent()) || "").trim() === "Invoice run", tag + "and back to Invoice run it says Invoice run");
+    await page.locator("#cm-tab-inv").click();
     ok(await page.locator("#cp-list .cm-row").count() === 2, tag + "two issued invoices are listed");
     ok(/S\$163\.50 owed · S\$54\.50 overdue/.test(await text(page, "#cp-sum")), tag + "summary: " + (await text(page, "#cp-sum")).replace(/\n/g, " | "));
     ok(/Overdue/.test(await text(page, "#cp-list .cm-row:has-text('INV-2')")) && /Overdue by 5 days/.test(await text(page, "#cp-list .cm-row:has-text('INV-2')")), tag + "INV-2 shows the red Overdue chip and how late");

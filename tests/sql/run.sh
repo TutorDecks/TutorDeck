@@ -61,6 +61,8 @@ $P -f db/migration_staff_slots.sql                          # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_slots_test.sql
 $P -f db/migration_staff_reassign.sql
 $P -f db/migration_staff_reassign.sql                       # safe to run twice
+$P -f db/migration_reassign_link.sql                         # B4-FIX: replaces staff_reassign_lesson; the reassign tests below cover it
+$P -f db/migration_reassign_link.sql                         # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_reassign_test.sql
 $P -f db/migration_tutor_schedule.sql
 $P -f db/migration_tutor_schedule.sql                       # safe to run twice
@@ -77,6 +79,9 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_invoice_run_test.sql
 $P -f db/migration_centre_payments.sql
 $P -f db/migration_centre_payments.sql                      # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_payments_test.sql
+$P -f db/migration_payment_fix.sql
+$P -f db/migration_payment_fix.sql                           # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/payment_fix_test.sql
 $P -f db/migration_invites.sql
 $P -f db/migration_invites.sql                              # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/invites_test.sql
@@ -118,11 +123,13 @@ $P -f db/migration_tutor_payout_down.sql
 $P -f db/migration_tutor_profile_down.sql
 $P -f db/migration_tutor_profile.sql                        # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_tutor_profile_down.sql
+$P -f db/migration_payment_fix_down.sql
 $P -f db/migration_centre_payments_down.sql
 $P -f db/migration_centre_invoice_run_down.sql
 $P -f db/migration_centre_money_down.sql
 $P -f db/migration_money_settings_down.sql
 $P -f db/migration_tutor_schedule_down.sql
+$P -f db/migration_reassign_link_down.sql
 $P -f db/migration_staff_reassign_down.sql
 $P -f db/migration_staff_slots_down.sql
 $P -f db/migration_staff_timetable_down.sql

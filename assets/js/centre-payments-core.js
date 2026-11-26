@@ -150,7 +150,17 @@
     if (c) return /^[a-z]/.test(c[2]) ? c[2].charAt(0).toUpperCase() + c[2].slice(1) : c[2];
     if (/REASON_REQUIRED/.test(m)) return "Please say why.";
     if (/NOT_FOUND/.test(m)) return "That isn’t available any more. Refresh the page and try again.";
-    return CM.errorText(err);
+    var known = CM.errorText(err);
+    if (known !== "Something went wrong." && !/^Something went wrong/.test(known)) return known;
+    // an error word the code knows but the message doesn't explain: say what kind of problem it is, in plain words
+    var code = String((err && err.code) || "");
+    if (code === "21000") return "The database refused this change as unsafe, so nothing was recorded. This is a fault on our side, not yours. Please tell TutorDeck (code 21000).";
+    if (code === "23514") return "The amounts didn’t add up, so nothing was recorded. Refresh the page and try again.";
+    if (code === "40001" || code === "40P01") return "Someone else was changing this family’s payments at the same moment. Try again in a few seconds.";
+    if (code === "23505") return "That was already recorded. Refresh the page to see it.";
+    if (code === "42501") return "Your account isn’t allowed to do that at this centre.";
+    if (code) return "Something went wrong (code " + code + "). Refresh the page and try again; if it happens again, tell TutorDeck.";
+    return known;
   }
   function isMissing(err) { return CM.isMissing(err); }
 

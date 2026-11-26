@@ -1123,6 +1123,7 @@ html[data-theme="dark"] .ch-soon p{color:var(--muted)}
 html[data-theme="dark"] .ch-pill{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
 /* from centre-students.html */
 html[data-theme="dark"] .cs-search{border:1px solid var(--line);background:#172235;color:var(--ink)}
+html[data-theme="dark"] .cs-hint{color:var(--muted)}
 html[data-theme="dark"] .cs-search:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(15,118,110,0.342)}
 html[data-theme="dark"] .cs-count{color:var(--muted)}
 html[data-theme="dark"] .cs-row{border-top:1px solid var(--line)}

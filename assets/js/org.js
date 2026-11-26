@@ -69,7 +69,7 @@
     var centres = rows.filter(function (x) { return x.organisations.kind === "centre"; });
     var solo = rows.filter(function (x) { return x.organisations.kind === "solo"; })[0];
     $("og").innerHTML =
-      '<section class="card og-card"><h2>Your organisations</h2><p class="og-sub">' +
+      '<section class="card og-card"><h2>Your centres</h2><p class="og-sub">' +
         (solo ? "Your own tuition, <b>" + esc(solo.organisations.trading_name) + "</b>, is set up in Settings and works as it always has." : "") + "</p>" +
         '<div class="og-list">' + (centres.map(function (x) {
           var o = x.organisations;
@@ -291,7 +291,7 @@
         var mt = HL.match(st.holidays, h), on = !!mt, rangeOnly = on && !mt.exact;
         var meta = shortDate(h.date) + (h.substitute_for ? " · only if you also close on the Monday" : "") + (rangeOnly ? " · part of “" + esc(mt.row.name) + "”" : "");
         out += '<label class="og-check og-hol-row"><input type="checkbox" data-hol="' + esc(h.date) + '"' + (on ? " checked" : "") + (!can || rangeOnly ? " disabled" : "") + '><span><span class="og-hol-name">' + esc(h.name) + '</span>' +
-          (h.status === "to_confirm" ? ' <span class="og-badge grey">To confirm</span>' : "") + '<span class="meta og-hol-meta">' + meta + "</span></span></label>";
+          (h.status === "to_confirm" ? ' <span class="og-badge grey">To confirm</span>' : "") + (h.substitute_for && !on ? ' <span class="og-badge grey">Substitute day, not ticked</span>' : "") + '<span class="meta og-hol-meta">' + meta + "</span></span></label>";
       });
       out += "</div></div>";
     });

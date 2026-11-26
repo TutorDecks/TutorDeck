@@ -166,6 +166,8 @@ select t.eq(pg_temp.mine('00000000-0000-0000-0000-00000000d004'), 5, 'tutor one 
 select t.eq((select count(*) from audit_log where action = 'staff_reassign_lesson' and org_id = t.id('ra')), 3, 'three audit entries so far (one per successful change)');
 
 -- ===================================================================== REASSIGN, with and without the assigned-tutor choice
+-- lesson A comes from Kid One's weekly slot (as generated lessons do); the slot stays with tutor one when one lesson is reassigned
+update lessons set slot_id = '00000000-0000-0000-0000-00000000d201' where id in (t.id('A'), t.id('K1'));
 select pg_temp.expect(pg_temp.re('00000000-0000-0000-0000-00000000d002', 'B', 'm2', 'reassign', 'Tutor Two now teaches Kid Two'), 'allowed', 'reassign without touching the assigned tutors');
 select t.ok((select taught_by = t.id('m2') and covered_for is null from lessons where id = t.id('B')), 'the lesson is tutor two''s, with nobody "covering"');
 select t.ok((select count(*) = 1 and bool_and(membership_id = t.id('m1') and active) from student_tutors where student_id = '00000000-0000-0000-0000-00000000d101'), 'link left alone by default');
@@ -181,6 +183,36 @@ select t.ok((select (after->>'links_updated')::boolean and (after->>'links_ended
 select pg_temp.expect(pg_temp.re('00000000-0000-0000-0000-00000000d002', 'A', 'm3', 'reassign', 'again', 'true'), 'allowed', 'a second reassign with the choice');
 select t.ok((select count(*) filter (where active) = 1 and count(*) filter (where active and membership_id = t.id('m3')) = 1 from student_tutors where student_id = '00000000-0000-0000-0000-00000000d101'), 'exactly one active tutor link, the newest');
 select t.ok((select taught_by = t.id('m3') and covered_for is null from lessons where id = t.id('A')), 'reassign clears any cover');
+
+-- B4-FIX: the old tutor's link is KEPT when they still teach the student somewhere else (another upcoming lesson, or another weekly slot)
+insert into students(id, tutor_id, org_id, name, level) values ('00000000-0000-0000-0000-00000000d104', '00000000-0000-0000-0000-00000000d001', t.id('ra'), 'Kid Four', 'P4');
+insert into recurring_slots(id, tutor_id, org_id, student_id, weekday, start_time, end_time, rate, taught_by)
+  values ('00000000-0000-0000-0000-00000000d204', '00000000-0000-0000-0000-00000000d001', t.id('ra'), '00000000-0000-0000-0000-00000000d104', 2, '15:00', '16:00', 60, t.id('m1'));
+insert into student_tutors(org_id, student_id, membership_id) values (t.id('ra'), '00000000-0000-0000-0000-00000000d104', t.id('m1'));
+select pg_temp.mk('F1', '00000000-0000-0000-0000-00000000d104', 3, 'm1');
+select pg_temp.mk('F2', '00000000-0000-0000-0000-00000000d104', 6, 'm1');      -- a one-off upcoming lesson with tutor one (no slot)
+select pg_temp.mk('F3', '00000000-0000-0000-0000-00000000d104', 4, 'm1');
+update lessons set slot_id = '00000000-0000-0000-0000-00000000d204' where id in (t.id('F1'), t.id('F3'));
+select pg_temp.expect(pg_temp.re('00000000-0000-0000-0000-00000000d002', 'F1', 'm2', 'reassign', 'one lesson', 'true'), 'allowed', 'reassign F1 with the assigned-tutor choice');
+select t.ok((select count(*) filter (where membership_id = t.id('m1') and active) = 1 and count(*) filter (where membership_id = t.id('m2') and active) = 1
+               from student_tutors where student_id = '00000000-0000-0000-0000-00000000d104'), 'tutor one STILL teaches Kid Four (another upcoming lesson), so their link is kept and tutor two is added');
+select t.ok((select (after->>'links_kept')::int = 1 and (after->>'links_ended')::int = 0 and (after->>'links_added')::int = 1 from audit_log where action = 'staff_reassign_lesson' and row_id = t.id('F1')::text order by at desc limit 1), 'the audit entry says one link was kept');
+-- nothing else upcoming: cancel the one-off, move the last slot lesson → now tutor one's link ends
+update lessons set status = 'cancelled' where id = t.id('F2');
+select pg_temp.expect(pg_temp.re('00000000-0000-0000-0000-00000000d002', 'F3', 'm2', 'reassign', 'last one', 'true'), 'allowed', 'reassign F3 with the choice');
+select t.ok((select count(*) filter (where membership_id = t.id('m1') and not active) = 1 and count(*) filter (where active) = 1 from student_tutors where student_id = '00000000-0000-0000-0000-00000000d104'),
+            'with no other lesson and no other slot, tutor one''s link now ends');
+-- another weekly slot with tutor one keeps the link too
+insert into students(id, tutor_id, org_id, name, level) values ('00000000-0000-0000-0000-00000000d105', '00000000-0000-0000-0000-00000000d001', t.id('ra'), 'Kid Five', 'P5');
+insert into recurring_slots(id, tutor_id, org_id, student_id, weekday, start_time, end_time, rate, taught_by) values
+  ('00000000-0000-0000-0000-00000000d205', '00000000-0000-0000-0000-00000000d001', t.id('ra'), '00000000-0000-0000-0000-00000000d105', 2, '15:00', '16:00', 60, t.id('m1')),
+  ('00000000-0000-0000-0000-00000000d206', '00000000-0000-0000-0000-00000000d001', t.id('ra'), '00000000-0000-0000-0000-00000000d105', 4, '15:00', '16:00', 60, t.id('m1'));
+insert into student_tutors(org_id, student_id, membership_id) values (t.id('ra'), '00000000-0000-0000-0000-00000000d105', t.id('m1'));
+select pg_temp.mk('G1', '00000000-0000-0000-0000-00000000d105', 3, 'm1');
+update lessons set slot_id = '00000000-0000-0000-0000-00000000d205' where id = t.id('G1');
+select pg_temp.expect(pg_temp.re('00000000-0000-0000-0000-00000000d002', 'G1', 'm2', 'reassign', 'one lesson', 'true'), 'allowed', 'reassign G1 with the choice');
+select t.ok((select count(*) filter (where membership_id = t.id('m1') and active) = 1 and count(*) filter (where membership_id = t.id('m2') and active) = 1 from student_tutors where student_id = '00000000-0000-0000-0000-00000000d105'),
+            'tutor one keeps teaching Kid Five on another weekly slot, so the link stays');
 
 -- ===================================================================== never on a lesson that is marked, cancelled, paid or invoiced
 select pg_temp.mk('M', '00000000-0000-0000-0000-00000000d103', -1, 'm1');
