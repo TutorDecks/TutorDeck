@@ -118,7 +118,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T24c.5r | restart of T24c.5 | doing | NEW worker / `claude/t24c-5-leave`; stuck session session_01CPTfbDBuVSpWbTtCfHzUaq to archive |
 | T3.4 | T3 step 4: pending charges (issue_invoices, suggested charge pre-fill) | DONE on branch (migration_staff_charges.sql NOT on DEV; decision: does charged mode suggest 0 for in-time cancellations?) | `claude/t3-4-charges` (on t3-3) |
 | T26b | Extend DEV apply pack with payout, payout_permission, staff_students, staff_attendance, staff_charges (+ leave if exists) | doing | NEW worker / `claude/t26b-dev-pack` |
-| T27 | Product Guide document: all functions/workflows per role (parents, tutors, staff, admin) + every centre option; status tags LIVE/DEV/BRANCH/PLANNED/SOON | doing | NEW worker / `claude/t27-product-guide` (docs/product/TutorDeck-Product-Guide.md); then offer Docs/Word/PDF version |
+| T27 | Product Guide = SPEC OF THE FINAL PRODUCT (owner: "of the final product not what we have now"): all functions/workflows per role + every centre option; one appendix "Build status" | doing | NEW worker / `claude/t27-product-guide` (docs/product/TutorDeck-Product-Guide.md); then offer Docs/Word/PDF version |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
