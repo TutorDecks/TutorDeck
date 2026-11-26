@@ -60,8 +60,8 @@ test("tutor-only logins never get a switcher", () => {
 });
 test("landing: solo → home; centre → its page; a centre tutor → My lessons", () => {
   assert.strictEqual(OC.landing({ kind: "solo", id: "s1", role: "owner" }), "home");
-  assert.strictEqual(OC.landing({ kind: "centre", id: "c1", role: "owner" }), "org?id=c1");
-  assert.strictEqual(OC.landing({ kind: "centre", id: "c2", role: "staff" }), "org?id=c2");
+  assert.strictEqual(OC.landing({ kind: "centre", id: "c1", role: "owner" }), "centre?id=c1");
+  assert.strictEqual(OC.landing({ kind: "centre", id: "c2", role: "staff" }), "centre?id=c2");
   assert.strictEqual(OC.landing({ kind: "centre", id: "c3", role: "tutor" }), "tutor");
   assert.strictEqual(OC.landing(null), "home");
 });
@@ -84,18 +84,51 @@ test("a solo tutor with students is never moved; doubt or error keeps solo", () 
   for (const n of [1, 5, null, undefined, NaN, "0", -1]) assert.deepStrictEqual(ids(OC.dropEmptySolo(l, n)), ["s1", "c1"], String(n));
   assert.strictEqual(OC.pick(OC.dropEmptySolo(l, 3)).id, "s1");
 });
-test("empty solo but only a tutor/staff role at the centre: solo is kept (not an owner)", () => {
-  assert.deepStrictEqual(ids(OC.dropEmptySolo(OC.list([SOLO, CB]), 0)), ["s1", "c2"]);
+test("empty solo + a staff login: the centre is the default, like an owner (T3: staff have no students of their own)", () => {
+  assert.deepStrictEqual(ids(OC.dropEmptySolo(OC.list([SOLO, CB]), 0)), ["c2"]);
+  assert.deepStrictEqual(ids(OC.dropEmptySolo(OC.list([SOLO, CB]), 4)), ["s1", "c2"]);     // a staff member who also has students keeps solo
+});
+test("empty solo but only a tutor role at the centre: solo is kept (a tutor has their own menu)", () => {
   assert.deepStrictEqual(ids(OC.dropEmptySolo(OC.list([SOLO, CT]), 0)), ["s1", "c3"]);
   assert.deepStrictEqual(ids(OC.dropEmptySolo(OC.list([SOLO]), 0)), ["s1"]);
   assert.strictEqual(OC.dropEmptySolo(null, 0), null);
 });
 test("Home redirects only owners/admins whose current organisation is a centre", () => {
-  assert.strictEqual(OC.homeRedirect("dashboard", { kind: "centre", id: "c1", role: "owner" }), "org?id=c1");
-  assert.strictEqual(OC.homeRedirect("dashboard", { kind: "centre", id: "c2", role: "staff" }), "org?id=c2");
+  assert.strictEqual(OC.homeRedirect("dashboard", { kind: "centre", id: "c1", role: "owner" }), "centre?id=c1");
+  assert.strictEqual(OC.homeRedirect("dashboard", { kind: "centre", id: "c2", role: "staff" }), "centre?id=c2");
   assert.strictEqual(OC.homeRedirect("dashboard", { kind: "centre", id: "c3", role: "tutor" }), null);
   assert.strictEqual(OC.homeRedirect("dashboard", { kind: "solo", id: "s1", role: "owner" }), null);
   assert.strictEqual(OC.homeRedirect("dashboard", { kind: "solo", id: null, role: null }), null);
   assert.strictEqual(OC.homeRedirect("ledger", { kind: "centre", id: "c1", role: "owner" }), null);
   for (const bad of [null, undefined, {}, "x"]) assert.strictEqual(OC.homeRedirect("dashboard", bad), null);
+});
+
+// ---- T3: the centre menu (Home · Timetable · Students · Attendance) follows the staff member's permissions ----
+const SF = (perms) => Object.assign({}, CB, { permissions: perms });   // a staff membership with these permissions
+const tabs = (rows) => OC.centreTabs(OC.list(rows).filter((o) => o.kind === "centre")[0]);
+test("owner gets all four tabs, and all four are built pages", () => {
+  const t = tabs([CA]);
+  assert.deepStrictEqual(t.map((x) => x.label), ["Home", "Timetable", "Students", "Attendance"]);
+  assert.deepStrictEqual(t.map((x) => x.soon), [false, false, false, false]);
+  assert.deepStrictEqual(t.map((x) => x.href), ["centre?id=c1", "centre-timetable?id=c1", "centre-students?id=c1", "centre-attendance?id=c1"]);
+});
+test("staff see only the tabs their permissions allow; Home is always there", () => {
+  const labels = (p) => tabs([SF(p)]).map((x) => x.label);
+  assert.deepStrictEqual(labels(["manage_students", "manage_timetable", "issue_invoices"]), ["Home", "Timetable", "Students", "Attendance"]);
+  // Timetable is view-only for every owner / staff member (T3 plan §1: "Timetable: view = any owner / staff"); the other tabs follow permissions
+  assert.deepStrictEqual(labels(["manage_students"]), ["Home", "Timetable", "Students"]);          // front desk
+  assert.deepStrictEqual(labels(["manage_timetable"]), ["Home", "Timetable", "Attendance"]);
+  assert.deepStrictEqual(labels(["issue_invoices"]), ["Home", "Timetable", "Attendance"]);         // the Charges tab lives on the Attendance page (T3 step 4)
+  assert.deepStrictEqual(labels(["issue_invoices", "manage_students"]), ["Home", "Timetable", "Students", "Attendance"]);
+  assert.deepStrictEqual(labels(["record_payments", "view_revenue"]), ["Home", "Timetable"]);      // other permissions open nothing else yet
+  assert.deepStrictEqual(labels([]), ["Home", "Timetable"]);
+});
+test("staff with permissions not known yet (older remembered list): all tabs, the database still decides", () => {
+  assert.strictEqual(tabs([CB]).length, 4);
+  assert.deepStrictEqual(OC.list([CB])[0].perms, undefined);
+  assert.deepStrictEqual(OC.list([SF(["manage_students", 5, null])])[0].perms, ["manage_students"]);
+});
+test("no centre tabs for a tutor, a solo organisation, or anything odd", () => {
+  for (const o of [OC.list([CT])[0], OC.list([SOLO])[0], null, undefined, {}, { kind: "centre", role: "owner" }, { kind: "centre", id: "c1", role: "parent" }])
+    assert.deepStrictEqual(OC.centreTabs(o), [], JSON.stringify(o));
 });
