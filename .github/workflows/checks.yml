@@ -1,11 +1,13 @@
-# Smoke tests on every pull request into dev or main (see tests/smoke.py for what is checked).
+# Checks (unit + SQL + smoke) run ONLY on pull requests into main (the dev -> main go-live PR) and by hand
+# (Actions tab -> Checks -> Run workflow). Not on pushes, not on pull requests into dev (owner decision 2026-11-26).
+# See tests/smoke.py for what the smoke test checks.
 # Uses made-up data only: the Supabase library is replaced by tests/supabase-stub-*.js and all
 # outside requests are blocked, so no secrets are needed and the real database is never touched.
 name: Checks
 
 on:
   pull_request:
-    branches: [dev, main]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
