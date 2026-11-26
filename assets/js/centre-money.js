@@ -221,6 +221,7 @@
     $("cm-run").hidden = !run; $("cm-inv").hidden = run;
     [["cm-tab-run", run], ["cm-tab-inv", !run]].forEach(function (p) { var b = $(p[0]); b.setAttribute("aria-selected", p[1] ? "true" : "false"); b.tabIndex = p[1] ? 0 : -1; });
     if (focus) $(run ? "cm-tab-run" : "cm-tab-inv").focus();
+    var subEl = document.querySelector(".topbar .sub"); if (subEl) subEl.textContent = run ? "Invoice run" : "Invoices & payments";   // the subtitle names the tab that is open
     say("");
     if (run && !ranRun) { ranRun = true; load(); } else if (run) syncUrl();
     if (!run) { if (window.CentrePay) window.CentrePay.show(); syncUrl(); }

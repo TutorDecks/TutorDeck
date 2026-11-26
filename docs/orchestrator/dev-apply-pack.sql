@@ -13,19 +13,21 @@
 --   PART 6  staff_timetable          claude/t3-6-timetable          db/migration_staff_timetable.sql  (centre timetable + holiday band)
 --   PART 7  staff_slots              claude/t3-7-slots              db/migration_staff_slots.sql  (weekly slots with tutors, lesson generator)
 --   PART 8  staff_reassign           claude/t3-8-reassign           db/migration_staff_reassign.sql  (reassign / cover a lesson)
---   PART 9  tutor_schedule           claude/t6-1-tutor-schedule     db/migration_tutor_schedule.sql  (tutor Schedule tab (read only))
---   PART 10 money_settings           claude/t4-s0-settings          db/migration_money_settings.sql  (centre money settings + validator)
---   PART 11 centre_money             claude/t4-s1-tables            db/migration_centre_money.sql  (centre invoice / payment tables)
---   PART 12 centre_invoice_run       claude/t4-s2-invoice-run       db/migration_centre_invoice_run.sql  (Money > Invoice run)
---   PART 13 centre_payments          claude/t4-s3-payments          db/migration_centre_payments.sql  (payments, credit notes, invoice link)
---   PART 14 invites                  claude/t7-2-invites            db/migration_invites.sql  (invite email log + status)
---   PART 15 fee_050                  claude/t30-fee-050             db/migration_fee_050.sql  (centre fee S$0.50 per student)
---   PART 16 centre_billing_method    claude/t31a-centre-invoice-billing db/migration_centre_billing_method.sql  (how a centre pays TutorDeck)
---   PART 17 centre_billing_start     claude/t36-billing-start       db/migration_centre_billing_start.sql  (centre billing start date + agreed first-month count)
---   PART 18 tutor_profile            claude/t24c-1-profile          db/migration_tutor_profile.sql  (tutor's own profile)
---   PART 19 tutor_payout             claude/t24c-2-payout           db/migration_tutor_payout.sql  (tutor payout details (masked, audited))
---   PART 20 payout_permission        claude/t24c-3-payout           db/migration_payout_permission.sql  (payout permission + centre list/reveal)
---   PART 21 demo staff logins        claude/t3-1-staff-home         db/seed_dev_demo.sql (staff block only: centre.staff@ and centre.frontdesk@example.test)
+--   PART 9  reassign_link            claude/b4-fix                  db/migration_reassign_link.sql  (reassign keeps the old tutor's link when they still teach the student)
+--   PART 10 tutor_schedule           claude/t6-1-tutor-schedule     db/migration_tutor_schedule.sql  (tutor Schedule tab (read only))
+--   PART 11 money_settings           claude/t4-s0-settings          db/migration_money_settings.sql  (centre money settings + validator)
+--   PART 12 centre_money             claude/t4-s1-tables            db/migration_centre_money.sql  (centre invoice / payment tables)
+--   PART 13 centre_invoice_run       claude/t4-s2-invoice-run       db/migration_centre_invoice_run.sql  (Money > Invoice run)
+--   PART 14 centre_payments          claude/t4-s3-payments          db/migration_centre_payments.sql  (payments, credit notes, invoice link)
+--   PART 15 payment_fix              claude/b4-fix                  db/migration_payment_fix.sql  (Record payment fix (DELETE without WHERE refused by Supabase))
+--   PART 16 invites                  claude/t7-2-invites            db/migration_invites.sql  (invite email log + status)
+--   PART 17 fee_050                  claude/t30-fee-050             db/migration_fee_050.sql  (centre fee S$0.50 per student)
+--   PART 18 centre_billing_method    claude/t31a-centre-invoice-billing db/migration_centre_billing_method.sql  (how a centre pays TutorDeck)
+--   PART 19 centre_billing_start     claude/t36-billing-start       db/migration_centre_billing_start.sql  (centre billing start date + agreed first-month count)
+--   PART 20 tutor_profile            claude/t24c-1-profile          db/migration_tutor_profile.sql  (tutor's own profile)
+--   PART 21 tutor_payout             claude/t24c-2-payout           db/migration_tutor_payout.sql  (tutor payout details (masked, audited))
+--   PART 22 payout_permission        claude/t24c-3-payout           db/migration_payout_permission.sql  (payout permission + centre list/reveal)
+--   PART 23 demo staff logins        claude/t3-1-staff-home         db/seed_dev_demo.sql (staff block only: centre.staff@ and centre.frontdesk@example.test)
 -- Needs the seven standard migrations already on DEV: org_foundation, billing, attendance, tutor_access, org_delete, function_lockdown, org_separation.
 --
 -- TRANSACTIONS: the Supabase SQL editor runs everything you paste as ONE batch, so the pack is all-or-nothing in practice: if any
@@ -102,7 +104,7 @@ begin
 end $$;
 
 -- #####################################################################################################
--- ### PART 1 of 21 — centre Home numbers
+-- ### PART 1 of 23 — centre Home numbers
 -- ### source branch: claude/t3-1-staff-home   file: db/migration_staff_home.sql   undo: db/migration_staff_home_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -180,7 +182,7 @@ revoke all on function public.staff_home(uuid) from public, anon;
 grant execute on function public.staff_home(uuid) to authenticated;
 
 -- #####################################################################################################
--- ### PART 2 of 21 — centre students, households, tutor links
+-- ### PART 2 of 23 — centre students, households, tutor links
 -- ### source branch: claude/t3-2-students   file: db/migration_staff_students.sql   undo: db/migration_staff_students_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -486,7 +488,7 @@ revoke all on function public.staff_students_gate(uuid) from public, anon, authe
 revoke all on function public.staff_clean_guardian(jsonb) from public, anon, authenticated;
 
 -- #####################################################################################################
--- ### PART 3 of 21 — centre attendance + guard
+-- ### PART 3 of 23 — centre attendance + guard
 -- ### source branch: claude/t3-3-attendance   file: db/migration_staff_attendance.sql   undo: db/migration_staff_attendance_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -729,7 +731,7 @@ revoke all on function public.staff_attendance_gate(uuid, boolean) from public, 
 revoke all on function public.lessons_attendance_guard() from public, anon, authenticated;
 
 -- #####################################################################################################
--- ### PART 4 of 21 — pending charges for absent / cancelled lessons
+-- ### PART 4 of 23 — pending charges for absent / cancelled lessons
 -- ### source branch: claude/t3-4-charges   file: db/migration_staff_charges.sql   undo: db/migration_staff_charges_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -946,7 +948,7 @@ revoke all on function public.lesson_price_cents(numeric, numeric, time, time) f
 revoke all on function public.charge_suggestion_cents(text, text, bigint) from public, anon, authenticated;
 
 -- #####################################################################################################
--- ### PART 5 of 21 — trial flag
+-- ### PART 5 of 23 — trial flag
 -- ### source branch: claude/t3-5-trials   file: db/migration_staff_trials.sql   undo: db/migration_staff_trials_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -1055,7 +1057,7 @@ revoke all on function public.staff_lessons(uuid, date, date, uuid, text, int, i
 grant execute on function public.staff_lessons(uuid, date, date, uuid, text, int, int) to authenticated;
 
 -- #####################################################################################################
--- ### PART 6 of 21 — centre timetable + holiday band
+-- ### PART 6 of 23 — centre timetable + holiday band
 -- ### source branch: claude/t3-6-timetable   file: db/migration_staff_timetable.sql   undo: db/migration_staff_timetable_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -1175,7 +1177,7 @@ revoke all on function public.staff_timetable(uuid, date, date, uuid, uuid, uuid
 grant execute on function public.staff_timetable(uuid, date, date, uuid, uuid, uuid, int, boolean, int) to authenticated;
 
 -- #####################################################################################################
--- ### PART 7 of 21 — weekly slots with tutors, lesson generator
+-- ### PART 7 of 23 — weekly slots with tutors, lesson generator
 -- ### source branch: claude/t3-7-slots   file: db/migration_staff_slots.sql   undo: db/migration_staff_slots_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -1722,7 +1724,7 @@ revoke all on function public.staff_timetable(uuid, date, date, uuid, uuid, uuid
 grant execute on function public.staff_timetable(uuid, date, date, uuid, uuid, uuid, int, boolean, int) to authenticated;
 
 -- #####################################################################################################
--- ### PART 8 of 21 — reassign / cover a lesson
+-- ### PART 8 of 23 — reassign / cover a lesson
 -- ### source branch: claude/t3-8-reassign   file: db/migration_staff_reassign.sql   undo: db/migration_staff_reassign_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -1973,7 +1975,121 @@ revoke all on function public.staff_timetable(uuid, date, date, uuid, uuid, uuid
 grant execute on function public.staff_timetable(uuid, date, date, uuid, uuid, uuid, int, boolean, int) to authenticated;
 
 -- #####################################################################################################
--- ### PART 9 of 21 — tutor Schedule tab (read only)
+-- ### PART 9 of 23 — reassign keeps the old tutor's link when they still teach the student
+-- ### source branch: claude/b4-fix   file: db/migration_reassign_link.sql   undo: db/migration_reassign_link_down.sql
+-- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
+-- #####################################################################################################
+-- =====================================================================================================
+-- B4-FIX — reassign + "also make them the assigned tutor": keep the old tutor's link when they still teach the student elsewhere
+-- undo: migration_reassign_link_down.sql        Run AFTER migration_staff_reassign.sql. Run on DEV first. Safe to run twice. Reads/changes no row by itself.
+-- =====================================================================================================
+-- BEFORE: ticking "Also make them <student>'s assigned tutor" always ended the OLD tutor's link, even when that tutor still taught the student in
+-- another weekly slot or has other upcoming lessons with them. NOW: the link is ended only when the old tutor teaches the student nowhere else
+-- (no other active weekly slot, no other upcoming non-cancelled lesson that is not from the slot being moved). The result and the audit entry carry
+-- 'links_kept' (how many old links were kept). Everything else in the function is unchanged.
+
+create or replace function public.staff_reassign_lesson(p_lesson uuid, p_new_tutor uuid, p_mode text, p_reason text default null,
+                                                        p_update_links boolean default false) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare l lessons; cl lessons; today date; md text := lower(trim(coalesce(p_mode, ''))); why text := nullif(trim(coalesce(p_reason, '')), '');
+        nt memberships; cfg jsonb; allowed boolean; ids uuid[]; locked text; orig uuid; new_cf uuid; old_tutor uuid;
+        sid uuid; ended int := 0; added int := 0; kept int := 0; still boolean; moved_slots uuid[]; n_ended int; before_j jsonb := '[]'::jsonb; link_ids uuid[];
+begin
+  if auth.uid() is null then raise exception 'NOT_FOUND' using errcode = 'P0001'; end if;
+  select * into l from lessons where id = p_lesson;
+  if not found then raise exception 'NOT_FOUND' using errcode = 'P0001'; end if;
+  today := staff_slots_gate(l.org_id, true);                                            -- NOT_FOUND for strangers, NOT_ALLOWED without manage_timetable
+
+  if md not in ('reassign', 'cover') then raise exception 'BAD_MODE: choose cover or reassign' using errcode = 'P0001'; end if;
+  if p_new_tutor is null then raise exception 'PICK_TUTOR: choose who will teach this lesson' using errcode = 'P0001'; end if;
+  if why is not null and length(why) > 500 then raise exception 'TOO_LONG: keep the reason under 500 characters' using errcode = 'P0001'; end if;
+  if coalesce(p_update_links, false) and md = 'cover' then
+    raise exception 'LINK_NOT_FOR_COVER: a cover is one lesson only, so it never changes who a student is assigned to' using errcode = 'P0001'; end if;
+
+  select * into nt from memberships m where m.id = p_new_tutor and m.org_id = l.org_id and m.role in ('tutor', 'staff', 'owner') and m.status = 'active';
+  if not found then raise exception 'NOT_AVAILABLE: that person can''t be given lessons at this centre (they must be an active member here)' using errcode = 'P0001'; end if;
+  if l.taught_by is not distinct from p_new_tutor then
+    raise exception 'NO_CHANGE: that tutor already teaches this lesson' using errcode = 'P0001'; end if;
+
+  if l.taught_by is null then
+    if md = 'cover' then raise exception 'NO_TUTOR_TO_COVER: this lesson has no tutor yet, so there is nobody to cover for. Use Assign instead' using errcode = 'P0001'; end if;
+  else
+    -- a lesson that already has a tutor changing hands is a replacement: the centre's own rule decides (read as of today)
+    cfg := org_settings_on(l.org_id, today) #> '{lessons,replacement_tutors}';
+    allowed := case when jsonb_typeof(cfg) = 'boolean' then (cfg #>> '{}')::boolean else true end;      -- missing = on (the default)
+    if not allowed then
+      raise exception 'REPLACEMENT_OFF: this centre doesn''t allow replacement tutors. An owner can switch this on in the centre settings' using errcode = 'P0001'; end if;
+    if why is null then raise exception 'REASON_REQUIRED: say why this lesson is changing tutor. It is kept on record' using errcode = 'P0001'; end if;
+  end if;
+
+  -- the lesson, or the whole class of that day (lessons sharing a session_id): all or nothing
+  select coalesce(array_agg(x.id order by x.id), array[l.id]) into ids from lessons x
+   where x.org_id = l.org_id and (x.id = l.id or (l.session_id is not null and x.session_id = l.session_id));
+  perform 1 from lessons x where x.id = any(ids) order by x.id for update;
+  foreach sid in array ids loop
+    locked := lesson_locked_reason(sid);
+    if locked is not null then
+      raise exception '%', case locked
+        when 'MARKED'    then 'ALREADY_MARKED: this lesson is already marked, so it stays with the tutor who taught it'
+        when 'CANCELLED' then 'CANCELLED: this lesson was cancelled'
+        when 'PAID'      then 'PAID: this lesson is already paid, so it can''t change hands'
+        else                  'INVOICED: this lesson is on an invoice, so it can''t change hands' end
+        || case when array_length(ids, 1) > 1 then ' (it is part of a class that moves together)' else '' end using errcode = 'P0001';
+    end if;
+  end loop;
+
+  -- move them
+  for cl in select * from lessons x where x.id = any(ids) order by x.id loop
+    before_j := before_j || jsonb_build_object('lesson_id', cl.id, 'taught_by', cl.taught_by, 'covered_for', cl.covered_for);
+    if md = 'cover' then
+      orig := coalesce(cl.covered_for, cl.taught_by);                                    -- who it was meant for stays the same however often it is covered
+      new_cf := case when orig is distinct from p_new_tutor then orig end;              -- handed back to the original tutor = nobody is covering
+    else new_cf := null; end if;
+    update lessons set taught_by = p_new_tutor, covered_for = new_cf where id = cl.id;
+  end loop;
+
+  -- reassign only, and only when asked: the student's assigned-tutor link follows (the old tutor's ends, the new tutor's starts)
+  if coalesce(p_update_links, false) then
+    for sid in select distinct x.student_id from lessons x where x.id = any(ids) loop
+      old_tutor := (select (e ->> 'taught_by')::uuid from jsonb_array_elements(before_j) e
+                     join lessons y on y.id = (e ->> 'lesson_id')::uuid where y.student_id = sid limit 1);
+      if old_tutor is not null then
+        -- the old tutor stays this student's assigned tutor when they still teach the student somewhere else: another weekly slot, or another
+        -- upcoming lesson that does not come from the slot of the lesson(s) being moved (a reassign leaves those weekly slots alone)
+        select coalesce(array_agg(distinct x.slot_id) filter (where x.slot_id is not null), '{}') into moved_slots from lessons x where x.id = any(ids) and x.student_id = sid;
+        still := exists (select 1 from recurring_slots rs where rs.org_id = l.org_id and rs.student_id = sid and rs.taught_by = old_tutor and rs.active
+                           and not (rs.id = any(moved_slots)))
+              or exists (select 1 from lessons y where y.org_id = l.org_id and y.student_id = sid and y.taught_by = old_tutor and y.lesson_date >= today
+                           and y.status is distinct from 'cancelled' and not (y.id = any(ids)) and (y.slot_id is null or not (y.slot_id = any(moved_slots))));
+        if still then kept := kept + 1;
+        else
+          update student_tutors set active = false, until = today where org_id = l.org_id and student_id = sid and membership_id = old_tutor and active;
+          get diagnostics n_ended = row_count; ended := ended + n_ended;
+        end if;
+      end if;
+      if not exists (select 1 from student_tutors x where x.org_id = l.org_id and x.student_id = sid and x.membership_id = p_new_tutor and x.active) then
+        insert into student_tutors(org_id, student_id, membership_id, since, created_by) values (l.org_id, sid, p_new_tutor, today, auth.uid());
+        added := added + 1;
+      end if;
+    end loop;
+  end if;
+
+  insert into audit_log(org_id, actor, action, table_name, row_id, before, after)
+  values (l.org_id, auth.uid(), 'staff_reassign_lesson', 'lessons', l.id::text,
+          jsonb_build_object('lessons', before_j),
+          jsonb_build_object('mode', md, 'new_tutor', p_new_tutor, 'new_tutor_name', nt.display_name, 'lessons', to_jsonb(ids), 'reason', why,
+                             'covered_for', (select covered_for from lessons where id = l.id),
+                             'links_updated', coalesce(p_update_links, false), 'links_ended', ended, 'links_added', added, 'links_kept', kept));
+  return jsonb_build_object('lesson_id', l.id, 'lessons', array_length(ids, 1), 'mode', md, 'tutor_id', p_new_tutor,
+                            'tutor_name', coalesce(nt.display_name, 'Tutor'), 'covered_for', (select covered_for from lessons where id = l.id),
+                            'links_ended', ended, 'links_added', added, 'links_kept', kept);
+end $$;
+
+revoke all on function public.staff_reassign_lesson(uuid, uuid, text, text, boolean) from public, anon;
+grant execute on function public.staff_reassign_lesson(uuid, uuid, text, text, boolean) to authenticated;
+
+-- #####################################################################################################
+-- ### PART 10 of 23 — tutor Schedule tab (read only)
 -- ### source branch: claude/t6-1-tutor-schedule   file: db/migration_tutor_schedule.sql   undo: db/migration_tutor_schedule_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -2089,7 +2205,7 @@ begin
 end $$;
 
 -- #####################################################################################################
--- ### PART 10 of 21 — centre money settings + validator
+-- ### PART 11 of 23 — centre money settings + validator
 -- ### source branch: claude/t4-s0-settings   file: db/migration_money_settings.sql   undo: db/migration_money_settings_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -2163,7 +2279,7 @@ begin
 end $$;
 
 -- #####################################################################################################
--- ### PART 11 of 21 — centre invoice / payment tables
+-- ### PART 12 of 23 — centre invoice / payment tables
 -- ### source branch: claude/t4-s1-tables   file: db/migration_centre_money.sql   undo: db/migration_centre_money_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -2715,7 +2831,7 @@ grant execute on function public.centre_set_opening_number(uuid, text, int), pub
 grant execute on function public.centre_next_number(uuid, text) to service_role;
 
 -- #####################################################################################################
--- ### PART 12 of 21 — Money > Invoice run
+-- ### PART 13 of 23 — Money > Invoice run
 -- ### source branch: claude/t4-s2-invoice-run   file: db/migration_centre_invoice_run.sql   undo: db/migration_centre_invoice_run_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -3195,7 +3311,7 @@ grant execute on function public.centre_invoice_run_preview(uuid, date), public.
   public.centre_invoice_list(uuid, date, text), public.centre_invoice_get(uuid), public.centre_invoice_numbering(uuid) to authenticated, service_role;
 
 -- #####################################################################################################
--- ### PART 13 of 21 — payments, credit notes, invoice link
+-- ### PART 14 of 23 — payments, credit notes, invoice link
 -- ### source branch: claude/t4-s3-payments   file: db/migration_centre_payments.sql   undo: db/migration_centre_payments_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -3892,7 +4008,115 @@ grant execute on function public.centre_record_payment(uuid, uuid, text, bigint,
 grant execute on function public.centre_invoice_public(uuid) to anon, authenticated, service_role;      -- the one function the world may call: it needs the secret token
 
 -- #####################################################################################################
--- ### PART 14 of 21 — invite email log + status
+-- ### PART 15 of 23 — Record payment fix (DELETE without WHERE refused by Supabase)
+-- ### source branch: claude/b4-fix   file: db/migration_payment_fix.sql   undo: db/migration_payment_fix_down.sql
+-- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
+-- #####################################################################################################
+-- =====================================================================================================
+-- B4-FIX — "Record payment" failed with "Something went wrong" (PostgREST error 21000)   undo: migration_payment_fix_down.sql
+-- =====================================================================================================
+-- Run order: AFTER migration_centre_payments.sql (any time after; it only replaces one function). Run on the DEV project first. Safe to run twice.
+-- Needs no data change and reads/changes no row.
+--
+-- CAUSE: centre_record_payment cleared its scratch table with `delete from _td_pay_open;` (no WHERE). Supabase's API layer runs the pg-safeupdate
+-- extension, which refuses any DELETE or UPDATE without a WHERE clause with SQLSTATE 21000 ("DELETE requires a WHERE clause"). The throwaway test
+-- Postgres has no such extension, so the SQL tests passed. Only this one statement was affected (every other DELETE / UPDATE in the migrations has a WHERE).
+-- FIX: the same function with `delete from _td_pay_open where true;` (the scratch table is per-transaction, so it is empty on a first call anyway).
+-- Behaviour is otherwise identical; grants are kept by CREATE OR REPLACE and restated below.
+-- =====================================================================================================
+
+create or replace function public.centre_record_payment(p_org uuid, p_household uuid, p_method text, p_amount_cents bigint, p_received_on date,
+  p_reference text default null, p_invoice_ids uuid[] default null, p_payer_name text default null, p_note text default null) returns jsonb
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare today date := centre_money_gate(p_org, 'record_payments'); s jsonb; partial boolean; mode text; modes jsonb;
+  hh uuid := p_household; pid uuid := gen_random_uuid(); ref text := nullif(trim(coalesce(p_reference, '')), ''); payer text := nullif(trim(coalesce(p_payer_name, '')), '');
+  note text := nullif(trim(coalesce(p_note, '')), ''); explicit boolean := coalesce(cardinality(p_invoice_ids), 0) > 0; r record; bad record;
+  remaining bigint; take bigint; allocated jsonb := '[]'::jsonb; n_alloc int := 0; excess bigint := 0; hh_i uuid; ids uuid[]; open_n int;
+begin
+  if p_method is null or p_method not in ('manual_paynow', 'bank', 'cash', 'cheque', 'other') then
+    raise exception 'BAD_VALUE: choose how it was paid (PayNow, bank transfer, cash, cheque or other)' using errcode = 'P0001'; end if;
+  if p_amount_cents is null or p_amount_cents <= 0 then raise exception 'BAD_VALUE: the amount must be more than S$0.00' using errcode = 'P0001'; end if;
+  if p_amount_cents > 100000000 then raise exception 'BAD_VALUE: that amount is too large to be right (over S$1,000,000)' using errcode = 'P0001'; end if;
+  if p_received_on is null then raise exception 'BAD_VALUE: say the date it was received' using errcode = 'P0001'; end if;
+  if p_received_on > today then raise exception 'BAD_VALUE: the date received can''t be in the future' using errcode = 'P0001'; end if;
+  if p_received_on < today - 1825 then raise exception 'BAD_VALUE: the date received is too far back (over 5 years)' using errcode = 'P0001'; end if;
+  if length(coalesce(ref, '')) > 120 or length(coalesce(payer, '')) > 120 or length(coalesce(note, '')) > 300 then
+    raise exception 'TOO_LONG: keep the reference and name under 120 characters and the note under 300' using errcode = 'P0001'; end if;
+  s := org_settings_on(p_org, today);
+  if s is null then raise exception 'NOT_FOUND' using errcode = 'P0001'; end if;
+  partial := coalesce((s#>>'{payments,partial_payments}')::boolean, true);
+  mode := centre_overpay_mode(s);
+  modes := coalesce(s#>'{payments,modes}', '[]'::jsonb);
+  if p_method = 'manual_paynow' and not (modes ? 'manual_paynow') then
+    raise exception 'NOT_ALLOWED: manual PayNow isn''t switched on in this centre''s payment settings (cash, bank transfer and cheque still can be recorded)' using errcode = '42501'; end if;
+
+  -- which household? (from the chosen invoices when it isn't given)
+  if explicit then
+    select array(select distinct x from unnest(p_invoice_ids) x) into ids;
+    for r in select i.id, i.status, i.kind, i.number_text, centre_invoice_household(i.id) as hid from centre_invoices i where i.org_id = p_org and i.id = any(ids) loop
+      if r.status <> 'issued' or r.kind = 'credit_note' then raise exception 'NOT_ALLOWED: % can''t be paid (only an issued invoice can)', coalesce(r.number_text, 'that document') using errcode = '42501'; end if;
+      if hh is null then hh := r.hid; end if;
+      if r.hid is distinct from hh then raise exception 'NOT_ALLOWED: those invoices belong to different families; record one payment per family' using errcode = '42501'; end if;
+    end loop;
+    if (select count(*) from centre_invoices where org_id = p_org and id = any(ids)) <> cardinality(ids) then raise exception 'NOT_FOUND' using errcode = 'P0001'; end if;
+  end if;
+  if hh is null then raise exception 'BAD_VALUE: choose which family paid' using errcode = 'P0001'; end if;
+  if not exists (select 1 from households h where h.id = hh and h.org_id = p_org) then raise exception 'NOT_FOUND' using errcode = 'P0001'; end if;
+  perform pg_advisory_xact_lock(hashtextextended(hh::text, 4));      -- two people recording for the same family: one waits
+
+  -- the invoices this payment may cover, in the order money is applied: oldest issued first (issue date, then number)
+  create temp table if not exists _td_pay_open(invoice_id uuid, number_text text, total_cents bigint, balance_cents bigint, ord int) on commit drop;
+  delete from _td_pay_open where true;                                 -- Supabase refuses a DELETE with no WHERE (pg-safeupdate, SQLSTATE 21000)
+  insert into _td_pay_open
+    select i.id, i.number_text, i.total_cents, b.balance_cents, (row_number() over (order by i.issue_date, i.number_seq))::int
+      from centre_invoices i, lateral centre_balance_rows(p_org, array[i.id]) b
+     where i.org_id = p_org and i.status = 'issued' and i.kind <> 'credit_note'
+       and (case when explicit then i.id = any(ids)
+                 else (i.household_id = hh or (i.household_id is null and i.student_id in (select s2.id from students s2 where s2.household_id = hh and s2.org_id = p_org))) end);
+  if explicit then
+    select * into bad from _td_pay_open where balance_cents = 0 limit 1;
+    if bad.invoice_id is not null then raise exception 'NOT_ALLOWED: % is already paid in full', bad.number_text using errcode = '42501'; end if;
+  end if;
+  select count(*) into open_n from _td_pay_open where balance_cents > 0;
+
+  -- partial payments switched off: the money must cover whole invoices (the first one it can't finish is named)
+  if not partial and open_n > 0 then
+    remaining := p_amount_cents;
+    for r in select * from _td_pay_open where balance_cents > 0 order by ord loop
+      if remaining < r.balance_cents then
+        raise exception 'PART_NOT_ALLOWED: this centre doesn''t accept part payments, so a payment has to cover whole invoices. % still owes %.', r.number_text, centre_fmt_money(r.balance_cents) using errcode = '42501';
+      end if;
+      remaining := remaining - r.balance_cents;
+    end loop;
+  end if;
+
+  insert into centre_payments(id, org_id, kind, household_id, method, amount_cents, received_on, reference, payer_name, note)
+  values (pid, p_org, 'payment', hh, p_method, p_amount_cents, p_received_on, ref, payer, note);
+  remaining := p_amount_cents;
+  for r in select * from _td_pay_open where balance_cents > 0 order by ord loop
+    exit when remaining <= 0;
+    take := least(remaining, r.balance_cents);
+    insert into centre_payment_allocations(org_id, payment_id, invoice_id, cents) values (p_org, pid, r.invoice_id, take);
+    remaining := remaining - take; n_alloc := n_alloc + 1;
+    allocated := allocated || jsonb_build_object('invoice_id', r.invoice_id, 'number', r.number_text, 'cents', take, 'balance_after_cents', r.balance_cents - take);
+  end loop;
+  excess := remaining;
+  if excess > 0 then
+    insert into centre_family_credit(org_id, household_id, kind, handling, cents, payment_id, reason)
+    values (p_org, hh, 'overpayment', mode, excess, pid, case when open_n = 0 then 'Paid in advance: nothing was owed' else 'More than the open invoices came to' end);
+  end if;
+  insert into audit_log(org_id, actor, action, table_name, row_id, before, after)
+  values (p_org, auth.uid(), 'centre_payment_record', 'centre_payments', pid::text, null,
+          jsonb_build_object('method', p_method, 'amount_cents', p_amount_cents, 'received_on', p_received_on, 'invoices_covered', n_alloc, 'excess_cents', excess, 'excess_handling', case when excess > 0 then mode end));
+  return jsonb_build_object('payment_id', pid, 'household_id', hh, 'amount_cents', p_amount_cents, 'allocated', allocated, 'excess_cents', excess,
+                            'excess_handling', case when excess > 0 then mode end, 'credit_balance_cents', centre_credit_balance(p_org, hh));
+end $$;
+
+revoke all on function public.centre_record_payment(uuid, uuid, text, bigint, date, text, uuid[], text, text) from public, anon;
+grant execute on function public.centre_record_payment(uuid, uuid, text, bigint, date, text, uuid[], text, text) to authenticated, service_role;
+
+-- #####################################################################################################
+-- ### PART 16 of 23 — invite email log + status
 -- ### source branch: claude/t7-2-invites   file: db/migration_invites.sql   undo: db/migration_invites_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -3978,7 +4202,7 @@ begin
 end $$;
 
 -- #####################################################################################################
--- ### PART 15 of 21 — centre fee S$0.50 per student
+-- ### PART 17 of 23 — centre fee S$0.50 per student
 -- ### source branch: claude/t30-fee-050   file: db/migration_fee_050.sql   undo: db/migration_fee_050_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -4026,7 +4250,7 @@ update public.org_plans p
  where p.plan_code = 'centre' and p.base_cents = 10000 and p.per_student_cents = 40;
 
 -- #####################################################################################################
--- ### PART 16 of 21 — how a centre pays TutorDeck
+-- ### PART 18 of 23 — how a centre pays TutorDeck
 -- ### source branch: claude/t31a-centre-invoice-billing   file: db/migration_centre_billing_method.sql   undo: db/migration_centre_billing_method_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -4056,7 +4280,7 @@ revoke all on function public.org_set_billing_method(uuid, text) from public, an
 grant execute on function public.org_set_billing_method(uuid, text) to authenticated;
 
 -- #####################################################################################################
--- ### PART 17 of 21 — centre billing start date + agreed first-month count
+-- ### PART 19 of 23 — centre billing start date + agreed first-month count
 -- ### source branch: claude/t36-billing-start   file: db/migration_centre_billing_start.sql   undo: db/migration_centre_billing_start_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -4120,7 +4344,7 @@ revoke all on function public.org_set_billing_start(uuid, date, int, text) from 
 grant execute on function public.org_set_billing_start(uuid, date, int, text) to authenticated;
 
 -- #####################################################################################################
--- ### PART 18 of 21 — tutor's own profile
+-- ### PART 20 of 23 — tutor's own profile
 -- ### source branch: claude/t24c-1-profile   file: db/migration_tutor_profile.sql   undo: db/migration_tutor_profile_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -4192,7 +4416,7 @@ begin
 end $$;
 
 -- #####################################################################################################
--- ### PART 19 of 21 — tutor payout details (masked, audited)
+-- ### PART 21 of 23 — tutor payout details (masked, audited)
 -- ### source branch: claude/t24c-2-payout   file: db/migration_tutor_payout.sql   undo: db/migration_tutor_payout_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -4382,7 +4606,7 @@ begin
 end $$;
 
 -- #####################################################################################################
--- ### PART 20 of 21 — payout permission + centre list/reveal
+-- ### PART 22 of 23 — payout permission + centre list/reveal
 -- ### source branch: claude/t24c-3-payout   file: db/migration_payout_permission.sql   undo: db/migration_payout_permission_down.sql
 -- ### (if an error appears, search this file for the nearest "### PART" line above the error line: that is the part that failed)
 -- #####################################################################################################
@@ -4510,7 +4734,7 @@ begin
 end $$;
 
 -- #####################################################################################################
--- ### PART 21 of 21 — two demo staff logins (centre.staff@ and centre.frontdesk@example.test; password in db/seed_dev_demo.sql)
+-- ### PART 23 of 23 — two demo staff logins (centre.staff@ and centre.frontdesk@example.test; password in db/seed_dev_demo.sql)
 -- ### source branch: claude/t3-1-staff-home   file: db/seed_dev_demo.sql (staff block only)   DEV ONLY
 -- ### undo: delete from auth.users where email in ('centre.staff@example.test','centre.frontdesk@example.test')
 -- #####################################################################################################

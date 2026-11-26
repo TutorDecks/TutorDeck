@@ -156,7 +156,7 @@
         '<label class="tt-mode-opt"><input type="radio" name="tt-rm" value="reassign"' + (reForm.mode === "reassign" ? ' checked' : '') + '><span><b>Give this lesson to them</b>' +
         '<span>It becomes theirs. The weekly slot is not changed.</span></span></label></fieldset>' +
         '<label class="tt-chk" id="tt-rlw"' + (reForm.mode === "reassign" ? '' : ' hidden') + '><input type="checkbox" id="tt-rl"' + (reForm.links ? ' checked' : '') + '><span>Also make them ' +
-        esc(r.student_name) + '’s assigned tutor instead of ' + esc(r.tutor_name || "the old tutor") + '</span></label>';
+        esc(r.student_name) + '’s assigned tutor. ' + esc(r.tutor_name || "The old tutor") + ' stays assigned if they still teach ' + esc(r.student_name) + ' in another slot or lesson; otherwise they are replaced.</span></label>';
     }
     h += '<div class="field"><label for="tt-rr">Reason' + (first ? ' <span class="opt">Optional</span>' : '') + '</label><input id="tt-rr" type="text" maxlength="' + TT.REASON_MAX + '" autocomplete="off" ' +
       'placeholder="e.g. Tutor is unwell" value="' + esc(reForm.reason) + '"><div class="sl-err" id="tt-re-reason" role="alert" hidden></div></div>' +

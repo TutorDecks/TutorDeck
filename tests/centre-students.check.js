@@ -83,6 +83,7 @@ const rows = (page) => page.locator(".cs-row").count();
       const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", perms)] }, { phone, dark: mode === "dark" });
       await page.goto(BASE + "centre-students?id=c1"); await page.waitForSelector(".cs-row");
       ok(await rows(page) === 25, tag + who + ": first page has 25 rows of 32 active");
+      ok(/family name.*parent name, phone and email/.test(await page.locator("#cs-hint").innerText()) && await page.locator("#cs-q").getAttribute("aria-describedby") === "cs-hint", tag + who + ": a hint under the search box says what it searches");
       ok(/1–25 of 32/.test(await page.locator("#cs-pl").innerText()), tag + who + ": pager says 1–25 of 32");
       await page.click("#cs-next"); await page.waitForFunction(() => document.querySelectorAll(".cs-row").length === 7);
       ok(true, tag + who + ": page 2 has the last 7");
