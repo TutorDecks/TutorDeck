@@ -286,7 +286,7 @@ select t.ok((select array_agg(kind order by kind) = array['applied', 'received',
 select t.eq(pg_temp.held('c2_amy'), 0, 'held is exactly zero, never below');
 select t.ok((select (j->>'received_cents')::int = 10900 + 0 and (j->>'deposits_refunded_cents')::int = 1100 and (j->>'deposits_held_cents')::int = 12000 * 3 from (select pg_temp.rev(t.id('c2'), :'rev') j) x),
             'revenue: the deposit kept against fees counts as received fees (S$109.00); S$11.00 shows as refunded');
-select pg_temp.refused(:'paym', format($q$ select centre_reverse_payment(%L, 'oops') $q$, (select id from centre_payments where org_id = t.id('c2') and method = 'deposit')), 'NOT_ALLOWED', 'a payment that moved deposit onto an invoice can''t be reversed (credit-note it instead)');
+select pg_temp.refused(:'paym', format($q$ select centre_reverse_payment(%L, 'oops') $q$, (select id from centre_payments where org_id = t.id('c2') and method = 'deposit')), 'NOT_ALLOWED', 'a payment that moved deposit onto an invoice can''t be reversed (use Undo on the invoice instead; a credit note cannot give it back)');
 -- short notice: the centre's rule suggests keeping the whole deposit; keeping is a refund of S$0.00 that completes when approved
 select t.ok((select (j->>'notice_short')::boolean and (j->'suggest'->>'forfeit_cents')::int = 12000 and (j->'suggest'->>'set_off_cents')::int = 0 and (j->'suggest'->>'refund_cents')::int = 0 and j->>'note' like 'Less than 14 days%'
                from (select pg_temp.prop(:'bill', 'c2_ben', (select today - 6 from td)) j) x), 'notice given 5 days before the end: SHORT (14 needed): suggests keeping the whole S$120.00; the note warns a kept deposit becomes income');

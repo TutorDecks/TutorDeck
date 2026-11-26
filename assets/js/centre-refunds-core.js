@@ -215,7 +215,46 @@
   }
 
   // ---- the database's refusals in plain words ----
-  var CODED = /^(NOT_ALLOWED|BAD_VALUE|TOO_LONG|REASON_REQUIRED|NO_DEPOSIT|DEPOSIT_SHORT|CREDIT_SHORT|NOT_READY|OPEN_REFUND|NOT_APPROVED|ALREADY_CANCELLED|ALREADY_PAID|NOTHING_TO_APPLY): ([\s\S]*)$/;
+
+  // ---- UNDO of credit / a deposit that was applied to an invoice (T4 step S5b; db/migration_centre_credit_undo.sql decides, this words it) ----
+  // `a` is one row of centre_invoice_applications(invoice).rows: { method, cents, date, on_this_invoice_cents, also_invoices[], by, state, undone_on, undone_by, undone_reason, blockers[{code,text}], can_undo }
+  function undoWhat(a) { return a && a.method === "deposit" ? "deposit kept against the invoice" : "family credit used"; }
+  function undoTitle(a) { return a && a.method === "deposit" ? "Deposit kept against this invoice" : "Family credit used on this invoice"; }
+  function undoRow(a) {
+    var bits = [shortDate(a.date)];
+    if (a.by) bits.push("by " + a.by);
+    if ((a.also_invoices || []).length) bits.push("also paid " + a.also_invoices.join(", "));
+    return bits.join(" · ");
+  }
+  function undoAmount(a) { return a.on_this_invoice_cents || a.cents || 0; }
+  function undoBlockers(a) { return ((a && a.blockers) || []).map(function (b) { return b.text; }); }
+  // what to say under the row when there is no Undo button
+  function undoNote(a, canRole) {
+    if (!a) return "";
+    if (a.state === "undone") return "Undone" + (a.undone_on ? " on " + shortDate(a.undone_on) : "") + (a.undone_by ? " by " + a.undone_by : "") + (a.undone_reason ? ": " + a.undone_reason : "") + ".";
+    if (a.can_undo) return "";
+    var b = undoBlockers(a);
+    if (b.length) return "Can’t be undone: " + b.join(" ");
+    return canRole === false ? "Only the owner or a staff member who issues invoices can undo this." : "";
+  }
+  function undoQuestion(a, invoiceNumber) {
+    var n = (a.also_invoices || []).length, what = a.method === "deposit" ? "deposit" : "credit";
+    return "Take back " + money(a.cents) + " of " + what + (n ? " from " + invoiceNumber + " and " + n + plural(n, " other invoice", " other invoices") : " from " + invoiceNumber) + "? " +
+      (n ? "They will all owe money again. " : "The invoice will owe " + money(undoAmount(a)) + " again. ") +
+      (a.method === "deposit" ? "The money goes back into the student’s deposit." : "The money goes back into the family’s credit.") + " A record of the undo is kept.";
+  }
+  function checkUndo(o) {
+    var why = String((o && o.reason) || "").trim();
+    if (!why) return { ok: false, error: "Say why. The reason is kept in the record." };
+    if (why.length > 300) return { ok: false, error: "Keep the reason under 300 characters." };
+    return { ok: true, reason: why };
+  }
+  function undoDoneText(r, a) {
+    if (r && r.already) return "That was already undone.";
+    return "Undone. " + money((r && r.undone_cents) || (a && a.cents) || 0) + " is back in the " + (a && a.method === "deposit" ? "student’s deposit" : "family’s credit") + ".";
+  }
+
+  var CODED = /^(NOT_ALLOWED|BAD_VALUE|TOO_LONG|REASON_REQUIRED|NO_DEPOSIT|DEPOSIT_SHORT|CREDIT_SHORT|NOT_READY|OPEN_REFUND|NOT_APPROVED|ALREADY_CANCELLED|ALREADY_PAID|NOTHING_TO_APPLY|UNDO_BLOCKED|FOUR_EYES_UNAVAILABLE): ([\s\S]*)$/;
   function errorText(err) {
     var m = String((err && err.message) || err || "");
     var c = CODED.exec(m);
@@ -231,5 +270,7 @@
            canAsk: canAsk, waitingText: waitingText, suggestionText: suggestionText, centsText: centsText, checkRelease: checkRelease, releaseQuestion: releaseQuestion, requestedText: requestedText,
            checkCreditRefund: checkCreditRefund, applyAmount: applyAmount, checkApply: checkApply, appliedText: appliedText, creditLines: creditLines, checkPaid: checkPaid,
            paidText: paidText, approvedText: approvedText, cancelledText: cancelledText, noticeNote: noticeNote, split: split, summary: summary, emptyText: emptyText, newKey: newKey,
-           errorText: errorText, isMissing: isMissing };
+           errorText: errorText, isMissing: isMissing,
+           undoWhat: undoWhat, undoTitle: undoTitle, undoRow: undoRow, undoAmount: undoAmount, undoBlockers: undoBlockers, undoNote: undoNote, undoQuestion: undoQuestion,
+           checkUndo: checkUndo, undoDoneText: undoDoneText };
 });

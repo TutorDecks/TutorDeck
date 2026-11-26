@@ -172,7 +172,7 @@ begin
   return new;
 end $$;
 
--- nobody types an internal method as a "reversal": a credit or deposit already applied to an invoice is corrected with a credit note
+-- nobody types an internal method as a "reversal": a credit or deposit already applied to an invoice is undone with Undo (migration_centre_credit_undo.sql); a credit note cannot give it back
 create or replace function public.centre_internal_method_guard() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin

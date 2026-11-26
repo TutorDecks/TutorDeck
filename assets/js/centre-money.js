@@ -266,6 +266,21 @@
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("cm-sheet").classList.contains("on") && !document.querySelector(".td-dlg")) closeSheet(); });
   }
 
+  // notices for the signed-in owner (db/migration_centre_credit_undo.sql: org_notifications, written by the database only). Today: "refund approval is back to the
+  // owner" when the second approver that four-eyes needs went away. In-app only; the e-mail copy comes with the email provider (soon). Silent if the table isn't there.
+  async function notices() {
+    var box = $("cm-notices"); if (!box || !orgId) return;
+    var r = await window.sb.from("org_notifications").select("id, title, body, created_at").eq("org_id", orgId).is("read_at", null).order("created_at", { ascending: false }).limit(5);
+    if (r.error || !r.data || !r.data.length) { box.innerHTML = ""; return; }
+    box.innerHTML = r.data.map(function (n) {
+      return '<div class="card cm-block" role="note" data-n="' + esc(n.id) + '"><h2 class="cm-h2">' + esc(n.title) + '</h2><p class="cm-note">' + esc(n.body) + '</p>' +
+        '<div class="cm-acts"><button type="button" class="btn" data-dismiss="' + esc(n.id) + '">Got it</button></div></div>';
+    }).join("");
+    box.querySelectorAll("[data-dismiss]").forEach(function (b) {
+      b.addEventListener("click", async function () { b.disabled = true; await window.sb.rpc("org_notification_dismiss", { p_id: b.getAttribute("data-dismiss") }); notices(); });
+    });
+  }
+
   function init() {
     var q = new URLSearchParams(location.search), id = q.get("id"), o = TL.org ? TL.org() : null;
     if (!id) id = o && o.kind === "centre" ? o.id : null;
@@ -277,6 +292,7 @@
     tab = q.get("tab") === "invoices" ? "inv" : q.get("tab") === "deposits" ? "dep" : q.get("tab") === "refunds" ? "ref" : q.get("tab") === "latefees" ? "late" : "run";
     wire(); nav();
     setTab(tab);
+    notices();
   }
   // what the Invoices tab (assets/js/centre-payments.js) shares with this page: the side sheet, the message line, the run's own refresh
   window.CentreMoneyUI = {

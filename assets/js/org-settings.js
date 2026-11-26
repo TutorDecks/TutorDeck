@@ -121,7 +121,7 @@
       { path: "billing.deposit.final_month", label: "Family may use the deposit as the final month's fee", type: "toggle", soon: true },
       { path: "billing.deposit.refund_approved_by", label: "Refunds are approved by", type: "select", options: [
         o("owner", "The owner"), o("staff", "Any staff member who handles that kind of refund"), o("four_eyes", "Someone other than the person who asked")],
-        help: "Deposit refunds are handled by the owner and staff who issue invoices; refunds of family credit by the owner and staff who record payments. A refund is paid and recorded only after it is approved." },
+        help: "Deposit refunds are handled by the owner and staff who issue invoices; refunds of family credit by the owner and staff who record payments. A refund is paid and recorded only after it is approved. “Someone other than the person who asked” needs a second approver: it can be chosen only while the centre has the owner, a staff member who issues invoices and a staff member who records payments, all switched on. If one of them is later removed, switched off or loses that permission, TutorDeck changes this back to “The owner” and tells the owner." },
       { type: "group", label: "Late fees", help: LATE_HELP },
       { path: "billing.late_fee.enabled", label: "Late fee", type: "toggle" },
       { path: "billing.late_fee.repeat", label: "How often", type: "select", options: [
@@ -351,6 +351,23 @@
     return y + "-" + (m < 10 ? "0" : "") + m + "-01";
   }
 
+
+  // Four-eyes refund approval needs a SECOND person. Same rule as org_four_eyes_status() in db/migration_centre_credit_undo.sql (the database enforces it; this
+  // only explains it before a save): an active owner, plus active staff who issue invoices (deposit refunds) and active staff who record payments (credit refunds).
+  // `members` = rows of memberships ({ role, status, permissions, user_id }). A pending invite (no user yet) or a switched-off account doesn't count.
+  function fourEyes(members) {
+    var act = (members || []).filter(function (m) { return m && m.status === "active" && m.user_id; });
+    var staffWith = function (perm) { return act.some(function (m) { return m.role === "staff" && (m.permissions || []).indexOf(perm) > -1; }); };
+    var owner = act.some(function (m) { return m.role === "owner"; }), deposit = staffWith("issue_invoices"), credit = staffWith("record_payments");
+    var need = [];
+    if (!owner) need.push("an active owner");
+    if (!deposit) need.push("a staff member who issues invoices (for deposit refunds)");
+    if (!credit) need.push("a staff member who records payments (for credit refunds)");
+    var ready = owner && deposit && credit;
+    return { ready: ready, owner: owner, deposit: deposit, credit: credit, missing: need,
+      reason: ready ? "" : "Not available yet: it needs a second person to approve. Add " + need.join(" and ") + " in step 3 (Users and permissions) and make sure they are switched on." };
+  }
+
   // Human-readable value for the review step.
   function display(f, v) {
     if (f.type === "toggle") return v ? "Yes" : "No";
@@ -363,5 +380,5 @@
   }
 
   return { SCHEMA_VERSION: SCHEMA_VERSION, STAFF_PERMISSIONS: STAFF_PERMISSIONS, STEPS: STEPS, defaults: defaults, withDefaults: withDefaults,
-    get: get, set: set, validate: validate, isVisible: isVisible, visibleOptions: visibleOptions, effectiveFrom: effectiveFrom, display: display, CYCLE_SECTIONS: CYCLE_SECTIONS };
+    get: get, set: set, validate: validate, isVisible: isVisible, visibleOptions: visibleOptions, effectiveFrom: effectiveFrom, display: display, fourEyes: fourEyes, CYCLE_SECTIONS: CYCLE_SECTIONS };
 });

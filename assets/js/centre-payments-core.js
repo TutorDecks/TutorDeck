@@ -10,7 +10,8 @@
   var plural = CM.plural, money = CM.money, shortDate = CM.shortDate;
 
   var METHODS = [["manual_paynow", "PayNow"], ["bank", "Bank transfer"], ["cash", "Cash"], ["cheque", "Cheque"], ["other", "Other"]];
-  function methodLabel(m) { for (var i = 0; i < METHODS.length; i++) if (METHODS[i][0] === m) return METHODS[i][1]; return "Other"; }
+  // family_credit / deposit are not ways to pay: they are money already held, moved onto an invoice (so they are not in METHODS, the payment form's list)
+  function methodLabel(m) { if (m === "family_credit") return "Family credit"; if (m === "deposit") return "Deposit kept"; for (var i = 0; i < METHODS.length; i++) if (METHODS[i][0] === m) return METHODS[i][1]; return "Other"; }
 
   // ---- status chips (colour = meaning: teal paid, red overdue, amber part-paid, grey otherwise) ----
   var CHIPS = { issued: ["Issued", "muted"], part_paid: ["Part-paid", "warn"], paid: ["Paid", "ok"], overdue: ["Overdue", "bad"], void: ["Void (credited)", "muted"],

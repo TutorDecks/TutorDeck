@@ -233,7 +233,7 @@
     var open = st.open_invoices || [], pick = open.filter(function (i) { return i.id === inv.id; })[0] || open[0];
     back = function () { creditMenu(inv, null, fromBack); };
     $("cm-sm").textContent = st.household_name + " · Use credit";
-    $("cm-sb").innerHTML = backLink() + '<h3 class="cm-h2">Use credit on an invoice</h3><p class="cm-note">The credit pays the invoice; no cash is refunded. It can’t be taken back later: a mistake is fixed with a credit note.</p>' +
+    $("cm-sb").innerHTML = backLink() + '<h3 class="cm-h2">Use credit on an invoice</h3><p class="cm-note">The credit pays the invoice; no cash is refunded. If it was a mistake, the owner or a staff member who issues invoices can undo it from the invoice (a credit note can’t give it back).</p>' +
       '<form id="cr-form" novalidate>' +
       field("cr-inv", "Which invoice?", '<select id="cr-inv">' + open.map(function (i) { return '<option value="' + esc(i.id) + '"' + (i.id === pick.id ? ' selected' : '') + '>' + esc(i.number + ' · owes ' + CM.money(i.balance_cents)) + '</option>'; }).join("") + '</select>') +
       field("cr-amt", "Amount to use (S$)", '<input id="cr-amt" inputmode="decimal" autocomplete="off" placeholder="' + RC.centsText(RC.applyAmount(st.available_cents, pick.balance_cents)) + '">', '<p class="cm-hint" id="cr-amt-h">Leave blank to use as much as the invoice needs. ' + esc(CM.money(st.available_cents)) + ' is free.</p>') +
@@ -282,11 +282,57 @@
     $("cr-amt").focus(); $("cr-amt").select();
   }
 
+  // ---------------------------------------------------------------- undo credit / a deposit that was applied to an invoice (T4 step S5b)
+  // apps: centre_invoice_applications(invoice).rows. The database says who may and what blocks it; this shows it and asks for the reason.
+  function undoForm(inv, apps, fromBack) {
+    var act = (apps || []).filter(function (a) { return a.state === "active"; });
+    back = null;
+    $("cm-st").textContent = "Undo"; $("cm-sm").textContent = inv.number + " · Undo credit or deposit used";
+    if (!act.length) { $("cm-sb").innerHTML = '<button type="button" class="cm-link cm-back" id="cr-back">‹ Back to the invoice</button><p class="cm-note">Nothing on this invoice can be undone.</p>'; $("cr-back").addEventListener("click", function () { if (fromBack) fromBack(); }); return; }
+    var pick = act.filter(function (a) { return a.can_undo; })[0] || act[0];
+    $("cm-sb").innerHTML = '<button type="button" class="cm-link cm-back" id="cr-back">‹ Back to the invoice</button><h3 class="cm-h2">Undo credit or deposit used</h3>' +
+      '<p class="cm-note">The money is taken back off the invoice and goes back to the family’s credit (or the student’s deposit). The original entry stays in the record; the undo is a new entry with your reason. Only the owner or a staff member who issues invoices can do this.</p>' +
+      '<form id="cr-form" novalidate>' +
+      (act.length > 1 ? field("cu-pick", "Which one?", '<select id="cu-pick">' + act.map(function (a, i) { return '<option value="' + i + '"' + (a === pick ? ' selected' : '') + '>' + esc(CM.money(a.cents) + ' · ' + RC.undoWhat(a) + ' · ' + CM.shortDate(a.date)) + '</option>'; }).join("") + '</select>') : '') +
+      '<div id="cu-det"></div>' +
+      field("cu-reason", "Reason (kept in the record)", '<input id="cu-reason" maxlength="300" autocomplete="off">') +
+      '<p class="cm-hint err" id="cr-err" role="alert"></p>' +
+      '<div class="cm-acts col"><button type="submit" class="btn btn-primary" id="cr-go">Undo</button><button type="button" class="btn" id="cr-cancel">Cancel</button></div></form>';
+    var key = null;
+    function sel() { return act.length > 1 ? act[+$("cu-pick").value] : act[0]; }
+    function draw() {
+      var a = sel(), b = RC.undoBlockers(a);
+      $("cu-det").innerHTML = '<div class="cm-tot"><div><span>' + esc(RC.undoTitle(a)) + '</span><span>' + esc(CM.money(a.cents)) + '</span></div></div><p class="cm-note">' + esc(RC.undoRow(a)) + '</p>' +
+        (b.length ? '<p class="cm-note warn" id="cu-block">Can’t be undone: ' + esc(b.join(' ')) + '</p>' : '<p class="cm-note" id="cu-ok">' + esc(RC.undoQuestion(a, inv.number)) + '</p>');
+      $("cr-go").disabled = !a.can_undo; $("cu-reason").disabled = !a.can_undo;
+    }
+    var goBackSheet = function () { if (fromBack) fromBack(); else UI.closeSheet(); };
+    $("cr-back").addEventListener("click", goBackSheet); $("cr-cancel").addEventListener("click", goBackSheet);
+    if (act.length > 1) $("cu-pick").addEventListener("change", draw);
+    draw();
+    $("cr-form").addEventListener("submit", async function (e) {
+      e.preventDefault(); if (busy) return;
+      var a = sel(); if (!a.can_undo) return;
+      var c = RC.checkUndo({ reason: $("cu-reason").value });
+      if (!c.ok) { $("cr-err").textContent = c.error; return; }
+      if (!(await TL.confirm({ title: "Undo this?", message: RC.undoQuestion(a, inv.number), confirmText: "Undo" }))) return;
+      $("cr-err").textContent = ""; busy = true; $("cr-go").disabled = true;
+      var r = await rpc("centre_undo_application", { p_payment: a.payment_id, p_reason: c.reason });
+      busy = false;
+      if (r.error) { $("cr-go").disabled = false; $("cr-err").textContent = RC.errorText(r.error); return; }
+      var t = RC.undoDoneText(r.data, a); toast(t);
+      if (fromBack) fromBack({ text: t }); else UI.closeSheet();
+      if (window.CentrePay && window.CentrePay.refresh) window.CentrePay.refresh();
+    });
+    if (!$("cu-reason").disabled) $("cu-reason").focus();
+  }
+
   function ensure() { UI = window.CentreMoneyUI; orgId = UI.orgId(); today = today || UI.localToday(); if (!built) frame(); }
   window.CentreRefunds = {
     show: show, refresh: function () { if (built) load(); },
     releaseDeposit: function (studentId, name, trigger, fromBack) { ensure(); return releaseForm(studentId, name, trigger, fromBack); },
     creditMenu: function (inv, trigger, fromBack) { ensure(); return creditMenu(inv, trigger, fromBack); },
+    undoApplication: function (inv, apps, fromBack) { ensure(); return undoForm(inv, apps, fromBack); },
     open: function (id, trigger) { ensure(); back = null; return openRefund(id, trigger); }
   };
 })();
