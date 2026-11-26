@@ -110,11 +110,22 @@ declare
   staff_id uuid := '00000000-0000-0000-0000-00000000d106';
   front_id uuid := '00000000-0000-0000-0000-00000000d107';
   c uuid;
+  n int;
+  found_list text;
   r record;
 begin
-  select o.id into c from organisations o join memberships m on m.org_id = o.id and m.role = 'owner'
-    where o.kind = 'centre' and o.trading_name = 'Demo Learning Centre' order by o.created_at limit 1;
-  if c is null then raise exception 'Run the demo seed above first: the Demo Learning Centre does not exist yet.'; end if;
+  -- The demo centre is found by its MEMBERS, never by its name (it may have been renamed): the centre where tutor.one@ and tutor.two@
+  -- are active tutors and centre.owner@ is an active owner. Exactly one must match; several = stop and ask, never guess.
+  select count(*), string_agg(o.trading_name || ' (' || o.id || ')', '; ' order by o.created_at), (array_agg(o.id order by o.created_at))[1]
+    into n, found_list, c
+    from organisations o
+    where o.kind = 'centre'
+      and exists (select 1 from memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'owner' and m.status = 'active' and u.email = 'centre.owner@example.test')
+      and exists (select 1 from memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'tutor' and m.status = 'active' and u.email = 'tutor.one@example.test')
+      and exists (select 1 from memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'tutor' and m.status = 'active' and u.email = 'tutor.two@example.test');
+  if n = 0 then raise exception 'MISSING demo centre: no centre has tutor.one@ and tutor.two@ as tutors and centre.owner@ as owner (run the demo seed above, db/seed_dev_demo.sql, first).'; end if;
+  if n > 1 then raise exception using message = 'AMBIGUOUS: ' || n || ' centres match the demo centre (' || found_list || '). Not guessing: ask the project owner which one the demo staff logins belong to.'; end if;
+  raise notice 'Demo centre used for the staff logins: % (%)', (select trading_name from organisations where id = c), c;
   for r in select * from (values (staff_id, 'centre.staff@example.test', 'Demo Centre Staff'), (front_id, 'centre.frontdesk@example.test', 'Demo Front Desk')) v(id, email, name) loop
     if not exists (select 1 from auth.users where email = r.email) then
       insert into auth.users(instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, confirmation_token, recovery_token, email_change_token_new,

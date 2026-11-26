@@ -33,6 +33,15 @@ WHAT = {
 }
 
 
+# The demo centre is found by its MEMBERS, never by its name (the owner may have renamed it): the centre in which tutor.one@ and tutor.two@
+# are active tutors and centre.owner@ is an active owner. The same rule is in db/seed_dev_demo.sql (staff block).
+def _has(role, email):
+    return ("exists (select 1 from public.memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = '%s' "
+            "and m.status = 'active' and u.email = '%s')" % (role, email))
+DEMO_WHERE = ("o.kind = 'centre'\n      and " + _has("owner", "centre.owner@example.test") + "\n      and " + _has("tutor", "tutor.one@example.test")
+              + "\n      and " + _has("tutor", "tutor.two@example.test"))
+
+
 def order():
     seen = []
     for line in open(os.path.join(ROOT, "tests/sql/run.sh")):
@@ -96,8 +105,14 @@ def main():
 
     # ---------------- pre-check
     w("-- ####################################### PRE-CHECK (read-only) #######################################")
-    w("-- 'ready' = every required earlier migration is present. 'NEW OBJECTS ALREADY THERE' says how much of this pack DEV already has (0 = untouched).")
-    w("""select 'PRE-CHECK' as step, m.migration, case when m.ok then 'present' else 'MISSING' end as state
+    w("-- 'ready' = the seven standard migrations are present and the demo centre is found. The demo centre is found by its MEMBERS (tutor.one@, tutor.two@ and")
+    w("-- centre.owner@example.test), not by its name, so a renamed centre is fine; the 'demo centre' line prints the name and id it will use.")
+    w("-- 'NEW OBJECTS ALREADY THERE' only says how much of this pack DEV already has: parts already applied are fine, the pack is safe to re-run.")
+    w("""with demo as (
+  select o.id, o.trading_name, o.created_at from public.organisations o
+  where DEMO_WHERE
+)
+select 'PRE-CHECK' as step, m.migration, case when m.ok then 'present' else 'MISSING' end as state
 from (values
   ('org_foundation (memberships, org_can)',  to_regclass('public.memberships') is not null and to_regprocedure('public.org_can(uuid,text)') is not null),
   ('billing (org_subscriptions)',            to_regclass('public.org_subscriptions') is not null),
@@ -105,13 +120,20 @@ from (values
   ('tutor_access (tutor_my_lessons)',        exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='tutor_my_lessons')),
   ('org_delete (org_delete_solo)',           exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='org_delete_solo')),
   ('function_lockdown (pinned search_path)', exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='audit_immutable' and proconfig is not null)),
-  ('org_separation (org_same_org_guard)',    exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='org_same_org_guard')),
-  ('demo seed present (Demo Learning Centre) - needed by the last part', exists (select 1 from public.organisations where trading_name='Demo Learning Centre' and kind='centre'))
+  ('org_separation (org_same_org_guard)',    exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='org_same_org_guard'))
 ) as m(migration, ok)
 union all
-select 'PRE-CHECK', 'NEW OBJECTS ALREADY THERE (of %d)', (
-    (select count(*) from (values %s) v(n) where exists (select 1 from pg_class c where c.relnamespace='public'::regnamespace and c.relname=v.n and c.relkind='r'))
-  + (select count(*) from (values %s) v(n) where exists (select 1 from pg_proc p where p.pronamespace='public'::regnamespace and p.proname=v.n)))::text
+select 'PRE-CHECK', 'demo centre (found by its members; needed by the last part)',
+  case (select count(*) from demo)
+    when 1 then 'present: ' || (select trading_name from demo) || ' (' || (select id::text from demo) || ')'
+    when 0 then 'MISSING demo centre (run db/seed_dev_demo.sql)'
+    else 'AMBIGUOUS: ' || (select count(*) from demo) || ' centres match (' || (select string_agg(trading_name || ' ' || id, '; ' order by created_at) from demo) || ') - ask the project owner which one to use'
+  end
+union all
+select 'PRE-CHECK', 'NEW OBJECTS ALREADY THERE', ((
+    (select count(*) from (values NEW_T) v(n) where exists (select 1 from pg_class c where c.relnamespace='public'::regnamespace and c.relname=v.n and c.relkind='r'))
+  + (select count(*) from (values NEW_F) v(n) where exists (select 1 from pg_proc p where p.pronamespace='public'::regnamespace and p.proname=v.n)))::text
+  || ' of NEW_N (already applied parts are fine: the pack is safe to re-run)')
 union all
 select 'PRE-CHECK', 'OVERALL', case when
     to_regclass('public.memberships') is not null and to_regprocedure('public.org_can(uuid,text)') is not null
@@ -121,22 +143,31 @@ select 'PRE-CHECK', 'OVERALL', case when
     and exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='org_delete_solo')
     and exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='audit_immutable' and proconfig is not null)
     and exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='org_same_org_guard')
-    and exists (select 1 from public.organisations where trading_name='Demo Learning Centre' and kind='centre')
-  then 'ready' else 'NOT READY - apply the MISSING items first (migration order: %s; demo seed: db/seed_dev_demo.sql)' end;
-""" % (len(tables) + len(funcs), ",".join("('%s')" % x for x in tables), ",".join("('%s')" % x for x in funcs), ", ".join(ON_DEV)))
+    and (select count(*) from demo) = 1
+  then 'ready' else 'NOT READY - fix the MISSING / AMBIGUOUS lines first (migration order: ON_DEV_LIST; demo seed: db/seed_dev_demo.sql)' end;
+""".replace("DEMO_WHERE", DEMO_WHERE).replace("NEW_T", ",".join("('%s')" % x for x in tables)).replace("NEW_F", ",".join("('%s')" % x for x in funcs))
+   .replace("NEW_N", str(len(tables) + len(funcs))).replace("ON_DEV_LIST", ", ".join(ON_DEV)))
 
     # ---------------- guard (stops the whole paste on a database that is not DEV-shaped)
     w("""-- Safety stop: this whole paste fails here, before changing anything, on a database that does not have the organisation tables
--- (that is what LIVE looks like today) or the demo centre (DEV only).
-do $$ begin
+-- (that is what LIVE looks like today), or has no demo centre, or has several (the demo centre is found by its members, not its name).
+do $$
+declare n int; found_list text;
+begin
   if to_regclass('public.organisations') is null or to_regclass('public.memberships') is null then
     raise exception 'STOP: this database has no organisation tables. The pack is for the DEV project only, after the seven standard migrations.';
   end if;
-  if not exists (select 1 from public.organisations where trading_name = 'Demo Learning Centre' and kind = 'centre') then
-    raise exception 'STOP: the demo centre is missing. Run db/seed_dev_demo.sql on DEV first (DEV only).';
+  select count(*), string_agg(o.trading_name || ' (' || o.id || ')', '; ' order by o.created_at) into n, found_list from public.organisations o
+  where DEMO_WHERE;
+  if n = 0 then
+    raise exception 'STOP: MISSING demo centre (no centre has tutor.one@ and tutor.two@ as tutors and centre.owner@ as owner). Run db/seed_dev_demo.sql on DEV first (DEV only).';
   end if;
+  if n > 1 then
+    raise exception using message = 'STOP: AMBIGUOUS: ' || n || ' centres match the demo centre (' || found_list || '). Not guessing: ask the project owner which one the demo staff logins belong to.';
+  end if;
+  raise notice 'Demo centre used: %', found_list;
 end $$;
-""")
+""".replace("DEMO_WHERE", DEMO_WHERE))
 
     for k, m in enumerate(new, 1):
         w("""-- #####################################################################################################
@@ -165,13 +196,16 @@ end $$;
   union all
   select 'POST-CHECK', 'demo login ' || e, exists (select 1 from auth.users where email = e)
   from unnest(array['centre.owner@example.test','centre.staff@example.test','centre.frontdesk@example.test','tutor.one@example.test','tutor.two@example.test','both.tutor@example.test','solo.tutor@example.test']) e
+  union all
+  select 'POST-CHECK', 'demo centre used: ' || o.trading_name || ' (' || o.id || ')', true from public.organisations o
+  where %s
 )
 select step, item, case when ok then 'present' else 'MISSING' end as state from seen
 union all
 select 'POST-CHECK', 'OVERALL', case when (select bool_and(ok) from seen) then 'OK - all %d objects and 7 demo logins present' else 'NOT OK - see the MISSING lines above' end
 order by 1, 3 desc, 2;""" % (",\n".join("  " + ",".join(["('table','%s')" % x for x in tables][i:i + 4] ) for i in range(0, len(tables), 4)) + ",\n" +
                               ",\n".join("  " + ",".join(["('function','%s')" % x for x in funcs][i:i + 4]) for i in range(0, len(funcs), 4)),
-                              len(tables) + len(funcs)))
+                              DEMO_WHERE, len(tables) + len(funcs)))
     return "\n".join(o) + "\n"
 
 

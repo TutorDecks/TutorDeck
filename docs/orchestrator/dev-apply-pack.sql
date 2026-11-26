@@ -35,7 +35,16 @@
 -- =====================================================================================================
 
 -- ####################################### PRE-CHECK (read-only) #######################################
--- 'ready' = every required earlier migration is present. 'NEW OBJECTS ALREADY THERE' says how much of this pack DEV already has (0 = untouched).
+-- 'ready' = the seven standard migrations are present and the demo centre is found. The demo centre is found by its MEMBERS (tutor.one@, tutor.two@ and
+-- centre.owner@example.test), not by its name, so a renamed centre is fine; the 'demo centre' line prints the name and id it will use.
+-- 'NEW OBJECTS ALREADY THERE' only says how much of this pack DEV already has: parts already applied are fine, the pack is safe to re-run.
+with demo as (
+  select o.id, o.trading_name, o.created_at from public.organisations o
+  where o.kind = 'centre'
+      and exists (select 1 from public.memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'owner' and m.status = 'active' and u.email = 'centre.owner@example.test')
+      and exists (select 1 from public.memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'tutor' and m.status = 'active' and u.email = 'tutor.one@example.test')
+      and exists (select 1 from public.memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'tutor' and m.status = 'active' and u.email = 'tutor.two@example.test')
+)
 select 'PRE-CHECK' as step, m.migration, case when m.ok then 'present' else 'MISSING' end as state
 from (values
   ('org_foundation (memberships, org_can)',  to_regclass('public.memberships') is not null and to_regprocedure('public.org_can(uuid,text)') is not null),
@@ -44,13 +53,20 @@ from (values
   ('tutor_access (tutor_my_lessons)',        exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='tutor_my_lessons')),
   ('org_delete (org_delete_solo)',           exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='org_delete_solo')),
   ('function_lockdown (pinned search_path)', exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='audit_immutable' and proconfig is not null)),
-  ('org_separation (org_same_org_guard)',    exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='org_same_org_guard')),
-  ('demo seed present (Demo Learning Centre) - needed by the last part', exists (select 1 from public.organisations where trading_name='Demo Learning Centre' and kind='centre'))
+  ('org_separation (org_same_org_guard)',    exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='org_same_org_guard'))
 ) as m(migration, ok)
 union all
-select 'PRE-CHECK', 'NEW OBJECTS ALREADY THERE (of 119)', (
+select 'PRE-CHECK', 'demo centre (found by its members; needed by the last part)',
+  case (select count(*) from demo)
+    when 1 then 'present: ' || (select trading_name from demo) || ' (' || (select id::text from demo) || ')'
+    when 0 then 'MISSING demo centre (run db/seed_dev_demo.sql)'
+    else 'AMBIGUOUS: ' || (select count(*) from demo) || ' centres match (' || (select string_agg(trading_name || ' ' || id, '; ' order by created_at) from demo) || ') - ask the project owner which one to use'
+  end
+union all
+select 'PRE-CHECK', 'NEW OBJECTS ALREADY THERE', ((
     (select count(*) from (values ('student_tutors'),('centre_invoice_lines'),('centre_invoices'),('centre_payment_allocations'),('centre_payments'),('org_counters'),('centre_family_credit'),('centre_invoice_share'),('org_invite_mail_log'),('tutor_payout_details')) v(n) where exists (select 1 from pg_class c where c.relnamespace='public'::regnamespace and c.relname=v.n and c.relkind='r'))
   + (select count(*) from (values ('staff_home'),('staff_clean_guardian'),('staff_save_student'),('staff_set_student_end'),('staff_student'),('staff_students'),('staff_students_gate'),('lessons_attendance_guard'),('staff_attendance_gate'),('staff_correct_attendance'),('staff_lessons'),('staff_mark_attendance'),('charge_suggestion_cents'),('lesson_price_cents'),('pending_charge_count'),('staff_charges_gate'),('staff_pending_charges'),('staff_set_charge'),('staff_set_charges'),('staff_set_trial'),('staff_timetable'),('org_tutor_same_org_guard'),('staff_generate_lessons'),('staff_pick_students'),('staff_save_slot'),('staff_set_student_link'),('staff_set_student_tutors'),('staff_slots'),('staff_slots_gate'),('staff_stop_slot'),('staff_student_tutors'),('tutor_lesson_links'),('lesson_locked_reason'),('staff_reassign_lesson'),('tutor_my_schedule'),('tutor_my_slots'),('org_validate_settings'),('centre_alloc_guard'),('centre_counter_guard'),('centre_div_round'),('centre_gst_totals'),('centre_invoice_gst'),('centre_invoice_guard'),('centre_line_guard'),('centre_money_audit'),('centre_money_deleting'),('centre_money_org_guard'),('centre_next_number'),('centre_payment_guard'),('centre_payment_reversal_check'),('centre_revenue_totals'),('centre_set_opening_number'),('centre_invoice_approve'),('centre_invoice_approve_all'),('centre_invoice_discard_draft'),('centre_invoice_get'),('centre_invoice_issue_draft'),('centre_invoice_list'),('centre_invoice_model_note'),('centre_invoice_month'),('centre_invoice_numbering'),('centre_invoice_run_create_drafts'),('centre_invoice_run_prepare'),('centre_invoice_run_preview'),('centre_invoice_run_rows'),('centre_invoicing_gate'),('centre_balance_rows'),('centre_credit_balance'),('centre_credit_subtotal'),('centre_family_credit_get'),('centre_family_credit_guard'),('centre_fmt_money'),('centre_invoice_account_get'),('centre_invoice_account_list'),('centre_invoice_household'),('centre_invoice_public'),('centre_invoice_share_link'),('centre_invoice_whatsapp'),('centre_issue_credit_note'),('centre_money_gate'),('centre_overpay_mode'),('centre_pay_status'),('centre_record_payment'),('centre_refund_family_credit'),('centre_reverse_payment'),('centre_share_audit'),('centre_sync_invoice_excess'),('org_invite_mail_reserve'),('org_invite_mail_status'),('org_create_centre'),('org_default_centre_plan'),('org_set_billing_method'),('org_set_billing_start'),('tutor_my_profile'),('tutor_save_profile'),('td_my_centre_tutor'),('td_payout_audit'),('td_payout_mask'),('tutor_clear_payout'),('tutor_my_payout'),('tutor_payout_guard'),('tutor_reveal_payout'),('tutor_save_payout'),('org_invite'),('org_reveal_payout'),('org_tutor_payout_status'),('org_tutor_payouts'),('org_update_member'),('td_payout_viewer')) v(n) where exists (select 1 from pg_proc p where p.pronamespace='public'::regnamespace and p.proname=v.n)))::text
+  || ' of 119 (already applied parts are fine: the pack is safe to re-run)')
 union all
 select 'PRE-CHECK', 'OVERALL', case when
     to_regclass('public.memberships') is not null and to_regprocedure('public.org_can(uuid,text)') is not null
@@ -60,18 +76,29 @@ select 'PRE-CHECK', 'OVERALL', case when
     and exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='org_delete_solo')
     and exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='audit_immutable' and proconfig is not null)
     and exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='org_same_org_guard')
-    and exists (select 1 from public.organisations where trading_name='Demo Learning Centre' and kind='centre')
-  then 'ready' else 'NOT READY - apply the MISSING items first (migration order: org_foundation, billing, attendance, tutor_access, org_delete, function_lockdown, org_separation; demo seed: db/seed_dev_demo.sql)' end;
+    and (select count(*) from demo) = 1
+  then 'ready' else 'NOT READY - fix the MISSING / AMBIGUOUS lines first (migration order: org_foundation, billing, attendance, tutor_access, org_delete, function_lockdown, org_separation; demo seed: db/seed_dev_demo.sql)' end;
 
 -- Safety stop: this whole paste fails here, before changing anything, on a database that does not have the organisation tables
--- (that is what LIVE looks like today) or the demo centre (DEV only).
-do $$ begin
+-- (that is what LIVE looks like today), or has no demo centre, or has several (the demo centre is found by its members, not its name).
+do $$
+declare n int; found_list text;
+begin
   if to_regclass('public.organisations') is null or to_regclass('public.memberships') is null then
     raise exception 'STOP: this database has no organisation tables. The pack is for the DEV project only, after the seven standard migrations.';
   end if;
-  if not exists (select 1 from public.organisations where trading_name = 'Demo Learning Centre' and kind = 'centre') then
-    raise exception 'STOP: the demo centre is missing. Run db/seed_dev_demo.sql on DEV first (DEV only).';
+  select count(*), string_agg(o.trading_name || ' (' || o.id || ')', '; ' order by o.created_at) into n, found_list from public.organisations o
+  where o.kind = 'centre'
+      and exists (select 1 from public.memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'owner' and m.status = 'active' and u.email = 'centre.owner@example.test')
+      and exists (select 1 from public.memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'tutor' and m.status = 'active' and u.email = 'tutor.one@example.test')
+      and exists (select 1 from public.memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'tutor' and m.status = 'active' and u.email = 'tutor.two@example.test');
+  if n = 0 then
+    raise exception 'STOP: MISSING demo centre (no centre has tutor.one@ and tutor.two@ as tutors and centre.owner@ as owner). Run db/seed_dev_demo.sql on DEV first (DEV only).';
   end if;
+  if n > 1 then
+    raise exception using message = 'STOP: AMBIGUOUS: ' || n || ' centres match the demo centre (' || found_list || '). Not guessing: ask the project owner which one the demo staff logins belong to.';
+  end if;
+  raise notice 'Demo centre used: %', found_list;
 end $$;
 
 -- #####################################################################################################
@@ -4497,11 +4524,22 @@ declare
   staff_id uuid := '00000000-0000-0000-0000-00000000d106';
   front_id uuid := '00000000-0000-0000-0000-00000000d107';
   c uuid;
+  n int;
+  found_list text;
   r record;
 begin
-  select o.id into c from organisations o join memberships m on m.org_id = o.id and m.role = 'owner'
-    where o.kind = 'centre' and o.trading_name = 'Demo Learning Centre' order by o.created_at limit 1;
-  if c is null then raise exception 'Run the demo seed above first: the Demo Learning Centre does not exist yet.'; end if;
+  -- The demo centre is found by its MEMBERS, never by its name (it may have been renamed): the centre where tutor.one@ and tutor.two@
+  -- are active tutors and centre.owner@ is an active owner. Exactly one must match; several = stop and ask, never guess.
+  select count(*), string_agg(o.trading_name || ' (' || o.id || ')', '; ' order by o.created_at), (array_agg(o.id order by o.created_at))[1]
+    into n, found_list, c
+    from organisations o
+    where o.kind = 'centre'
+      and exists (select 1 from memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'owner' and m.status = 'active' and u.email = 'centre.owner@example.test')
+      and exists (select 1 from memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'tutor' and m.status = 'active' and u.email = 'tutor.one@example.test')
+      and exists (select 1 from memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'tutor' and m.status = 'active' and u.email = 'tutor.two@example.test');
+  if n = 0 then raise exception 'MISSING demo centre: no centre has tutor.one@ and tutor.two@ as tutors and centre.owner@ as owner (run the demo seed above, db/seed_dev_demo.sql, first).'; end if;
+  if n > 1 then raise exception using message = 'AMBIGUOUS: ' || n || ' centres match the demo centre (' || found_list || '). Not guessing: ask the project owner which one the demo staff logins belong to.'; end if;
+  raise notice 'Demo centre used for the staff logins: % (%)', (select trading_name from organisations where id = c), c;
   for r in select * from (values (staff_id, 'centre.staff@example.test', 'Demo Centre Staff'), (front_id, 'centre.frontdesk@example.test', 'Demo Front Desk')) v(id, email, name) loop
     if not exists (select 1 from auth.users where email = r.email) then
       insert into auth.users(instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, confirmation_token, recovery_token, email_change_token_new,
@@ -4563,6 +4601,12 @@ with want(kind, name) as (values
   union all
   select 'POST-CHECK', 'demo login ' || e, exists (select 1 from auth.users where email = e)
   from unnest(array['centre.owner@example.test','centre.staff@example.test','centre.frontdesk@example.test','tutor.one@example.test','tutor.two@example.test','both.tutor@example.test','solo.tutor@example.test']) e
+  union all
+  select 'POST-CHECK', 'demo centre used: ' || o.trading_name || ' (' || o.id || ')', true from public.organisations o
+  where o.kind = 'centre'
+      and exists (select 1 from public.memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'owner' and m.status = 'active' and u.email = 'centre.owner@example.test')
+      and exists (select 1 from public.memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'tutor' and m.status = 'active' and u.email = 'tutor.one@example.test')
+      and exists (select 1 from public.memberships m join auth.users u on u.id = m.user_id where m.org_id = o.id and m.role = 'tutor' and m.status = 'active' and u.email = 'tutor.two@example.test')
 )
 select step, item, case when ok then 'present' else 'MISSING' end as state from seen
 union all
