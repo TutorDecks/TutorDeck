@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Centre money · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=340">
+<link rel="stylesheet" href="assets/css/app.css?v=350">
 <script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   .cm-wrap{max-width:820px;display:flex;flex-direction:column;gap:14px}
@@ -125,8 +125,10 @@
   .cm-credit{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:rgba(15,118,110,.08);color:var(--accent-ink);font-size:14px;font-weight:600}
   .cm-acts.col .btn.quiet{border-color:transparent;background:transparent;text-decoration:underline;min-height:40px}
   @media(max-width:820px){.cm-f{padding:10px 14px}}
+  /* ---- deposits (S4) ---- */
+  .cd-big{font-size:30px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 </style>
-<link rel="stylesheet" href="assets/css/dark.css?v=340">
+<link rel="stylesheet" href="assets/css/dark.css?v=350">
 </head>
 <body>
 <div id="view" data-page="centre-money">
@@ -134,6 +136,7 @@
     <div class="cm-tabs" role="tablist" aria-label="Money">
       <button class="cm-tab" id="cm-tab-run" role="tab" type="button" aria-selected="true" aria-controls="cm-run">Invoice run</button>
       <button class="cm-tab" id="cm-tab-inv" role="tab" type="button" aria-selected="false" aria-controls="cm-inv" tabindex="-1">Invoices &amp; payments</button>
+      <button class="cm-tab" id="cm-tab-dep" role="tab" type="button" aria-selected="false" aria-controls="cm-dep" tabindex="-1">Deposits</button>
     </div>
     <div class="cm-msg" id="cm-msg" role="status" aria-live="polite"></div>
     <div class="cm-panel" id="cm-run" role="tabpanel" aria-labelledby="cm-tab-run">
@@ -147,6 +150,7 @@
       <div id="cm-num"></div>
     </div>
     <div class="cm-panel" id="cm-inv" role="tabpanel" aria-labelledby="cm-tab-inv" hidden></div>
+    <div class="cm-panel" id="cm-dep" role="tabpanel" aria-labelledby="cm-tab-dep" hidden></div>
   </div>
 
   <!-- invoice sheet -->
@@ -163,15 +167,17 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=340"></script>
-<script src="assets/js/supabase.js?v=340"></script>
-<script src="assets/js/org-current.js?v=340"></script>
-<script src="assets/js/org-scope.js?v=340"></script>
-<script src="assets/js/app.js?v=340"></script>
-<script src="assets/js/money.js?v=340"></script>
-<script src="assets/js/centre-money-core.js?v=340"></script>
-<script src="assets/js/centre-payments-core.js?v=340"></script>
-<script src="assets/js/centre-money.js?v=340"></script>
-<script src="assets/js/centre-payments.js?v=340"></script>
+<script src="assets/js/config.js?v=350"></script>
+<script src="assets/js/supabase.js?v=350"></script>
+<script src="assets/js/org-current.js?v=350"></script>
+<script src="assets/js/org-scope.js?v=350"></script>
+<script src="assets/js/app.js?v=350"></script>
+<script src="assets/js/money.js?v=350"></script>
+<script src="assets/js/centre-money-core.js?v=350"></script>
+<script src="assets/js/centre-payments-core.js?v=350"></script>
+<script src="assets/js/centre-deposits-core.js?v=350"></script>
+<script src="assets/js/centre-money.js?v=350"></script>
+<script src="assets/js/centre-payments.js?v=350"></script>
+<script src="assets/js/centre-deposits.js?v=350"></script>
 </body>
 </html>

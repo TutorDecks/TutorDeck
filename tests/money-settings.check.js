@@ -6,8 +6,7 @@ const fs = require("fs"), path = require("path");
 const ROOT = path.resolve(__dirname, ".."), SC = process.argv[2] || null, BASE = "http://127.0.0.1:8765/";
 const STUB = fs.readFileSync(path.join(ROOT, "tests/supabase-stub-signed-in.js"), "utf8");
 let fails = 0; const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fails++; };
-const SOON_IDS = ["f-billing-deposit-mode", "f-billing-one_off_fees-deposit_cents", "f-billing-deposit-percent_bp", "f-billing-deposit-taxable", "f-billing-deposit-due",
-  "f-billing-deposit-waived_by", "f-billing-deposit-top_up", "f-billing-deposit-release", "f-billing-deposit-forfeit_notice_days", "f-billing-deposit-set_off_unpaid",
+const SOON_IDS = ["f-billing-deposit-top_up", "f-billing-deposit-release", "f-billing-deposit-forfeit_notice_days", "f-billing-deposit-set_off_unpaid",
   "f-billing-deposit-final_month", "f-billing-deposit-refund_approved_by", "f-billing-late_fee-enabled", "f-billing-late_fee-repeat", "f-billing-late_fee-type",
   "f-billing-late_fee-amount_cents", "f-billing-late_fee-percent_bp", "f-billing-late_fee-after_days", "f-billing-late_fee-cap_cents", "f-billing-late_fee-show_as",
   "f-billing-late_fee-waived_by", "f-billing-trials-charged"];
@@ -24,9 +23,10 @@ const SOON_IDS = ["f-billing-deposit-mode", "f-billing-one_off_fees-deposit_cent
     const og = await page.textContent("#og");
     for (const id of SOON_IDS) { const el = await page.$("#" + id); ok(!!el && await el.evaluate((e) => e.disabled), vp + ": " + id + " shown and disabled"); }
     for (const h of ["Refundable deposit", "Late fees"]) ok(og.includes(h), vp + ": sub-heading " + h);
-    ok(og.includes("Deposits come in a later update") && og.includes("Late fees come in a later update"), vp + ": help says what is missing");
+    ok(og.includes("Refunding it comes in a later update") && og.includes("Late fees come in a later update"), vp + ": help says what is missing");
+    for (const id of ["f-billing-deposit-mode", "f-billing-deposit-taxable", "f-billing-deposit-due", "f-billing-deposit-waived_by"]) ok(await page.$eval("#" + id, (e) => !e.disabled), vp + ": " + id + " is editable now (S4)");
     const nSoon = (await page.$$(".og-soon")).length;
-    ok(nSoon >= 20, vp + ": Coming soon badges (" + nSoon + ")");
+    ok(nSoon >= 14, vp + ": Coming soon badges (" + nSoon + ")");
     ok(await page.$eval("#f-billing-sibling_discount-type", (e) => !e.disabled), vp + ": sibling discount still editable");
     ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), vp + ": no sideways scroll");
     if (SC) await page.screenshot({ path: path.join(SC, "money-billing-" + vp + ".png"), fullPage: true });

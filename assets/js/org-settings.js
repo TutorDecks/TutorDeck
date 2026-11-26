@@ -25,7 +25,7 @@
   // Nothing in the app reads these settings yet (T18 plan, 2026-11-24): shown as "coming soon" so the wizard promises nothing it does not do.
   var CREDITS_SOON = "Make-up credits come in a later update; for now a make-up is added as a normal lesson.";
   // Centre money (T4, steps S0-S8): the options exist from S0 so owners can see what is coming; nothing reads them until their step ships.
-  var DEPOSIT_SOON = "Deposits come in a later update. Until then, collect and hold a deposit outside TutorDeck.";
+  var DEPOSIT_HELP = "A refundable deposit is money you hold for the family, not income. It is invoiced separately, once, with a student's first invoice. Refunding it comes in a later update.";
   var LATE_SOON = "Late fees come in a later update. Until then, TutorDeck adds nothing to an invoice for lateness.";
   var PAY_SOON = "Percentage pay and pay runs come in a later update.";
   var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
@@ -94,18 +94,20 @@
       { path: "billing.one_off_fees.materials_cents", label: "Materials fee", type: "money" },
       { path: "billing.trials.charged", label: "Charge for trial lessons", type: "toggle", soon: true,
         help: "Off means trial lessons are free. Charging trials comes with centre invoicing." },
-      { type: "group", label: "Refundable deposit", soon: true, help: DEPOSIT_SOON },
-      { path: "billing.deposit.mode", label: "Deposit", type: "select", soon: true, options: [
+      { type: "group", label: "Refundable deposit", help: DEPOSIT_HELP },
+      { path: "billing.deposit.mode", label: "Deposit", type: "select", options: [
         o("none", "No deposit"), o("fixed", "A fixed amount"), o("percent_first_month", "A percentage of the first month's fee")] },
-      { path: "billing.one_off_fees.deposit_cents", label: "Deposit amount", type: "money", soon: true },
-      { path: "billing.deposit.percent_bp", label: "Deposit as a share of the first month's fee", type: "percent", soon: true,
+      { path: "billing.one_off_fees.deposit_cents", label: "Deposit amount", type: "money",
+        show: function (s) { return s.billing.deposit.mode === "fixed"; } },
+      { path: "billing.deposit.percent_bp", label: "Deposit as a share of the first month's fee", type: "percent",
+        show: function (s) { return s.billing.deposit.mode === "percent_first_month"; },
         help: "For example 50% of the first month's lesson fee. The amount is worked out once, with the first invoice, and then stays fixed." },
-      { path: "billing.deposit.taxable", label: "Charge GST on the deposit when it is received", type: "toggle", soon: true,
+      { path: "billing.deposit.taxable", label: "Charge GST on the deposit when it is received", type: "toggle",
         help: "Normally off: a refundable deposit is held for the family and is not income. Ask your accountant." },
-      { path: "billing.deposit.due", label: "Deposit is invoiced", type: "select", soon: true, options: [
+      { path: "billing.deposit.due", label: "Deposit is invoiced", type: "select", options: [
         o("with_first_invoice", "Together with the first lesson invoice"), o("before_first_lesson", "Before the first lesson")],
         soonOptions: ["before_first_lesson"] },
-      { path: "billing.deposit.waived_by", label: "A deposit can be waived by", type: "select", soon: true, options: [
+      { path: "billing.deposit.waived_by", label: "A deposit can be waived by", type: "select", options: [
         o("owner", "The owner"), o("issue_invoices", "Staff who issue invoices"), o("nobody", "Nobody")],
         help: "Waiving always needs a reason." },
       { path: "billing.deposit.top_up", label: "Ask for a top-up when the required deposit goes up", type: "toggle", soon: true,
