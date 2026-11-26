@@ -86,6 +86,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-26 MERGED into dev: PR #129 (scrub), PR #130 (CI policy: checks only on PRs into main + manual dispatch). PR #131 (Vercel only dev+main) has conflicts: T39 worker merging dev in. T37 plan done: recommended calendar: freeze dev Wed 2 Dec, dry run on restored backup by Fri 4 Dec, LIVE migrations Sun 6 Dec 03:00-04:00 SGT, Production env Mon 7 Dec, ship dev->main Tue 8 Dec (owner says 'ship'), spare day Wed 9 Dec, setup Thu 10 Dec. Minimum scope: dev + t3-1 + t3-2 + t7-2. Owner decisions D1-D6 asked (scope, Vercel+Supabase Pro, billing migration now/later, how to test a centre on LIVE, mail mailbox, migration slot).
 
+- 2026-11-26 OWNER: WhatsApp delivery = centre option: MANUAL share button (default) OR automated sending when the centre supplies its own WhatsApp API credentials; HitPay = centre option too (centre's own account). Both are optional add-ons (not in the first customer's price); plan-first (T41, T42); build AFTER the committed first-customer scope unless the owner says otherwise.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -175,6 +177,8 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T33-I0 | Import step I0: templates, CSV reader, validator, report UI (no DB), fixture generator 400/200 | doing | NEW worker / `claude/t33-i0-import-core` (on dev) |
 | T4-S4 | T4 step S4: deposits (ledger as liability, deposit invoice with first run, held report, opening kind + students.start_date) | doing | NEW worker / `claude/t4-s4-deposits` (on t4-s3) |
 | T24c.5 | Leave-centre DB (never started twice; retry when infrastructure allows) | stuck/todo | |
+| T41 | Plan: WhatsApp delivery option (manual default; automated with centre's own API credentials, encrypted keys, templates, queue) | doing (plan) | NEW worker / `claude/t41-plan` |
+| T42 | Plan: HitPay option (centre's own account, encrypted keys, pay-now link, signed webhook, fees, reconciliation) | doing (plan) | NEW worker / `claude/t42-plan` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
