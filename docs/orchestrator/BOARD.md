@@ -90,6 +90,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-26 BUNDLE 4: PR #132 ready. WAITING on the owner to apply docs/orchestrator/dev-apply-pack.sql to the DEV project (guided chat started). After the owner pastes the final 'OVERALL | OK' line: orchestrator starts ONE manual check run on the PR, merges into dev, tells the owner (test list: docs/orchestrator/BUNDLE-4-TEST-LIST.md). 1 Feb assessment: achievable for the committed core if scope frozen 2 Dec, production ship 8 Dec, customer inputs by ~12 Dec; add-ons (WhatsApp API, HitPay) after go-live; weekly token limit is a risk (warning seen 25 Nov; window resets ~18:00 SGT 30 Nov).
 
+- 2026-11-26 DEV PRE-CHECK RESULT (owner): NOT READY because the DEV demo centre is now named 'learn w me' (pack looked for 'Demo Learning Centre'); read-only check by orchestrator: DEV centres: 'learn w me' (4 members: centre.owner, tutor.one, tutor.two, both.tutor), 'T2 Test Centre' (throwaway), 'Zenith' (centre.owner, 2026-11-25). DEV ALREADY HAS staff_home + the centre money chain up to payments applied (63 of 119 objects) by someone; staff logins centre.staff@/centre.frontdesk@ not yet. Fix: T43 makes the pack find the demo centre by members, then owner re-runs pre-check.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -181,6 +183,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T24c.5 | Leave-centre DB (never started twice; retry when infrastructure allows) | stuck/todo | |
 | T41 | Plan: WhatsApp delivery option (manual default; automated with centre's own API credentials, encrypted keys, templates, queue) | doing (plan) | NEW worker / `claude/t41-plan` |
 | T42 | Plan: HitPay option (centre's own account, encrypted keys, pay-now link, signed webhook, fees, reconciliation) | doing (plan) | NEW worker / `claude/t42-plan` |
+| T43 | Fix DEV pack demo-centre lookup (by members, not name) + calm pre-check wording | doing | NEW worker / `claude/bundle-4` (commit on the PR #132 branch) |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
