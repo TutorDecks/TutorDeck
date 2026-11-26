@@ -12,7 +12,8 @@
   var esc = function (s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
   var TT = window.CentreTimetableCore;
   var orgId = null, today = "", seq = 0, sheetOpener = null, cur = null, lastRes = null, firstLoad = true, studentsAll = [],
-      state = TT.fromQuery(new URLSearchParams("")), deep = false, mode = "lessons", stale = false, started = false;
+      state = TT.fromQuery(new URLSearchParams("")), deep = false, mode = "lessons", stale = false, started = false,
+      tcc = window.TutorChangesCore, changes = {};          // lessons a tutor changed in the last 7 days (T6 step 2), by lesson id
 
   function card(inner) { $("tt").innerHTML = '<div class="card tt-block">' + inner + '</div>'; }
   function plural(n, a, b) { return n === 1 ? a : b; }
@@ -53,7 +54,8 @@
   // ---------------------------------------------------------------- the list
   var HOL_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>';
   function rowHtml(r) {
-    var tl = TT.tutorLine(r), chips = TT.chips(r);
+    var tl = TT.tutorLine(r), chips = TT.chips(r), tc = tcc && changes[r.lesson_id] ? tcc.chip(changes[r.lesson_id]) : null;
+    if (tc) chips.push(tc);                                                          // the amber "Changed by tutor" flag
     return '<button type="button" class="tt-row' + (r.no_tutor ? ' notutor' : '') + (r.cancelled ? ' off' : '') + '" data-id="' + esc(r.lesson_id) + '">' +
       '<span class="tt-time">' + esc(TT.timeLabel(r.start_time)) + (r.end_time ? '<span>' + esc(TT.timeLabel(r.end_time)) + '</span>' : '') + '</span>' +
       '<span class="tt-main"><span class="tt-name">' + esc(r.student_name) + (r.student_level ? ' · ' + esc(r.student_level) : '') + '</span>' +
@@ -102,6 +104,10 @@
     if (mine !== seq) return;                                                        // a newer choice is already on its way
     if (res.error) return failure(res.error);
     if (!res.data || !res.data.counts) { $("tt-count").textContent = "Couldn’t load the timetable. Refresh and try again."; return; }
+    changes = {};
+    if (res.data.can_edit && tcc) {                                                  // the amber flags need manage_timetable; if it can't be read the page just shows none
+      try { var tcr = await window.sb.rpc("staff_tutor_changes", { p_org: orgId }); if (mine !== seq) return; if (!tcr.error && tcr.data) changes = tcc.byLesson(tcr.data.rows); } catch (e) { changes = {}; }
+    }
     if (firstLoad) {                                                                 // the first answer tells us the centre's own today
       firstLoad = false;
       if (!deep && res.data.today !== state.anchor) { state.anchor = res.data.today; today = res.data.today; return load(); }
@@ -126,9 +132,9 @@
     cur = r; reForm = null;
     $("tt-st").textContent = r.student_name;
     $("tt-sm").textContent = TT.dayLabel(r.lesson_date, today);
-    var ra = TT.reassignState(lastRes, r);
-    var html = '<div class="tt-h">Lesson</div><div class="tt-facts">' + TT.facts(r).map(function (f) {
-      return '<div><span>' + esc(f[0]) + '</span><span' + (f[0] === "Tutor" && r.no_tutor ? ' class="warn"' : '') + '>' + esc(f[1]) + '</span></div>';
+    var ra = TT.reassignState(lastRes, r), tf = tcc ? tcc.sheetFact(changes[r.lesson_id], lastRes.today) : null;
+    var html = '<div class="tt-h">Lesson</div><div class="tt-facts">' + TT.facts(r).concat(tf ? [tf] : []).map(function (f) {
+      return '<div><span>' + esc(f[0]) + '</span><span' + (f[0] === "Tutor" && r.no_tutor ? ' class="warn"' : (f[0] === "Moved by" || f[0] === "Cancelled by" || f[0] === "Put back by" ? ' class="warn"' : '')) + '>' + esc(f[1]) + '</span></div>';
     }).join("") + '</div><div class="tt-acts">' +
       '<a class="btn" href="centre-attendance?id=' + encodeURIComponent(orgId) + '&date=' + esc(r.lesson_date) + '&view=day">Open in Attendance</a>' +
       '<button type="button" class="btn" id="tt-onlyst">Show only ' + esc(r.student_name) + '</button>' +

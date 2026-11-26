@@ -7,6 +7,7 @@ const S = require("../assets/js/org-settings.js");
 const SQL = fs.readFileSync(require.resolve("../db/migration_org_foundation.sql"), "utf8");
 const MONEY = fs.readFileSync(require.resolve("../db/migration_money_settings.sql"), "utf8");   // T4 S0: the replacement validator
 const field = (path) => S.STEPS.flatMap((s) => s.fields).find((f) => f.path === path);
+const MOVES = fs.readFileSync(require.resolve("../db/migration_tutor_moves.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
 const PAYOUT_SQL = fs.readFileSync(require.resolve("../db/migration_payout_permission.sql"), "utf8");
 
 test("defaults are valid once named, for both presets", () => {
@@ -212,4 +213,70 @@ test("T4 S0: billing and pay changes (including the new options) start next cycl
   assert.equal(S.effectiveFrom(a, b, "2026-11-26"), "2026-12-01");
   const c = JSON.parse(JSON.stringify(a)); c.lessons.class_type = "one_to_one";
   assert.equal(S.effectiveFrom(a, c, "2026-11-26"), "2026-11-26");
+});
+
+// ---- T6 step 2: tutors change their own lessons (db/migration_tutor_moves.sql)
+test("T6.2: 'who edits the timetable' has the same values in the form and in the database; the old tutors_own is gone", () => {
+  const sqlVals = (re) => MOVES.match(re)[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1)).sort();
+  const f = field("lessons.timetable_editing");
+  assert.deepEqual(f.options.map((x) => x[0]).sort(), sqlVals(/\{lessons,timetable_editing\}' not in \(([^)]*)\)/));
+  assert.deepEqual(f.options.map((x) => x[0]).sort(), ["admin_only", "tutors_direct", "tutors_propose"]);
+  assert.ok(!f.options.some((x) => x[0] === "tutors_own"), "tutors_own is renamed");
+  assert.deepEqual(f.soonOptions, ["tutors_propose"], "only asking-for-approval is still coming soon");
+  assert.equal(S.get(S.defaults("centre"), "lessons.timetable_editing"), "admin_only");
+  assert.equal(S.get(S.defaults("solo"), "lessons.timetable_editing"), "admin_only");
+});
+
+test("T6.2: notify_family has the same values in the form and in the database, default list_for_admin", () => {
+  const sql = MOVES.match(/\{lessons,notify_family\}' not in \(([^)]*)\)/)[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1)).sort();
+  assert.deepEqual(field("lessons.notify_family").options.map((x) => x[0]).sort(), sql);
+  assert.equal(S.get(S.defaults(), "lessons.notify_family"), "list_for_admin");
+  assert.ok(!field("lessons.notify_family").soon && !(field("lessons.notify_family").soonOptions || []).length, "the in-app list is built, so nothing here is marked soon");
+});
+
+test("T6.2: the six switches: postpone and cancel are built, the other four are coming soon; every switch is a yes/no in the database", () => {
+  const sw = ["postpone", "cancel", "weekly_slots", "generate", "one_off", "link"];
+  for (const k of sw) {
+    assert.ok(MOVES.includes("'{lessons,tutors_edit," + k + "}'"), k + " is validated in the migration");
+    assert.equal(typeof S.get(S.defaults(), "lessons.tutors_edit." + k), "boolean", k);
+  }
+  for (const k of ["postpone", "cancel"]) assert.ok(!field("lessons.tutors_edit." + k).soon, k + " is built");
+  for (const k of ["weekly_slots", "generate", "one_off", "link"]) assert.equal(field("lessons.tutors_edit." + k).soon, true, k + " must be soon");
+  // the defaults the form starts from are the ones the database assumes for a missing key (postpone on, cancel off)
+  assert.equal(S.get(S.defaults(), "lessons.tutors_edit.postpone"), true);
+  assert.equal(S.get(S.defaults(), "lessons.tutors_edit.cancel"), false);
+  assert.match(MOVES, /tutors_edit,postpone\}'\)::boolean, true\)/);
+  assert.match(MOVES, /tutors_edit,cancel\}'\)::boolean, false\)/);
+});
+
+test("T6.2: the limits are the same in the form and in the database, and the defaults are the owner's (24 hours, no limit)", () => {
+  for (const [path, key, lo, hi] of [["lessons.min_notice_hours", "min_notice_hours", 0, 168], ["lessons.max_changes_per_month", "max_changes_per_month", 0, 500]]) {
+    const m = MOVES.match(new RegExp("\\('\\{lessons," + key + "\\}', (\\d+), (\\d+),"));
+    assert.ok(m, path + " is checked in the migration");
+    assert.deepEqual([+m[1], +m[2]], [lo, hi], path);
+  }
+  assert.equal(S.get(S.defaults(), "lessons.min_notice_hours"), 24);
+  assert.equal(S.get(S.defaults(), "lessons.max_changes_per_month"), 0);
+  assert.match(MOVES, /min_notice_hours\}'\)::int, 24\)/);
+  assert.match(MOVES, /max_changes_per_month\}'\)::int, 0\)/);
+  const ok = () => { const s = S.defaults(); s.profile.trading_name = "T"; return s; };
+  for (const [k, v, want] of [["min_notice_hours", 169, /Notice before a tutor/], ["min_notice_hours", -1, /Notice before a tutor|whole number/], ["min_notice_hours", 1.5, /Notice before a tutor|whole number/],
+    ["max_changes_per_month", 501, /Changes per tutor per month/], ["max_changes_per_month", -2, /Changes per tutor per month|whole number/]]) {
+    const s = ok(); s.lessons[k] = v; assert.match(S.validate(s).join(" | "), want, k + "=" + v);
+  }
+  for (const [k, v] of [["min_notice_hours", 0], ["min_notice_hours", 168], ["max_changes_per_month", 0], ["max_changes_per_month", 500]]) {
+    const s = ok(); s.lessons[k] = v; assert.deepEqual(S.validate(s), [], k + "=" + v);
+  }
+});
+
+test("T6.2: the switches and limits show only when tutors may change lessons; settings saved before this load with the defaults", () => {
+  const s = S.defaults("centre");
+  const paths = ["lessons.tutors_edit.postpone", "lessons.tutors_edit.cancel", "lessons.tutors_edit.weekly_slots", "lessons.min_notice_hours", "lessons.max_changes_per_month", "lessons.notify_family"];
+  for (const p of paths) assert.equal(S.isVisible(field(p), s), false, p + " hidden while admin_only");
+  s.lessons.timetable_editing = "tutors_direct";
+  for (const p of paths) assert.equal(S.isVisible(field(p), s), true, p + " shown for tutors_direct");
+  const old = S.withDefaults({ schema_version: 1, preset: "centre", profile: { trading_name: "Old" }, lessons: { attendance_by: "admin" } });
+  assert.equal(old.lessons.timetable_editing, "admin_only"); assert.equal(old.lessons.min_notice_hours, 24); assert.equal(old.lessons.tutors_edit.postpone, true);
+  assert.deepEqual(S.validate(old), []);
+  assert.equal(S.effectiveFrom(S.defaults(), Object.assign(S.defaults(), { lessons: Object.assign({}, S.defaults().lessons, { timetable_editing: "tutors_direct" }) }), "2026-11-26"), "2026-11-26", "a process rule applies today");
 });

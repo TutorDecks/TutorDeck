@@ -46,6 +46,11 @@ function override(cfg) {
               tutor_id: x.tid, tutor_name: x.tn, no_tutor: !!x.nt, trial: !!x.trial, attendance: null, state: x.state, cancelled: false, postponed: false, holiday: h ? h.name : null, session_id: null, online_link: null };
           }) });
       }
+      if (nm === "staff_tutor_changes") {                       // T6 step 2: lessons a tutor changed in the last 7 days (only when the scenario says so)
+        if (cfg.changesError) return res(null, "NOT_ALLOWED: your account can't see timetable changes at this centre");
+        return res({ today: TODAY, days: 7, tell_family: true, rows: !cfg.changes ? [] : [{ lesson_id: "l1", what: "moved", changed_at: new Date().toISOString(), reason: "school event", tutor_id: "m1", tutor_name: "Tutor One",
+          student_id: "s1", student_name: "Aiden Tan", subject: "Math", lesson_date: TODAY, start_time: "15:00:00", end_time: "16:00:00", from_date: add(TODAY, -1), from_start: "14:00:00", cancelled: false, tell_family: true }] });
+      }
       if (nm === "staff_reassign_lesson") {
         var x = L.filter(function (q) { return q.id === a.p_lesson; })[0];
         if (!x) return res(null, "NOT_FOUND");
@@ -210,6 +215,27 @@ async function open(browser, cfg, opt) {
     await page.locator("a.ch-link", { hasText: "no tutor" }).click(); await page.waitForURL(/centre-timetable.*f=notutor/); await page.waitForSelector(".tt-row");
     ok(await page.locator(".tt-row").count() === 2 && /14 days/.test(await page.locator("#tt-view .on").innerText()), "the Home 'no tutor' tile opens the 14-day no-tutor list with the same 2 lessons");
     await ctx.close(); }
+  // T6 step 2: the amber "Changed by tutor" flag (staff_tutor_changes), at phone width, light and dark
+  for (const dark of [false, true]) {
+    const tag = "tutor changes " + (dark ? "dark" : "light") + ": ";
+    const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_timetable"])], changes: true }, { phone: true, dark });
+    await page.goto(BASE + "centre-timetable.html?id=c1&view=next14"); await page.waitForSelector(".tt-row");
+    ok(/Changed by tutor/.test(await page.locator(".tt-row", { hasText: "Aiden" }).first().innerText()), tag + "the lesson a tutor changed carries the amber 'Changed by tutor' chip");
+    ok(await page.locator(".tt-chip.warn", { hasText: "Changed by tutor" }).count() === 1 && !/Changed by tutor/.test(await page.locator(".tt-row", { hasText: "Ravi" }).innerText()), tag + "only that lesson has it");
+    await page.locator(".tt-row", { hasText: "Aiden" }).first().click(); await page.waitForSelector("#tt-sheet.on");
+    const sh = await page.locator("#tt-sb").innerText();
+    ok(/Moved by\s*\n?\s*Tutor One, today/.test(sh) && /school event/.test(sh) && /Was /.test(sh), tag + "the lesson sheet says who moved it, when, why and what it was before: " + sh.replace(/\n/g, " | ").slice(0, 160));
+    ok(!/S\$|\$\d|price|rate|paid|charge/i.test(await page.locator("#tt-sheet").innerText()), tag + "no money in the sheet");
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), tag + "no sideways scroll at 390px");
+    if (SC) await page.screenshot({ path: path.join(SC, "tutor-changes-timetable-" + (dark ? "dark" : "light") + ".png") });
+    ok(errs.length === 0, tag + "no console errors " + errs.join("|")); await ctx.close();
+  }
+  { const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_timetable"])], changesError: true }, { phone: true });
+    await page.goto(BASE + "centre-timetable.html?id=c1&view=next14"); await page.waitForSelector(".tt-row");
+    ok(await page.locator(".tt-row").count() === 5 && (await page.locator(".tt-chip", { hasText: "Changed by tutor" }).count()) === 0 && errs.length === 0, "if the list can't be read the timetable still loads, with no flags and no errors"); await ctx.close(); }
+  { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_timetable"])], changes: true, canEdit: false }, { phone: true });
+    await page.goto(BASE + "centre-timetable.html?id=c1&view=next14"); await page.waitForSelector(".tt-row");
+    ok((await page.evaluate(() => window.__calls.filter((c) => c[0] === "staff_tutor_changes").length)) === 0 && (await page.locator(".tt-chip", { hasText: "Changed by tutor" }).count()) === 0, "someone who can't edit the timetable: the list isn't even asked for, no flags"); await ctx.close(); }
   // the migration missing, a tutor-only login, a stranger
   { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], missing: true });
     await page.goto(BASE + "centre-timetable.html?id=c1"); await page.waitForSelector(".tt-block");

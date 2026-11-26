@@ -20,7 +20,7 @@ BRANCH = {
     "tutor_schedule": "t6-1-tutor-schedule", "money_settings": "t4-s0-settings", "centre_money": "t4-s1-tables",
     "centre_invoice_run": "t4-s2-invoice-run", "centre_payments": "t4-s3-payments", "invites": "t7-2-invites", "fee_050": "t30-fee-050",
     "centre_billing_method": "t31a-centre-invoice-billing", "centre_billing_start": "t36-billing-start", "tutor_profile": "t24c-1-profile",
-    "tutor_payout": "t24c-2-payout", "payout_permission": "t24c-3-payout",
+    "tutor_payout": "t24c-2-payout", "payout_permission": "t24c-3-payout", "tutor_moves": "t6-2-tutor-moves",
 }
 WHAT = {
     "staff_home": "centre Home numbers", "staff_students": "centre students, households, tutor links", "staff_attendance": "centre attendance + guard",
@@ -30,6 +30,7 @@ WHAT = {
     "centre_payments": "payments, credit notes, invoice link", "invites": "invite email log + status", "fee_050": "centre fee S$0.50 per student",
     "centre_billing_method": "how a centre pays TutorDeck", "centre_billing_start": "centre billing start date + agreed first-month count",
     "tutor_profile": "tutor's own profile", "tutor_payout": "tutor payout details (masked, audited)", "payout_permission": "payout permission + centre list/reveal",
+    "tutor_moves": "tutors move, put back and cancel their own lessons (centre option)",
 }
 
 

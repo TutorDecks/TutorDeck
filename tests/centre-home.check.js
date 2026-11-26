@@ -17,7 +17,9 @@ const FRONT = Object.assign({}, FULL, { can: { students: true, timetable: false,
 function override(cfg) {
   window.__override = function (c) {
     var from = c.from.bind(c), rpc = c.rpc.bind(c);
-    c.rpc = function (n, a) { if (n === "staff_home") return Promise.resolve(cfg.home.error ? { data: null, error: cfg.home.error } : { data: cfg.home, error: null }); return rpc(n, a); };
+    c.rpc = function (n, a) { window.__calls = window.__calls || []; window.__calls.push([n, a]);
+      if (n === "staff_tutor_changes") return Promise.resolve(cfg.changesError ? { data: null, error: { message: "NOT_ALLOWED: no" } } : { data: cfg.changes || null, error: null });
+      if (n === "staff_home") return Promise.resolve(cfg.home.error ? { data: null, error: cfg.home.error } : { data: cfg.home, error: null }); return rpc(n, a); };
     c.from = function (t) {
       if (t === "students") {
         var q = from(t), sel = q.select;
@@ -83,6 +85,38 @@ const tabs = (page, phone) => page.locator(phone ? ".tabbar a" : ".tn-links a").
     ok(/6\s*\n?\s*lessons today/.test(await txt(page)), "staff (full): sees the same counts as the owner");
     ok(await page.locator(".org-sw").count() === 0, "staff: empty solo shell hidden, lands in the centre");
     ok(errs.length === 0, "staff (full): no console errors " + errs.join("|")); await ctx.close(); }
+  // T6 step 2: the Tutor changes list on Home (staff_tutor_changes), at phone width, light and dark; the notify_family setting; empty; unreadable; not for front desk
+  const D = (n) => { const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const row = (id, what, tutor, student, over) => Object.assign({ lesson_id: id, what, changed_at: new Date().toISOString(), reason: "unwell", tutor_id: "m1", tutor_name: tutor, student_id: "s" + id, student_name: student, subject: "Math",
+    lesson_date: D(3), start_time: "16:00:00", end_time: "17:00:00", from_date: D(1), from_start: "15:00:00", cancelled: what === "cancelled", tell_family: true }, over || {});
+  const CH = { today: TODAY, days: 7, tell_family: true, rows: [row("a", "moved", "Tutor One", "Aiden Tan"), row("b", "cancelled", "Tutor Two", "Bea Lim", { reason: "has a clash" }), row("c", "reverted", "Tutor One", "Cal Ong", { changed_at: new Date(Date.now() - 2 * 86400000).toISOString() })] };
+  for (const dark of [false, true]) {
+    const tag = "tutor changes " + (dark ? "dark" : "light") + ": ";
+    const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, changes: CH }, { phone: true, dark });
+    await page.goto(BASE + "centre?id=c1"); await page.waitForSelector("#ch-changes");
+    const t = (await page.locator("#ch").innerText()).replace(/\s+/g, " ");
+    if (process.env.DBG) console.log(t);
+    ok(/Tutor changes/i.test(t) && /Tutor One moved Aiden Tan/.test(t) && /Tutor Two cancelled Bea Lim/.test(t) && /Tutor One put Cal Ong back to the usual time/.test(t), tag + "the three changes are listed in plain words");
+    ok(await page.locator(".ch-chip", { hasText: "Tell the family" }).count() === 3 && /today/.test(t) && /2 days ago/.test(t), tag + "each says to tell the family, and how long ago");
+    ok(/has a clash/.test(t) && /\(cancelled\)/.test(t), tag + "the reason and the cancelled lesson are shown");
+    ok((await page.locator("#ch-changes a").first().getAttribute("href")).startsWith("centre-timetable?id=c1&date=" + D(3) + "&view=day"), tag + "a row opens that day on the Timetable");
+    ok(!/S\$|\$\d|price|\brate\b|\bpaid\b|charge/i.test(t.replace(/charges? to confirm/g, "").replace(/at no charge to them/, "")), tag + "no money in the list");
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), tag + "no sideways scroll at 390px");
+    if (SC) await page.screenshot({ path: path.join(SC, "tutor-changes-home-" + (dark ? "dark" : "light") + ".png"), fullPage: true });
+    ok(errs.length === 0, tag + "no console errors " + errs.join("|")); await ctx.close();
+  }
+  { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, changes: Object.assign({}, CH, { tell_family: false, rows: CH.rows.map((r) => Object.assign({}, r, { tell_family: false })) }) }, { phone: true });
+    await page.goto(BASE + "centre?id=c1"); await page.waitForSelector("#ch-changes");
+    ok(await page.locator(".ch-chip").count() === 0 && /listed for your information/.test(await page.locator("#ch").innerText()), "notify_family off: the list is still there, but nothing says to tell the family"); await ctx.close(); }
+  { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, changes: { today: TODAY, days: 7, tell_family: true, rows: [] } }, { phone: true });
+    await page.goto(BASE + "centre?id=c1"); await page.waitForSelector(".ch-tile");
+    ok(await page.locator("#ch-changes").count() === 0 && !/Tutor changes/.test(await page.locator("#ch").innerText()), "no changes: no 'Tutor changes' section at all"); await ctx.close(); }
+  { const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, changesError: true }, { phone: true });
+    await page.goto(BASE + "centre?id=c1"); await page.waitForSelector(".ch-tile");
+    ok(await page.locator("#ch-changes").count() === 0 && /lessons today/.test(await page.locator("#ch").innerText()) && errs.length === 0, "if the list can't be read the Home is unchanged, with no error"); await ctx.close(); }
+  { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_students"])], home: FRONT, changes: CH }, { phone: true });
+    await page.goto(BASE + "centre?id=c1"); await page.waitForSelector(".ch-tile");
+    ok((await page.evaluate(() => (window.__calls || []).filter((c) => c[0] === "staff_tutor_changes").length)) === 0 && await page.locator("#ch-changes").count() === 0, "front desk (no timetable permission): the list isn't asked for and isn't shown"); await ctx.close(); }
   // front desk: Students only
   for (const phone of [false, true]) {
     const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_students"])], home: FRONT }, { phone });

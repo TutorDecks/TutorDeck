@@ -22,7 +22,19 @@
   }
   function plural(n, one, many) { return n === 1 ? one : many; }
 
-  function home(h) {
+  // T6 step 2: lessons a tutor moved, put back or cancelled in the last 7 days (staff_tutor_changes; needs manage_timetable). No money in it.
+  function changesBlock(ch, h) {
+    var tcc = window.TutorChangesCore, rows = (ch && ch.rows) || [];
+    if (!tcc || !rows.length) return "";
+    return '<div class="ch-h">Tutor changes</div><div class="card ch-list" id="ch-changes">' + rows.slice(0, 20).map(function (r) {
+      var href = "centre-timetable?id=" + encodeURIComponent(h.org_id) + "&date=" + encodeURIComponent(r.lesson_date) + "&view=day";
+      return '<a class="ch-chg" href="' + esc(href) + '"><span class="ch-chg-main"><span class="ch-chg-t">' + esc(tcc.headline(r)) + '</span><span class="ch-chg-d">' + esc(tcc.detail(r)) +
+        (r.reason ? ' · “' + esc(r.reason) + '”' : '') + '</span></span><span class="ch-chg-r">' +
+        (r.tell_family ? '<span class="ch-chip">Tell the family</span>' : '') + '<span class="ch-ago">' + esc(tcc.ago(r, ch.today)) + '</span></span></a>';
+    }).join("") + '</div><p class="ch-note">' + esc(tcc.homeNote(ch.tell_family)) + '</p>';
+  }
+
+  function home(h, changes) {
     var tt = h.can.timetable, out = [];
     out.push('<p class="ch-date">' + esc(new Date(h.today + "T00:00:00").toLocaleDateString("en-SG", { weekday: "long", day: "numeric", month: "long" })) + ' · ' + esc(h.org_name) + '</p>');
     if (tt) {
@@ -37,6 +49,7 @@
     } else if (h.can.charges) {
       out.push('<div class="ch-h">Needs attention</div><div class="ch-grid">' + tile(h.pending_charges, plural(h.pending_charges, "charge to confirm", "charges to confirm"), true, "centre-attendance?id=" + encodeURIComponent(h.org_id) + "&tab=charges") + '</div>');
     }
+    if (tt) { var cb = changesBlock(changes, h); if (cb) out.push(cb); }
     var more = (h.can.students ? tile(h.students_active, plural(h.students_active, "active student", "active students")) : "") +
                (tt ? tile(h.trials_this_month, plural(h.trials_this_month, "trial lesson this month", "trial lessons this month"), false, "centre-attendance?id=" + encodeURIComponent(h.org_id) + "&f=trial&view=month") : "");
     if (more) out.push('<div class="ch-h">At a glance</div><div class="ch-grid">' + more + '</div>');
@@ -79,7 +92,10 @@
     if (tab === "money" && h.can.charges) { location.replace("centre-money?id=" + encodeURIComponent(id)); return; }   // (T4 S2) the invoice run; "charges" = may issue invoices
     if (tab === "students" && h.can.students) { location.replace("centre-students?id=" + encodeURIComponent(id)); return; }   // (T3 step 2) an old link or bookmark
     if (tab === "attendance" && (h.can.timetable || h.can.charges)) { location.replace("centre-attendance?id=" + encodeURIComponent(id)); return; }   // (T3 step 3) an old link or bookmark
-    if (tab) soon(h, tab); else home(h);
+    if (tab) return soon(h, tab);
+    var changes = null;                                                                // the Tutor changes list; if it can't be read the Home simply has none
+    if (h.can.timetable) { try { var cr = await window.sb.rpc("staff_tutor_changes", { p_org: id }); if (!cr.error && cr.data) changes = cr.data; } catch (e) { changes = null; } }
+    home(h, changes);
   }
   TL.requireAuth("centre", init);
 })();
