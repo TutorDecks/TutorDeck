@@ -24,9 +24,15 @@
   function o(v, l) { return [v, l]; }
   // Nothing in the app reads these settings yet (T18 plan, 2026-11-24): shown as "coming soon" so the wizard promises nothing it does not do.
   var CREDITS_SOON = "Make-up credits come in a later update; for now a make-up is added as a normal lesson.";
+  // Centre money (T4, steps S0-S8): the options exist from S0 so owners can see what is coming; nothing reads them until their step ships.
+  var DEPOSIT_SOON = "Deposits come in a later update. Until then, collect and hold a deposit outside TutorDeck.";
+  var LATE_SOON = "Late fees come in a later update. Until then, TutorDeck adds nothing to an invoice for lateness.";
+  var PAY_SOON = "Percentage pay and pay runs come in a later update.";
   var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
   // Field: { path, label, type, options?, help?, soon?, show?(s) }
-  // types: text, email, color, toggle, select, number, money (cents), percent (bp), days, list (number list)
+  // types: text, email, color, toggle, select, number, money (cents), percent (bp), days, list (number list),
+  //        note (a paragraph), group (a sub-heading; no value)
+  // groupOnly: true / groupOnlyOptions: [...] = only for centres that run group classes (hidden when lessons.class_type is one_to_one)
   var STEPS = [
     { id: "profile", n: 1, title: "Organisation profile", fields: [
       { path: "profile.legal_name", label: "Legal name", type: "text" },
@@ -43,8 +49,12 @@
       { path: "profile.timezone", label: "Timezone", type: "select", options: [o("Asia/Singapore", "Singapore (GMT+8)")] },
       { path: "profile.currency", label: "Currency", type: "select", options: [o("SGD", "SGD")] },
       { path: "profile.invoice_prefix", label: "Invoice number prefix", type: "text" },
-      { path: "profile.next_invoice_number", label: "Next invoice number", type: "number" },
-      { path: "profile.reply_to_email", label: "Reply-to email for parent emails", type: "email" }
+      { path: "profile.next_invoice_number", label: "Next invoice number", type: "number",
+        help: "Used when centre invoicing launches: set it to carry on from your old invoice sheet. Invoices are numbered in one unbroken series, so it can only be set before your first invoice." },
+      { path: "profile.reply_to_email", label: "Reply-to email for parent emails", type: "email" },
+      { path: "lessons.class_type", label: "Classes you run", type: "select", options: [
+        o("one_to_one", "1-to-1 lessons only"), o("group", "Group classes only"), o("both", "Both 1-to-1 and group")],
+        help: "1-to-1 centres don't see options that only apply to group classes." }
     ]},
     { id: "calendar", n: 2, title: "Branches, rooms and calendar", custom: "calendar", fields: [
       { path: "calendar.skip_holidays", label: "Don't generate lessons on centre holidays", type: "toggle", soon: true, help: HOLIDAYS_SOON }
@@ -81,11 +91,50 @@
       { path: "billing.sibling_discount.fixed_cents", label: "Discount", type: "money", show: function (s) { return s.billing.sibling_discount.type === "fixed"; } },
       { path: "billing.adhoc_discounts", label: "Allow one-off discounts (with a reason)", type: "toggle" },
       { path: "billing.one_off_fees.registration_cents", label: "Registration fee", type: "money" },
-      { path: "billing.one_off_fees.deposit_cents", label: "Deposit", type: "money" },
       { path: "billing.one_off_fees.materials_cents", label: "Materials fee", type: "money" },
-      { path: "billing.late_fee.enabled", label: "Late fee", type: "toggle" },
-      { path: "billing.late_fee.amount_cents", label: "Late fee amount", type: "money", show: function (s) { return s.billing.late_fee.enabled; } },
-      { path: "billing.late_fee.after_days", label: "After overdue (days)", type: "days", show: function (s) { return s.billing.late_fee.enabled; } }
+      { path: "billing.trials.charged", label: "Charge for trial lessons", type: "toggle", soon: true,
+        help: "Off means trial lessons are free. Charging trials comes with centre invoicing." },
+      { type: "group", label: "Refundable deposit", soon: true, help: DEPOSIT_SOON },
+      { path: "billing.deposit.mode", label: "Deposit", type: "select", soon: true, options: [
+        o("none", "No deposit"), o("fixed", "A fixed amount"), o("percent_first_month", "A percentage of the first month's fee")] },
+      { path: "billing.one_off_fees.deposit_cents", label: "Deposit amount", type: "money", soon: true },
+      { path: "billing.deposit.percent_bp", label: "Deposit as a share of the first month's fee", type: "percent", soon: true,
+        help: "For example 50% of the first month's lesson fee. The amount is worked out once, with the first invoice, and then stays fixed." },
+      { path: "billing.deposit.taxable", label: "Charge GST on the deposit when it is received", type: "toggle", soon: true,
+        help: "Normally off: a refundable deposit is held for the family and is not income. Ask your accountant." },
+      { path: "billing.deposit.due", label: "Deposit is invoiced", type: "select", soon: true, options: [
+        o("with_first_invoice", "Together with the first lesson invoice"), o("before_first_lesson", "Before the first lesson")],
+        soonOptions: ["before_first_lesson"] },
+      { path: "billing.deposit.waived_by", label: "A deposit can be waived by", type: "select", soon: true, options: [
+        o("owner", "The owner"), o("issue_invoices", "Staff who issue invoices"), o("nobody", "Nobody")],
+        help: "Waiving always needs a reason." },
+      { path: "billing.deposit.top_up", label: "Ask for a top-up when the required deposit goes up", type: "toggle", soon: true,
+        help: "For example a returning student, or a fee increase." },
+      { path: "billing.deposit.release", label: "When a student leaves, TutorDeck suggests", type: "select", soon: true, options: [
+        o("refund_full", "Refunding the whole deposit"), o("refund_less_unpaid", "Refunding it minus any unpaid invoices"), o("admin_decides", "Nothing, an admin decides")] },
+      { path: "billing.deposit.forfeit_notice_days", label: "Notice needed to get the deposit back (days, 0 = none needed)", type: "days", soon: true,
+        help: "Leaving with less notice suggests keeping the deposit. An admin always confirms." },
+      { path: "billing.deposit.set_off_unpaid", label: "Staff may use the deposit to cover unpaid fees", type: "toggle", soon: true },
+      { path: "billing.deposit.final_month", label: "Family may use the deposit as the final month's fee", type: "toggle", soon: true },
+      { path: "billing.deposit.refund_approved_by", label: "Deposit refunds are approved by", type: "select", soon: true, options: [
+        o("owner", "The owner"), o("staff", "Any staff member who records payments"), o("four_eyes", "Someone other than the person who asked")],
+        help: "Staff request a refund; it is paid and recorded only after it is approved." },
+      { type: "group", label: "Late fees", soon: true, help: LATE_SOON },
+      { path: "billing.late_fee.enabled", label: "Late fee", type: "toggle", soon: true },
+      { path: "billing.late_fee.repeat", label: "How often", type: "select", soon: true, options: [
+        o("none", "Never"), o("once", "Once per invoice"), o("monthly", "Every month the invoice stays unpaid")] },
+      { path: "billing.late_fee.type", label: "Late fee is", type: "select", soon: true, options: [
+        o("fixed", "A fixed amount"), o("percent", "A percentage of what is still unpaid")] },
+      { path: "billing.late_fee.amount_cents", label: "Late fee amount", type: "money", soon: true },
+      { path: "billing.late_fee.percent_bp", label: "Late fee percentage", type: "percent", soon: true },
+      { path: "billing.late_fee.after_days", label: "Grace period after the due date (days)", type: "days", soon: true,
+        help: "Paying on the due date, or within this many days after it, is on time." },
+      { path: "billing.late_fee.cap_cents", label: "Most late fees one invoice can collect (0 = no limit)", type: "money", soon: true },
+      { path: "billing.late_fee.show_as", label: "A late fee is added as", type: "select", soon: true, options: [
+        o("next_invoice_line", "A line on the family's next invoice"), o("own_invoice", "Its own small invoice")] },
+      { path: "billing.late_fee.waived_by", label: "A late fee can be waived by", type: "select", soon: true, options: [
+        o("owner", "The owner"), o("issue_invoices", "Staff who issue invoices")],
+        help: "TutorDeck suggests late fees; a person applies or waives each one. Make sure your terms for parents mention late fees." }
     ]},
     { id: "invoicing", n: 5, title: "Invoicing", fields: [
       { path: "invoicing.grouping", label: "One invoice per", type: "select", options: [o("family", "Family (household)"), o("student", "Student")] },
@@ -148,8 +197,21 @@
         o("parent_paid", "Only after the parent's payment is received and reconciled"), o("taught", "As soon as it is taught")],
         help: "With the first option, unpaid lessons roll into the next pay period and show as pending. Changing this later is recorded in the audit log." },
       { path: "tutor_pay.rate_model", label: "Pay rate", type: "select", options: [
-        o("per_lesson", "Per lesson"), o("per_hour", "Per hour"), o("per_student_lesson", "Per student per lesson"), o("monthly_fixed", "Fixed monthly amount")],
-        show: function (s) { return s.tutor_pay.mode !== "off"; } },
+        o("per_lesson", "Per lesson"), o("per_hour", "Per hour"), o("per_student_lesson", "Per student per lesson"), o("monthly_fixed", "Fixed monthly amount"),
+        o("percent_of_fee", "A percentage of the fee the family is billed")],
+        soonOptions: ["percent_of_fee"], groupOnlyOptions: ["per_student_lesson"], show: function (s) { return s.tutor_pay.mode !== "off"; } },
+      { path: "tutor_pay.percent_base", label: "A percentage is worked out on", type: "select", soon: true, options: [
+        o("billed_after_discounts", "The fee billed, after discounts and before GST"), o("list_price", "The list price, before discounts and GST")],
+        help: "Never includes GST, late fees or deposits. " + PAY_SOON },
+      { path: "tutor_pay.part_payments", label: "When the family pays part of an invoice", type: "select", soon: true, options: [
+        o("after_full", "Pay the tutor only once that lesson's line is fully paid"), o("pro_rata", "Pay in proportion to what was paid")],
+        soonOptions: ["pro_rata"], help: PAY_SOON },
+      { path: "tutor_pay.cancelled_lessons", label: "Cancelled lessons with a fixed rate", type: "select", soon: true, options: [
+        o("pay_if_charged", "Pay the tutor only if the family is charged"), o("pay_rate", "Pay the usual rate"), o("pay_nothing", "Pay nothing")], help: PAY_SOON },
+      { path: "tutor_pay.group_count", label: "A per-student rate counts students who were", type: "select", soon: true, groupOnly: true, options: [
+        o("attended", "Present"), o("enrolled", "Enrolled")], help: PAY_SOON },
+      { path: "tutor_pay.rates_note", label: "Rates", type: "note", soon: true,
+        help: "Each tutor has their own rate, and you can set a different rate for one student. A new rate applies from the date you choose; lessons already taught keep the rate they had. " + PAY_SOON },
       { path: "tutor_pay.adjustments", label: "Bonuses and deductions (with a reason)", type: "toggle", show: function (s) { return s.tutor_pay.mode === "full"; } },
       { path: "tutor_pay.cycle.cutoff_day", label: "Pay period ends on day", type: "number", show: function (s) { return s.tutor_pay.mode !== "off"; } },
       { path: "tutor_pay.cycle.pay_day", label: "Pay day", type: "number", show: function (s) { return s.tutor_pay.mode === "full"; } },
@@ -174,14 +236,17 @@
       billing: { model: "postpaid_lessons", fixed_period: "month", pay_per_lesson_grouping: "lesson", low_balance_credits: 2, credit_expiry_days: 0,
         absences: { mode: "charged_unless_notice", notice_hours: 24 }, makeups: { allowed: true, per_period: 2, uses_credit: false },
         proration: "by_remaining", sibling_discount: { type: "none", percent_bp: 1000, fixed_cents: 500 }, adhoc_discounts: true,
-        one_off_fees: { registration_cents: 0, deposit_cents: 0, materials_cents: 0 }, late_fee: { enabled: false, amount_cents: 1000, after_days: 7 } },
+        one_off_fees: { registration_cents: 0, deposit_cents: 0, materials_cents: 0 }, trials: { charged: false },
+        deposit: { mode: "none", percent_bp: 5000, taxable: false, due: "with_first_invoice", waived_by: "owner", top_up: false, release: "admin_decides",
+          forfeit_notice_days: 0, set_off_unpaid: false, final_month: false, refund_approved_by: "owner" },
+        late_fee: { enabled: false, repeat: "once", type: "fixed", amount_cents: 1000, percent_bp: 500, after_days: 7, cap_cents: 0, show_as: "next_invoice_line", waived_by: "owner" } },
       invoicing: { grouping: "family", generate: { mode: "day_of_month", day: 1, days_before: 7 }, due_days: 7, review_before_sending: true,
         delivery: { email: false, share_link: true }, reminders: { enabled: false, schedule: [-3, 0, 7] } },
       payments: { modes: ["manual_paynow"], paynow: { type: "uen", id: "" }, statement_bank: "DBS", hitpay: { paynow: true, cards: false },
         gateway_fees: "absorb", partial_payments: true, overpayments: "credit" },
-      lessons: { timetable_editing: "admin_only", attendance_by: "tutor", attendance_window_days: 14, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
+      lessons: { class_type: "both", timetable_editing: "admin_only", attendance_by: "tutor", attendance_window_days: 14, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
         missed_remarks_reminders: true, replacement_tutors: true, tutors_see_parent_contact: false },
-      tutor_pay: { mode: "report", payable_when: "parent_paid", rate_model: "per_hour", adjustments: true,
+      tutor_pay: { mode: "report", payable_when: "parent_paid", rate_model: "per_hour", percent_base: "billed_after_discounts", part_payments: "after_full", cancelled_lessons: "pay_if_charged", group_count: "attended", adjustments: true,
         cycle: { cutoff_day: 31, pay_day: 7 }, payout_method: "manual_list", tutor_visibility: "closed_only" },
       data: {}
     };
@@ -210,6 +275,18 @@
     return d;
   }
 
+  // A field shows when its own rule allows it and, for group-only fields, the centre runs group classes.
+  function isVisible(f, s) {
+    if (f.show && !f.show(s)) return false;
+    if (f.groupOnly && get(s, "lessons.class_type") === "one_to_one") return false;
+    return true;
+  }
+  // Options of a select for the current draft: group-only choices are left out for 1-to-1 centres unless already chosen.
+  function visibleOptions(f, s) {
+    var v = get(s, f.path), hide = get(s, "lessons.class_type") === "one_to_one" ? (f.groupOnlyOptions || []) : [];
+    return (f.options || []).filter(function (x) { return hide.indexOf(x[0]) < 0 || x[0] === v; });
+  }
+
   function fieldOptions(f) { return (f.options || []).map(function (x) { return x[0]; }); }
 
   // Problems that would stop the settings being saved. Mirrors org_validate_settings() and adds detail.
@@ -222,6 +299,7 @@
     if (e.length) return e;
     STEPS.forEach(function (st) {
       st.fields.forEach(function (f) {
+        if (!f.path) return;
         var v = get(s, f.path);
         if (f.type === "select" && f.options && v !== undefined && fieldOptions(f).indexOf(v) < 0) e.push(f.label + ": pick an option.");
         if ((f.type === "money" || f.type === "number" || f.type === "days" || f.type === "percent") && v != null && !(Number.isSafeInteger(v) && v >= 0))
@@ -241,6 +319,17 @@
     var gd = s.invoicing.generate.day; if (!(gd >= 1 && gd <= 28)) e.push("Invoice day must be 1–28 (so it exists in every month).");
     var cd = s.tutor_pay.cycle; if (!(cd.cutoff_day >= 1 && cd.cutoff_day <= 31) || !(cd.pay_day >= 1 && cd.pay_day <= 31)) e.push("Pay days must be 1–31.");
     if (s.billing.sibling_discount.type === "percent" && s.billing.sibling_discount.percent_bp > 10000) e.push("Sibling discount can't be over 100%.");
+    // centre money options (T4 S0); each rule is repeated in org_validate_settings() in db/migration_money_settings.sql
+    var dp = s.billing.deposit, lf = s.billing.late_fee, tr = s.billing.trials;
+    if (dp) {
+      if (dp.percent_bp != null && !(dp.percent_bp >= (dp.mode === "percent_first_month" ? 1 : 0) && dp.percent_bp <= 10000)) e.push(dp.mode === "percent_first_month" ? "Deposit percentage must be between 0.01% and 100%." : "Deposit percentage can't be over 100%.");
+      if (dp.forfeit_notice_days != null && !(dp.forfeit_notice_days >= 0 && dp.forfeit_notice_days <= 90)) e.push("Deposit notice must be 0–90 days.");
+    }
+    if (lf) {
+      if (lf.percent_bp != null && !(lf.percent_bp >= (lf.type === "percent" ? 1 : 0) && lf.percent_bp <= 10000)) e.push(lf.type === "percent" ? "Late fee percentage must be between 0.01% and 100%." : "Late fee percentage can't be over 100%.");
+      if (lf.after_days != null && !(lf.after_days >= 0 && lf.after_days <= 365)) e.push("Late fee grace period must be 0–365 days.");
+    }
+    if (tr && tr.charged != null && typeof tr.charged !== "boolean") e.push("Trial lessons charged must be yes or no.");
     return e;
   }
 
@@ -267,5 +356,5 @@
   }
 
   return { SCHEMA_VERSION: SCHEMA_VERSION, STAFF_PERMISSIONS: STAFF_PERMISSIONS, STEPS: STEPS, defaults: defaults, withDefaults: withDefaults,
-    get: get, set: set, validate: validate, effectiveFrom: effectiveFrom, display: display, CYCLE_SECTIONS: CYCLE_SECTIONS };
+    get: get, set: set, validate: validate, isVisible: isVisible, visibleOptions: visibleOptions, effectiveFrom: effectiveFrom, display: display, CYCLE_SECTIONS: CYCLE_SECTIONS };
 });
