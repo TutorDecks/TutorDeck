@@ -29,7 +29,7 @@ grant execute on all functions in schema t to authenticated, service_role;
 -- a valid centre settings document (the wizard builds the full one from assets/js/org-settings.js)
 create function t.centre_settings() returns jsonb language sql as $$ select '{
   "schema_version":1,"preset":"centre",
-  "profile":{"gst_registered":true,"gst_rate_bp":900,"gst_inclusive":false,"invoice_prefix":"OPUS","next_invoice_number":1},
+  "profile":{"gst_registered":true,"gst_rate_bp":900,"gst_inclusive":false,"invoice_prefix":"TEST","next_invoice_number":1},
   "calendar":{},"billing":{"model":"prepaid_packages"},"invoicing":{"grouping":"family"},
   "payments":{"modes":["manual_paynow"]},"lessons":{},"tutor_pay":{"mode":"report","payable_when":"parent_paid"},"data":{}}'::jsonb $$;
 grant execute on function t.centre_settings() to authenticated;
@@ -95,7 +95,7 @@ select t.ok((select count(*) = 4 from organisations o join memberships m on m.or
              and m.user_id in ('00000000-0000-0000-0000-0000000000c1','00000000-0000-0000-0000-0000000000d1','00000000-0000-0000-0000-0000000000e1','00000000-0000-0000-0000-0000000000f1')),
             'new sign-ups get a solo organisation automatically');
 select t.as('00000000-0000-0000-0000-0000000000c1'); set role authenticated;
-select t.put('centre', org_create_centre('Opus Tuition', t.centre_settings()));
+select t.put('centre', org_create_centre('Test Centre', t.centre_settings()));
 select t.ok((select kind = 'centre' and status = 'setup' from organisations where id = t.id('centre')), 'centre created in setup (wizard)');
 select t.fails($q$ select org_create_centre('Bad', '{"schema_version":1}') $q$, 'centre with incomplete settings');
 select org_invite(t.id('centre'), 'Staff@Centre.test', 'Sam Staff', 'staff', array['manage_students'], null);

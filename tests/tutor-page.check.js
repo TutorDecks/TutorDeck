@@ -20,7 +20,7 @@ function override(cfg) {   // runs in the page before anything else
   window.__calls = [];
   window.__override = function (c) {
     var iso = function (n) { var d = new Date(); d.setDate(d.getDate() + n); var p = function (x) { return (x < 10 ? "0" : "") + x; }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); };
-    var L = function (id, off, o) { return Object.assign({ lesson_id: id, org_id: "o2", org_name: "Opus Tuition", student_id: "s" + id, student_name: "Pupil " + id, student_level: "P5", parent_contact: null,
+    var L = function (id, off, o) { return Object.assign({ lesson_id: id, org_id: "o2", org_name: "Test Centre", student_id: "s" + id, student_name: "Pupil " + id, student_level: "P5", parent_contact: null,
       lesson_date: iso(off), start_time: "16:00:00", end_time: "17:00:00", subject: "Math", status: "scheduled", attendance: null, trial: false, session_id: null,
       topics: null, homework: null, remarks: null, remarks_due_at: null, can_mark: true, can_note: true, can_cancel: false, remarks_required: false,
       can_flag_trial: false, tutor_sets_compensation: false, charge_pending: false }, o || {}); };
