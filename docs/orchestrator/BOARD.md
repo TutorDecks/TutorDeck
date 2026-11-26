@@ -80,6 +80,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-26 OWNER: T32 scrub on side branches APPROVED; the repository is PRIVATE (owner says). Follow-ups: CLAUDE.md still says the repo is PUBLIC: update that line and the 'never commit dumps' note stays (still good practice); check GitHub Actions minutes on a private repo (free plan ~2,000 min/month; each CI run ~3 min; we push a lot: watch it); Vercel Hobby works with private repos. Bank formats: owner says build statement matching for POSB/DBS, OCBC and UOB (presets confirmed against real sample files) + custom mapping; the tutor-pay BANK FILE format is separate and still depends on which bank the centre pays tutors from (first release: manual pay-list CSV).
 
+- 2026-11-26 OWNER: GitHub checks should run ONLY before going live (fewer runs, private repo minutes). T38 changes checks.yml to PRs into main + manual dispatch; workers test locally; orchestrator starts a manual run before merging any owner-approved bundle into dev and for every go-live PR. Vercel preview builds per push are separate (a Vercel ignored-build-step could reduce them: owner decision).
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -161,6 +163,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T3.8 | T3 step 8: reassign / cover lessons (replacement_tutors setting) | doing | NEW worker / `claude/t3-8-reassign` (on t3-7) |
 | T4-S2 | T4 step S2: invoice run preview/drafts/approve (postpaid + fixed monthly; pending charge holds back one household) | doing | NEW worker / `claude/t4-s2-invoice-run` (on t4-s1) |
 | Email | Owner's guided chat: Supabase DEV custom SMTP via Brevo is LIVE and tested; Vercel vars + invites migration wait for claude/t7-2-invites to merge | partly done | |
+| T38 | CI policy: checks only on PRs into main + manual dispatch; CLAUDE.md repo now private | doing | NEW worker / `claude/t38-ci-policy` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
