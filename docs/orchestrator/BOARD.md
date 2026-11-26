@@ -151,6 +151,11 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T4-S0 | Money settings honesty + validation (new keys, soon flags, class-type setting) | doing | NEW worker / `claude/t4-s0-settings` (on t3-6) |
 | T4-S1 | Centre money tables (invoices, lines, payments, allocations, numbering, GST fn), DB only | doing | NEW worker / `claude/t4-s1-tables` (on t3-6) |
 | Guide | Interactive owner guide chat for Brevo + Supabase DEV email setup | started | separate chat (T7 owner steps) |
+| T33 | Plan: CSV data import (validate then commit, templates, staging by dependency, 400/200 fixture) | doing (plan) | NEW worker / `claude/t33-plan` |
+| T34 | Plan: bank statement matching (DBS/OCBC/UOB/custom mapping, review queue, remembered payers) | doing (plan) | NEW worker / `claude/t34-plan` |
+| T35 | Plan: centre data export (CSV per table + ZIP) and backups check | doing (plan) | NEW worker / `claude/t35-plan` |
+| T36 | Small build: per-centre billing start date + first-month billable override (pilot not billed) | doing | NEW worker / `claude/t36-billing-start` (on t31a) |
+| T37 | Plan: ship the centre stack to PRODUCTION (live migrations with preview + dry run, env, Vercel Pro, schedule back from 10 Dec) | doing (plan) | NEW worker / `claude/t37-plan` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
