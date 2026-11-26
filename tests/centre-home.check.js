@@ -64,13 +64,12 @@ const tabs = (page, phone) => page.locator(phone ? ".tabbar a" : ".tn-links a").
       ok(/1\s*\n?\s*charge to confirm/.test(t) && /3\s*\n?\s*past lessons not marked/.test(t), mode + " owner: pending items shown");
       ok(!/S\$|\$\d/.test(t), mode + " owner: no money on the page");
       ok((await tabs(page, phone)).slice(0, 4).join("|") === "Home|Timetable|Students|Attendance" || (phone && (await tabs(page, true)).slice(0, 4).join("|") === "Home|Timetable|Students|Attendance"), mode + " owner: tabs Home · Timetable · Students · Attendance (got " + (await tabs(page, phone)).join("|") + ")");
-      ok(await page.locator(".soon-pill").filter({ visible: true }).count() === 2, mode + " owner: two tabs marked soon (Students is built)");
+      ok(await page.locator(".soon-pill").filter({ visible: true }).count() === 0, mode + " owner: no tab is marked soon (all four are built)");
       ok(await page.locator(".org-sw").count() === 0, mode + " owner: no chip for an empty solo shell");
       if (SC) await page.screenshot({ path: path.join(SC, "home-" + mode + ".png"), fullPage: false });
       // coming-next tab: a real page, not a dead link
-      await page.goto(BASE + "centre?id=c1&tab=timetable"); await page.waitForSelector(".ch-soon");
-      ok(/Coming next/.test(await txt(page)) && /Timetable/.test(await txt(page)), mode + " owner: Timetable tab says Coming next");
-      if (SC && mode !== "dark") await page.screenshot({ path: path.join(SC, "soon-" + mode + ".png") });
+      await page.goto(BASE + "centre.html?id=c1&tab=timetable"); await page.waitForURL(/centre-timetable/);
+      ok(true, mode + " owner: an old ?tab=timetable link goes to the Timetable page");
       await page.goto(BASE + "centre?id=c1&tab=nonsense"); await page.waitForSelector(".ch-empty");
       ok(/doesn.t exist|Not available/.test(await txt(page)), mode + " owner: an unknown tab gets a plain message");
       if (phone) { await page.locator("#tl-more").click(); const sheet = await page.locator("#tl-sheet").innerText();
@@ -89,10 +88,10 @@ const tabs = (page, phone) => page.locator(phone ? ".tabbar a" : ".tn-links a").
     const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_students"])], home: FRONT }, { phone });
     await page.goto(BASE + "home"); await page.waitForURL(/centre\?id=c1/); await page.waitForSelector(".ch-tile");
     const t = await txt(page);
-    ok((await tabs(page, phone)).slice(0, 2).join("|") === "Home|Students" && (await tabs(page, phone)).filter((x) => /Timetable|Attendance/.test(x)).length === 0, "front desk" + (phone ? " (phone)" : "") + ": menu is Home · Students only");
+    ok((await tabs(page, phone)).slice(0, 2).join("|") === "Home|Timetable" && (await tabs(page, phone)).filter((x) => /Attendance/.test(x)).length === 0, "front desk" + (phone ? " (phone)" : "") + ": menu is Home · Timetable · Students (view-only Timetable, no Attendance)");
     ok(/8\s*\n?\s*active students/.test(t) && !/lessons today|still to mark|not marked|charge/.test(t), "front desk" + (phone ? " (phone)" : "") + ": only the student count, nothing about lessons or charges");
-    await page.goto(BASE + "centre?id=c1&tab=timetable"); await page.waitForSelector(".ch-empty");
-    ok(/Not available to you/.test(await txt(page)), "front desk: typing the Timetable address gives a plain 'not available'");
+    await page.goto(BASE + "centre.html?id=c1&tab=attendance"); await page.waitForSelector(".ch-empty");
+    ok(/Not available to you/.test(await txt(page)), "front desk: typing the Attendance address gives a plain 'not available'");
     if (SC && !phone) { await page.goto(BASE + "centre?id=c1"); await page.waitForSelector(".ch-tile"); await page.screenshot({ path: path.join(SC, "home-frontdesk.png") }); }
     ok(errs.length === 0, "front desk: no console errors " + errs.join("|")); await ctx.close(); }
   // errors: not found, and the migration missing

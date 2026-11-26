@@ -1,8 +1,7 @@
 // Centre home for owners and staff (T3 step 1). One database call, staff_home(org), returns COUNTS ONLY (no money, no names);
 // which sections come back is decided by the person's permissions in the database, this page only draws what it got.
-// Timetable is not built yet: its tab opens a clear "Coming next" page (never a dead link). Students and Attendance are their own pages.
+// Students, Attendance and Timetable are their own pages now (centre-students, centre-attendance, centre-timetable); an old ?tab= link goes there.
 //   centre?id=<centre>               Home
-//   centre?id=<centre>&tab=<name>    timetable (coming next); students and attendance are their own pages now (centre-students, centre-attendance)
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
@@ -12,8 +11,6 @@
 
   // What each coming tab will be (plain words, from the T3 plan). `need` = the staff_home section a person needs to see the tab at all.
   var SOON = {
-    timetable:  { title: "Timetable", need: "timetable", lead: "The week at your centre, one day at a time.",
-                  items: ["See every lesson by day, filtered by tutor", "Add or change a weekly slot, and who teaches it", "Cover a lesson with a replacement tutor"] },
     attendance: { title: "Attendance", need: "timetable", lead: "Mark today’s lessons, and correct a mark when something was wrong.",
                   items: ["See which lessons still need a mark", "Mark attended or absent, with remarks", "Correct a mark, with a reason that is kept on record"] }
   };
@@ -35,7 +32,7 @@
         tile(h.today_to_mark, "still to mark", true) + '</div>');
       out.push('<div class="ch-h">Needs attention</div><div class="ch-grid">' +
         tile(h.unmarked_past, plural(h.unmarked_past, "past lesson not marked", "past lessons not marked"), true) +
-        tile(h.no_tutor_14d, plural(h.no_tutor_14d, "lesson with no tutor, next 14 days", "lessons with no tutor, next 14 days"), true) +
+        tile(h.no_tutor_14d, plural(h.no_tutor_14d, "lesson with no tutor, next 14 days", "lessons with no tutor, next 14 days"), true, "centre-timetable?id=" + encodeURIComponent(h.org_id) + "&view=next14&f=notutor") +
         (h.can.charges ? tile(h.pending_charges, plural(h.pending_charges, "charge to confirm", "charges to confirm"), true, "centre-attendance?id=" + encodeURIComponent(h.org_id) + "&tab=charges") : "") + '</div>');
     } else if (h.can.charges) {
       out.push('<div class="ch-h">Needs attention</div><div class="ch-grid">' + tile(h.pending_charges, plural(h.pending_charges, "charge to confirm", "charges to confirm"), true, "centre-attendance?id=" + encodeURIComponent(h.org_id) + "&tab=charges") + '</div>');
@@ -45,7 +42,7 @@
     if (more) out.push('<div class="ch-h">At a glance</div><div class="ch-grid">' + more + '</div>');
     if (!tt && !h.can.students && !h.can.charges)
       out.push('<div class="card panel"><p class="ch-note" style="margin:0">Your account doesn’t have any centre screens switched on yet. Ask the centre owner to give you access to students or the timetable.</p></div>');
-    else out.push('<p class="ch-note">The lists behind these numbers are coming next. Only counts are shown here, never money or contact details.</p>');
+    else out.push('<p class="ch-note">Only counts are shown here, never money or contact details.</p>');
     $("ch").innerHTML = out.join("");
   }
 
@@ -78,6 +75,7 @@
       return card('<h2 style="font-size:17px;font-weight:800;margin:0 0 6px">Still being set up</h2><p class="ch-note">The owner is still setting this centre up. Check back soon.</p>');
     }
     h.can = h.can || {};
+    if (tab === "timetable") { location.replace("centre-timetable?id=" + encodeURIComponent(id)); return; }   // (T3 step 6) an old link or bookmark; any owner / staff may look
     if (tab === "students" && h.can.students) { location.replace("centre-students?id=" + encodeURIComponent(id)); return; }   // (T3 step 2) an old link or bookmark
     if (tab === "attendance" && (h.can.timetable || h.can.charges)) { location.replace("centre-attendance?id=" + encodeURIComponent(id)); return; }   // (T3 step 3) an old link or bookmark
     if (tab) soon(h, tab); else home(h);
