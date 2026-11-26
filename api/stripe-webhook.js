@@ -1,6 +1,8 @@
 // Stripe → TutorDeck webhook. POST https://<host>/api/stripe-webhook  (register this URL in Stripe → Developers → Webhooks)
 // Events to send: checkout.session.completed, customer.subscription.created, customer.subscription.updated,
 //                 customer.subscription.deleted, invoice.paid, invoice.payment_failed
+// Solo subscriptions ONLY: centres (B2B) are invoiced by TutorDeck and pay by PayNow, never through Stripe (T31a). A Stripe event that
+// belongs to a centre organisation is logged and ignored; it never writes the centre's row.
 // Design: the event only tells us WHICH subscription changed; we then fetch its current state from Stripe and write
 // that, so late or out-of-order deliveries can't leave a wrong status. Each event id is processed once.
 "use strict";
@@ -17,6 +19,16 @@ async function syncSubscription(subId, orgHint) {
   if (org && /^[0-9a-f-]{36}$/i.test(org)) q = "org_id=eq." + org;
   else if (row.stripe_customer_id) q = "stripe_customer_id=eq." + encodeURIComponent(row.stripe_customer_id);
   if (!q) return "no_org";
+  // centres never use Stripe: if this event resolves to a centre organisation, change nothing (tier is set from the kind; the kind is checked too)
+  const own = await B.svc("GET", "org_subscriptions?select=org_id,tier&" + q);
+  const ownRow = own.ok && own.data && own.data[0];
+  if (ownRow) {
+    const k = await B.svc("GET", "organisations?select=kind&id=eq." + ownRow.org_id);
+    if (ownRow.tier === "centre" || (k.ok && k.data && k.data[0] && k.data[0].kind === "centre")) {
+      console.error("stripe-webhook: ignored subscription " + sub.id + ": the organisation is a centre (centres are billed by invoice, not Stripe)");
+      return "ignored_centre";
+    }
+  }
   // Never let one subscription overwrite a row that holds a DIFFERENT live one: a late "cancelled" event for an old
   // subscription, or the loser of two checkouts opened at once, must not flip a paying tutor to cancelled. The rule is part
   // of the write itself (one atomic request): allowed when the row has no subscription yet, is this same subscription,

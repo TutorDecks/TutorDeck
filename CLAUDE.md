@@ -176,20 +176,18 @@ There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it hol
    - Vercel **Production** env: LIVE `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (LIVE project's own key), LIVE `STRIPE_SECRET_KEY`
      (`sk_live_…`), and a new LIVE webhook secret. Today `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`SUPABASE_SERVICE_ROLE_KEY` are shared by
      Production + Preview with SANDBOX/DEV values — split them. Billing refuses to run without `SUPABASE_URL`, so Production is inert until it is set.
-   - Stripe LIVE mode: recreate the products/prices (same lookup keys: solo_pro_monthly S$14.90, solo_pro_yearly S$149, centre_base_monthly,
-     centre_student_monthly, **at S$0.50 = 50 cents per billable student**, T30) and a LIVE webhook endpoint for https://tutordeck.vercel.app/api/stripe-webhook (+ www.tutordeck.com.sg) with the 6 events
+   - Stripe LIVE mode: recreate the SOLO products/prices (same lookup keys: solo_pro_monthly S$14.90, solo_pro_yearly S$149; **no centre prices in Stripe**, T31a) and a LIVE webhook endpoint for https://tutordeck.vercel.app/api/stripe-webhook (+ www.tutordeck.com.sg) with the 6 events
      listed in api/stripe-webhook.js. Live Stripe account needs business details/bank account (TutorDeck Pte. Ltd.).
    - Stripe LIVE: save a **customer portal configuration** (Settings → Billing → Customer portal): update card, invoice history, switch
      monthly/yearly with proration, cancel at period end (the sandbox one is bpc_1UfDQgCAjCe5dyzzzWFnx8xr). Without it api/billing.js `portal` fails.
-   - **Centre fee job** (api/billing-cron.js, daily cron 16:30 UTC = 00:30 SGT, production only): set `CRON_SECRET` (16+ random chars) in Vercel Production;
-     run `db/migration_attendance.sql`; create each centre's Stripe subscription BY HAND with both items (centre_base_monthly ×1 and
-     centre_student_monthly ×0, billing anchor 12:00 SGT = 04:00 UTC on the 1st, so the job at 00:30 SGT always runs first; if a renewal was already
-     invoiced the job refuses with `renewal_already_billed` (HTTP 500) and changes nothing) and save its id in `org_subscriptions.stripe_subscription_id`; use `?dry=1` first. The job
-     refuses (price_mismatch) if Stripe's prices differ from the centre's `org_plans`. Needs the Phase 2 attendance/trial screens or counts stay 0.
+   - **Centres are invoiced by TutorDeck and pay by PayNow** (owner, 2026-11-26; see the T31b plan). Only SOLO tutors use Stripe: `api/billing.js` answers a centre with
+     "Billing for centres is by invoice and PayNow. Contact us" (403 `centre_contact_us`) for every action except `status`, the centre Plan tab shows a Contact card
+     (address in ONE constant: `assets/js/contact.js`, now tutordeckadmin@gmail.com) and the webhook ignores events that belong to a centre. No centre Stripe products, prices or subscriptions.
+   - **Monthly fee job** (api/billing-cron.js, daily cron 16:30 UTC = 00:30 SGT, production only): it only COMPUTES and RECORDS the fee snapshot (active students → billable → fee in cents, written last, idempotent,
+     closed months never recomputed) in `platform_fee_snapshots`; it never talks to Stripe and needs no Stripe key or centre subscription row. Set `CRON_SECRET` (16+ random chars) in Vercel Production;
+     run `db/migration_attendance.sql`; use `?dry=1` first. Needs the Phase 2 attendance/trial screens or counts stay 0.
    - **Centre fee S$0.50 (T30):** run `db/migration_fee_050.sql` on LIVE (after the other migrations, with the SELECT preview + yes first: it changes `org_plans` rows only
-     where a centre still holds the old default S$100 + 40c; billed months in `platform_fee_snapshots` are never touched). The LIVE Stripe price `centre_student_monthly`
-     must be created at S$0.50 (never at S$0.40). In the Stripe SANDBOX the old S$0.40 price must be replaced by a new S$0.50 price carrying the same lookup key
-     (Stripe prices are immutable): click-by-click in `docs/orchestrator/T30-stripe-steps.md`. Until the Stripe price and the table agree the job refuses with `price_mismatch`.
+     where a centre still holds the old default S$100 + 40c; billed months in `platform_fee_snapshots` are never touched). It is a database-only step now: the S$0.50 price in Stripe is NOT needed (T31a).
    - Vercel Pro before charging (Hobby is non-commercial). Decide GST (TutorDeck is not GST-registered: prices carry no GST, Stripe Tax stays off).
    - Pricing decisions: solo free ≤5 active students, Solo Pro S$14.90/mo or S$149/yr, 30-day trial (once per org), existing solo tutors unlimited.
      Centre S$100 + S$0.50 × billable students (owner, 2026-11-26; was S$0.40, T30) is UNDER REVIEW (SchoolTracs charges ~S$148 per branch at 400 students; owner chose to keep it for now).

@@ -1,3 +1,5 @@
+> **SUPERSEDED by T31a (2026-11-26): do NOT do section A below.** Centres no longer pay through Stripe (they are invoiced by TutorDeck and pay by PayNow), so the S$0.50 centre price in Stripe is **no longer needed**, in the sandbox or in LIVE. The solo prices (`solo_pro_monthly`, `solo_pro_yearly`) are unchanged. Only section B (the DEV database step, `db/migration_fee_050.sql`) still applies, and the "price_mismatch" check in section C no longer exists (the monthly job does not call Stripe). The text below is kept for history.
+
 # T30 — Stripe: replace the per-student price S$0.40 with S$0.50 (owner steps)
 
 Why: TutorDeck's centre fee is now **S$100 + S$0.50 × billable students**. A Stripe price can't be edited, so you create a NEW price at S$0.50, give it the lookup key `centre_student_monthly`, and retire the old one. Until Stripe and the database agree, the monthly job (`api/billing-cron.js`) refuses to touch a centre (`price_mismatch`) — it never bills a wrong amount.

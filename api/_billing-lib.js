@@ -19,6 +19,8 @@ const TRIAL_DAYS = 30;
 function hasLiveSubscription(sub) { return !!sub && sub.tier === "pro" && ["trialing", "active", "past_due"].indexOf(sub.status) >= 0; }
 
 function configured() { return !!(SUPABASE_URL && SERVICE_KEY && STRIPE_KEY); }
+// The monthly centre-fee job only reads/writes the database (centres don't use Stripe), so it needs no Stripe key.
+function dbConfigured() { return !!(SUPABASE_URL && SERVICE_KEY); }
 
 async function stripe(method, path, params) {
   const body = params ? Core.form(params) : null;
@@ -50,4 +52,4 @@ async function rawBody(req) {
   return Buffer.alloc(0);
 }
 
-module.exports = { TRIAL_DAYS, hasLiveSubscription, configured, stripe, svc, rawBody, SUPABASE_URL };
+module.exports = { TRIAL_DAYS, hasLiveSubscription, configured, dbConfigured, stripe, svc, rawBody, SUPABASE_URL };

@@ -500,7 +500,11 @@
     if (!plan) { $("pl").textContent = isOwner() ? "No plan yet." : "Only the owner sees the plan."; return; }
     var ex = [98, 250, 405].map(function (n) { var f = M.platformFee(n, plan); return n + " students → " + f.billable + " billable → " + M.format(f.fee_cents); });
     $("pl").className = "";
-    $("pl").innerHTML = '<p class="og-sub">' + M.format(plan.base_cents) + " a month + " + M.format(plan.per_student_cents) + " per billable student. " +
+    // Centres do not use Stripe: TutorDeck invoices them and they pay by PayNow (T31a). Nothing to buy or pay by card here.
+    var contact = '<div class="og-note" id="pl-contact"><b>Billing for centres is by invoice and PayNow.</b><br>Contact us to set up your account.<div style="margin-top:10px">' +
+      '<a class="btn btn-primary" id="pl-contact-btn" href="' + esc(window.TDContact.centreBillingMailto(st.org.trading_name)) + '">Contact us</a> ' +
+      '<span class="muted" style="font-size:13px">' + esc(window.TDContact.EMAIL) + "</span></div></div>";
+    $("pl").innerHTML = contact + '<p class="og-sub">' + M.format(plan.base_cents) + " a month + " + M.format(plan.per_student_cents) + " per billable student. " +
       "Billable students are last month’s active students (anyone with an attended, absent or late-cancelled lesson, not trials), rounded to the nearest 10.</p>" +
       '<div class="og-note">For example: ' + ex.join(" · ") + "</div>" +
       (snaps.length ? '<table class="og-sum"><tbody>' + snaps.map(function (s) {
