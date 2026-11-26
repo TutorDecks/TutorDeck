@@ -41,6 +41,12 @@ developers AND we both use the app live for our own tuition businesses.
   dispatch (`workflow_dispatch`), never on pushes or on PRs into `dev`. So workers must run `node --test tests/*.test.js`, `bash tests/sql/run.sh`, the static checks and the
   smoke suite LOCALLY before pushing. The orchestrator starts the manual run when an owner-approved bundle is about to merge and for every go-live PR (`dev` → `main`).
 
+## Vercel builds only dev and main (T39, owner's rule 2026-11-26)
+- `vercel.json` → `git.deploymentEnabled`: `"**": false, "main": true, "dev": true`. Only `main` (production) and `dev` (staging) are built; `claude/*` and `feature/*`
+  branches get no preview and no Vercel comment on their PRs. Review on `dev` only. Workers test locally (`python3 tests/server.py`, `node --test tests/*.test.js`).
+  To see a worker's branch on a device, merge it into `dev` in an owner-approved bundle. Anything pointed at a feature-branch preview (the Stripe sandbox webhook)
+  must point at the `dev` address. Steps and fallback: `docs/orchestrator/T39-vercel-steps.md`.
+
 ## Data warning
 There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it holds REAL student/payment data.
 - **Only the production addresses use it** (www.tutordeck.com.sg, tutordeck.com.sg, tutordeck.vercel.app and the two other aliases of the production deployment).
