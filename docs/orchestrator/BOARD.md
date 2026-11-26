@@ -67,6 +67,9 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-26 OWNER: centre fee changes to S$100 + S$0.50 x billable students (T30). Owner list of Opus gaps: deposits (50% of first month, held until the student leaves, refunds tracked), tutor pay rate storage + 'percentage of the parent's fee', recurring late fee (charge again each month an invoice stays unpaid), plus the not-built list (tutor-moved lessons, make-up credits, emails/reminders, statement matching, CSV import, full tutor pay). T4 plan worker covers deposits, tutor pay rates, late fees, invoicing. OWNER ACTION later: create a NEW Stripe sandbox price S$0.50 for centre_student_monthly (steps in docs/orchestrator/T30-stripe-steps.md once written); the docs (Product Guide, SERVICE-AGREEMENT-FACTS, BOARD history) still say 0.40: update after PR #128 merges.
 
+- 2026-11-26 OWNER: B2B (centres paying TutorDeck) = INVOICING + PAYNOW, NOT Stripe. Only solo tutors use Stripe. Centres see 'Contact us'. Consequences: no centre Stripe price/subscription (T30's Stripe price step for centres is NOT needed; solo prices unchanged); monthly job only records the fee snapshot; TutorDeck needs its own invoicing to centres (T31b plan) and a Contact constant (tutordeck admin Gmail for now). T4 plan (centre -> parent money) unchanged.
+- T4 plan decisions asked 2026-11-26 (deposits as liability, % pay base, new centre_* tables, refund approval, late fees as proposals, first release S0-S5+S7-S8+S6, retention, opening balances): waiting on owner (recommendations all yes).
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -132,6 +135,9 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | Chain | owner 'just build it' 2026-11-26: T3.6 timetable read -> T3.7 slots with tutors + generator + student_tutors -> T3.8 reassign/replacement -> T29 time zones (per-student/tutor) -> T6 tutor scheduling (direct first, then propose); check-ins scheduled every 2/4/6h | queued | |
 | T30 | Centre fee S$0.40 -> S$0.50 per billable student (code, SQL migration, tests, UI, docs, Stripe steps for owner) | doing | NEW worker / `claude/t30-fee-050` |
 | T4 | Plan: deposits, tutor pay rates (incl. % of parent's fee), recurring late fee, centre invoicing (plan only) | doing | NEW worker / `claude/t4-plan` |
+| T31a | Centres never use Stripe: Contact-us card, fee job records snapshots only, CLAUDE.md go-live updated | doing | NEW worker / `claude/t31a-centre-invoice-billing` (on t30) |
+| T31b | Plan: TutorDeck invoices centres + records PayNow (platform admin), MVP for first customers | doing (plan only) | NEW worker / `claude/t31b-plan` |
+| T3.6 | T3 step 6: staff timetable read-only | doing | NEW worker session_01CPTfbC1Yspc24cPf4oAbSB / `claude/t3-6-timetable` (on t3-5) |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
