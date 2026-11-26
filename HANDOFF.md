@@ -22,7 +22,7 @@ payment modes, tutor pay, platform billing and 5 phases. We are in **Phase 1 (Fo
 
 ## 3. Key decisions (owner's answers)
 1. Paying tutors before parents pay = a question in wizard step 8; pre-selected "after the parent's payment is reconciled"; changes audited.
-2. Stripe = TutorDeck charging centres: S$100 base + S$0.40 × billable students (prev month's active students rounded to nearest 10, halves up).
+2. Stripe = TutorDeck charging centres: S$100 base + S$0.50 × billable students (was S$0.40 until 2026-11-26, T30) (prev month's active students rounded to nearest 10, halves up).
    Parents pay the centre via a per-org choice: manual (PayNow/bank), HitPay (centre's own), or Stripe (centre's own via Connect). Money never passes through TutorDeck.
 3. Solo tutors get a separate plan — price NOT yet decided (stored as 0/0 placeholder).
 4. Last week's branch work (separate `centre_*` tables, dollars, SQL-side calculations) is superseded by one shared data model with `org_id` everywhere; reuse its role grid/audit/trigger/test ideas only.

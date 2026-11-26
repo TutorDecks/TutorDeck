@@ -105,6 +105,7 @@ There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it hol
   `amount` on load.
 - Deleting an account = `api/delete-account.js` (Stripe, storage, Google, then `org_delete_solo()` in the DB, then the login). The audit log, `org_settings` and fee snapshots are append-only EXCEPT inside `org_delete_solo` (flag `td.deleting_org`). Never delete a tutor's rows by hand from the browser or SQL editor: it copies their data into the audit log. Any new table with an `org_id` is covered automatically; it just needs `on delete cascade`.
 - Invoice "subject" comes from the billed lessons; "level" comes from the student profile.
+- Centre billing start (T36): `org_plans.billing_starts_on` (a 1st) + `first_month_billable_override`, set only by a platform admin via `org_set_billing_start` (reason required, refused once a snapshot exists for the start month or later). The monthly job records months BEFORE the start as `platform_fee_snapshots.billable = false`, `waived_reason = 'pilot'`, fee 0 (anything billing downstream, T31b, must skip `billable = false`); the first billed month counts the override (rounded like any count; `active_students` keeps the real count, `override_students` the number used).
 
 ## Product principle: the centre decides, we build it (owner's rule, 2026-11-24)
 - Anything that depends on a centre's own business process is an **option in the sign-up wizard** (`assets/js/org-settings.js`, saved in `org_settings`), never a
@@ -146,9 +147,9 @@ There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it hol
   decided by `TL.detectRole()` in requireAuth): tutor-only = an active tutor membership in a centre and no students of their own, so they get a one-item menu and Home
   sends them to /tutor; "both" adds My lessons to More. Any doubt or error = "solo" (the usual menu), so nothing solo tutors have can disappear.
 - Live schema snapshot: `db/baseline_2026-11.sql`. Test SQL with `bash tests/sql/run.sh` (throwaway Postgres), never live.
-- Dev Supabase project: `tuzxsqkfzrjssnpcoale` (baseline + org_foundation + billing + attendance + tutor_access + org_delete + function_lockdown migrations applied; org_separation not yet). Live: `rnjvswkejbrhbaytutai`
-  (NONE of the org/billing/attendance/delete migrations are on live yet). Migration order everywhere: org_foundation → billing → attendance → tutor_access → org_delete → function_lockdown → org_separation → staff_home → staff_students → staff_attendance → staff_charges → staff_trials → staff_timetable → staff_slots → staff_reassign → tutor_schedule → money_settings → centre_money → centre_invoice_run → centre_payments → invites → tutor_profile → tutor_payout → payout_permission
-  (undo in reverse); `bash tests/sql/run.sh` runs all twenty-one and the undo checks.
+- Dev Supabase project: `tuzxsqkfzrjssnpcoale` (baseline + org_foundation + billing + attendance + tutor_access + org_delete + function_lockdown + org_separation migrations applied; none of the bundle-4 migrations yet). Live: `rnjvswkejbrhbaytutai`
+  (NONE of the org/billing/attendance/delete migrations are on live yet). Migration order everywhere: org_foundation → billing → attendance → tutor_access → org_delete → function_lockdown → org_separation → staff_home → staff_students → staff_attendance → staff_charges → staff_trials → staff_timetable → staff_slots → staff_reassign → tutor_schedule → money_settings → centre_money → centre_invoice_run → centre_payments → invites → fee_050 → centre_billing_method → centre_billing_start → tutor_profile → tutor_payout → payout_permission
+  (undo in reverse); `bash tests/sql/run.sh` runs all twenty-four and the undo checks.
 - Centre money tables (`db/migration_centre_money.sql`, T4 S1; `org_counters`, `centre_invoices`, `centre_invoice_lines`, `centre_payments`, `centre_payment_allocations`): centres only, read-only for browsers (NO write policy; writes come only from later SECURITY DEFINER functions). A document is a draft with NO number; the number is taken from `org_counters` by the trigger in the same statement that sets `status='issued'` (gap-free; opening number settable once by the owner via `centre_set_opening_number`). Issued/void documents and their lines never change (corrections = credit notes); payments and allocations are append-only (a mistake = a `reversal` payment row + negative allocations). Totals must equal `centre_gst_totals()`, which shares its vectors with `assets/js/money.js` in `tests/gst-vectors.csv`. Free-text fields are redacted in the audit copy (`centre_money_audit`).
 
 ## Open threads
@@ -187,7 +188,7 @@ There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it hol
      (`sk_live_…`), and a new LIVE webhook secret. Today `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`SUPABASE_SERVICE_ROLE_KEY` are shared by
      Production + Preview with SANDBOX/DEV values — split them. Billing refuses to run without `SUPABASE_URL`, so Production is inert until it is set.
    - Stripe LIVE mode: recreate the products/prices (same lookup keys: solo_pro_monthly S$14.90, solo_pro_yearly S$149, centre_base_monthly,
-     centre_student_monthly) and a LIVE webhook endpoint for https://tutordeck.vercel.app/api/stripe-webhook (+ www.tutordeck.com.sg) with the 6 events
+     centre_student_monthly, **at S$0.50 = 50 cents per billable student**, T30) and a LIVE webhook endpoint for https://tutordeck.vercel.app/api/stripe-webhook (+ www.tutordeck.com.sg) with the 6 events
      listed in api/stripe-webhook.js. Live Stripe account needs business details/bank account (TutorDeck Pte. Ltd.).
    - Stripe LIVE: save a **customer portal configuration** (Settings → Billing → Customer portal): update card, invoice history, switch
      monthly/yearly with proration, cancel at period end (the sandbox one is bpc_1UfDQgCAjCe5dyzzzWFnx8xr). Without it api/billing.js `portal` fails.
@@ -196,9 +197,20 @@ There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it hol
      centre_student_monthly ×0, billing anchor 12:00 SGT = 04:00 UTC on the 1st, so the job at 00:30 SGT always runs first; if a renewal was already
      invoiced the job refuses with `renewal_already_billed` (HTTP 500) and changes nothing) and save its id in `org_subscriptions.stripe_subscription_id`; use `?dry=1` first. The job
      refuses (price_mismatch) if Stripe's prices differ from the centre's `org_plans`. Needs the Phase 2 attendance/trial screens or counts stay 0.
+   - **Centre fee S$0.50 (T30):** run `db/migration_fee_050.sql` on LIVE (after the other migrations, with the SELECT preview + yes first: it changes `org_plans` rows only
+     where a centre still holds the old default S$100 + 40c; billed months in `platform_fee_snapshots` are never touched). The LIVE Stripe price `centre_student_monthly`
+     must be created at S$0.50 (never at S$0.40). In the Stripe SANDBOX the old S$0.40 price must be replaced by a new S$0.50 price carrying the same lookup key
+     (Stripe prices are immutable): click-by-click in `docs/orchestrator/T30-stripe-steps.md`. Until the Stripe price and the table agree the job refuses with `price_mismatch`.
+   - **Centre billing method (T31a, owner 2026-11-26):** every centre has `org_plans.billing_method`: `stripe` (default, self-serve as above: items kept) or `invoice` (managed: TutorDeck
+     invoices the centre and it pays by PayNow; set ONLY by a platform admin through `org_set_billing_method(org, method)` when a centre contacts us). Run
+     `db/migration_centre_billing_method.sql` on LIVE (after fee_050; undo `_down.sql`) BEFORE the code that reads it ships. For `invoice` centres the monthly job only records the fee
+     snapshot (never calls Stripe, no Stripe subscription needed), `api/billing.js` answers 403 `centre_invoice` ("contact us") and the webhook ignores their events; the Plan tab says
+     "billed by invoice and PayNow". Every centre's Plan tab has a "Want a hand? Contact us for assisted setup, invoicing and PayNow" card (address in ONE constant,
+     `assets/js/contact.js`, now tutordeckadmin@gmail.com). Platform invoicing for `invoice` centres is planned separately (T31b). Note: self-serve Stripe CHECKOUT for centres does not exist (never built:
+     centre subscriptions are created by hand as above); portal and card work once a centre has a Stripe customer.
    - Vercel Pro before charging (Hobby is non-commercial). Decide GST (TutorDeck is not GST-registered: prices carry no GST, Stripe Tax stays off).
    - Pricing decisions: solo free ≤5 active students, Solo Pro S$14.90/mo or S$149/yr, 30-day trial (once per org), existing solo tutors unlimited.
-     Centre S$100 + S$0.40 × billable students is UNDER REVIEW (SchoolTracs charges ~S$148 per branch at 400 students; owner chose to keep it for now).
+     Centre S$100 + S$0.50 × billable students (owner, 2026-11-26; was S$0.40, T30) is UNDER REVIEW (SchoolTracs charges ~S$148 per branch at 400 students; owner chose to keep it for now).
    - **REVOKE the Vercel "Protection Bypass for Automation" token** (Vercel → project → Settings → Deployment Protection) created for the Stripe
      SANDBOX webhook (note: "Stripe sandbox webhook testing - REVOKE before going live"), and delete/replace the sandbox webhook endpoint that carries it
      in its URL. The LIVE webhook must point at a custom/production domain (not behind Vercel protection) with no bypass token in the URL.

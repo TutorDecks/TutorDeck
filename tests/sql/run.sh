@@ -81,6 +81,23 @@ $P -f db/migration_invites.sql
 $P -f db/migration_invites.sql                              # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/invites_test.sql
 $P -f db/migration_invites_down.sql
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/fee_050_before.sql
+$P -f db/migration_fee_050.sql
+$P -f db/migration_fee_050.sql                              # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/fee_050_test.sql
+$P -f db/migration_centre_billing_method.sql
+$P -f db/migration_centre_billing_method.sql                # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_billing_method_test.sql
+$P -f db/migration_centre_billing_start.sql
+$P -f db/migration_centre_billing_start.sql                 # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_billing_start_test.sql
+$P -f db/migration_centre_billing_start_down.sql
+$P -f db/migration_centre_billing_start.sql                 # and again, so the shipped state is what the undo chain unwinds
+$P -f db/migration_centre_billing_start_down.sql
+$P -f db/migration_centre_billing_method_down.sql
+$P -f db/migration_centre_billing_method.sql                # and again, so the shipped state is what the undo chain unwinds
+$P -f db/migration_centre_billing_method_down.sql
+$P -f db/migration_fee_050_down.sql
 $P -f db/migration_org_separation_down.sql
 $P -f db/migration_org_separation.sql                       # and again, so the shipped state is what the undo chain below unwinds
 $P -f db/migration_tutor_profile.sql
