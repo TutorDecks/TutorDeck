@@ -1,5 +1,5 @@
 // My lessons — a centre tutor's own lessons and attendance. All access goes through two database functions
-// (tutor_my_lessons, tutor_mark_attendance); this page never reads a table. What a tutor may do is decided by the
+// (tutor_my_lessons, tutor_mark_attendance, plus tutor_lesson_links for the online lesson link); this page never reads a table. What a tutor may do is decided by the
 // database; assets/js/tutor-core.js only explains it in plain words.
 (function () {
   "use strict";
@@ -49,6 +49,7 @@
       (l.subject || l.student_level ? '<div><span>Class</span><span>' + esc([l.student_level, l.subject].filter(Boolean).join(" · ")) + '</span></div>' : '') +
       (manyOrgs ? '<div><span>Centre</span><span>' + esc(l.org_name) + '</span></div>' : '') +
       (l.parent_contact ? '<div><span>Parent</span><span><a href="tel:' + esc(String(l.parent_contact).replace(/[^\d+]/g, "")) + '">' + esc(l.parent_contact) + '</a></span></div>' : '') +
+      (/^https:\/\/\S+$/.test(l.online_link || "") ? '<div><span>Online link</span><span><a href="' + esc(l.online_link) + '" target="_blank" rel="noopener noreferrer">Join the lesson</a></span></div>' : '') +
       (l.trial && !l.can_flag_trial ? '<div><span>Trial</span><span>This is a trial lesson</span></div>' : '') +
       (due ? '<div><span>Remarks due</span><span class="due' + (due.overdue ? ' late' : '') + '">' + esc(new Date(due.at).toLocaleString("en-SG", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })) + (due.overdue ? " (overdue)" : "") + '</span></div>' : '') +
       '</div>';
@@ -120,6 +121,11 @@
       return;
     }
     rows = r.data || []; byId = {};
+    try {                                                    // the student's online lesson link (T3 step 7); a database without it just shows no link
+      var lk = await window.sb.rpc("tutor_lesson_links", { p_from: TC.addDays(today, -14), p_to: TC.addDays(today, 7) }), links = {};
+      if (!lk.error) (lk.data || []).forEach(function (x) { links[x.lesson_id] = x.online_link; });
+      rows.forEach(function (l) { l.online_link = links[l.lesson_id] || null; });
+    } catch (e) {}
     var orgs = {}; rows.forEach(function (l) { byId[l.lesson_id] = l; orgs[l.org_id] = 1; });
     manyOrgs = Object.keys(orgs).length > 1;
     render();

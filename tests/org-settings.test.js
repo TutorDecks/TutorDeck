@@ -81,8 +81,9 @@ test("settings nothing reads yet are marked soon, with help text (T18a)", () => 
     assert.equal(fields[p].soon, true, p + " must be soon");
     assert.equal(fields[p].help, credit, p);
   }
-  assert.equal(fields["calendar.skip_holidays"].soon, true);
-  assert.match(fields["calendar.skip_holidays"].help, /later update/);
+  // built in T3 step 7: staff_generate_lessons skips whole-centre holidays when this is on (SQL tests: staff_slots_test.sql), so it is no longer "soon"
+  assert.ok(!fields["calendar.skip_holidays"].soon);
+  assert.match(fields["calendar.skip_holidays"].help, /Create lessons/);
   // saved values stay valid
   const s = S.defaults("centre"); s.profile.trading_name = "T";
   s.billing.makeups = { allowed: false, per_period: 5, uses_credit: true };

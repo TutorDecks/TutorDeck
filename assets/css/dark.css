@@ -1094,6 +1094,15 @@ html[data-theme="dark"] .cs-card{background:#172235;border:1px solid var(--line)
 html[data-theme="dark"] .cs-card .rel{color:var(--muted)}
 html[data-theme="dark"] .cs-card .main{color:var(--accent-ink)}
 html[data-theme="dark"] .cs-card a{color:var(--accent-ink)}
+html[data-theme="dark"] .cs-tut .chip{background:var(--accent-soft);color:var(--accent-ink)}
+html[data-theme="dark"] .cs-tut .hist{color:var(--muted)}
+html[data-theme="dark"] .cs-tut .pick{border:1px solid var(--line);background:#172235}
+html[data-theme="dark"] .cs-tut .pick label{border-top:1px solid var(--line);color:var(--ink)}
+html[data-theme="dark"] .cs-tut .pick label:first-child{border-top:none}
+html[data-theme="dark"] .cs-tut .pick input{accent-color:var(--accent)}
+html[data-theme="dark"] .cs-tut input[type=url]{border:1px solid var(--line);background:#172235;color:var(--ink)}
+html[data-theme="dark"] .cs-tut input[type=url]:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(15,118,110,0.342)}
+html[data-theme="dark"] .cs-tut .err{color:var(--owed)}
 html[data-theme="dark"] .cs-link{border:1px solid var(--line);background:#172235;color:var(--ink)}
 html[data-theme="dark"] .cs-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 html[data-theme="dark"] .cs-next .t{color:var(--muted)}
@@ -1219,6 +1228,28 @@ html[data-theme="dark"] .tt-h{color:var(--muted)}
 html[data-theme="dark"] .tt-facts span:first-child{color:var(--muted)}
 html[data-theme="dark"] .tt-facts .warn{color:var(--warn)}
 html[data-theme="dark"] .tt-ro{color:var(--muted)}
+html[data-theme="dark"] .sl-result{background:var(--accent-soft);color:var(--ink)}
+html[data-theme="dark"] .sl-result.err{background:rgba(180,67,47,0.152);color:var(--owed)}
+html[data-theme="dark"] .sl-grp{background:#282F3C;color:var(--muted)}
+html[data-theme="dark"] .sl-rate{color:var(--ink)}
+html[data-theme="dark"] .sl-form label{color:var(--ink)}
+html[data-theme="dark"] .sl-form input,
+html[data-theme="dark"] .sl-form select{border:1px solid var(--line);background:#172235;color:var(--ink)}
+html[data-theme="dark"] .sl-form input:focus,
+html[data-theme="dark"] .sl-form select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(15,118,110,0.342)}
+html[data-theme="dark"] .sl-form .opt{color:var(--muted)}
+html[data-theme="dark"] .sl-err{color:var(--owed)}
+html[data-theme="dark"] .sl-pick{border:1px solid var(--line);background:#172235}
+html[data-theme="dark"] .sl-pick button{color:var(--ink);border-top:1px solid var(--line)}
+html[data-theme="dark"] .sl-pick button:first-child{border-top:none}
+html[data-theme="dark"] .sl-pick button:hover{background:#1E2531}
+html[data-theme="dark"] .sl-pick button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+html[data-theme="dark"] .sl-pick button[aria-pressed="true"]{background:var(--accent-soft)}
+html[data-theme="dark"] .sl-pick .lv{color:var(--muted)}
+html[data-theme="dark"] .sl-chip{background:var(--accent-soft);color:var(--accent-ink)}
+html[data-theme="dark"] .sl-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+html[data-theme="dark"] .sl-more{color:var(--muted)}
+html[data-theme="dark"] .sl-stop{color:var(--owed)}
 /* inline colours written by page scripts (calendar popover tags, student progress chart) */
 html[data-theme="dark"] [style*="background:#F1EFEA"]{background:#243048!important}
 html[data-theme="dark"] [style*="background:rgba(19,35,63,.10)"]{background:rgba(255,255,255,.08)!important}

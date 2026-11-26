@@ -2,14 +2,16 @@
 // flagged amber. One database call, staff_timetable(...), returns everything drawn here; this page never touches a table and changes nothing
 // (slots, tutors and moving a lesson come in step 7). Any owner or staff member may look; the database decides, not this page.
 // assets/js/centre-timetable-core.js holds the pure logic (days, chips, filters, wording) and is unit-tested.
-//   centre-timetable?id=<centre>[&date=yyyy-mm-dd][&view=day|next14][&tutor=<id>][&student=<id>][&branch=<id>][&f=notutor]
+//   centre-timetable?id=<centre>[&date=yyyy-mm-dd][&view=day|next14][&tutor=<id>][&student=<id>][&branch=<id>][&f=notutor][&mode=slots]
+// T3 step 7 adds the "Weekly slots" view (assets/js/centre-slots.js): add / change / stop a weekly slot with its tutor and create the next 4 weeks of
+// lessons. The lessons view below stays a list; changing ONE lesson (move, cover) comes later.
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
   var TT = window.CentreTimetableCore;
   var orgId = null, today = "", seq = 0, sheetOpener = null, cur = null, lastRes = null, firstLoad = true, studentsAll = [],
-      state = TT.fromQuery(new URLSearchParams("")), deep = false;
+      state = TT.fromQuery(new URLSearchParams("")), deep = false, mode = "lessons", stale = false, started = false;
 
   function card(inner) { $("tt").innerHTML = '<div class="card tt-block">' + inner + '</div>'; }
   function plural(n, a, b) { return n === 1 ? a : b; }
@@ -89,7 +91,7 @@
     syncUrl();
   }
   function syncUrl() {                                          // a reload, or a copied link, comes back to the same view and filters
-    try { history.replaceState(null, "", location.pathname + "?" + TT.toQuery(orgId, state, today)); } catch (e) {}
+    try { history.replaceState(null, "", location.pathname + "?" + TT.toQuery(orgId, state, today) + (mode === "slots" ? "&mode=slots" : "")); } catch (e) {}
   }
   async function load() {
     var mine = ++seq;
@@ -129,14 +131,24 @@
       '<a class="btn" href="centre-attendance?id=' + encodeURIComponent(orgId) + '&date=' + esc(r.lesson_date) + '&view=day">Open in Attendance</a>' +
       '<button type="button" class="btn" id="tt-onlyst">Show only ' + esc(r.student_name) + '</button>' +
       (r.tutor_id ? '<button type="button" class="btn" id="tt-onlytu">Show only ' + esc(r.tutor_name || "this tutor") + '</button>' : '') + '</div>' +
-      '<p class="tt-ro">The timetable is view-only for now. Changing lessons and tutors is coming next.</p>';
+      '<p class="tt-ro">To change the day, time or tutor of a weekly lesson, use <b>Weekly slots</b>. Moving or covering a single lesson is coming next.</p>';
     $("tt-sb").innerHTML = html; openSheet(trigger);
+  }
+
+  // ---------------------------------------------------------------- Lessons | Weekly slots
+  function showMode(m, first) {
+    mode = m === "slots" ? "slots" : "lessons";
+    $("tt-mode").querySelectorAll("[data-m]").forEach(function (b) { var on = b.dataset.m === mode; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
+    $("tt").hidden = mode === "slots"; $("sl").hidden = mode !== "slots";
+    if (mode === "slots") { if (!first) { try { history.replaceState(null, "", location.pathname + "?id=" + encodeURIComponent(orgId) + "&mode=slots"); } catch (e) {} } window.CentreSlots.show(); }
+    else if (!first) { closeSheet(); window.CentreSlots.close(); if (stale || !started) { stale = false; started = true; load(); } else syncUrl(); }
   }
 
   // ---------------------------------------------------------------- wiring
   function go(anchor) { state.anchor = anchor; state.page = 1; load(); }
   function pick(patch) { Object.keys(patch).forEach(function (k) { state[k] = patch[k]; }); state.page = 1; load(); }
   function wire() {
+    $("tt-mode").addEventListener("click", function (e) { var b = e.target.closest("[data-m]"); if (b && b.dataset.m !== mode) showMode(b.dataset.m); });
     $("tt-prev").addEventListener("click", function () { go(TT.shift(state.view, state.anchor || today, -1)); });
     $("tt-next").addEventListener("click", function () { go(TT.shift(state.view, state.anchor || today, 1)); });
     $("tt-today").addEventListener("click", function () { go(today || localToday()); });
@@ -172,7 +184,9 @@
     orgId = id;
     state = TT.fromQuery(q); deep = !!state.anchor;
     if (state.view === "next14" && !state.anchor) state.anchor = localToday();
-    wire(); controls(); load();
+    wire(); controls();
+    window.CentreSlots.init(orgId, { lessonsChanged: function () { stale = true; }, showLessons: function () { state.anchor = today || localToday(); state.view = "next14"; stale = false; showMode("lessons"); started = true; state.page = 1; load(); } });
+    if (q.get("mode") === "slots") { started = false; showMode("slots", true); } else { started = true; load(); }
   }
   TL.requireAuth("centre-timetable", init);
 })();

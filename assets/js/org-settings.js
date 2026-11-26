@@ -24,7 +24,6 @@
   function o(v, l) { return [v, l]; }
   // Nothing in the app reads these settings yet (T18 plan, 2026-11-24): shown as "coming soon" so the wizard promises nothing it does not do.
   var CREDITS_SOON = "Make-up credits come in a later update; for now a make-up is added as a normal lesson.";
-  var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
   // Field: { path, label, type, options?, help?, soon?, show?(s) }
   // types: text, email, color, toggle, select, number, money (cents), percent (bp), days, list (number list)
   var STEPS = [
@@ -47,7 +46,7 @@
       { path: "profile.reply_to_email", label: "Reply-to email for parent emails", type: "email" }
     ]},
     { id: "calendar", n: 2, title: "Branches, rooms and calendar", custom: "calendar", fields: [
-      { path: "calendar.skip_holidays", label: "Don't generate lessons on centre holidays", type: "toggle", soon: true, help: HOLIDAYS_SOON }
+      { path: "calendar.skip_holidays", label: "Don't generate lessons on centre holidays", type: "toggle", help: "Applies when you press “Create lessons” on the Timetable. Lessons already created are not removed." }
     ]},
     { id: "users", n: 3, title: "Users and permissions", custom: "users", fields: [] },
     { id: "billing", n: 4, title: "How lessons are billed", fields: [

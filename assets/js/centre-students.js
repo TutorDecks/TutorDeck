@@ -74,8 +74,67 @@
   async function showStudent(id, trigger) {
     var r = await window.sb.rpc("staff_student", { p_org: orgId, p_student: id });
     if (r.error) { TL.toast(CS.errorText(r.error), "err"); return null; }
-    cur = r.data; today = cur.today || today; renderSheet(); openSheet(trigger);
+    cur = r.data; today = cur.today || today; tut = null; tutEdit = ""; renderSheet(); openSheet(trigger); loadTutors(cur.id);
     return cur;
+  }
+  // ---- assigned tutors and the online lesson link (T3 step 7): own function; quietly absent on a database without the migration ----
+  var SC = window.CentreSlotsCore, tut = null, tutEdit = "";
+  async function loadTutors(id) {
+    var r = await window.sb.rpc("staff_student_tutors", { p_org: orgId, p_student: id });
+    if (!cur || cur.id !== id || !$("cs-tut")) return;
+    if (r.error) { $("cs-tut").innerHTML = SC.isMissing(r.error) ? "" : '<p class="cs-note">' + esc(SC.errorText(r.error)) + '</p>'; return; }
+    tut = r.data; drawTutors();
+  }
+  function drawTutors(msg) {
+    var box = $("cs-tut"); if (!box || !tut) return;
+    var h = '<div class="cs-h">Assigned tutors</div>';
+    if (tutEdit === "tutors") {
+      var on = {}; (tut.assigned || []).forEach(function (t) { on[t.id] = 1; });
+      h += (tut.options || []).length ? '<div class="pick" role="group" aria-label="Assigned tutors">' + tut.options.map(function (o) {
+        return '<label><input type="checkbox" data-tid="' + esc(o.id) + '"' + (on[o.id] ? ' checked' : '') + '> ' + esc(o.name) + '</label>'; }).join("") + '</div>'
+        : '<p class="cs-note" style="margin:0 0 8px">This centre has no tutors yet. Invite them in Centre settings.</p>';
+      h += (msg ? '<p class="err" role="alert">' + esc(msg) + '</p>' : '') + '<div class="row"><button class="btn btn-primary" type="button" id="tt-save">Save</button><button class="btn" type="button" id="tt-cancel">Cancel</button></div>';
+    } else {
+      h += (tut.assigned || []).length ? '<div class="chips">' + tut.assigned.map(function (t) { return '<span class="chip">' + esc(t.name) + '</span>'; }).join("") + '</div>'
+        : '<p class="cs-note" style="margin:0 0 8px">No tutor assigned yet.</p>';
+      if ((tut.history || []).length) h += '<p class="hist">Before: ' + esc(tut.history.slice(0, 3).map(function (x) { return x.name + (x.until ? " until " + fmtDate(x.until) : ""); }).join(" · ")) + '</p>';
+      if (tut.can_edit) h += '<button class="btn" type="button" id="tt-edit">' + ((tut.assigned || []).length ? 'Change tutors' : 'Assign tutors') + '</button>';
+      else h += '<p class="cs-note">Only people who manage the timetable can change this.</p>';
+      if (msg) h += '<p class="cs-note" role="status" style="margin-top:6px">' + esc(msg) + '</p>';
+    }
+    h += '<div class="cs-h">Online lesson link</div>';
+    if (tutEdit === "link") {
+      h += '<label class="sr-only" for="tt-link">Online lesson link</label><input id="tt-link" type="url" inputmode="url" maxlength="500" placeholder="https://" autocomplete="off" value="' + esc(tut.online_link || "") + '">' +
+        (msg ? '<p class="err" role="alert">' + esc(msg) + '</p>' : '') +
+        '<div class="row"><button class="btn btn-primary" type="button" id="tl-save">Save link</button>' + (tut.online_link ? '<button class="btn" type="button" id="tl-clear">Remove link</button>' : '') + '<button class="btn" type="button" id="tl-cancel">Cancel</button></div>';
+    } else {
+      h += tut.online_link ? '<a class="lk" href="' + esc(tut.online_link) + '" target="_blank" rel="noopener noreferrer">' + esc(tut.online_link) + '</a>' : '<p class="cs-note" style="margin:0 0 8px">Not set. Their tutor sees it on every lesson once it is.</p>';
+      if (tut.can_link) h += '<button class="btn" type="button" id="tl-edit">' + (tut.online_link ? 'Change link' : 'Set link') + '</button>';
+    }
+    box.innerHTML = h;
+    var f = box.querySelector("#tt-link") || box.querySelector("[data-tid]"); if (f && tutEdit) f.focus();
+  }
+  async function tutAct(e) {
+    var id = e.target.id; if (!id || !tut || !cur) return;
+    if (id === "tt-edit") { tutEdit = "tutors"; drawTutors(); }
+    else if (id === "tl-edit") { tutEdit = "link"; drawTutors(); }
+    else if (id === "tt-cancel" || id === "tl-cancel") { tutEdit = ""; drawTutors(); }
+    else if (id === "tt-save") {
+      var ids = Array.prototype.map.call(document.querySelectorAll("#cs-tut [data-tid]:checked"), function (i) { return i.dataset.tid; });
+      e.target.disabled = true;
+      var r = await window.sb.rpc("staff_set_student_tutors", { p_org: orgId, p_student: cur.id, p_tutors: ids });
+      if (r.error) { drawTutors(SC.errorText(r.error)); return; }
+      var r2 = await window.sb.rpc("staff_student_tutors", { p_org: orgId, p_student: cur.id });
+      if (!r2.error) tut = r2.data;
+      tutEdit = ""; drawTutors(ids.length ? "" : "Tutors removed."); TL.toast("Assigned tutors saved", "ok");
+    } else if (id === "tl-save" || id === "tl-clear") {
+      var v = id === "tl-clear" ? "" : $("tt-link").value.trim(), p = SC.linkProblem(v);
+      if (p) { drawTutors(p); var li = $("tt-link"); if (li) li.value = v; return; }
+      e.target.disabled = true;
+      var s2 = await window.sb.rpc("staff_set_student_link", { p_org: orgId, p_student: cur.id, p_link: v });
+      if (s2.error) { drawTutors(SC.errorText(s2.error)); return; }
+      tut.online_link = s2.data && s2.data.online_link || null; tutEdit = ""; drawTutors(); TL.toast(v ? "Link saved" : "Link removed", "ok");
+    }
   }
   function renderSheet() {
     var s = cur, g = s.guardians || [], html = "";
@@ -106,6 +165,7 @@
     else html += '<div class="cs-next">' + s.next_lessons.map(function (l) {
       return '<div><span>' + esc(TC.dateLabel(l.date, today)) + ' · ' + esc(TC.timeLabel(l.start)) + (l.subject ? ' · ' + esc(l.subject) : '') + '</span><span class="t">' + esc(l.tutor || 'No tutor yet') + '</span></div>';
     }).join("") + '</div>';
+    html += '<div class="cs-tut" id="cs-tut" aria-live="polite"></div>';
     html += '<div class="cs-acts"><button class="btn btn-primary" type="button" id="cs-edit">Edit details</button>' +
       '<button class="btn" type="button" id="cs-sibling">Add a brother or sister</button>' +
       (s.ended || s.end_date ? '<button class="btn" type="button" id="cs-back">Bring back</button>' : '') +
@@ -210,6 +270,7 @@
     $("cs-sx").addEventListener("click", closeSheet);
     $("cs-sheet").addEventListener("click", function (e) { if (e.target === $("cs-sheet")) closeSheet(); });
     $("cs-sb").addEventListener("click", function (e) {
+      if (e.target.closest && e.target.closest("#cs-tut")) { tutAct(e); return; }
       var sib = e.target.closest("[data-sib]"); if (sib) { showStudent(sib.dataset.sib); return; }
       if (!cur) return;
       var id = e.target.id;
