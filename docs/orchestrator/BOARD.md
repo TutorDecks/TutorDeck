@@ -88,6 +88,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-26 OWNER: WhatsApp delivery = centre option: MANUAL share button (default) OR automated sending when the centre supplies its own WhatsApp API credentials; HitPay = centre option too (centre's own account). Both are optional add-ons (not in the first customer's price); plan-first (T41, T42); build AFTER the committed first-customer scope unless the owner says otherwise.
 
+- 2026-11-26 BUNDLE 4: PR #132 ready. WAITING on the owner to apply docs/orchestrator/dev-apply-pack.sql to the DEV project (guided chat started). After the owner pastes the final 'OVERALL | OK' line: orchestrator starts ONE manual check run on the PR, merges into dev, tells the owner (test list: docs/orchestrator/BUNDLE-4-TEST-LIST.md). 1 Feb assessment: achievable for the committed core if scope frozen 2 Dec, production ship 8 Dec, customer inputs by ~12 Dec; add-ons (WhatsApp API, HitPay) after go-live; weekly token limit is a risk (warning seen 25 Nov; window resets ~18:00 SGT 30 Nov).
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -173,7 +175,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T39 | Vercel builds only dev + main | doing | NEW worker / `claude/t39-vercel-builds` |
 | T6.1 | T6 step 1: read-only Schedule tab for centre tutors (tutor_my_schedule, tutor_my_slots) | DONE on branch (66 new checks, smoke clean) | `claude/t6-1-tutor-schedule` (on t3-8) |
 | T4-S3 | T4 step S3: record payment, part payment, credit note, status chips, share link, WhatsApp text | DONE on branch (smoke 84 loads clean; migration NOT on DEV) | `claude/t4-s3-payments` (on t4-s2) |
-| T40 | Assemble bundle 4 (T3 staff chain + T6.1 + T4 S0-S3 + tutor settings/payout + invites + fee/billing/start) into one branch + PR, final DEV SQL pack, owner test list; orchestrator merges after a manual check run + DEV SQL applied | doing | NEW worker / `claude/bundle-4` |
+| T40 | Assemble bundle 4 (T3 staff chain + T6.1 + T4 S0-S3 + tutor settings/payout + invites + fee/billing/start) into one branch + PR, final DEV SQL pack, owner test list; orchestrator merges after a manual check run + DEV SQL applied | DONE: PR #132 open into dev (183 files, 295 node tests, SQL + smoke pass locally; DEV pack = 20 migrations + 2 staff logins, 386 KB, owner applies via a guided chat; orchestrator then runs one manual check run and merges) | `claude/bundle-4` |
 | T33-I0 | Import step I0: templates, CSV reader, validator, report UI (no DB), fixture generator 400/200 | doing | NEW worker / `claude/t33-i0-import-core` (on dev) |
 | T4-S4 | T4 step S4: deposits (ledger as liability, deposit invoice with first run, held report, opening kind + students.start_date) | doing | NEW worker / `claude/t4-s4-deposits` (on t4-s3) |
 | T24c.5 | Leave-centre DB (never started twice; retry when infrastructure allows) | stuck/todo | |
