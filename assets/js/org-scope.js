@@ -42,7 +42,7 @@
   }
 
   // Pages a centre login may open. Everything else is a solo-tutor page.
-  var CENTRE_PAGES = ["org", "settings", "tutor", "centre", "centre-students", "centre-attendance", "centre-timetable"];
+  var CENTRE_PAGES = ["org", "settings", "tutor", "tutor-schedule", "centre", "centre-students", "centre-attendance", "centre-timetable"];
 
   // → the address to go to, or null to stay. Only a CONFIRMED centre (known id) ever redirects, and never away from its own pages.
   function centreRedirect(org, active) {

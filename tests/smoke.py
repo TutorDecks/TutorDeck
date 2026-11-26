@@ -20,7 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TESTS = os.path.join(ROOT, "tests")
 PORT = int(os.environ.get("SMOKE_PORT", "8765"))
 BASE = "http://127.0.0.1:%d/" % PORT
-APP = ["home", "calendar", "planner", "ledger", "invoices", "insights", "students", "student", "exams", "settings", "org", "tutor", "centre", "centre-students", "centre-attendance", "centre-timetable"]
+APP = ["home", "calendar", "planner", "ledger", "invoices", "insights", "students", "student", "exams", "settings", "org", "tutor", "tutor-schedule", "centre", "centre-students", "centre-attendance", "centre-timetable"]
 PUBLIC = ["index", "login", "privacy", "terms", "changelog", "reset", "confirmed"]
 failures = []
 

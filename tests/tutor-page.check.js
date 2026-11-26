@@ -179,9 +179,9 @@ const LESSONS = [["a", -3], ["b", -1, { attendance: "late_cancelled", can_mark: 
     await page.waitForTimeout(800);
     ok(/\/tutor$/.test(page.url()), "tutor-only login on Home is sent to My lessons (" + page.url().replace(BASE, "/") + ")");
     const nav = await page.$$eval(".tn-links a", (e) => e.map((x) => x.textContent.trim()));
-    ok(nav.join(",") === "My lessons", "tutor-only menu is just: " + nav.join(",")); 
+    ok(nav.join(",") === "My lessons,Schedule", "tutor-only menu is My lessons + Schedule: " + nav.join(",")); 
     const tabs = await page.$$eval(".tabbar a, .tabbar button", (e) => e.map((x) => x.textContent.trim()));
-    ok(tabs.join(",") === "My lessons,More", "phone bar: " + tabs.join(","));
+    ok(tabs.join(",") === "My lessons,Schedule,More", "phone bar: " + tabs.join(","));
     await ctx.close(); }
   { const { ctx, page } = await open(b, "phone", "light", centreTutor(4), "home");
     ok(/\/home$/.test(page.url()), "solo tutor who also teaches stays on Home");

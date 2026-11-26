@@ -24,6 +24,10 @@ test("tutor-only logins may stay on My lessons only (no redirect loop); Settings
   assert.strictEqual(R("tutor", "tutor-only"), null);
   assert.strictEqual(R("settings", "tutor-only"), "tutor");
 });
+test("T6: the read-only Schedule is allowed for tutor-only logins; solo and both are never redirected from it", () => {
+  assert.strictEqual(R("tutor-schedule", "tutor-only"), null);
+  for (const mode of ["solo", "both", null, undefined, "", "TUTOR-ONLY"]) assert.strictEqual(R("tutor-schedule", mode), null, String(mode));
+});
 test("solo, both and unknown logins are never redirected, on any page", () => {
   for (const mode of ["solo", "both", null, undefined, "", "TUTOR-ONLY", "tutor", "centre", 1, {}])
     for (const p of ["dashboard", "students", "ledger", "planner", "settings", "org", "tutor", "exams", "invoices", "calendar"])
