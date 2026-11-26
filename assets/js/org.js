@@ -4,7 +4,7 @@
 //   org?id=…       → wizard while status = 'setup', settings tabs once active
 // All rules are enforced in the database (owner-only settings, versioned & effective-dated, audited).
 (function () {
-  var S = window.OrgSettings, M = window.Money;
+  var S = window.OrgSettings, M = window.Money, IS = window.InviteStatus;
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function sb() { return window.sb; }
@@ -12,9 +12,11 @@
   function missing(err) { return err && (err.code === "42P01" || err.code === "PGRST205" || err.code === "42883" || /does not exist|Could not find/i.test(err.message || "")); }
   function prettyDate(iso) { return new Date(iso + "T00:00:00").toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" }); }
 
-  var st = { lib: undefined, libBusy: false, org: null, role: null, saved: null, draft: null, step: "profile", members: [], branches: [], rooms: [], terms: [], holidays: [] };
+  var st = { mail: null, perms: [], lib: undefined, libBusy: false, org: null, role: null, saved: null, draft: null, step: "profile", members: [], branches: [], rooms: [], terms: [], holidays: [] };
   var EXTRA_TABS = [["plan", "Plan"], ["audit", "Audit log"]];
   function isOwner() { return st.role === "owner"; }
+  // who may email / re-email invites: the owner, or a staff admin with "manage tutors" (the same rule org_invite_mail_reserve() enforces in SQL)
+  function canMail() { return st.role === "owner" || (st.role === "staff" && st.perms.indexOf("manage_tutors") >= 0); }
   function setup() { return st.org && st.org.status === "setup"; }
 
   // ------------------------------------------------------------------ entry
@@ -26,8 +28,8 @@
     if (r.error) return missing(r.error) ? notReady() : fail(r.error);
     if (!r.data) return fail({ message: "Organisation not found, or you're not a member." });
     st.org = r.data;
-    var m = await sb().from("memberships").select("role").eq("org_id", id).eq("user_id", TL.uid()).maybeSingle();
-    st.role = m.data && m.data.role;
+    var m = await sb().from("memberships").select("role,permissions").eq("org_id", id).eq("user_id", TL.uid()).maybeSingle();
+    st.role = m.data && m.data.role; st.perms = (m.data && m.data.permissions) || [];
     var s = await sb().rpc("org_settings_on", { p_org: id, p_day: "9999-12-31" });   // latest version (incl. ones starting next cycle)
     st.saved = S.withDefaults(s.data || {}, st.org.preset);
     st.draft = JSON.parse(JSON.stringify(st.saved));
@@ -46,7 +48,12 @@
       sb().from("terms").select("*").eq("org_id", id).order("starts_on"),
       sb().from("holidays").select("*").eq("org_id", id).order("starts_on")
     ]);
-    st.members = q[0].data || []; st.branches = q[1].data || []; st.rooms = q[2].data || []; st.terms = q[3].data || []; st.holidays = q[4].data || [];
+    st.members = q[0].data || []; st.mail = null;
+    if (canMail() && st.members.some(function (x) { return x.status === "invited" && !x.user_id; })) {
+      // when each waiting invite was last emailed (null = the invite-email migration isn't installed here: then no Resend button)
+      try { var ms = await sb().rpc("org_invite_mail_status", { p_org: id }); if (!ms.error) { st.mail = {}; (ms.data || []).forEach(function (x) { st.mail[x.member_id] = x; }); } } catch (e) {}
+    }
+    st.branches = q[1].data || []; st.rooms = q[2].data || []; st.terms = q[3].data || []; st.holidays = q[4].data || [];
     if (st.lib === undefined) {
       try { var lr = await fetch("assets/data/sg-public-holidays.json", { cache: "no-cache" }); st.lib = lr.ok ? await lr.json() : null; } catch (e) { st.lib = null; }
     }
@@ -378,11 +385,15 @@
     var can = isOwner();
     var list = st.members.map(function (m) {
       var role = { owner: "Owner", staff: "Staff admin", tutor: "Tutor", parent: "Parent" }[m.role];
+      var waiting = m.status === "invited" && !m.user_id, inv = waiting && IS ? IS.describe(m, st.mail && st.mail[m.id]) : null;
       return '<div class="og-item" style="align-items:flex-start"><div class="grow"><b>' + esc(m.display_name) + "</b> " +
         (m.status === "invited" ? '<span class="og-badge grey">Invited</span>' : m.status === "disabled" ? '<span class="og-badge grey">Off</span>' : "") +
         '<div class="meta">' + esc(role) + (m.employment_type ? " · " + esc(m.employment_type) : "") + (m.invited_email ? " · " + esc(m.invited_email) : "") + "</div>" +
+        (inv ? '<div class="meta">' + esc(inv.invited) + (st.mail ? ' · <span class="' + (inv.expired || inv.neverSent ? "og-warn" : "") + '">' + esc(inv.hint) + "</span>" : "") + "</div>" : "") +
         (m.role === "staff" ? permBoxes("mp-" + m.id, m.permissions || [], !can) : "") +
         (m.role === "tutor" && st.org.kind === "centre" ? '<div class="og-pay" data-pay="' + esc(m.id) + '" aria-live="polite"></div>' : "") + "</div>" +
+        (inv && st.mail && canMail() ? '<button class="og-resend" data-resend="' + esc(m.id) + '"' + (inv.canPress ? "" : " disabled") + ' title="' +
+          esc(inv.dailyLimit ? "Five emails a day is the limit for one invite. Try again tomorrow." : inv.waitMinutes ? "You can send it again in " + inv.waitMinutes + " minute" + (inv.waitMinutes === 1 ? "" : "s") + "." : "Emails a new link to " + (m.invited_email || "them") + ". The old link stops working.") + '">' + esc(inv.buttonLabel) + "</button>" : "") +
         (can && m.role !== "owner" ? '<button class="og-x" data-mstatus="' + esc(m.id) + '" title="' + (m.status === "disabled" ? "Turn back on" : "Turn off access") + '">' + (m.status === "disabled" ? "↺" : "×") + "</button>" : "") + "</div>";
     }).join("");
     return '<div class="og-list">' + list + "</div>" + (can ?
@@ -391,8 +402,25 @@
       '<div class="og-row"><div class="field"><label for="i-role">Role</label><select id="i-role"><option value="tutor">Tutor</option><option value="staff">Staff admin</option></select></div>' +
       '<div class="field" id="i-emp-w"><label for="i-emp">Employment</label><select id="i-emp"><option value="freelancer">Freelancer</option><option value="employee">Employee</option></select></div></div>' +
       '<div id="i-perms-w" style="display:none"><label style="font-size:13px;font-weight:700">Permissions</label>' + permBoxes("ip", ["manage_timetable", "manage_students"], false) + "</div>" +
-      '<button class="btn" id="i-go" style="margin-top:10px">Send invite</button><span class="og-help" style="margin:8px 0 0">They’re linked when they sign in with that email. Invite emails come with the email provider (coming soon) — for now, tell them to sign up.</span>' +
+      '<button class="btn" id="i-go" style="margin-top:10px">Send invite</button><span class="og-help" style="margin:8px 0 0">They get an email with a link to choose a password, and they’re linked to this centre when they sign in with that email. The link works for 24 hours; use Resend invite if it runs out.</span>' +
       '<p class="og-help" style="margin-top:12px">Tutor CSV import is in step 9.</p>' : "");
+  }
+  // Asks the server (api/send-invite.js) to email the invite. The server decides who may and how often; this only words the answer.
+  async function emailInvite(memberId, name, again) {
+    var saved = again ? "" : name + " invited. ";
+    try {
+      var se = await sb().auth.getSession(), jwt = se && se.data && se.data.session && se.data.session.access_token;
+      var r = await fetch("/api/send-invite", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + jwt }, body: JSON.stringify({ membership_id: memberId }) });
+      var d = await r.json().catch(function () { return {}; });
+      if (r.ok && d.sent) return again ? "Invite emailed to " + name : saved + "Email sent.";
+      if (r.ok && d.blocked === "preview") return saved + "This test site doesn’t email real people, so nothing was sent.";
+      if (r.status === 429) return saved + (d.error === "too_soon" ? "Already emailed a moment ago. Try again in " + (d.retry_minutes || 10) + " min." :
+        d.error === "daily_limit" ? "That’s five emails today for this invite. Try again tomorrow." : "Too many invites just now. Try again in an hour.");
+      if (r.status === 403) return saved + "You don’t have permission to email invites.";
+      if (r.status === 409) return saved + "This invite isn’t waiting any more.";
+      if (r.status === 503) return saved + "Email isn’t switched on yet. They’re linked when they sign in with that email.";
+    } catch (e) { /* fall through */ }
+    return saved + "The email didn’t send. Use Resend invite to try again.";
   }
   function bindUsers() {
     var body = $("og-body");
@@ -406,8 +434,17 @@
       var perms = []; body.querySelectorAll("[data-ip]:checked").forEach(function (c) { perms.push(c.getAttribute("data-ip")); });
       var r = await sb().rpc("org_invite", { p_org: st.org.id, p_email: email, p_name: name, p_role: role, p_perms: role === "staff" ? perms : null, p_employment: role === "tutor" ? $("i-emp").value : null });
       if (r.error) return TL.alert(r.error.message);
-      await loadSide(); renderStep(S.STEPS[2]); TL.toast(name + " invited");
+      var said = await emailInvite(r.data, name);      // the first email goes out now; if it can't, the invite is still saved and Resend is there
+      await loadSide(); renderStep(S.STEPS[2]); TL.toast(said);
     };
+    body.querySelectorAll("[data-resend]").forEach(function (b) {
+      b.onclick = async function () {
+        var m = st.members.filter(function (x) { return x.id === b.getAttribute("data-resend"); })[0]; if (!m) return;
+        b.disabled = true;
+        var said = await emailInvite(m.id, m.display_name, true);
+        await loadSide(); renderStep(S.STEPS[2]); TL.toast(said);
+      };
+    });
     st.members.forEach(function (m) {
       var boxes = body.querySelectorAll("[data-mp-" + m.id + "]");
       boxes.forEach(function (c) {
