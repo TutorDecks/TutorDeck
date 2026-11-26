@@ -84,6 +84,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-26 OWNER: Vercel should only build/deploy `dev` and `main` (T39: vercel.json git.deploymentEnabled or ignoreCommand + dashboard steps). Side effects to tell the owner: worker branches get no preview links; the Stripe sandbox webhook (points at a feature-branch preview) must be re-pointed at the dev address; owner reviews on dev only (merge owner-approved bundles into dev).
 
+- 2026-11-26 MERGED into dev: PR #129 (scrub), PR #130 (CI policy: checks only on PRs into main + manual dispatch). PR #131 (Vercel only dev+main) has conflicts: T39 worker merging dev in. T37 plan done: recommended calendar: freeze dev Wed 2 Dec, dry run on restored backup by Fri 4 Dec, LIVE migrations Sun 6 Dec 03:00-04:00 SGT, Production env Mon 7 Dec, ship dev->main Tue 8 Dec (owner says 'ship'), spare day Wed 9 Dec, setup Thu 10 Dec. Minimum scope: dev + t3-1 + t3-2 + t7-2. Owner decisions D1-D6 asked (scope, Vercel+Supabase Pro, billing migration now/later, how to test a centre on LIVE, mail mailbox, migration slot).
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -167,6 +169,8 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | Email | Owner's guided chat: Supabase DEV custom SMTP via Brevo is LIVE and tested; Vercel vars + invites migration wait for claude/t7-2-invites to merge | partly done | |
 | T38 | CI policy: checks only on PRs into main + manual dispatch; CLAUDE.md repo now private | doing | NEW worker / `claude/t38-ci-policy` |
 | T39 | Vercel builds only dev + main | doing | NEW worker / `claude/t39-vercel-builds` |
+| T6.1 | T6 step 1: read-only Schedule tab for centre tutors (tutor_my_schedule, tutor_my_slots) | doing | NEW worker / `claude/t6-1-tutor-schedule` (on t3-8) |
+| T4-S3 | T4 step S3: record payment, part payment, credit note, status chips, share link, WhatsApp text | doing | NEW worker / `claude/t4-s3-payments` (on t4-s2) |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
