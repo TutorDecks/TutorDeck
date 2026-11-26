@@ -80,3 +80,39 @@ test("invoice centres: only the fee is decided, nothing about Stripe (T31a)", ()
   assert.strictEqual(J.decideInvoice(plan, 3).fee.fee_cents, 10000);
   assert.strictEqual(J.decideInvoice(null, 5).skip, "no_centre_plan"); assert.strictEqual(J.decideInvoice({ plan_code: "solo" }, 5).skip, "no_centre_plan");
 });
+
+// ---- T36: billing start date + first-month agreed number
+test("startRule: no start date = the normal rule, unchanged (T36)", () => {
+  const r = J.startRule(plan, "2026-12-01", 403);
+  assert.strictEqual(r.kind, "normal"); assert.deepStrictEqual(r.fee, { active: 403, billable: 400, fee_cents: 30000 });
+  assert.strictEqual(J.startRule(Object.assign({}, plan, { billing_starts_on: null, first_month_billable_override: null }), "2026-12-01", 403).kind, "normal");
+  assert.strictEqual(J.startRule(Object.assign({}, plan, { first_month_billable_override: 80 }), "2026-12-01", 403).kind, "normal", "an override without a start date does nothing");
+});
+test("startRule: a month before the start is a pilot: counted for information, fee 0 (T36)", () => {
+  const p = Object.assign({}, plan, { billing_starts_on: "2027-02-01", first_month_billable_override: 80 });
+  const r = J.startRule(p, "2027-01-01", 12);
+  assert.strictEqual(r.kind, "pilot"); assert.deepStrictEqual(r.fee, { active: 12, billable: 10, fee_cents: 0 });
+  assert.deepStrictEqual(J.snapshotRow("o1", "2027-01-01", p, r.fee, r), { org_id: "o1", month: "2027-01-01", active_students: 12, billable_students: 10, base_cents: 10000, per_student_cents: 50, fee_cents: 0, billable: false, waived_reason: "pilot" });
+  assert.strictEqual(J.startRule(p, "2026-06-01", 0).kind, "pilot", "any earlier month too");
+});
+test("startRule: the first billed month uses the agreed number when there is one, rounded the usual way (T36)", () => {
+  const p = Object.assign({}, plan, { billing_starts_on: "2027-02-01", first_month_billable_override: 85 });
+  const r = J.startRule(p, "2027-02-01", 12);
+  assert.strictEqual(r.kind, "override");
+  assert.deepStrictEqual(r.fee, { active: 12, billable: 90, fee_cents: 10000 + 50 * 90 }, "85 rounds half-up to 90; the REAL count stays in 'active'");
+  assert.deepStrictEqual(J.snapshotRow("o1", "2027-02-01", p, r.fee, r), { org_id: "o1", month: "2027-02-01", active_students: 12, billable_students: 90, base_cents: 10000, per_student_cents: 50, fee_cents: 14500, override_students: 85 });
+  assert.strictEqual(J.startRule(Object.assign({}, p, { first_month_billable_override: 0 }), "2027-02-01", 12).fee.fee_cents, 10000, "an agreed 0 is an override too (base fee only)");
+});
+test("startRule: first billed month without an agreed number, and every later month, use the normal rule (T36)", () => {
+  const p = Object.assign({}, plan, { billing_starts_on: "2027-02-01", first_month_billable_override: null });
+  let r = J.startRule(p, "2027-02-01", 403); assert.strictEqual(r.kind, "normal"); assert.strictEqual(r.fee.fee_cents, 30000);
+  assert.deepStrictEqual(J.snapshotRow("o1", "2027-02-01", p, r.fee, r), { org_id: "o1", month: "2027-02-01", active_students: 403, billable_students: 400, base_cents: 10000, per_student_cents: 50, fee_cents: 30000 });
+  const q = Object.assign({}, p, { first_month_billable_override: 85 });
+  r = J.startRule(q, "2027-03-01", 403); assert.strictEqual(r.kind, "normal", "the override is for ONE month only"); assert.strictEqual(r.fee.billable, 400);
+});
+test("decide / decideInvoice carry the rule: override sets the Stripe quantity, count stays real (T36)", () => {
+  const p = Object.assign({}, plan, { billing_starts_on: "2026-12-01", first_month_billable_override: 85 });
+  const d = J.decide(sub(), p, 12, "2026-12-01");
+  assert.strictEqual(d.targetQty, 90); assert.strictEqual(d.fee.active, 12); assert.strictEqual(d.rule.kind, "override");
+  const i = J.decideInvoice(p, 12, "2026-12-01"); assert.strictEqual(i.fee.fee_cents, 14500); assert.strictEqual(J.decideInvoice(plan, 12).rule.kind, "normal", "month omitted = normal");
+});

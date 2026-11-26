@@ -96,6 +96,7 @@ There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it hol
   `amount` on load.
 - Deleting an account = `api/delete-account.js` (Stripe, storage, Google, then `org_delete_solo()` in the DB, then the login). The audit log, `org_settings` and fee snapshots are append-only EXCEPT inside `org_delete_solo` (flag `td.deleting_org`). Never delete a tutor's rows by hand from the browser or SQL editor: it copies their data into the audit log. Any new table with an `org_id` is covered automatically; it just needs `on delete cascade`.
 - Invoice "subject" comes from the billed lessons; "level" comes from the student profile.
+- Centre billing start (T36): `org_plans.billing_starts_on` (a 1st) + `first_month_billable_override`, set only by a platform admin via `org_set_billing_start` (reason required, refused once a snapshot exists for the start month or later). The monthly job records months BEFORE the start as `platform_fee_snapshots.billable = false`, `waived_reason = 'pilot'`, fee 0 (anything billing downstream, T31b, must skip `billable = false`); the first billed month counts the override (rounded like any count; `active_students` keeps the real count, `override_students` the number used).
 
 ## Product principle: the centre decides, we build it (owner's rule, 2026-11-24)
 - Anything that depends on a centre's own business process is an **option in the sign-up wizard** (`assets/js/org-settings.js`, saved in `org_settings`), never a
@@ -138,8 +139,8 @@ There is ONE LIVE Supabase database (project `rnjvswkejbrhbaytutai`), and it hol
   sends them to /tutor; "both" adds My lessons to More. Any doubt or error = "solo" (the usual menu), so nothing solo tutors have can disappear.
 - Live schema snapshot: `db/baseline_2026-11.sql`. Test SQL with `bash tests/sql/run.sh` (throwaway Postgres), never live.
 - Dev Supabase project: `tuzxsqkfzrjssnpcoale` (baseline + org_foundation + billing + attendance + tutor_access + org_delete + function_lockdown migrations applied; org_separation and fee_050 not yet). Live: `rnjvswkejbrhbaytutai`
-  (NONE of the org/billing/attendance/delete migrations are on live yet). Migration order everywhere: org_foundation → billing → attendance → tutor_access → org_delete → function_lockdown → org_separation → fee_050 (T30: centre fee 50c) → centre_billing_method (T31a)
-  (undo in reverse); `bash tests/sql/run.sh` runs all eight and the undo checks.
+  (NONE of the org/billing/attendance/delete migrations are on live yet). Migration order everywhere: org_foundation → billing → attendance → tutor_access → org_delete → function_lockdown → org_separation → fee_050 (T30: centre fee 50c) → centre_billing_method (T31a) → centre_billing_start (T36)
+  (undo in reverse); `bash tests/sql/run.sh` runs all nine and the undo checks.
 
 ## Open threads
 - T-Leng has past lessons wrongly showing ✦ one-off: an old slot deletion (before `one_off`

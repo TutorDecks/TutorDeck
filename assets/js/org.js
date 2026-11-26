@@ -507,11 +507,22 @@
       '<div class="og-note" id="pl-contact"><b>Want a hand?</b><br>Contact us for assisted setup, invoicing and PayNow.<div style="margin-top:10px">' +
       '<a class="btn btn-primary" id="pl-contact-btn" href="' + esc(window.TDContact.centreBillingMailto(st.org.trading_name)) + '">Contact us</a> ' +
       '<span class="muted" style="font-size:13px">' + esc(window.TDContact.EMAIL) + "</span></div></div>";
-    $("pl").innerHTML = contact + '<p class="og-sub">' + M.format(plan.base_cents) + " a month + " + M.format(plan.per_student_cents) + " per billable student. " +
+    // T36: billing start date (a free pilot before it) and an agreed number for the first billed month, in plain words
+    var startNote = "";
+    if (plan.billing_starts_on) {
+      var sd = new Date(plan.billing_starts_on + "T00:00:00"), pretty = sd.toLocaleDateString("en-SG", { day: "numeric", month: "long", year: "numeric" });
+      startNote = '<div class="og-note" id="pl-start"><b>Billing starts on ' + esc(pretty) + ".</b>" +
+        (todayISO() < plan.billing_starts_on ? " Until then you are on a free pilot: nothing is charged." : "") +
+        (plan.first_month_billable_override != null && !snaps.some(function (s) { return s.month >= plan.billing_starts_on; }) ?
+          " Your first billed month uses an agreed starting number of " + esc(plan.first_month_billable_override) + " students." : "") + "</div>";
+    }
+    $("pl").innerHTML = contact + startNote + '<p class="og-sub">' + M.format(plan.base_cents) + " a month + " + M.format(plan.per_student_cents) + " per billable student. " +
       "Billable students are last month’s active students (anyone with an attended, absent or late-cancelled lesson, not trials), rounded to the nearest 10.</p>" +
       '<div class="og-note">For example: ' + ex.join(" · ") + "</div>" +
       (snaps.length ? '<table class="og-sum"><tbody>' + snaps.map(function (s) {
-        return "<tr><td>" + esc(new Date(s.month + "T00:00:00").toLocaleDateString("en-SG", { month: "long", year: "numeric" })) + "</td><td>" + esc(s.active_students) + " active → " + esc(s.billable_students) + " billable → <b>" + M.format(s.fee_cents) + "</b></td></tr>";
+        return "<tr><td>" + esc(new Date(s.month + "T00:00:00").toLocaleDateString("en-SG", { month: "long", year: "numeric" })) + "</td><td>" + (s.billable === false ? "<b>Pilot: not charged</b> (" + esc(s.active_students) + " active students counted)"
+          : s.override_students != null ? "<b>Agreed starting number:</b> " + esc(s.override_students) + " students → " + esc(s.billable_students) + " billable → <b>" + M.format(s.fee_cents) + "</b> (" + esc(s.active_students) + " active that month)"
+          : esc(s.active_students) + " active → " + esc(s.billable_students) + " billable → <b>" + M.format(s.fee_cents) + "</b>") + "</td></tr>";
       }).join("") + "</tbody></table>" : '<p class="og-sub" style="margin:0">Your first monthly count appears here after your first full month.</p>');
   }
 
