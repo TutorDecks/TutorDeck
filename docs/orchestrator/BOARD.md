@@ -58,6 +58,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - Version-number clash to fix when bundling: t7-2-invites v273 and t24c-1-profile v273 (t3-1 v272); the bundle assembler picks one final number.
 
+- 2026-11-26 10:00 SGT report sent. Both T24c.5 sessions (original + restart) sat PENDING for hours and never started: infrastructure issue; recreate from `dev` base if still stuck.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -114,7 +116,8 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T3.3 | T3 step 3: staff attendance view/mark/correct + close the integrity hole (trigger) | DONE on branch (v285, 6 owner decisions to collect, migration_staff_attendance.sql NOT on DEV) | `claude/t3-3-attendance` (on t3-2) |
 | T24c.5 | T24b step 5: leave-centre / remove tutor, DB only (+ audit scrub, Former tutor) | first session stuck PENDING 2.5h; RESTARTED as new session (see T24c.5r) | `claude/t24c-5-leave` (on t24c-3) |
 | T24c.5r | restart of T24c.5 | doing | NEW worker / `claude/t24c-5-leave`; stuck session session_01CPTfbDBuVSpWbTtCfHzUaq to archive |
-| T3.4 | T3 step 4: pending charges (issue_invoices, suggested charge pre-fill) | doing | NEW worker / `claude/t3-4-charges` (on t3-3) |
+| T3.4 | T3 step 4: pending charges (issue_invoices, suggested charge pre-fill) | DONE on branch (migration_staff_charges.sql NOT on DEV; decision: does charged mode suggest 0 for in-time cancellations?) | `claude/t3-4-charges` (on t3-3) |
+| T26b | Extend DEV apply pack with payout, payout_permission, staff_students, staff_attendance, staff_charges (+ leave if exists) | doing | NEW worker / `claude/t26b-dev-pack` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
