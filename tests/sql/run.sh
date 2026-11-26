@@ -77,6 +77,9 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_invoice_run_test.sql
 $P -f db/migration_centre_payments.sql
 $P -f db/migration_centre_payments.sql                      # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_payments_test.sql
+$P -f db/migration_payment_fix.sql
+$P -f db/migration_payment_fix.sql                           # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/payment_fix_test.sql
 $P -f db/migration_invites.sql
 $P -f db/migration_invites.sql                              # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/invites_test.sql
@@ -118,6 +121,7 @@ $P -f db/migration_tutor_payout_down.sql
 $P -f db/migration_tutor_profile_down.sql
 $P -f db/migration_tutor_profile.sql                        # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_tutor_profile_down.sql
+$P -f db/migration_payment_fix_down.sql
 $P -f db/migration_centre_payments_down.sql
 $P -f db/migration_centre_invoice_run_down.sql
 $P -f db/migration_centre_money_down.sql
