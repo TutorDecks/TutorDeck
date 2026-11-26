@@ -982,6 +982,7 @@ html[data-theme="dark"] .og-check input{accent-color:var(--accent)}
 html[data-theme="dark"] .og-soon{background:var(--bg);color:var(--muted)}
 html[data-theme="dark"] .og-note.og-off{color:var(--muted)}
 html[data-theme="dark"] .og-note.og-off b{color:var(--ink)}
+html[data-theme="dark"] .og-group{border-top:1px solid var(--line)}
 html[data-theme="dark"] .og-help{color:var(--muted)}
 html[data-theme="dark"] .og-note{color:var(--muted);border-left:3px solid var(--line)}
 html[data-theme="dark"] .og-nav{background:rgba(23,34,53,0.92);border:1px solid var(--line);box-shadow:0 6px 20px rgba(0,0,0,0.176)}

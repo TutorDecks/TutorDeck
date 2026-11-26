@@ -129,10 +129,11 @@
     return t ? '<p class="og-sub">' + t + "</p>" : "";
   }
   function fieldHtml(f) {
-    var s = st.draft, v = S.get(s, f.path), id = "f-" + f.path.replace(/\./g, "-"), lock = !isOwner() || f.soon;
-    if (f.show && !f.show(s)) return "";
+    var s = st.draft, v = f.path ? S.get(s, f.path) : undefined, id = f.path ? "f-" + f.path.replace(/\./g, "-") : "", lock = !isOwner() || f.soon;
+    if (!S.isVisible(f, s)) return "";
     var soon = f.soon ? '<span class="og-soon">Coming soon</span>' : "";
     var help = f.help ? '<span class="og-help">' + esc(f.help) + "</span>" : "";
+    if (f.type === "group") return '<div class="og-group' + (f.soon ? " og-off" : "") + '"><h3>' + esc(f.label) + soon + "</h3>" + (f.help ? '<span class="og-help">' + esc(f.help) + "</span>" : "") + "</div>";
     if (f.type === "note") return '<div class="og-note' + (f.soon ? " og-off" : "") + '">' + (f.label ? "<b>" + esc(f.label) + "</b>" + soon + "<br>" : "") + esc(f.help || "") + "</div>";
     if (f.type === "toggle")
       return '<label class="og-check' + (f.soon ? " og-off" : "") + '"><input type="checkbox" id="' + id + '" data-path="' + f.path + '"' + (v ? " checked" : "") + (lock ? " disabled" : "") + "> <span>" + esc(f.label) + soon + "</span></label>" + help;
@@ -145,7 +146,7 @@
     if (f.type === "textarea") {
       input = '<textarea id="' + id + '" data-path="' + f.path + '" data-type="text" rows="4" maxlength="1000"' + (lock ? " disabled" : "") + ">" + esc(v == null ? "" : v) + "</textarea>";
     } else if (f.type === "select") {
-      input = '<select id="' + id + '" data-path="' + f.path + '"' + (lock ? " disabled" : "") + ">" + f.options.map(function (op) {
+      input = '<select id="' + id + '" data-path="' + f.path + '"' + (lock ? " disabled" : "") + ">" + S.visibleOptions(f, s).map(function (op) {
         var so = (f.soonOptions || []).indexOf(op[0]) > -1;
         return '<option value="' + esc(JSON.stringify(op[0])) + '"' + (op[0] === v ? " selected" : "") + (so ? " disabled" : "") + ">" + esc(op[1]) + (so ? " (coming soon)" : "") + "</option>";
       }).join("") + "</select>";
@@ -439,7 +440,7 @@
   function reviewHtml() {
     var errs = S.validate(st.draft);
     var sum = S.STEPS.filter(function (x) { return x.n < 10; }).map(function (x) {
-      var rows = x.fields.filter(function (f) { return f.type !== "note" && (!f.show || f.show(st.draft)); }).map(function (f) {
+      var rows = x.fields.filter(function (f) { return f.type !== "note" && f.type !== "group" && S.isVisible(f, st.draft); }).map(function (f) {
         return "<tr><td>" + esc(f.label) + (f.soon ? ' <span class="og-soon">Soon</span>' : "") + "</td><td>" + esc(S.display(f, S.get(st.draft, f.path))) + "</td></tr>";
       });
       if (x.id === "calendar") rows.unshift("<tr><td>Branches / terms / holidays</td><td>" + st.branches.length + " / " + st.terms.length + " / " + st.holidays.length + "</td></tr>");
