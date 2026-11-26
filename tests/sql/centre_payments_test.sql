@@ -42,7 +42,7 @@ grant select on td to authenticated, anon;
 create function pg_temp.settings_base() returns jsonb language sql as $$
   select jsonb_set(jsonb_set(jsonb_set(jsonb_set(jsonb_set(t.centre_settings(), '{profile,invoice_prefix}', '"PAY"'), '{profile,gst_rate_bp}', '900'),
          '{invoicing}', '{"grouping":"family","due_days":7,"review_before_sending":true,"delivery":{"share_link":true}}'::jsonb),
-         '{payments}', '{"modes":["manual_paynow"],"paynow":{"type":"uen","id":"201912345A"},"partial_payments":true,"overpayments":"credit"}'::jsonb),
+         '{payments}', '{"modes":["manual_paynow"],"paynow":{"type":"uen","id":"200812345K"},"partial_payments":true,"overpayments":"credit"}'::jsonb),
          '{profile,trading_name}', '"Pay Test Centre"') $$;
 create function pg_temp.cfg(p_org uuid, p_owner uuid, p_path text[], p_val jsonb) returns void language plpgsql as $$
 declare cur jsonb;
@@ -479,7 +479,7 @@ select t.ok((select j#>>'{centre,name}' = 'Pay Test Centre' and j#>>'{invoice,nu
               and (j#>>'{invoice,balance_cents}')::int = 21800 and j#>>'{invoice,pay_status}' = 'issued' and j#>>'{invoice,bill_to}' = 'Lim Family' from pub1), 'the link shows the centre name, the invoice number, the total and what is owed');
 select t.ok((select jsonb_array_length(j#>'{invoice,lines}') = 1 and j#>>'{invoice,lines,0,student_name}' = 'Sophie Lim' from pub1), 'and its lines');
 select t.ok((select j#>>'{centre,brand_color}' ~ '^#[0-9A-Fa-f]{6}$' from pub1), 'and the centre''s brand colour');
-select t.ok((select j#>>'{paynow,type}' = 'uen' and j#>>'{paynow,id}' = '201912345A' and j#>>'{paynow,reference}' = (select number_text from centre_invoices where id = t.id('P1')) and (j#>>'{paynow,amount_cents}')::int = 21800 from pub1),
+select t.ok((select j#>>'{paynow,type}' = 'uen' and j#>>'{paynow,id}' = '200812345K' and j#>>'{paynow,reference}' = (select number_text from centre_invoices where id = t.id('P1')) and (j#>>'{paynow,amount_cents}')::int = 21800 from pub1),
             'a PayNow target using the centre''s own UEN, the invoice number as the reference and the amount outstanding');
 select t.ok((select not (j::text ~* '(Tan Family|Ong Family|Goh Family|Wu Family|Elsewhere|Ellie|Tara|Oscar|Gina|Wendy|@|tutor|password)') from pub1), 'ISOLATION: no other family, no other centre, no email, no tutor appears in the public view');
 select t.ok((select not (j::text like '%' || t.id('c1')::text || '%' or j::text like '%' || :'h1' || '%' or j::text like '%' || :'s1' || '%' or j::text like '%' || t.id('P1')::text || '%') from pub1), 'ISOLATION: none of the internal ids (centre, family, student, invoice) is in the public view');
@@ -536,7 +536,7 @@ reset role;
 select pg_temp.cfg(t.id('c1'), :'o1', '{payments,paynow,id}', '""');
 select t.ok((select pg_temp.pub((select token from centre_invoice_share where invoice_id = t.id('P1')))->'paynow' = 'null'::jsonb), 'no PayNow id in the settings: no PayNow section');
 reset role;
-select pg_temp.cfg(t.id('c1'), :'o1', '{payments,paynow,id}', '"201912345A"');
+select pg_temp.cfg(t.id('c1'), :'o1', '{payments,paynow,id}', '"200812345K"');
 select pg_temp.cfg(t.id('c1'), :'o1', '{payments,modes}', '["statement_matching"]');
 select t.ok((select pg_temp.pub((select token from centre_invoice_share where invoice_id = t.id('P1')))->'paynow' = 'null'::jsonb), 'manual PayNow switched off: no PayNow section');
 reset role;

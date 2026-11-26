@@ -185,8 +185,8 @@ test("schedule: the badge and the small facts say what the database flagged, and
   assert.strictEqual(T.scheduleChip({ postponed: true }).text, "Moved");
   assert.strictEqual(T.scheduleChip({ covering: true }).text, "Covering");
   assert.strictEqual(T.scheduleChip({ trial: true }).text, "Trial");
-  assert.deepStrictEqual(T.scheduleFacts({ student_level: "P5", subject: "Math", trial: true, covering: true, postponed: true, org_name: "Opus" }, true),
-    ["P5", "Math", "Trial", "Covering for another tutor", "Moved from its usual day", "Opus"]);
+  assert.deepStrictEqual(T.scheduleFacts({ student_level: "P5", subject: "Math", trial: true, covering: true, postponed: true, org_name: "Test" }, true),
+    ["P5", "Math", "Trial", "Covering for another tutor", "Moved from its usual day", "Test"]);
   assert.deepStrictEqual(T.scheduleFacts({ student_level: null, subject: null }, false), []);
   const everything = JSON.stringify([T.scheduleChip({ cancelled: true }), T.scheduleFacts({ trial: true, covering: true, postponed: true }, false), T.editNote("admin_only"), T.editNote("tutors_own"), T.scheduleErrorText({ message: "NOT_FOUND" })]);
   assert.ok(!/\b(rate|price|amount|paid|compensation|charge|fee|cents)\b/i.test(everything), "no money word in anything the Schedule says");

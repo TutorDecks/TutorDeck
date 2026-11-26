@@ -12,7 +12,7 @@ insert into auth.users(id, email) values
   ('00000000-0000-0000-0000-00000000b907', 'cm.owner2@centre.test'),  ('00000000-0000-0000-0000-00000000b908', 'cm.off@centre.test'),
   ('00000000-0000-0000-0000-00000000b909', 'cm.stranger@centre.test'), ('00000000-0000-0000-0000-00000000b90a', 'cm.nobody@centre.test');
 
--- centre 1: GST registered, 9%, prices exclude GST, prefix OPUS.  centre 2: other centre, not registered, own prefix.
+-- centre 1: GST registered, 9%, prices exclude GST, prefix TEST.  centre 2: other centre, not registered, own prefix.
 set role authenticated; select t.as('00000000-0000-0000-0000-00000000b901');
 select t.put('c1', org_create_centre('Money Centre', t.centre_settings()));
 select t.as('00000000-0000-0000-0000-00000000b907');
@@ -32,14 +32,14 @@ insert into households(id, org_id, name) values
   ('00000000-0000-0000-0000-00000000c101', t.id('c1'), 'Household One'), ('00000000-0000-0000-0000-00000000c102', t.id('c1'), 'Household Two'),
   ('00000000-0000-0000-0000-00000000c201', t.id('c2'), 'Elsewhere Household');
 insert into students(id, tutor_id, org_id, name, household_id) values
-  ('00000000-0000-0000-0000-00000000d101', '00000000-0000-0000-0000-00000000b901', t.id('c1'), 'Kid One',  '00000000-0000-0000-0000-00000000c101'),
-  ('00000000-0000-0000-0000-00000000d102', '00000000-0000-0000-0000-00000000b901', t.id('c1'), 'Kid Two',  '00000000-0000-0000-0000-00000000c102'),
-  ('00000000-0000-0000-0000-00000000d201', '00000000-0000-0000-0000-00000000b907', t.id('c2'), 'Kid Else', '00000000-0000-0000-0000-00000000c201');
+  ('00000000-0000-0000-0000-00000000d4a1', '00000000-0000-0000-0000-00000000b901', t.id('c1'), 'Kid One',  '00000000-0000-0000-0000-00000000c101'),
+  ('00000000-0000-0000-0000-00000000d4a2', '00000000-0000-0000-0000-00000000b901', t.id('c1'), 'Kid Two',  '00000000-0000-0000-0000-00000000c102'),
+  ('00000000-0000-0000-0000-00000000d4b1', '00000000-0000-0000-0000-00000000b907', t.id('c2'), 'Kid Else', '00000000-0000-0000-0000-00000000c201');
 insert into lessons(id, tutor_id, org_id, student_id, lesson_date, start_time, end_time, rate, amount, status) values
-  ('00000000-0000-0000-0000-00000000e101', '00000000-0000-0000-0000-00000000b901', t.id('c1'), '00000000-0000-0000-0000-00000000d101', current_date - 3, '16:00', '17:00', 50, 50, 'done'),
-  ('00000000-0000-0000-0000-00000000e102', '00000000-0000-0000-0000-00000000b901', t.id('c1'), '00000000-0000-0000-0000-00000000d101', current_date - 2, '16:00', '17:00', 50, 50, 'done'),
-  ('00000000-0000-0000-0000-00000000e103', '00000000-0000-0000-0000-00000000b901', t.id('c1'), '00000000-0000-0000-0000-00000000d102', current_date - 2, '17:00', '18:00', 50, 50, 'done'),
-  ('00000000-0000-0000-0000-00000000e201', '00000000-0000-0000-0000-00000000b907', t.id('c2'), '00000000-0000-0000-0000-00000000d201', current_date - 2, '17:00', '18:00', 50, 50, 'done');
+  ('00000000-0000-0000-0000-00000000e101', '00000000-0000-0000-0000-00000000b901', t.id('c1'), '00000000-0000-0000-0000-00000000d4a1', current_date - 3, '16:00', '17:00', 50, 50, 'done'),
+  ('00000000-0000-0000-0000-00000000e102', '00000000-0000-0000-0000-00000000b901', t.id('c1'), '00000000-0000-0000-0000-00000000d4a1', current_date - 2, '16:00', '17:00', 50, 50, 'done'),
+  ('00000000-0000-0000-0000-00000000e103', '00000000-0000-0000-0000-00000000b901', t.id('c1'), '00000000-0000-0000-0000-00000000d4a2', current_date - 2, '17:00', '18:00', 50, 50, 'done'),
+  ('00000000-0000-0000-0000-00000000e201', '00000000-0000-0000-0000-00000000b907', t.id('c2'), '00000000-0000-0000-0000-00000000d4b1', current_date - 2, '17:00', '18:00', 50, 50, 'done');
 
 -- helper: a draft document with lines (totals from the centre's own GST settings), signed in as that centre's owner so the settings can be read
 create function pg_temp.mkinv(k text, org uuid, owner uuid, kind text, hh uuid, cents bigint[], credits uuid default null, lesson uuid default null, stu uuid default null) returns uuid
@@ -103,7 +103,7 @@ select t.fails(format($q$ insert into centre_payments(org_id, household_id, meth
 select t.fails(format($q$ insert into org_counters(org_id, series) values (%L, 'invoice') $q$, org_personal('00000000-0000-0000-0000-0000000000a1')), 'a solo organisation can''t hold a counter');
 
 -- ===================================================================== 3. drafts, numbering, immutability
-select pg_temp.mkinv('A', t.id('c1'), :'o1', 'lesson', :'h1', array[5000, 5000], null, '00000000-0000-0000-0000-00000000e101', '00000000-0000-0000-0000-00000000d101');
+select pg_temp.mkinv('A', t.id('c1'), :'o1', 'lesson', :'h1', array[5000, 5000], null, '00000000-0000-0000-0000-00000000e101', '00000000-0000-0000-0000-00000000d4a1');
 select t.ok((select status = 'draft' and number_seq is null and number_text is null and total_cents = 10900 and gst_cents = 900 from centre_invoices where id = t.id('A')),
             'a draft has no number; S$100 + 9% GST = S$109.00');
 select t.eq((select count(*) from org_counters where org_id = t.id('c1')), 0, 'drafting takes no number');
@@ -115,13 +115,13 @@ select t.fails($q$ update centre_invoices set status = 'issued', total_cents = t
 select t.fails($q$ update centre_invoices set status = 'issued', gst_cents = 0, total_cents = 100 where id = t.id('E') $q$, 'GST left out of an invoice that is GST-registered is refused');
 delete from centre_invoices where id = t.id('E');
 select t.eq((select count(*) from centre_invoice_lines where invoice_id = t.id('E')), 0, 'a draft can be deleted, its lines go with it');
-insert into centre_invoices(id, org_id, kind, household_id) values ('00000000-0000-0000-0000-00000000f001', t.id('c1'), 'lesson', :'h1');
-select t.fails($q$ update centre_invoices set status = 'issued', issue_date = current_date where id = '00000000-0000-0000-0000-00000000f001' $q$, 'a document with no lines can''t be issued');
-delete from centre_invoices where id = '00000000-0000-0000-0000-00000000f001';
+insert into centre_invoices(id, org_id, kind, household_id) values ('00000000-0000-0000-0000-00000000f4a1', t.id('c1'), 'lesson', :'h1');
+select t.fails($q$ update centre_invoices set status = 'issued', issue_date = current_date where id = '00000000-0000-0000-0000-00000000f4a1' $q$, 'a document with no lines can''t be issued');
+delete from centre_invoices where id = '00000000-0000-0000-0000-00000000f4a1';
 
 select pg_temp.issue('A');
-select t.ok((select status = 'issued' and number_seq = 1 and number_text = 'OPUS-1' and issued_at is not null and issue_date = current_date from centre_invoices where id = t.id('A')),
-            'issuing gives the first number: OPUS-1 (prefix from the centre''s settings)');
+select t.ok((select status = 'issued' and number_seq = 1 and number_text = 'TEST-1' and issued_at is not null and issue_date = current_date from centre_invoices where id = t.id('A')),
+            'issuing gives the first number: TEST-1 (prefix from the centre''s settings)');
 select pg_temp.mkinv('B', t.id('c1'), :'o1', 'lesson', :'h1', array[4000], null, '00000000-0000-0000-0000-00000000e102');
 select pg_temp.issue('B');
 select t.eq((select number_seq from centre_invoices where id = t.id('B')), 2, 'second invoice is number 2');
@@ -135,7 +135,7 @@ select t.eq((select number_seq from centre_invoices where id = t.id('C')), 3, 't
 -- a deposit invoice shares the invoice series; a credit note has its own
 select pg_temp.mkinv('D', t.id('c1'), :'o1', 'deposit', :'h2', array[6000]);
 select pg_temp.issue('D');
-select t.ok((select number_seq = 4 and number_text = 'OPUS-4' from centre_invoices where id = t.id('D')), 'a deposit invoice takes the same series (OPUS-4)');
+select t.ok((select number_seq = 4 and number_text = 'TEST-4' from centre_invoices where id = t.id('D')), 'a deposit invoice takes the same series (TEST-4)');
 select pg_temp.mkinv('F', t.id('c1'), :'o1', 'late_fee', :'h2', array[500]);
 select pg_temp.issue('F');
 select t.eq((select number_seq from centre_invoices where id = t.id('F')), 5, 'a late-fee document takes the same series (5)');
@@ -151,13 +151,13 @@ select t.fails($q$ update centre_invoices set total_cents = 1, net_cents = 1, gs
 select t.fails($q$ update centre_invoices set due_date = current_date + 30 where id = t.id('A') $q$, 'issued: even the due date can''t change');
 select t.fails($q$ update centre_invoices set status = 'void', void_reason = 'oops', voided_at = now() where id = t.id('A') $q$, 'issued: it can''t be voided (credit note instead)');
 select t.fails($q$ update centre_invoices set status = 'draft', number_seq = null, number_text = null where id = t.id('A') $q$, 'issued: it can''t go back to draft');
-select t.fails($q$ update centre_invoices set number_seq = 99, number_text = 'OPUS-99' where id = t.id('A') $q$, 'issued: its number can''t change');
+select t.fails($q$ update centre_invoices set number_seq = 99, number_text = 'TEST-99' where id = t.id('A') $q$, 'issued: its number can''t change');
 select t.fails($q$ update centre_invoices set household_id = '00000000-0000-0000-0000-00000000c102' where id = t.id('A') $q$, 'issued: it can''t move to another household');
 select t.fails($q$ delete from centre_invoices where id = t.id('A') $q$, 'issued: it can''t be deleted');
 select t.fails($q$ update centre_invoice_lines set unit_cents = 1 where invoice_id = t.id('A') $q$, 'issued: a line can''t change');
 select t.fails($q$ delete from centre_invoice_lines where invoice_id = t.id('A') $q$, 'issued: a line can''t be deleted');
 select t.fails(format($q$ insert into centre_invoice_lines(org_id, invoice_id, description, unit_cents) values (%L, %L, 'sneaky', 100) $q$, t.id('c1'), t.id('A')), 'issued: no line can be added');
-select t.ok((select total_cents = 10900 and number_text = 'OPUS-1' from centre_invoices where id = t.id('A')), 'and invoice A is exactly as issued');
+select t.ok((select total_cents = 10900 and number_text = 'TEST-1' from centre_invoices where id = t.id('A')), 'and invoice A is exactly as issued');
 
 -- void: only a draft, with a reason; frozen after; its lesson can be billed again
 select pg_temp.mkinv('V', t.id('c1'), :'o1', 'lesson', :'h1', array[2000]);
@@ -171,7 +171,7 @@ select t.fails($q$ update centre_invoices set void_reason = 'x' where id = t.id(
 select t.fails(format($q$ insert into centre_invoice_lines(org_id, invoice_id, lesson_id, description, unit_cents) values (%L, %L, '00000000-0000-0000-0000-00000000e101', 'again', 5000) $q$,
                       t.id('c1'), t.id('V')), 'a lesson already billed on an issued invoice can''t be billed again');
 insert into lessons(id, tutor_id, org_id, student_id, lesson_date, start_time, end_time, rate, amount, status) values
-  ('00000000-0000-0000-0000-00000000e104', :'o1', t.id('c1'), '00000000-0000-0000-0000-00000000d102', current_date - 1, '17:00', '18:00', 50, 50, 'done');
+  ('00000000-0000-0000-0000-00000000e104', :'o1', t.id('c1'), '00000000-0000-0000-0000-00000000d4a2', current_date - 1, '17:00', '18:00', 50, 50, 'done');
 select pg_temp.mkinv('G', t.id('c1'), :'o1', 'lesson', :'h2', array[5000], null, '00000000-0000-0000-0000-00000000e104');
 select pg_temp.mkinv('G2', t.id('c1'), :'o1', 'lesson', :'h2', array[100]);
 select t.fails(format($q$ insert into centre_invoice_lines(org_id, invoice_id, lesson_id, description, unit_cents) values (%L, %L, '00000000-0000-0000-0000-00000000e104', 'twice', 5000) $q$,
@@ -182,16 +182,16 @@ select t.ok(true, 'once the first draft is voided, the lesson can be billed on a
 update centre_invoices set status = 'void', void_reason = 'test cleanup' where id = t.id('G2');
 
 -- ===================================================================== 4. credit notes
-select pg_temp.mkinv('CN1', t.id('c1'), :'o1', 'credit_note', :'h1', array[3000], t.id('A'), null, '00000000-0000-0000-0000-00000000d101');
+select pg_temp.mkinv('CN1', t.id('c1'), :'o1', 'credit_note', :'h1', array[3000], t.id('A'), null, '00000000-0000-0000-0000-00000000d4a1');
 select pg_temp.issue('CN1');
-select t.ok((select number_seq = 1 and number_text = 'CN-OPUS-1' and series = 'credit_note' from centre_invoices where id = t.id('CN1')), 'a credit note has its own series: CN-OPUS-1');
+select t.ok((select number_seq = 1 and number_text = 'CN-TEST-1' and series = 'credit_note' from centre_invoices where id = t.id('CN1')), 'a credit note has its own series: CN-TEST-1');
 select t.eq((select number_seq from centre_invoices where id = t.id('F')), 5, 'and the invoice series is untouched by it');
-select pg_temp.mkinv('CN2', t.id('c1'), :'o1', 'credit_note', :'h1', array[8000], t.id('A'), null, '00000000-0000-0000-0000-00000000d101');
+select pg_temp.mkinv('CN2', t.id('c1'), :'o1', 'credit_note', :'h1', array[8000], t.id('A'), null, '00000000-0000-0000-0000-00000000d4a1');
 select t.fails($q$ update centre_invoices set status = 'issued' where id = t.id('CN2') $q$, 'credit notes can''t add up to more than the invoice (3000 + 8000 > 10900)');
-select pg_temp.mkinv('CN3', t.id('c1'), :'o1', 'credit_note', :'h1', array[7000], t.id('A'), null, '00000000-0000-0000-0000-00000000d101');
+select pg_temp.mkinv('CN3', t.id('c1'), :'o1', 'credit_note', :'h1', array[7000], t.id('A'), null, '00000000-0000-0000-0000-00000000d4a1');
 select pg_temp.issue('CN3');
-select t.ok((select number_text = 'CN-OPUS-2' from centre_invoices where id = t.id('CN3')), 'a second credit note is CN-OPUS-2');
-select pg_temp.mkinv('CN4', t.id('c1'), :'o1', 'credit_note', :'h1', array[1], t.id('A'), null, '00000000-0000-0000-0000-00000000d101');
+select t.ok((select number_text = 'CN-TEST-2' from centre_invoices where id = t.id('CN3')), 'a second credit note is CN-TEST-2');
+select pg_temp.mkinv('CN4', t.id('c1'), :'o1', 'credit_note', :'h1', array[1], t.id('A'), null, '00000000-0000-0000-0000-00000000d4a1');
 select t.fails($q$ update centre_invoices set status = 'issued' where id = t.id('CN4') $q$, 'the invoice is fully credited: not even 1 cent more');
 select pg_temp.mkinv('CN5', t.id('c1'), :'o1', 'credit_note', :'h1', array[100], t.id('V'));
 select t.fails($q$ update centre_invoices set status = 'issued' where id = t.id('CN5') $q$, 'a credit note must credit an issued invoice (V is void)');
@@ -317,7 +317,7 @@ select t.ok(true, 'after the reversal the invoice can be paid in full by a new p
 
 -- ===================================================================== 7. cross-organisation refusals
 select t.fails(format($q$ insert into centre_invoices(org_id, kind, household_id) values (%L, 'lesson', %L) $q$, t.id('c1'), :'hx'), 'an invoice of centre 1 can''t be for a household of centre 2');
-select t.fails(format($q$ insert into centre_invoices(org_id, kind, student_id) values (%L, 'lesson', '00000000-0000-0000-0000-00000000d201') $q$, t.id('c1')), 'nor for a student of centre 2');
+select t.fails(format($q$ insert into centre_invoices(org_id, kind, student_id) values (%L, 'lesson', '00000000-0000-0000-0000-00000000d4b1') $q$, t.id('c1')), 'nor for a student of centre 2');
 select pg_temp.mkinv('Y1', t.id('c1'), :'o1', 'lesson', :'h2', array[100]);
 select t.fails(format($q$ insert into centre_invoice_lines(org_id, invoice_id, lesson_id, description, unit_cents) values (%L, %L, '00000000-0000-0000-0000-00000000e201', 'x', 100) $q$, t.id('c1'), t.id('Y1')),
                'a line of centre 1 can''t bill a lesson of centre 2');
@@ -413,7 +413,7 @@ select t.ok((select after->>'reference' = '[redacted]' and after->>'payer_name' 
 select t.eq((select count(*) from audit_log where table_name like 'centre\_%' and ((before::text || after::text) like '%91234567%' or (before::text || after::text) like '%John Tan%')), 0, 'the payment reference and payer name appear nowhere in the centre money audit rows');
 select t.ok((select after->>'description' = '[redacted]' and (after->>'unit_cents')::bigint = 5000 from audit_log where table_name = 'centre_invoice_lines' and action = 'insert' order by id limit 1), 'a line is audited with its description redacted');
 select t.ok((select after->>'reason' = '[redacted]' from audit_log where table_name = 'centre_invoices' and action = 'update' and after->>'kind' = 'credit_note' and after->>'status' = 'issued' order by id limit 1), 'a credit note''s reason is redacted in the audit copy');
-select t.ok((select count(*) >= 1 from audit_log where table_name = 'centre_invoices' and action = 'update' and after->>'status' = 'issued' and after->>'number_text' = 'OPUS-1'), 'issuing is audited with its number');
+select t.ok((select count(*) >= 1 from audit_log where table_name = 'centre_invoices' and action = 'update' and after->>'status' = 'issued' and after->>'number_text' = 'TEST-1'), 'issuing is audited with its number');
 select t.ok((select count(*) >= 1 from audit_log where table_name = 'org_counters' and action = 'update' and after->>'series' = 'invoice'), 'counter moves are audited');
 select t.ok((select count(*) >= 1 from audit_log where table_name = 'org_counters' and action = 'update' and (after->>'next_number')::int = 2500 and org_id = t.id('c2')), 'setting the opening number is audited (who, when)');
 select t.fails($q$ update audit_log set action = 'x' where table_name = 'centre_payments' $q$, 'the audit copy can''t be edited');

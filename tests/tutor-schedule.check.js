@@ -20,7 +20,7 @@ function override(cfg) {
   window.__calls = [];
   window.__override = function (c) {
     var iso = function (n) { var d = new Date(); d.setDate(d.getDate() + n); var p = function (x) { return (x < 10 ? "0" : "") + x; }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); };
-    var L = function (id, off, o) { return Object.assign({ lesson_id: id, org_id: "o2", org_name: "Opus Tuition", student_id: "s" + id, student_name: "Pupil " + id, student_level: "P5", parent_contact: null,
+    var L = function (id, off, o) { return Object.assign({ lesson_id: id, org_id: "o2", org_name: "Test Tuition", student_id: "s" + id, student_name: "Pupil " + id, student_level: "P5", parent_contact: null,
       lesson_date: iso(off), start_time: "16:00:00", end_time: "17:00:00", minutes: 60, subject: "Math", trial: false, attendance: null, status: "scheduled", cancelled: false,
       postponed: false, covering: false, online_link: null, holiday: null }, o || {}); };
     var lessons = (cfg.lessons || []).map(function (x) { return L(x[0], x[1], x[2]); });
@@ -32,9 +32,9 @@ function override(cfg) {
         if (cfg.rpcError) return Promise.resolve({ data: null, error: { message: "boom" } });
         var inr = lessons.filter(function (l) { return l.lesson_date >= a.p_from && l.lesson_date <= a.p_to; }).sort(function (x, y) { return x.lesson_date < y.lesson_date ? -1 : x.lesson_date > y.lesson_date ? 1 : x.start_time < y.start_time ? -1 : 0; });
         var hol = (cfg.holidays || []).map(function (h) { return { org_id: "o2", name: h[2], starts_on: iso(h[0]), ends_on: iso(h[1]) }; }).filter(function (h) { return h.starts_on <= a.p_to && h.ends_on >= a.p_from; });
-        return Promise.resolve({ data: { today: iso(0), from: a.p_from, to: a.p_to, orgs: [{ org_id: "o2", name: "Opus Tuition", today: iso(0), timetable_editing: cfg.editing || "admin_only", can_edit: false }], lessons: inr, holidays: hol }, error: null });
+        return Promise.resolve({ data: { today: iso(0), from: a.p_from, to: a.p_to, orgs: [{ org_id: "o2", name: "Test Tuition", today: iso(0), timetable_editing: cfg.editing || "admin_only", can_edit: false }], lessons: inr, holidays: hol }, error: null });
       }
-      if (n === "tutor_my_slots") return Promise.resolve({ data: (cfg.slots || []).map(function (s, i) { return { slot_id: "sl" + i, org_id: "o2", org_name: "Opus Tuition", weekday: s[0], start_time: s[1], end_time: s[2], subject: s[3], student_id: "x" + i, student_name: s[4], student_level: s[5], session_key: null, timetable_editing: "admin_only" }; }), error: null });
+      if (n === "tutor_my_slots") return Promise.resolve({ data: (cfg.slots || []).map(function (s, i) { return { slot_id: "sl" + i, org_id: "o2", org_name: "Test Tuition", weekday: s[0], start_time: s[1], end_time: s[2], subject: s[3], student_id: "x" + i, student_name: s[4], student_level: s[5], session_key: null, timetable_editing: "admin_only" }; }), error: null });
       if (n === "tutor_my_lessons") return Promise.resolve({ data: [], error: null });
       return origRpc(n, a);
     };
