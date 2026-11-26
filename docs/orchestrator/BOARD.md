@@ -169,8 +169,9 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | Email | Owner's guided chat: Supabase DEV custom SMTP via Brevo is LIVE and tested; Vercel vars + invites migration wait for claude/t7-2-invites to merge | partly done | |
 | T38 | CI policy: checks only on PRs into main + manual dispatch; CLAUDE.md repo now private | doing | NEW worker / `claude/t38-ci-policy` |
 | T39 | Vercel builds only dev + main | doing | NEW worker / `claude/t39-vercel-builds` |
-| T6.1 | T6 step 1: read-only Schedule tab for centre tutors (tutor_my_schedule, tutor_my_slots) | doing | NEW worker / `claude/t6-1-tutor-schedule` (on t3-8) |
-| T4-S3 | T4 step S3: record payment, part payment, credit note, status chips, share link, WhatsApp text | doing | NEW worker / `claude/t4-s3-payments` (on t4-s2) |
+| T6.1 | T6 step 1: read-only Schedule tab for centre tutors (tutor_my_schedule, tutor_my_slots) | DONE on branch (66 new checks, smoke clean) | `claude/t6-1-tutor-schedule` (on t3-8) |
+| T4-S3 | T4 step S3: record payment, part payment, credit note, status chips, share link, WhatsApp text | DONE on branch (smoke 84 loads clean; migration NOT on DEV) | `claude/t4-s3-payments` (on t4-s2) |
+| T40 | Assemble bundle 4 (T3 staff chain + T6.1 + T4 S0-S3 + tutor settings/payout + invites + fee/billing/start) into one branch + PR, final DEV SQL pack, owner test list; orchestrator merges after a manual check run + DEV SQL applied | doing | NEW worker / `claude/bundle-4` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
