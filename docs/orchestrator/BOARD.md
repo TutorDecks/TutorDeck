@@ -136,9 +136,10 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | Chain | owner 'just build it' 2026-11-26: T3.6 timetable read -> T3.7 slots with tutors + generator + student_tutors -> T3.8 reassign/replacement -> T29 time zones (per-student/tutor) -> T6 tutor scheduling (direct first, then propose); check-ins scheduled every 2/4/6h | queued | |
 | T30 | Centre fee S$0.40 -> S$0.50 per billable student (code, SQL migration, tests, UI, docs, Stripe steps for owner) | doing | NEW worker / `claude/t30-fee-050` |
 | T4 | Plan: deposits, tutor pay rates (incl. % of parent's fee), recurring late fee, centre invoicing (plan only) | doing | NEW worker / `claude/t4-plan` |
-| T31a | Centres: TWO billing methods stripe (default, self-serve) + invoice (managed, via Contact us); Contact card; job records snapshot only for invoice centres | doing | NEW worker / `claude/t31a-centre-invoice-billing` (on t30) |
+| T31a | Centres: TWO billing methods stripe (default, self-serve) + invoice (managed, via Contact us); Contact card; job records snapshot only for invoice centres | DONE on branch (v305; 143 node tests, SQL, smoke pass; migration_centre_billing_method.sql NOT on DEV) | `claude/t31a-centre-invoice-billing` (on t30) |
 | T31b | Plan: TutorDeck invoices centres + records PayNow (platform admin), MVP for first customers | doing (plan only) | NEW worker / `claude/t31b-plan` |
-| T3.6 | T3 step 6: staff timetable read-only | doing | NEW worker session_01CPTfbC1Yspc24cPf4oAbSB / `claude/t3-6-timetable` (on t3-5) |
+| T3.6 | T3 step 6: staff timetable read-only | DONE on branch (migration_staff_timetable.sql NOT on DEV) | session_01CPTfbC1Yspc24cPf4oAbSB / `claude/t3-6-timetable` (on t3-5) |
+| T3.7 | T3 step 7: slots with tutors, generator, student_tutors list | doing | NEW worker / `claude/t3-7-slots` (on t3-6) |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
