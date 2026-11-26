@@ -146,16 +146,19 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T31a | Centres: TWO billing methods stripe (default, self-serve) + invoice (managed, via Contact us); Contact card; job records snapshot only for invoice centres | DONE on branch (v305; 143 node tests, SQL, smoke pass; migration_centre_billing_method.sql NOT on DEV) | `claude/t31a-centre-invoice-billing` (on t30) |
 | T31b | Plan: TutorDeck invoices centres + records PayNow (platform admin), MVP for first customers | doing (plan only) | NEW worker / `claude/t31b-plan` |
 | T3.6 | T3 step 6: staff timetable read-only | DONE on branch (migration_staff_timetable.sql NOT on DEV) | session_01CPTfbC1Yspc24cPf4oAbSB / `claude/t3-6-timetable` (on t3-5) |
-| T3.7 | T3 step 7: slots with tutors, generator, student_tutors list | doing | NEW worker / `claude/t3-7-slots` (on t3-6) |
-| T32 | Scrub customer name from public repo (dev PR + docs commits on unmerged branches); report on git history | doing | NEW worker / `claude/t32-scrub` |
-| T4-S0 | Money settings honesty + validation (new keys, soon flags, class-type setting) | doing | NEW worker / `claude/t4-s0-settings` (on t3-6) |
-| T4-S1 | Centre money tables (invoices, lines, payments, allocations, numbering, GST fn), DB only | doing | NEW worker / `claude/t4-s1-tables` (on t3-6) |
+| T3.7 | T3 step 7: slots with tutors, generator, student_tutors list | DONE on branch (7 owner decisions to collect; migration NOT on DEV) | `claude/t3-7-slots` (on t3-6) |
+| T32 | Scrub customer name from public repo (dev PR + docs commits on unmerged branches); report on git history | PR #129 MERGED into dev 2026-11-26 (4 docs/fixture files); scrub commits on ~27 unmerged branches BLOCKED pending the owner's approval in the worker session; git history still holds the name | `claude/t32-scrub` |
+| T4-S0 | Money settings honesty + validation (new keys, soon flags, class-type setting) | DONE on branch (6 decisions to collect) | `claude/t4-s0-settings` (on t3-6) |
+| T4-S1 | Centre money tables (invoices, lines, payments, allocations, numbering, GST fn), DB only | DONE on branch (18 GST vectors; 4 decisions to collect; migration NOT on DEV) | `claude/t4-s1-tables` (on t3-6) |
 | Guide | Interactive owner guide chat for Brevo + Supabase DEV email setup | started | separate chat (T7 owner steps) |
 | T33 | Plan: CSV data import (validate then commit, templates, staging by dependency, 400/200 fixture) | doing (plan) | NEW worker / `claude/t33-plan` |
 | T34 | Plan: bank statement matching (DBS/OCBC/UOB/custom mapping, review queue, remembered payers) | doing (plan) | NEW worker / `claude/t34-plan` |
 | T35 | Plan: centre data export (CSV per table + ZIP) and backups check | doing (plan) | NEW worker / `claude/t35-plan` |
 | T36 | Small build: per-centre billing start date + first-month billable override (pilot not billed) | doing | NEW worker / `claude/t36-billing-start` (on t31a) |
 | T37 | Plan: ship the centre stack to PRODUCTION (live migrations with preview + dry run, env, Vercel Pro, schedule back from 10 Dec) | doing (plan) | NEW worker / `claude/t37-plan` |
+| T3.8 | T3 step 8: reassign / cover lessons (replacement_tutors setting) | doing | NEW worker / `claude/t3-8-reassign` (on t3-7) |
+| T4-S2 | T4 step S2: invoice run preview/drafts/approve (postpaid + fixed monthly; pending charge holds back one household) | doing | NEW worker / `claude/t4-s2-invoice-run` (on t4-s1) |
+| Email | Owner's guided chat: Supabase DEV custom SMTP via Brevo is LIVE and tested; Vercel vars + invites migration wait for claude/t7-2-invites to merge | partly done | |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
