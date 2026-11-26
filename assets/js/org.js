@@ -15,6 +15,7 @@
   var st = { lib: undefined, libBusy: false, org: null, role: null, saved: null, draft: null, step: "profile", members: [], branches: [], rooms: [], terms: [], holidays: [] };
   var EXTRA_TABS = [["plan", "Plan"], ["audit", "Audit log"]];
   function isOwner() { return st.role === "owner"; }
+  function canImport() { return isOwner() && !!st.org && st.org.kind === "centre"; }     // the import page: a centre's owner only
   function setup() { return st.org && st.org.status === "setup"; }
 
   // ------------------------------------------------------------------ entry
@@ -34,6 +35,7 @@
     var hash = location.hash.slice(1);
     if (setup()) st.step = S.STEPS[Math.max(0, Math.min(9, (st.org.setup_step || 1) - 1))].id;
     if (hash && (S.STEPS.some(function (x) { return x.id === hash; }) || EXTRA_TABS.some(function (x) { return x[0] === hash; }))) st.step = hash;
+    if (st.step === "import" && !canImport()) st.step = "profile";      // a direct link to #import gives non-owners nothing
     await loadSide();
     render();
   }
@@ -86,7 +88,8 @@
 
   // ------------------------------------------------------------------ shell
   function render() {
-    var tabs = S.STEPS.filter(function (x) { return setup() || (x.id !== "review" && x.id !== "import"); });
+    // Import is the owner's page: staff and tutors never see the tab (wizard or Settings). Review is only in the wizard.
+    var tabs = S.STEPS.filter(function (x) { return (x.id !== "import" || canImport()) && (setup() || x.id !== "review"); });
     var cur = S.STEPS.filter(function (x) { return x.id === st.step; })[0];
     var h = '<div><h2 style="font-size:20px;font-weight:800;margin:0">' + esc(st.org.trading_name) + "</h2>" +
       '<p class="og-sub" style="margin:2px 0 0">' + (setup() ? "Setup · step " + (cur ? cur.n : 10) + " of 10" : "Settings") +
@@ -117,6 +120,7 @@
     bindFields(step);
     if (step.custom === "calendar") bindCalendar();
     if (step.custom === "users") bindUsers();
+    if (step.custom === "import" && canImport() && window.ImportPage) window.ImportPage.mount($("imp-root"));
     if (step.custom === "review") bindReview();
     bindNav(step);
   }
@@ -426,11 +430,11 @@
     });
   }
 
-  // ------------------------------------------------------------------ step 9: import (coming soon)
+  // ------------------------------------------------------------------ step 9: import (templates + check; saving comes in the next step)
   function importHtml() {
-    return '<div class="og-note og-off"><b>CSV import</b><span class="og-soon">Coming soon</span><br>Templates for tutors, students (level, subjects, class, fee plan), parents and households, and classes. ' +
-      "Every row is checked first and errors are shown line by line; nothing is saved until the whole file passes.</div>" +
-      '<p class="og-sub" style="margin:0">You can skip this step and add people by hand.</p>';
+    if (!canImport()) return '<p class="og-sub" style="margin:0">Only the owner of a centre imports data.</p>';
+    return '<p class="og-sub">Bring in your families, students, tutors and weekly lessons from your own sheets. Every row is checked first and problems are listed line by line. ' +
+      'You can skip this step and add people by hand.</p><div id="imp-root"></div>';
   }
 
   // ------------------------------------------------------------------ step 10: review + test documents
@@ -442,7 +446,7 @@
       });
       if (x.id === "calendar") rows.unshift("<tr><td>Branches / terms / holidays</td><td>" + st.branches.length + " / " + st.terms.length + " / " + st.holidays.length + "</td></tr>");
       if (x.id === "users") rows.push("<tr><td>People</td><td>" + st.members.length + "</td></tr>");
-      if (x.id === "import") rows.push("<tr><td>CSV import</td><td>Coming soon</td></tr>");
+      if (x.id === "import") rows.push("<tr><td>CSV import</td><td>Optional. Also in Settings, Import.</td></tr>");
       return '<div class="og-sum-h"><h3>' + x.n + ". " + esc(x.title) + '</h3><button class="og-link" data-goto="' + x.id + '">Edit</button></div><table class="og-sum"><tbody>' + rows.join("") + "</tbody></table>";
     }).join("");
     return (errs.length ? '<p class="msg err">' + esc(errs.join(" ")) + "</p>" : "") + sum +

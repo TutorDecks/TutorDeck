@@ -1,0 +1,1864 @@
+{
+ "today": "2026-11-26",
+ "note": "Shared cases for the import validator (T33). Each case changes cells of one row of a clean base file set and lists the problems expected on THAT row: [column, code, severity]. The SQL validator (step I1) must give the same codes.",
+ "base": {
+  "families": [
+   {
+    "family_ref": "F001",
+    "family_name": "Tan family",
+    "guardian_name": "Mary Tan",
+    "relation": "Mother",
+    "phone": "9123 4501",
+    "email": "mary.tan@example.test",
+    "main": "Y"
+   },
+   {
+    "family_ref": "F001",
+    "family_name": "Tan family",
+    "guardian_name": "Peter Tan",
+    "relation": "Father",
+    "phone": "8123 4502",
+    "email": "",
+    "main": "N"
+   },
+   {
+    "family_ref": "F002",
+    "family_name": "Lee family",
+    "guardian_name": "Grace Lee",
+    "relation": "Mother",
+    "phone": "",
+    "email": "grace.lee@example.test",
+    "main": ""
+   }
+  ],
+  "students": [
+   {
+    "student_ref": "S0001",
+    "family_ref": "F001",
+    "student_name": "Ethan Tan",
+    "level": "P5",
+    "lesson_location": "Online",
+    "online_link": "https://meet.example.test/e1",
+    "start_date": "2026-01-12",
+    "notes": "Prefers mornings"
+   },
+   {
+    "student_ref": "S0002",
+    "family_ref": "F001",
+    "student_name": "Zoe Tan",
+    "level": "S2",
+    "lesson_location": "Centre",
+    "online_link": "",
+    "start_date": "12/01/2026",
+    "notes": ""
+   },
+   {
+    "student_ref": "S0003",
+    "family_ref": "F002",
+    "student_name": "Noah Lee",
+    "level": "JC1",
+    "lesson_location": "",
+    "online_link": "",
+    "start_date": "2026-03-02",
+    "notes": ""
+   }
+  ],
+  "tutors": [
+   {
+    "tutor_email": "ava.lim@example.test",
+    "tutor_name": "Ava Lim",
+    "phone": "9100 0001",
+    "subjects": "Maths;Science",
+    "employment": "freelancer",
+    "pay_method": "per_hour",
+    "pay_amount": "28.00",
+    "pay_from": "2026-12-01"
+   },
+   {
+    "tutor_email": "ben.ong@example.test",
+    "tutor_name": "Ben Ong",
+    "phone": "",
+    "subjects": "",
+    "employment": "employee",
+    "pay_method": "",
+    "pay_amount": "",
+    "pay_from": ""
+   }
+  ],
+  "weekly_lessons": [
+   {
+    "student_ref": "S0001",
+    "tutor_email": "ava.lim@example.test",
+    "day": "Mon",
+    "start": "16:00",
+    "end": "17:30",
+    "subject": "Mathematics",
+    "level": "P5",
+    "family_rate_per_hour": "55.00"
+   },
+   {
+    "student_ref": "S0002",
+    "tutor_email": "ben.ong@example.test",
+    "day": "Tue",
+    "start": "17:00",
+    "end": "18:00",
+    "subject": "",
+    "level": "",
+    "family_rate_per_hour": "60"
+   },
+   {
+    "student_ref": "S0003",
+    "tutor_email": "ava.lim@example.test",
+    "day": "Wed",
+    "start": "16:00",
+    "end": "17:00",
+    "subject": "English",
+    "level": "",
+    "family_rate_per_hour": "0"
+   }
+  ],
+  "deposits": [
+   {
+    "student_ref": "S0001",
+    "amount": "275.00",
+    "received_date": "2026-10-05",
+    "reference": "PayNow Oct"
+   }
+  ],
+  "unpaid_invoices": [
+   {
+    "invoice_number": "OLD-0412",
+    "family_ref": "F001",
+    "invoice_date": "2026-11-01",
+    "due_date": "2026-11-08",
+    "amount": "220.00",
+    "paid_so_far": "0.00",
+    "covers": "Nov 2026 4 lessons Ethan",
+    "student_ref": "S0001"
+   }
+  ]
+ },
+ "cases": [
+  {
+   "name": "subject 59 characters",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "subject": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": []
+  },
+  {
+   "name": "subject 60 characters",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "subject": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": []
+  },
+  {
+   "name": "subject 61 characters",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "subject": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": [
+    [
+     "subject",
+     "TOO_LONG",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "student name 120 characters",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "student_name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": []
+  },
+  {
+   "name": "student name 121 characters",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "student_name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": [
+    [
+     "student_name",
+     "TOO_LONG",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "notes 1000 characters",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "notes": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": []
+  },
+  {
+   "name": "notes 1001 characters",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "notes": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": [
+    [
+     "notes",
+     "TOO_LONG",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "location 120",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "lesson_location": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": []
+  },
+  {
+   "name": "location 121",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "lesson_location": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": [
+    [
+     "lesson_location",
+     "TOO_LONG",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "level 41 characters",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "level": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": [
+    [
+     "level",
+     "TOO_LONG",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "student_ref 41 characters",
+   "file": "students",
+   "row": 2,
+   "set": {
+    "student_ref": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": [
+    [
+     "student_ref",
+     "TOO_LONG",
+     "error"
+    ]
+   ],
+   "also": [
+    [
+     "weekly_lessons",
+     2,
+     "student_ref",
+     "UNKNOWN_STUDENT"
+    ]
+   ]
+  },
+  {
+   "name": "invoice number 30",
+   "file": "unpaid_invoices",
+   "row": 0,
+   "set": {
+    "invoice_number": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": []
+  },
+  {
+   "name": "invoice number 31",
+   "file": "unpaid_invoices",
+   "row": 0,
+   "set": {
+    "invoice_number": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": [
+    [
+     "invoice_number",
+     "TOO_LONG",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "covers 300 / 301",
+   "file": "unpaid_invoices",
+   "row": 0,
+   "set": {
+    "covers": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": [
+    [
+     "covers",
+     "TOO_LONG",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "subjects 201",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "subjects": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": [
+    [
+     "subjects",
+     "TOO_LONG",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "lesson 16:00 to 16:14",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "start": "16:00",
+    "end": "16:14"
+   },
+   "expect": [
+    [
+     "end",
+     "BAD_DURATION",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "lesson 16:00 to 16:15",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "start": "16:00",
+    "end": "16:15"
+   },
+   "expect": []
+  },
+  {
+   "name": "lesson 08:00 to 16:00",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "start": "08:00",
+    "end": "16:00"
+   },
+   "expect": []
+  },
+  {
+   "name": "lesson 08:00 to 16:01",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "start": "08:00",
+    "end": "16:01"
+   },
+   "expect": [
+    [
+     "end",
+     "BAD_DURATION",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "lesson 16:00 to 16:00",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "start": "16:00",
+    "end": "16:00"
+   },
+   "expect": [
+    [
+     "end",
+     "END_BEFORE_START",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "lesson 16:00 to 15:00",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "start": "16:00",
+    "end": "15:00"
+   },
+   "expect": [
+    [
+     "end",
+     "END_BEFORE_START",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "time 25:00",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "start": "25:00"
+   },
+   "expect": [
+    [
+     "start",
+     "BAD_TIME",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "time 9:05 without leading zero",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "start": "9:05",
+    "end": "10:05"
+   },
+   "expect": []
+  },
+  {
+   "name": "time 9.05",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "start": "9.05"
+   },
+   "expect": [
+    [
+     "start",
+     "BAD_TIME",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "time with seconds",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "start": "16:00:00"
+   },
+   "expect": [
+    [
+     "start",
+     "BAD_TIME",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "hourly rate '54.999'",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "family_rate_per_hour": "54.999"
+   },
+   "expect": [
+    [
+     "family_rate_per_hour",
+     "BAD_MONEY",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "hourly rate '55'",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "family_rate_per_hour": "55"
+   },
+   "expect": []
+  },
+  {
+   "name": "hourly rate '55.5'",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "family_rate_per_hour": "55.5"
+   },
+   "expect": []
+  },
+  {
+   "name": "hourly rate '1000'",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "family_rate_per_hour": "1000"
+   },
+   "expect": []
+  },
+  {
+   "name": "hourly rate '1000.01'",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "family_rate_per_hour": "1000.01"
+   },
+   "expect": [
+    [
+     "family_rate_per_hour",
+     "OUT_OF_RANGE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "hourly rate '$55'",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "family_rate_per_hour": "$55"
+   },
+   "expect": [
+    [
+     "family_rate_per_hour",
+     "BAD_MONEY",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "hourly rate '1,000'",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "family_rate_per_hour": "1,000"
+   },
+   "expect": [
+    [
+     "family_rate_per_hour",
+     "BAD_MONEY",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "hourly rate '-5'",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "family_rate_per_hour": "-5"
+   },
+   "expect": [
+    [
+     "family_rate_per_hour",
+     "BAD_MONEY",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "hourly rate ''",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "family_rate_per_hour": ""
+   },
+   "expect": [
+    [
+     "family_rate_per_hour",
+     "REQUIRED",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "hourly rate '0'",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "family_rate_per_hour": "0"
+   },
+   "expect": []
+  },
+  {
+   "name": "hourly rate '55,50'",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "family_rate_per_hour": "55,50"
+   },
+   "expect": [
+    [
+     "family_rate_per_hour",
+     "BAD_MONEY",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "hourly rate 'abc'",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "family_rate_per_hour": "abc"
+   },
+   "expect": [
+    [
+     "family_rate_per_hour",
+     "BAD_MONEY",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "deposit 0",
+   "file": "deposits",
+   "row": 0,
+   "set": {
+    "amount": "0"
+   },
+   "expect": [
+    [
+     "amount",
+     "OUT_OF_RANGE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "deposit 0.01",
+   "file": "deposits",
+   "row": 0,
+   "set": {
+    "amount": "0.01"
+   },
+   "expect": []
+  },
+  {
+   "name": "deposit 275.005",
+   "file": "deposits",
+   "row": 0,
+   "set": {
+    "amount": "275.005"
+   },
+   "expect": [
+    [
+     "amount",
+     "BAD_MONEY",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "invoice amount 0",
+   "file": "unpaid_invoices",
+   "row": 0,
+   "set": {
+    "amount": "0"
+   },
+   "expect": [
+    [
+     "amount",
+     "OUT_OF_RANGE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "paid 219.99 of 220",
+   "file": "unpaid_invoices",
+   "row": 0,
+   "set": {
+    "paid_so_far": "219.99"
+   },
+   "expect": []
+  },
+  {
+   "name": "paid 220 of 220",
+   "file": "unpaid_invoices",
+   "row": 0,
+   "set": {
+    "paid_so_far": "220.00"
+   },
+   "expect": [
+    [
+     "paid_so_far",
+     "PAID_TOO_MUCH",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "paid blank",
+   "file": "unpaid_invoices",
+   "row": 0,
+   "set": {
+    "paid_so_far": ""
+   },
+   "expect": []
+  },
+  {
+   "name": "due before invoice date",
+   "file": "unpaid_invoices",
+   "row": 0,
+   "set": {
+    "due_date": "2026-10-31"
+   },
+   "expect": [
+    [
+     "due_date",
+     "DUE_BEFORE_INVOICE",
+     "warning"
+    ]
+   ]
+  },
+  {
+   "name": "invoice in the future",
+   "file": "unpaid_invoices",
+   "row": 0,
+   "set": {
+    "invoice_date": "2026-11-27"
+   },
+   "expect": [
+    [
+     "invoice_date",
+     "FUTURE_DATE",
+     "error"
+    ],
+    [
+     "due_date",
+     "DUE_BEFORE_INVOICE",
+     "warning"
+    ]
+   ]
+  },
+  {
+   "name": "start date '31/02/2026'",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": "31/02/2026"
+   },
+   "expect": [
+    [
+     "start_date",
+     "BAD_DATE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "start date '2026-02-29'",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": "2026-02-29"
+   },
+   "expect": [
+    [
+     "start_date",
+     "BAD_DATE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "start date '29/02/2024'",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": "29/02/2024"
+   },
+   "expect": []
+  },
+  {
+   "name": "start date '12/01/2026'",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": "12/01/2026"
+   },
+   "expect": []
+  },
+  {
+   "name": "start date '2026-01-12'",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": "2026-01-12"
+   },
+   "expect": []
+  },
+  {
+   "name": "start date '01/13/2026'",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": "01/13/2026"
+   },
+   "expect": [
+    [
+     "start_date",
+     "BAD_DATE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "start date '2026-1-5'",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": "2026-1-5"
+   },
+   "expect": [
+    [
+     "start_date",
+     "BAD_DATE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "start date '12-01-2026'",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": "12-01-2026"
+   },
+   "expect": [
+    [
+     "start_date",
+     "BAD_DATE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "start date '2027-11-26'",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": "2027-11-26"
+   },
+   "expect": []
+  },
+  {
+   "name": "start date '2027-11-27'",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": "2027-11-27"
+   },
+   "expect": [
+    [
+     "start_date",
+     "FUTURE_DATE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "start date '2028-01-01'",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": "2028-01-01"
+   },
+   "expect": [
+    [
+     "start_date",
+     "FUTURE_DATE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "start date 'yesterday'",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": "yesterday"
+   },
+   "expect": [
+    [
+     "start_date",
+     "BAD_DATE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "start date ''",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "start_date": ""
+   },
+   "expect": [
+    [
+     "start_date",
+     "REQUIRED",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "deposit received tomorrow",
+   "file": "deposits",
+   "row": 0,
+   "set": {
+    "received_date": "2026-11-27"
+   },
+   "expect": [
+    [
+     "received_date",
+     "FUTURE_DATE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "deposit received today",
+   "file": "deposits",
+   "row": 0,
+   "set": {
+    "received_date": "2026-11-26"
+   },
+   "expect": []
+  },
+  {
+   "name": "deposit reference 9 digits",
+   "file": "deposits",
+   "row": 0,
+   "set": {
+    "reference": "123456789"
+   },
+   "expect": [
+    [
+     "reference",
+     "LONG_NUMBER",
+     "warning"
+    ]
+   ]
+  },
+  {
+   "name": "deposit reference 8 digits",
+   "file": "deposits",
+   "row": 0,
+   "set": {
+    "reference": "12345678"
+   },
+   "expect": []
+  },
+  {
+   "name": "deposit reference 61",
+   "file": "deposits",
+   "row": 0,
+   "set": {
+    "reference": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "expect": [
+    [
+     "reference",
+     "TOO_LONG",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "tutor phone '9100 0001'",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "phone": "9100 0001"
+   },
+   "expect": []
+  },
+  {
+   "name": "tutor phone '+65 6123 4567'",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "phone": "+65 6123 4567"
+   },
+   "expect": []
+  },
+  {
+   "name": "tutor phone '+6591000001'",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "phone": "+6591000001"
+   },
+   "expect": []
+  },
+  {
+   "name": "tutor phone '5123 4567'",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "phone": "5123 4567"
+   },
+   "expect": [
+    [
+     "phone",
+     "BAD_PHONE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "tutor phone '9100 000'",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "phone": "9100 000"
+   },
+   "expect": [
+    [
+     "phone",
+     "BAD_PHONE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "tutor phone '9100 00011'",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "phone": "9100 00011"
+   },
+   "expect": [
+    [
+     "phone",
+     "BAD_PHONE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "tutor phone 'abcd'",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "phone": "abcd"
+   },
+   "expect": [
+    [
+     "phone",
+     "BAD_PHONE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "guardian phone '12345'",
+   "file": "families",
+   "row": 0,
+   "set": {
+    "phone": "12345"
+   },
+   "expect": [
+    [
+     "phone",
+     "BAD_PHONE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "guardian phone '123456'",
+   "file": "families",
+   "row": 0,
+   "set": {
+    "phone": "123456"
+   },
+   "expect": []
+  },
+  {
+   "name": "guardian phone '+6591234501'",
+   "file": "families",
+   "row": 0,
+   "set": {
+    "phone": "+6591234501"
+   },
+   "expect": []
+  },
+  {
+   "name": "guardian phone '1234567890123456'",
+   "file": "families",
+   "row": 0,
+   "set": {
+    "phone": "1234567890123456"
+   },
+   "expect": [
+    [
+     "phone",
+     "BAD_PHONE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "guardian with no phone and no email",
+   "file": "families",
+   "row": 1,
+   "set": {
+    "phone": "",
+    "email": ""
+   },
+   "expect": [
+    [
+     "phone",
+     "NEED_CONTACT",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "guardian email only",
+   "file": "families",
+   "row": 2,
+   "set": {
+    "phone": "",
+    "email": "grace.lee@example.test"
+   },
+   "expect": []
+  },
+  {
+   "name": "email without a dot",
+   "file": "families",
+   "row": 0,
+   "set": {
+    "email": "a@b"
+   },
+   "expect": [
+    [
+     "email",
+     "BAD_EMAIL",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "two emails in one cell",
+   "file": "families",
+   "row": 0,
+   "set": {
+    "email": "a@b.co, c@d.co"
+   },
+   "expect": [
+    [
+     "email",
+     "BAD_EMAIL",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "tutor email in capitals",
+   "file": "tutors",
+   "row": 1,
+   "set": {
+    "tutor_email": "Ben.Ong@Example.test"
+   },
+   "expect": []
+  },
+  {
+   "name": "tutor email missing @",
+   "file": "tutors",
+   "row": 1,
+   "set": {
+    "tutor_email": "ben.ong.example.test"
+   },
+   "expect": [
+    [
+     "tutor_email",
+     "BAD_EMAIL",
+     "error"
+    ]
+   ],
+   "also": [
+    [
+     "weekly_lessons",
+     1,
+     "tutor_email",
+     "UNKNOWN_TUTOR"
+    ]
+   ]
+  },
+  {
+   "name": "main = Maybe",
+   "file": "families",
+   "row": 0,
+   "set": {
+    "main": "Maybe"
+   },
+   "expect": [
+    [
+     "main",
+     "BAD_YN",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "main = yes",
+   "file": "families",
+   "row": 0,
+   "set": {
+    "main": "yes"
+   },
+   "expect": []
+  },
+  {
+   "name": "two main contacts",
+   "file": "families",
+   "row": 1,
+   "set": {
+    "main": "Y"
+   },
+   "expect": [
+    [
+     "main",
+     "MULTIPLE_MAIN",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "employment capitalised",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "employment": "Employee"
+   },
+   "expect": []
+  },
+  {
+   "name": "employment contractor",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "employment": "contractor"
+   },
+   "expect": [
+    [
+     "employment",
+     "BAD_VALUE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "employment empty",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "employment": ""
+   },
+   "expect": [
+    [
+     "employment",
+     "REQUIRED",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "day Monday in full",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "day": "monday"
+   },
+   "expect": []
+  },
+  {
+   "name": "day mon lower",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "day": "mon"
+   },
+   "expect": []
+  },
+  {
+   "name": "day Funday",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "day": "Funday"
+   },
+   "expect": [
+    [
+     "day",
+     "BAD_VALUE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "day Mo",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "day": "Mo"
+   },
+   "expect": [
+    [
+     "day",
+     "BAD_VALUE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "pay method only",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "pay_amount": "",
+    "pay_from": ""
+   },
+   "expect": [
+    [
+     "pay_amount",
+     "PAY_INCOMPLETE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "pay amount only",
+   "file": "tutors",
+   "row": 1,
+   "set": {
+    "pay_amount": "20"
+   },
+   "expect": [
+    [
+     "pay_method",
+     "PAY_INCOMPLETE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "percent 100",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "pay_method": "percent_of_fee",
+    "pay_amount": "100"
+   },
+   "expect": []
+  },
+  {
+   "name": "percent 100.5",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "pay_method": "percent_of_fee",
+    "pay_amount": "100.5"
+   },
+   "expect": [
+    [
+     "pay_amount",
+     "OUT_OF_RANGE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "percent 0",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "pay_method": "percent_of_fee",
+    "pay_amount": "0"
+   },
+   "expect": [
+    [
+     "pay_amount",
+     "OUT_OF_RANGE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "percent 37.555",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "pay_method": "percent_of_fee",
+    "pay_amount": "37.555"
+   },
+   "expect": [
+    [
+     "pay_amount",
+     "BAD_MONEY",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "percent 37.5",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "pay_method": "percent_of_fee",
+    "pay_amount": "37.5"
+   },
+   "expect": []
+  },
+  {
+   "name": "pay method weekly",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "pay_method": "weekly"
+   },
+   "expect": [
+    [
+     "pay_method",
+     "BAD_VALUE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "pay from not a date",
+   "file": "tutors",
+   "row": 0,
+   "set": {
+    "pay_from": "soon"
+   },
+   "expect": [
+    [
+     "pay_from",
+     "BAD_DATE",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "level Pri 5",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "level": "Pri 5"
+   },
+   "expect": [
+    [
+     "level",
+     "UNKNOWN_LEVEL",
+     "warning"
+    ]
+   ],
+   "fixContains": "Use P5."
+  },
+  {
+   "name": "level p5 lower",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "level": "p5"
+   },
+   "expect": []
+  },
+  {
+   "name": "level Year 7",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "level": "Year 7"
+   },
+   "expect": [
+    [
+     "level",
+     "UNKNOWN_LEVEL",
+     "warning"
+    ]
+   ]
+  },
+  {
+   "name": "lesson level Sec 3",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "level": "Sec 3"
+   },
+   "expect": [
+    [
+     "level",
+     "UNKNOWN_LEVEL",
+     "warning"
+    ]
+   ],
+   "fixContains": "Use S3."
+  },
+  {
+   "name": "link http",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "online_link": "http://meet.example.test/e1"
+   },
+   "expect": [
+    [
+     "online_link",
+     "BAD_URL",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "link without scheme",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "online_link": "meet.example.test/e1"
+   },
+   "expect": [
+    [
+     "online_link",
+     "BAD_URL",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "unknown family",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "family_ref": "F777"
+   },
+   "expect": [
+    [
+     "family_ref",
+     "UNKNOWN_FAMILY",
+     "error"
+    ]
+   ],
+   "also": [
+    [
+     "unpaid_invoices",
+     0,
+     "student_ref",
+     "STUDENT_NOT_IN_FAMILY"
+    ]
+   ]
+  },
+  {
+   "name": "unknown family in an invoice",
+   "file": "unpaid_invoices",
+   "row": 0,
+   "set": {
+    "family_ref": "F777"
+   },
+   "expect": [
+    [
+     "family_ref",
+     "UNKNOWN_FAMILY",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "student in another family's invoice",
+   "file": "unpaid_invoices",
+   "row": 0,
+   "set": {
+    "family_ref": "F002"
+   },
+   "expect": [
+    [
+     "student_ref",
+     "STUDENT_NOT_IN_FAMILY",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "invoice without student",
+   "file": "unpaid_invoices",
+   "row": 0,
+   "set": {
+    "student_ref": ""
+   },
+   "expect": []
+  },
+  {
+   "name": "unknown student in weekly lessons",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "student_ref": "S0099"
+   },
+   "expect": [
+    [
+     "student_ref",
+     "UNKNOWN_STUDENT",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "unknown student in deposits",
+   "file": "deposits",
+   "row": 0,
+   "set": {
+    "student_ref": "S0099"
+   },
+   "expect": [
+    [
+     "student_ref",
+     "UNKNOWN_STUDENT",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "student ref differs only by case",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "student_ref": "s0001"
+   },
+   "expect": []
+  },
+  {
+   "name": "unknown tutor",
+   "file": "weekly_lessons",
+   "row": 0,
+   "set": {
+    "tutor_email": "nobody@example.test"
+   },
+   "expect": [
+    [
+     "tutor_email",
+     "UNKNOWN_TUTOR",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "duplicate student_ref",
+   "file": "students",
+   "row": 2,
+   "set": {
+    "student_ref": "S0001"
+   },
+   "expect": [
+    [
+     "student_ref",
+     "DUPLICATE_KEY",
+     "error"
+    ]
+   ],
+   "also": [
+    [
+     "weekly_lessons",
+     2,
+     "student_ref",
+     "UNKNOWN_STUDENT"
+    ]
+   ]
+  },
+  {
+   "name": "duplicate tutor email",
+   "file": "tutors",
+   "row": 1,
+   "set": {
+    "tutor_email": "ava.lim@example.test"
+   },
+   "expect": [
+    [
+     "tutor_email",
+     "DUPLICATE_KEY",
+     "error"
+    ]
+   ],
+   "also": [
+    [
+     "weekly_lessons",
+     1,
+     "tutor_email",
+     "UNKNOWN_TUTOR"
+    ]
+   ]
+  },
+  {
+   "name": "same student name in a family",
+   "file": "students",
+   "row": 1,
+   "set": {
+    "student_name": "ethan tan"
+   },
+   "expect": [
+    [
+     "student_name",
+     "DUPLICATE_STUDENT_NAME",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "family name differs between rows",
+   "file": "families",
+   "row": 1,
+   "set": {
+    "family_name": "Tann family"
+   },
+   "expect": [
+    [
+     "family_name",
+     "FAMILY_NAME_MISMATCH",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "same guardian twice",
+   "file": "families",
+   "row": 1,
+   "set": {
+    "guardian_name": "Mary Tan",
+    "phone": "9123 4501",
+    "email": "mary.tan@example.test"
+   },
+   "expect": [
+    [
+     "guardian_name",
+     "DUPLICATE_ROW",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "same student overlapping",
+   "file": "weekly_lessons",
+   "row": 1,
+   "set": {
+    "student_ref": "S0001",
+    "tutor_email": "ben.ong@example.test",
+    "day": "Mon",
+    "start": "17:00",
+    "end": "18:00"
+   },
+   "expect": [
+    [
+     "start",
+     "SLOT_CLASH",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "same student back to back is fine",
+   "file": "weekly_lessons",
+   "row": 1,
+   "set": {
+    "student_ref": "S0001",
+    "tutor_email": "ben.ong@example.test",
+    "day": "Mon",
+    "start": "17:30",
+    "end": "18:30"
+   },
+   "expect": []
+  },
+  {
+   "name": "tutor double booked is a warning",
+   "file": "weekly_lessons",
+   "row": 1,
+   "set": {
+    "student_ref": "S0002",
+    "tutor_email": "ava.lim@example.test",
+    "day": "Mon",
+    "start": "17:00",
+    "end": "18:00"
+   },
+   "expect": [
+    [
+     "start",
+     "TUTOR_DOUBLE_BOOKED",
+     "warning"
+    ]
+   ]
+  },
+  {
+   "name": "same lesson twice",
+   "file": "weekly_lessons",
+   "row": 1,
+   "set": {
+    "student_ref": "S0001",
+    "tutor_email": "ava.lim@example.test",
+    "day": "Mon",
+    "start": "16:00",
+    "end": "17:30"
+   },
+   "expect": [
+    [
+     "start",
+     "DUPLICATE_KEY",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "required student name empty",
+   "file": "students",
+   "row": 0,
+   "set": {
+    "student_name": ""
+   },
+   "expect": [
+    [
+     "student_name",
+     "REQUIRED",
+     "error"
+    ]
+   ]
+  },
+  {
+   "name": "required guardian name empty",
+   "file": "families",
+   "row": 0,
+   "set": {
+    "guardian_name": ""
+   },
+   "expect": [
+    [
+     "guardian_name",
+     "REQUIRED",
+     "error"
+    ]
+   ]
+  }
+ ]
+}
