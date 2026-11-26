@@ -16,6 +16,7 @@ window.TL = (function () {
     more:     '<circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/><circle cx="5" cy="12" r="1.4"/>',
     settings: '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
     materials:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+    user:     '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
     signout:  '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>'
   };
   function icon(name, size) {
@@ -37,12 +38,15 @@ window.TL = (function () {
   // A login that is ONLY a centre tutor (no students of their own) sees a one-page menu instead of the solo-tutor screens;
   // a solo tutor who also teaches at a centre gets "My lessons" in the More sheet. See roleMode() / detectRole().
   var TUTOR_GROUPS = [
-    { id: "tutor", label: "My lessons", ic: "schedule", pages: [ { id: "tutor", label: "My lessons", href: "tutor" } ], also: ["tutor-settings"] },
+    { id: "tutor", label: "My lessons", ic: "schedule", pages: [ { id: "tutor", label: "My lessons", href: "tutor" } ] },
     { id: "tutor-schedule", label: "Schedule", ic: "schedule", pages: [ { id: "tutor-schedule", label: "Schedule", href: "tutor-schedule" } ] }   // T6: read-only week + weekly slots
   ];
   var TUTOR_EXTRA = { id: "tutor", label: "My lessons", href: "tutor", ic: "schedule" };
   var TUTOR_SCHEDULE_EXTRA = { id: "tutor-schedule", label: "Schedule", href: "tutor-schedule", ic: "schedule" };
   var TUTOR_SETTINGS_EXTRA = { id: "tutor-settings", label: "My tutor profile", href: "tutor-settings", ic: "settings" };   // T24c: profile and password of a centre tutor
+  // (T3.9) On the tutor's own menu (a tutor-only login, or a "both" login while the current organisation is the centre) the same page is simply "Settings".
+  // Solo menus are untouched: a solo tutor's Settings is /settings, and "both" logins keep "My tutor profile" in More while they are in their own solo organisation.
+  var TUTOR_MENU_SETTINGS = { id: "tutor-settings", label: "Settings", href: "tutor-settings", ic: "settings" };
   // Secondary destinations: sidebar footer on desktop, "More" sheet on phones.
   var EXTRA = [
     { id: "materials", label: "Materials", href: "https://mugcornersg.com", ic: "materials", ext: true, hint: "Materials on MugCorner (opens in a new tab)" },
@@ -110,7 +114,7 @@ window.TL = (function () {
   function mountShell(active, email, title, sub) {
     var pageId = active;   // the page's own id (the menu may show a centre's items instead, T12c)
     var mode = roleMode(), G = mode === "tutor-only" ? TUTOR_GROUPS : GROUPS;
-    var extras = (mode === "tutor-only" ? [] : mode === "both" ? [TUTOR_EXTRA, TUTOR_SCHEDULE_EXTRA, TUTOR_SETTINGS_EXTRA].concat(EXTRA) : EXTRA)
+    var extras = (mode === "tutor-only" ? [TUTOR_MENU_SETTINGS] : mode === "both" ? [TUTOR_EXTRA, TUTOR_SCHEDULE_EXTRA, TUTOR_SETTINGS_EXTRA].concat(EXTRA) : EXTRA)
       .filter(function (n) { return !n.ownerOnly || isOwner; });
     if (mode !== "tutor-only" && inCentre()) { var cm = centreMenu(active); G = cm.groups; extras = cm.extras; active = cm.active; }   // T12c: a centre has its own menu
     var grp = groupOf(active, G);
@@ -162,7 +166,7 @@ window.TL = (function () {
       <header class="topnav">
         <div class="tn-in">
           <a class="tn-brand" href="home" aria-label="TutorDeck home">${LOGO}<b>TutorDeck</b></a>
-          <nav class="tn-links" aria-label="Main">${side}</nav>
+          <nav class="tn-links${G.length >= 6 ? " many" : ""}" aria-label="Main">${side}</nav>
           <div class="tn-right">
             ${orgChipHtml("desk")}
             ${sideExtra}
@@ -185,7 +189,7 @@ window.TL = (function () {
         ${configBanner()}
         <div class="content" id="content">${inner}</div>
       </div>
-      <nav class="tabbar" aria-label="Main">${bar}</nav>
+      <nav class="tabbar${G.length >= 6 ? " many" : ""}" aria-label="Main">${bar}</nav>
       <div class="nav-scrim" id="tl-scrim"></div>
       ${sheet}`;
     document.body.innerHTML = "";
@@ -428,12 +432,13 @@ window.TL = (function () {
       if (!G.length) G = CENTRE_GROUPS;
     }
     var tabQ = (/[?&]tab=([a-z]+)/.exec(location.search) || [])[1] || "";
-    var on = (active === "centre-students" || active === "centre-attendance" || active === "centre-timetable" || active === "centre-money") ? (G.filter(function (g) { return g.page === active; })[0] || G[0] || {}).id
+    var on = (active === "centre-students" || active === "centre-attendance" || active === "centre-timetable" || active === "centre-money" || active === "centre-people") ? (G.filter(function (g) { return g.page === active; })[0] || G[0] || {}).id
            : active === "centre" ? (G.filter(function (g) { return (g.tab || "") === tabQ; })[0] || G[0] || {}).id
            : active === "org" ? (/[?&]id=/.test(location.search) ? "orgsettings" : "orglist") : active;
     var more = [];
     if (o.role !== "tutor") more.push({ id: "orgsettings", label: "Centre settings", href: "org?id=" + encodeURIComponent(o.id), ic: "settings" },
                                       { id: "orglist", label: "Your centres", href: "org", ic: "students" });
+    if (o.role === "tutor") return { groups: G, active: on, extras: [TUTOR_MENU_SETTINGS] };   // (T3.9) a tutor's Settings is their own page, never the solo /settings
     return { groups: G, active: on, extras: more.concat(EXTRA.filter(function (n) { return n.id === "settings"; })) };
   }
   // ======== end T12c ========
@@ -725,6 +730,7 @@ window.TL = (function () {
                  "centre-attendance": ["Attendance", "Mark lessons and correct marks"],
                  "centre-timetable": ["Timetable", "The week at your centre"],
                  "centre-money": ["Money", "Invoice run"],
+                 "centre-people": ["People", "Tutors and staff at your centre"],
                  org: ["Organisation", "Your tuition centre, set up your way"],
                  tutor: ["My lessons", "Your classes and attendance"],
                  "tutor-schedule": ["Schedule", "Your week and weekly slots"],

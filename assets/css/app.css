@@ -1,5 +1,5 @@
-/* v345 */
-/* v345 */
+/* v347 */
+/* v347 */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* =====================================================================
    TutorDeck — house style (v150)
@@ -443,6 +443,8 @@ a.snl:hover{color:var(--gold);text-decoration:underline}
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
     color:#aeb9d2;font-size:11px;font-weight:600;letter-spacing:.01em;-webkit-tap-highlight-color:transparent}
   .tabbar .i{transition:transform .15s}
+  .tabbar.many{padding-left:2px;padding-right:2px}
+  .tabbar.many a,.tabbar.many button{font-size:10px;letter-spacing:0}   /* (T3.9) six or more tabs + More: the labels must not run into each other at 390px */
   .tabbar a.on,.tabbar button.on{color:var(--gold)}
   .tabbar a:active .i,.tabbar button:active .i{transform:scale(.9)}
 
@@ -518,6 +520,10 @@ a.snl:hover{color:var(--gold);text-decoration:underline}
   color:var(--muted);font-weight:700;font-size:14.5px;transition:background .12s,color .12s}
 .tn-links a:hover{background:#F1EFEA;color:var(--ink)}
 .tn-links a.active{background:var(--accent-soft);color:var(--accent)}
+/* (T3.9) six centre tabs (owner: Home … Money · People): tighter, so the bar still fits a 1001-1100px window */
+.tn-links.many{gap:0}
+.tn-links.many a{padding:0 7px;gap:5px;font-size:14px}
+.tn-in:has(.tn-links.many){gap:14px}
 .tn-right{margin-left:auto;display:flex;align-items:center;gap:4px}
 .tn-ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;color:var(--muted);text-decoration:none}
 .tn-ic:hover{background:#F1EFEA;color:var(--ink)}
