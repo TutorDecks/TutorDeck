@@ -82,6 +82,8 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-26 OWNER: GitHub checks should run ONLY before going live (fewer runs, private repo minutes). T38 changes checks.yml to PRs into main + manual dispatch; workers test locally; orchestrator starts a manual run before merging any owner-approved bundle into dev and for every go-live PR. Vercel preview builds per push are separate (a Vercel ignored-build-step could reduce them: owner decision).
 
+- 2026-11-26 OWNER: Vercel should only build/deploy `dev` and `main` (T39: vercel.json git.deploymentEnabled or ignoreCommand + dashboard steps). Side effects to tell the owner: worker branches get no preview links; the Stripe sandbox webhook (points at a feature-branch preview) must be re-pointed at the dev address; owner reviews on dev only (merge owner-approved bundles into dev).
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -164,6 +166,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T4-S2 | T4 step S2: invoice run preview/drafts/approve (postpaid + fixed monthly; pending charge holds back one household) | doing | NEW worker / `claude/t4-s2-invoice-run` (on t4-s1) |
 | Email | Owner's guided chat: Supabase DEV custom SMTP via Brevo is LIVE and tested; Vercel vars + invites migration wait for claude/t7-2-invites to merge | partly done | |
 | T38 | CI policy: checks only on PRs into main + manual dispatch; CLAUDE.md repo now private | doing | NEW worker / `claude/t38-ci-policy` |
+| T39 | Vercel builds only dev + main | doing | NEW worker / `claude/t39-vercel-builds` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
