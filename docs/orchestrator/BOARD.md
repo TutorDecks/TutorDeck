@@ -62,6 +62,9 @@ Last updated: 2026-11-24, verified by the orchestrator (written at the end of th
 
 - 2026-11-26 owner approved the docs-only merge into dev (needs: CI green first). Purpose: owner wants a Claude chat to design a Service Agreement proposal etc, so the repo on dev must hold the facts (SERVICE-AGREEMENT-FACTS.md).
 
+- 2026-11-26 T6 decisions: owner YES to 1-5 (tutor-made lesson price = rate of that student's latest staff-made slot/lesson, else price pending and staff must fill before invoicing; assigned students = explicit student_tutors list maintained by staff; build both direct and propose, direct first; tutor cancels in advance = no charge + amber flag for staff, no automatic make-up credit; family notice: build the who-must-be-told list now, emails with T7). #6 time zones: owner asked what it means; recommendation: ask Opus whether any tutors/students are outside Singapore; if yes add per-student time zone BEFORE the tutor scheduling step. T6 build starts after T3 steps 6-8.
+- 2026-11-26 T3.4b worker started to fix one failing SQL assertion (charges test ~line 138) on claude/t3-4-charges.
+
 ## Waiting on the owner
 (2026-11-24: owner approved items 1, 2 and 4 below; item 3, DEV Supabase settings, is still the owner's to do.)
 1. Confirm the audit-log retention choice above.
@@ -122,6 +125,7 @@ Legend: `todo` · `doing` · `waiting` (on owner) · `blocked` · `done`. Owner 
 | T26b | Extend DEV apply pack with payout, payout_permission, staff_students, staff_attendance, staff_charges (+ leave if exists) | doing | NEW worker / `claude/t26b-dev-pack` |
 | T27 | Product Guide = SPEC OF THE FINAL PRODUCT (owner: "of the final product not what we have now"): all functions/workflows per role + every centre option; one appendix "Build status" | doing | NEW worker / `claude/t27-product-guide` (docs/product/TutorDeck-Product-Guide.md); then offer Docs/Word/PDF version |
 | T28 | Docs-only bundle to dev (current board, all plans, Product Guide, docs/INDEX.md of every unmerged branch, docs/business/SERVICE-AGREEMENT-FACTS.md) so any Claude chat can read it; owner approved merge 2026-11-26 once CI green | doing | NEW worker / `claude/docs-bundle` |
+| T3.4b | Fix failing assertion in charges SQL test (line 138) | doing | NEW worker / `claude/t3-4-charges` |
 | T10 | Keep CI honest: confirm `.github/workflows/checks.yml` passes on the merge PRs (unit + SQL + smoke incl. the new pages `tutor`) | doing | with T1 | Part of T1. |
 
 ## Done (newest first)
