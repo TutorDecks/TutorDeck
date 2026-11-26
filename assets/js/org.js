@@ -500,8 +500,11 @@
     if (!plan) { $("pl").textContent = isOwner() ? "No plan yet." : "Only the owner sees the plan."; return; }
     var ex = [98, 250, 405].map(function (n) { var f = M.platformFee(n, plan); return n + " students → " + f.billable + " billable → " + M.format(f.fee_cents); });
     $("pl").className = "";
-    // Centres do not use Stripe: TutorDeck invoices them and they pay by PayNow (T31a). Nothing to buy or pay by card here.
-    var contact = '<div class="og-note" id="pl-contact"><b>Billing for centres is by invoice and PayNow.</b><br>Contact us to set up your account.<div style="margin-top:10px">' +
+    // Two billing methods (org_plans.billing_method): "stripe" (default, self-serve) and "invoice" (managed: TutorDeck invoices, the centre pays by PayNow).
+    // Every centre gets the friendly Contact card; an "invoice" centre is also told how it is billed.
+    var invoice = plan.billing_method === "invoice";
+    var contact = (invoice ? '<div class="og-note" id="pl-method"><b>Your account is billed by invoice and PayNow.</b></div>' : "") +
+      '<div class="og-note" id="pl-contact"><b>Want a hand?</b><br>Contact us for assisted setup, invoicing and PayNow.<div style="margin-top:10px">' +
       '<a class="btn btn-primary" id="pl-contact-btn" href="' + esc(window.TDContact.centreBillingMailto(st.org.trading_name)) + '">Contact us</a> ' +
       '<span class="muted" style="font-size:13px">' + esc(window.TDContact.EMAIL) + "</span></div></div>";
     $("pl").innerHTML = contact + '<p class="og-sub">' + M.format(plan.base_cents) + " a month + " + M.format(plan.per_student_cents) + " per billable student. " +

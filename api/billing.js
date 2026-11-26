@@ -4,8 +4,9 @@
 //   portal   → { url }  Stripe's customer portal: change card, switch monthly/yearly, cancel
 //   card     → { card: {brand,last4,exp_month,exp_year} | null }  the card on file, read live from Stripe (owner only)
 //   status   → the Plan screen's numbers (active students, limit, trial end…)
-// Centres (B2B) never reach Stripe: they are invoiced by TutorDeck and pay by PayNow. Every action except "status" answers a
-// centre with 403 "centre_contact_us" before any Stripe or subscription lookup (T31a).
+// A centre has TWO billing methods (org_plans.billing_method): 'stripe' (default, self-serve, as before) and 'invoice' (managed: TutorDeck
+// invoices it and it pays by PayNow, set by a platform admin when the centre contacts us). For an 'invoice' centre every action except
+// "status" answers 403 "centre_invoice" (contact us) before any Stripe or subscription lookup.
 // Subscription state is written ONLY by api/stripe-webhook.js, never from here or from the browser.
 "use strict";
 const L = require("./_gcal-lib");       // getUser, db (as the user, row-level security applies), origin, send, readBody
@@ -36,9 +37,12 @@ module.exports = async function (req, res) {
     if (!own.ok || !(own.data || []).length) return L.send(res, 403, { error: "owner_only" });
     const org = await L.db(jwt, "GET", "organisations?select=kind,trading_name&id=eq." + orgId);
     const kind = org.ok && org.data && org.data[0] && org.data[0].kind;
-    if (kind === "centre") return L.send(res, 403, { error: "centre_contact_us", contact: Contact.EMAIL,
-      message: "Billing for centres is by invoice and PayNow. Contact us to set up your account." });
-    if (kind !== "solo") return L.send(res, 400, { error: "solo_only" });
+    if (kind === "centre") {
+      const pl = await B.svc("GET", "org_plans?select=billing_method&org_id=eq." + orgId + "&plan_code=eq.centre&effective_from=lte." + new Date().toISOString().slice(0, 10) + "&order=effective_from.desc&limit=1");
+      if (!pl.ok) throw new Error("plan lookup " + pl.status);                       // can't tell the method → don't guess
+      if (pl.data && pl.data[0] && pl.data[0].billing_method === "invoice")
+        return L.send(res, 403, { error: "centre_invoice", contact: Contact.EMAIL, message: "Billing for your centre is by invoice and PayNow. Contact us if you want to change this." });
+    }
     const origin = L.origin(req);
     if (!origin) return L.send(res, 400, { error: "host" });
 
@@ -56,6 +60,7 @@ module.exports = async function (req, res) {
     }
 
     if (b.action === "checkout") {
+      if (kind !== "solo") return L.send(res, 400, { error: "solo_only" });      // centres are set up with the TutorDeck team
       if (B.hasLiveSubscription(sub)) return L.send(res, 409, { error: "already_subscribed" });
       const key = PRICE_KEYS[b.interval === "yearly" ? "yearly" : "monthly"];
       const prices = await B.stripe("GET", "/prices", { lookup_keys: [key], active: "true", limit: 1 });

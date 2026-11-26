@@ -12,10 +12,11 @@ test("no other file hard-codes the address (change it in assets/js/contact.js on
   const files = ["assets/js/org.js", "api/billing.js", "api/billing-cron.js", "api/stripe-webhook.js", "assets/js/plan.js", "org.html"];
   files.forEach((f) => assert.ok(!/tutordeckadmin@/.test(fs.readFileSync(f, "utf8")), f + " must use TDContact / contact.js"));
 });
-test("the centre Plan tab has no checkout, card or Stripe controls and loads contact.js", () => {
+test("the centre Plan tab shows the Contact card to every centre, the invoice note only for 'invoice', and loads contact.js", () => {
   const org = fs.readFileSync("assets/js/org.js", "utf8"), tab = org.slice(org.indexOf("async function tabPlan"), org.indexOf("// ---", org.indexOf("async function tabPlan"))).replace(/^\s*\/\/.*$/gm, "");
-  assert.ok(/invoice and PayNow/.test(tab) && /Contact us/.test(tab));
-  assert.ok(!/stripe|checkout|portal|\/api\/billing|card on file|Update card/i.test(tab), "no Stripe controls in the centre Plan tab");
+  assert.ok(/Want a hand\?/.test(tab) && /assisted setup, invoicing and PayNow/.test(tab) && /Contact us/.test(tab));
+  assert.ok(/billing_method === "invoice"/.test(tab) && /Your account is billed by invoice and PayNow/.test(tab));
+  assert.ok(!/stripe|checkout|portal|\/api\/billing|card on file|Update card/i.test(tab), "the Plan tab itself makes no billing calls");
   assert.ok(/contact\.js/.test(fs.readFileSync("org.html", "utf8")));
   assert.ok(org.indexOf("TDContact") > 0);
 });

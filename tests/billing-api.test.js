@@ -6,9 +6,9 @@ const test = require("node:test"), assert = require("node:assert"), crypto = req
 const webhook = require("../api/stripe-webhook.js"), billing = require("../api/billing.js");
 
 const ORG = "11111111-1111-1111-1111-111111111111";
-let calls, events, subs, failWrites, orgKind;
+let calls, events, subs, failWrites, orgKind, planMethod;
 function reset() {
-  calls = []; events = new Set(); failWrites = false; orgKind = "solo";
+  calls = []; events = new Set(); failWrites = false; orgKind = "solo"; planMethod = "stripe";
   subs = { [ORG]: { org_id: ORG, tier: "free", status: "none", stripe_customer_id: "cus_1", stripe_subscription_id: null, trial_end: null } };
 }
 const stripeSub = (o) => Object.assign({ id: "sub_1", customer: "cus_1", status: "trialing", trial_end: 1_900_000_000, cancel_at_period_end: false,
@@ -41,6 +41,7 @@ global.fetch = async (url, opt) => {
     }
     return json(200, Object.values(subs).filter((s) => s && s.org_id));
   }
+  if (u.includes("/rest/v1/org_plans")) return json(200, [{ billing_method: planMethod }]);
   if (u.includes("/rest/v1/memberships")) return json(200, [{ id: "m1" }]);
   if (u.includes("/rest/v1/organisations")) return json(200, [{ kind: orgKind, trading_name: "Bright Maths" }]);
   throw new Error("unexpected fetch " + u);
@@ -155,37 +156,48 @@ test("checkout: signed-out, bad org id and wrong host are refused", async () => 
   assert.strictEqual((await post(billing, { action: "checkout", org_id: ORG }, { authorization: "Bearer jwt", host: "evil.example.com" })).statusCode, 400);
 });
 
-// ---- T31a: centres never reach Stripe -------------------------------------------------------------------------------------------
+// ---- T31a: a centre's billing method ('stripe' default | 'invoice') -------------------------------------------------------------
 const stripeCalls = () => calls.filter((c) => c.indexOf("api.stripe.com") >= 0);
-test("centre: every billing action except status is refused with 'contact us' and Stripe is never called", async () => {
-  const h = { authorization: "Bearer jwt", host: "tutordeck.vercel.app" };
-  for (const action of ["checkout", "portal", "card", "trial", "trial_start", "start_trial", "change_plan", "plan_change", "subscribe", "anything"]) {
-    reset(); orgKind = "centre"; subs[ORG].tier = "centre"; subs[ORG].stripe_customer_id = "cus_1";
-    const r = await post(billing, { action, org_id: ORG, interval: "yearly" }, h);
-    assert.strictEqual(r.statusCode, 403, action); assert.strictEqual(r.body.error, "centre_contact_us", action);
+const HH = { authorization: "Bearer jwt", host: "tutordeck.vercel.app" };
+test("invoice centre: every action except status is refused with 'contact us'; Stripe and the subscription row are never touched", async () => {
+  for (const action of ["checkout", "portal", "card", "trial", "start_trial", "change_plan", "anything"]) {
+    reset(); orgKind = "centre"; planMethod = "invoice"; subs[ORG].tier = "centre"; subs[ORG].stripe_customer_id = "cus_1";
+    const r = await post(billing, { action, org_id: ORG, interval: "yearly" }, HH);
+    assert.strictEqual(r.statusCode, 403, action); assert.strictEqual(r.body.error, "centre_invoice", action);
     assert.strictEqual(r.body.contact, require("../assets/js/contact.js").EMAIL); assert.ok(/invoice and PayNow/.test(r.body.message));
     assert.strictEqual(stripeCalls().length, 0, action + " must not call Stripe");
-    assert.ok(!calls.some((c) => /org_subscriptions/.test(c)), action + " must not even read the subscription row");
-    assert.strictEqual(subs[ORG].stripe_customer_id, "cus_1", action + " must not create or change a customer");
+    assert.ok(!calls.some((c) => /org_subscriptions/.test(c)), action + " must not read the subscription row");
   }
 });
-test("centre: the solo checkout / portal / card still work for a solo tutor (unchanged)", async () => {
-  const h = { authorization: "Bearer jwt", host: "tutordeck.vercel.app" };
-  reset(); orgKind = "solo";
-  assert.strictEqual((await post(billing, { action: "checkout", org_id: ORG }, h)).statusCode, 200);
-  assert.ok(stripeCalls().length > 0, "a solo tutor still reaches Stripe");
-  assert.strictEqual((await post(billing, { action: "portal", org_id: ORG }, h)).statusCode, 200);
-  assert.strictEqual((await post(billing, { action: "card", org_id: ORG }, h)).statusCode, 200);
+test("stripe centre (the default): billing works as before — portal and card reach Stripe, checkout is still solo-only", async () => {
+  reset(); orgKind = "centre"; planMethod = "stripe"; subs[ORG].tier = "centre";
+  assert.strictEqual((await post(billing, { action: "portal", org_id: ORG }, HH)).body.url.startsWith("https://portal.stripe.test"), true);
+  assert.strictEqual((await post(billing, { action: "card", org_id: ORG }, HH)).statusCode, 200);
+  assert.ok(stripeCalls().length > 0, "a stripe centre still reaches Stripe");
+  const r = await post(billing, { action: "checkout", org_id: ORG }, HH); assert.strictEqual(r.statusCode, 400); assert.strictEqual(r.body.error, "solo_only");
 });
-test("centre: webhook events that belong to a centre are acknowledged and change nothing", async () => {
-  for (const how of ["tier", "kind"]) {
-    reset(); stripeState = stripeSub(); orgKind = how === "kind" ? "centre" : "solo"; if (how === "tier") subs[ORG].tier = "centre";
-    const body = evt("evt_c" + how, "customer.subscription.updated", { id: "sub_1" });
-    const r = await post(webhook, body, signed(body));
-    assert.strictEqual(r.statusCode, 200); assert.strictEqual(r.body.result, "ignored_centre", how);
-    assert.strictEqual(subs[ORG].status, "none", "the centre's row is untouched"); assert.strictEqual(subs[ORG].stripe_subscription_id, null);
-    assert.ok(!calls.some((c) => c.startsWith("PATCH")), "nothing is written");
-  }
+test("an invoice centre can still read its status", async () => {
+  reset(); orgKind = "centre"; planMethod = "invoice";
+  const saved = global.fetch;
+  global.fetch = async (u, o) => String(u).includes("rpc/org_plan_status") ? { ok: true, status: 200, json: async () => ({ tier: "centre" }), text: async () => "{}" } : saved(u, o);
+  try { assert.strictEqual((await post(billing, { action: "status", org_id: ORG }, HH)).statusCode, 200); } finally { global.fetch = saved; }
+});
+test("a failed plan lookup for a centre doesn't guess: generic 502, no Stripe call", async () => {
+  reset(); orgKind = "centre"; subs[ORG].tier = "centre";
+  const saved = global.fetch;
+  global.fetch = async (u, o) => String(u).includes("/rest/v1/org_plans") ? { ok: false, status: 500, json: async () => ({}), text: async () => "" } : saved(u, o);
+  try { const r = await post(billing, { action: "portal", org_id: ORG }, HH); assert.strictEqual(r.statusCode, 502); assert.strictEqual(stripeCalls().length, 0); } finally { global.fetch = saved; }
+});
+test("webhook: an event for an INVOICE centre is acknowledged and writes nothing; a stripe centre is handled as before", async () => {
+  reset(); stripeState = stripeSub(); subs[ORG].tier = "centre"; planMethod = "invoice";
+  let body = evt("evt_inv", "customer.subscription.updated", { id: "sub_1" });
+  let r = await post(webhook, body, signed(body));
+  assert.strictEqual(r.statusCode, 200); assert.strictEqual(r.body.result, "ignored_invoice_centre");
+  assert.strictEqual(subs[ORG].status, "none"); assert.ok(!calls.some((c) => c.startsWith("PATCH")), "nothing written");
+  reset(); stripeState = stripeSub(); subs[ORG].tier = "centre"; planMethod = "stripe";
+  body = evt("evt_str", "customer.subscription.updated", { id: "sub_1" });
+  r = await post(webhook, body, signed(body));
+  assert.strictEqual(r.body.result, "updated"); assert.strictEqual(subs[ORG].status, "trialing");
 });
 
 const pm = (o) => ({ id: "pm_1", type: "card", card: Object.assign({ brand: "visa", last4: "4242", exp_month: 8, exp_year: 2029, fingerprint: "SECRET", number: "4242424242424242" }, o || {}) });
