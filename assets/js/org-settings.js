@@ -57,7 +57,7 @@
         help: "1-to-1 centres don't see options that only apply to group classes." }
     ]},
     { id: "calendar", n: 2, title: "Branches, rooms and calendar", custom: "calendar", fields: [
-      { path: "calendar.skip_holidays", label: "Don't generate lessons on centre holidays", type: "toggle", soon: true, help: HOLIDAYS_SOON }
+      { path: "calendar.skip_holidays", label: "Don't generate lessons on centre holidays", type: "toggle", help: "Applies when you press “Create lessons” on the Timetable. Lessons already created are not removed." }
     ]},
     { id: "users", n: 3, title: "Users and permissions", custom: "users", fields: [] },
     { id: "billing", n: 4, title: "How lessons are billed", fields: [

@@ -53,6 +53,7 @@
   function chips(r) {
     var out = [];
     if (r.trial) out.push({ text: "Trial", tone: "trial" });
+    if (r.covered_for_name && !r.cancelled) out.push({ text: "Covered by " + (r.tutor_name || "another tutor"), tone: "cover" });
     if (r.cancelled) out.push({ text: "Cancelled", tone: "muted" });
     else {
       if (r.postponed) out.push({ text: "Moved", tone: "muted" });
@@ -79,6 +80,7 @@
     var out = [];
     out.push(["Time", CA.timeRange(r) + (durationLabel(r.minutes) ? " (" + durationLabel(r.minutes) + ")" : "")]);
     out.push(["Tutor", tutorLine(r).text]);
+    if (r.covered_for_name && !r.cancelled) out.push(["Covering for", r.covered_for_name]);
     if (r.student_level) out.push(["Level", r.student_level]);
     if (r.subject) out.push(["Subject", r.subject]);
     out.push(["Online link", r.online_link ? r.online_link : "Not set"]);
@@ -139,6 +141,72 @@
     return { title: "No lessons " + when, hint: "Lessons made from the timetable appear here." };
   }
 
+  // ---- reassign or cover one lesson (T3 step 8) ----
+  // What the lesson sheet offers for this lesson. The database decides (staff_reassign_lesson); this only saves a round trip and words it.
+  //   kind: "hidden" (no button: the caller can't edit the timetable, or this database has no such function yet) | "locked" (a note: the lesson can
+  //   no longer change hands) | "off" (a note: the centre doesn't allow replacement tutors) | "assign" (no tutor yet: pick the first one) | "form".
+  var OFF_NOTE = "This centre doesn’t allow replacement tutors. An owner can switch it on in Centre settings.";
+  function reassignState(res, r) {
+    if (!res || res.can_edit !== true || !r || typeof r.can_reassign !== "boolean") return { kind: "hidden" };
+    if (!r.can_reassign) {
+      var why = r.state === "marked" ? "This lesson is already marked, so it stays with the tutor who taught it."
+              : r.cancelled ? "This lesson was cancelled, so it can’t change tutor."
+              : "This lesson is paid or on an invoice, so it can’t change tutor.";
+      return { kind: "locked", note: why };
+    }
+    if (!r.tutor_id) return { kind: "assign", label: "Assign a tutor" };
+    if (res.replacements_allowed === false) return { kind: "off", note: OFF_NOTE };
+    return { kind: "form", label: "Reassign or cover" };
+  }
+  // the tutors who can be picked: active ones, never the person who already teaches it
+  function coverOptions(res, r) {
+    return ((res && res.tutors) || []).filter(function (t) { return t.active !== false && t.id !== (r && r.tutor_id); })
+      .sort(function (a, b) { return String(a.name || "").localeCompare(String(b.name || "")); });
+  }
+  var REASON_MAX = 500;
+  // form = { tutor, mode: "cover" | "reassign", reason, links }  →  an error text, or "" when it can be sent
+  function checkReassign(r, form) {
+    if (!form || !form.tutor) return "Choose who will teach this lesson.";
+    if (form.tutor === r.tutor_id) return "That tutor already teaches this lesson.";
+    var reason = String(form.reason || "").trim();
+    if (r.tutor_id && !reason) return "Say why. It is kept on record.";
+    if (reason.length > REASON_MAX) return "Keep the reason under " + REASON_MAX + " characters.";
+    return "";
+  }
+  function reassignArgs(r, form) {
+    var mode = r.tutor_id && form.mode === "cover" ? "cover" : "reassign";
+    return { p_lesson: r.lesson_id, p_new_tutor: form.tutor, p_mode: mode, p_reason: String(form.reason || "").trim() || null,
+             p_update_links: mode === "reassign" && !!form.links };
+  }
+  function reassignedText(res, form) {
+    var n = res && res.lessons > 1 ? " (" + res.lessons + " lessons of the class)" : "";
+    var who = (res && res.tutor_name) || "the new tutor";
+    return (form && form.mode === "cover" && res && res.covered_for ? who + " is covering this lesson" : who + " now teaches this lesson") + n + ".";
+  }
+  function reassignErrorText(err) {
+    var m = String((err && err.message) || err || "");
+    var map = [
+      [/REPLACEMENT_OFF/, OFF_NOTE],
+      [/ALREADY_MARKED/, "This lesson is already marked, so it stays with the tutor who taught it."],
+      [/CANCELLED/, "This lesson was cancelled, so it can’t change tutor."],
+      [/PAID/, "This lesson is already paid, so it can’t change tutor."],
+      [/INVOICED/, "This lesson is on an invoice, so it can’t change tutor."],
+      [/NOT_ALLOWED/, "Your account can’t change the timetable at this centre."],
+      [/NOT_AVAILABLE/, "That person can’t be given lessons here. Pick an active tutor."],
+      [/NO_CHANGE/, "That tutor already teaches this lesson."],
+      [/NO_TUTOR_TO_COVER/, "This lesson has no tutor yet. Assign one instead."],
+      [/REASON_REQUIRED/, "Say why. It is kept on record."],
+      [/TOO_LONG/, "Keep the reason under " + REASON_MAX + " characters."],
+      [/PICK_TUTOR/, "Choose who will teach this lesson."],
+      [/LINK_NOT_FOR_COVER/, "A cover is for this lesson only, so it can’t change who a student is assigned to."],
+      [/BAD_MODE/, "Choose cover or reassign."],
+      [/NOT_FOUND/, "That lesson isn’t available any more. Refresh the page and try again."]
+    ];
+    for (var i = 0; i < map.length; i++) if (map[i][0].test(m)) return map[i][1];
+    if (CA.isMissing(err)) return "Reassigning needs db/migration_staff_reassign.sql run first.";
+    return CA.errorText(err);
+  }
+
   // ---- the database's refusals, in plain words ----
   function errorText(err) {
     var m = String((err && err.message) || err || "");
@@ -149,6 +217,8 @@
 
   return { PAGE_SIZE: PAGE_SIZE, VIEWS: VIEWS, range: range, shift: shift, rangeLabel: rangeLabel, datesIn: datesIn, holidaysOn: holidaysOn,
            holidayLabel: holidayLabel, bandText: bandText, days: days, chips: chips, tutorLine: tutorLine, durationLabel: durationLabel, facts: facts,
+           reassignState: reassignState, coverOptions: coverOptions, checkReassign: checkReassign, reassignArgs: reassignArgs,
+           reassignedText: reassignedText, reassignErrorText: reassignErrorText, REASON_MAX: REASON_MAX, OFF_NOTE: OFF_NOTE,
            args: args, fromQuery: fromQuery, toQuery: toQuery, anyFilter: anyFilter, matchStudents: matchStudents,
            pageCount: pageCount, pagerLabel: pagerLabel, countText: countText, emptyText: emptyText, errorText: errorText, isMissing: isMissing,
            dayLabel: CA.dayLabel, timeLabel: CA.timeLabel, timeRange: CA.timeRange, validISO: CA.validISO };

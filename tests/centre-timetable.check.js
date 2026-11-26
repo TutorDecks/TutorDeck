@@ -36,13 +36,25 @@ function override(cfg) {
         var hs = hol.filter(function (h) { return h.starts_on <= a.p_to && h.ends_on >= a.p_from; });
         return res({ today: TODAY, page: 1, size: a.p_size, total: shown.length, holidays: hs,
           counts: { n_all: m.length, n_notutor: m.filter(function (x) { return x.nt; }).length, n_cancelled: 0, n_holiday: 0 },
-          tutors: [{ id: "m1", name: "Tutor One" }, { id: "m2", name: "Tutor Two" }], branches: cfg.branches || [],
+          can_edit: cfg.canEdit !== false, replacements_allowed: !cfg.replOff,
+          tutors: [{ id: "m1", name: "Tutor One", active: true }, { id: "m2", name: "Tutor Two", active: true }, { id: "m3", name: "Not Yet Joined", active: false }], branches: cfg.branches || [],
           students: [{ id: "s1", name: "Aiden Tan" }, { id: "s2", name: "Ravi Menon" }, { id: "s3", name: "Sophie Lim" }, { id: "s4", name: "Daniel Ong" }], students_more: false,
           rows: shown.map(function (x) {
             var h = hol.filter(function (q) { return q.starts_on <= x.d && q.ends_on >= x.d; })[0];
             return { lesson_id: x.id, lesson_date: x.d, start_time: x.st, end_time: x.en, minutes: x.id === "l2" ? 90 : 60, student_id: x.sid, student_name: x.name, student_level: x.lvl, subject: "Math",
+              covered_for_id: x.cf ? "m1" : null, covered_for_name: x.cf || null, can_reassign: x.locked ? false : true,
               tutor_id: x.tid, tutor_name: x.tn, no_tutor: !!x.nt, trial: !!x.trial, attendance: null, state: x.state, cancelled: false, postponed: false, holiday: h ? h.name : null, session_id: null, online_link: null };
           }) });
+      }
+      if (nm === "staff_reassign_lesson") {
+        var x = L.filter(function (q) { return q.id === a.p_lesson; })[0];
+        if (!x) return res(null, "NOT_FOUND");
+        if (cfg.refuse) return res(null, cfg.refuse);
+        if (cfg.replOff && x.tid) return res(null, "REPLACEMENT_OFF: this centre doesn't allow replacement tutors. An owner can switch this on in the centre settings");
+        var nm2 = a.p_new_tutor === "m1" ? "Tutor One" : "Tutor Two";
+        if (a.p_mode === "cover") x.cf = x.cf || x.tn; else x.cf = null;
+        x.tid = a.p_new_tutor; x.tn = nm2; x.nt = false;
+        return res({ lesson_id: x.id, lessons: 1, mode: a.p_mode, tutor_id: a.p_new_tutor, tutor_name: nm2, covered_for: x.cf ? "m1" : null, links_ended: 0, links_added: 0 });
       }
       return rpc(nm, a);
     };
@@ -118,6 +130,74 @@ async function open(browser, cfg, opt) {
     if (SC) await page.screenshot({ path: path.join(SC, "timetable-" + mode + ".png"), fullPage: true });
     await ctx.close();
   }
+  // ---- T3 step 8: Reassign or cover (the real rules are proved in tests/sql/staff_reassign_test.sql; this checks the screen) ----
+  for (const mode of ["desktop", "phone", "dark"]) {
+    const phone = mode === "phone", tag = "cover " + mode + ": ";
+    const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_timetable"])] }, { phone, dark: mode === "dark" });
+    await page.goto(BASE + "centre-timetable.html?id=c1&view=next14"); await page.waitForSelector(".tt-row");
+    await page.locator(".tt-row", { hasText: "Aiden" }).first().click(); await page.waitForSelector("#tt-sheet.on");
+    ok(await page.locator("#tt-reassign").count() === 1 && /Reassign or cover/.test(await page.locator("#tt-reassign").innerText()), tag + "staff with manage_timetable see 'Reassign or cover' in the lesson sheet");
+    await page.click("#tt-reassign");
+    ok(await page.locator("#tt-rt option").allInnerTexts().then((o) => o.join("|") === "Choose a tutor|Tutor Two"), tag + "the picker offers active tutors only, not the current one or the invited one");
+    ok(await page.locator('input[name="tt-rm"]:checked').getAttribute("value") === "cover" && await page.locator("#tt-rl").isHidden(), tag + "cover is the default and the assigned-tutor box is hidden");
+    await page.click("#tt-rs"); ok(/Choose who/.test(await page.locator("#tt-re-tutor").innerText()), tag + "no tutor chosen: a plain message");
+    await page.selectOption("#tt-rt", "m2"); await page.click("#tt-rs"); ok(/Say why/.test(await page.locator("#tt-re-reason").innerText()), tag + "no reason: a plain message");
+    await page.locator('input[name="tt-rm"][value="reassign"]').check(); ok(await page.locator("#tt-rl").isVisible(), tag + "choosing 'Give this lesson to them' reveals the assigned-tutor choice (off by default)");
+    ok(!(await page.locator("#tt-rl").isChecked()), tag + "and it is not ticked by default");
+    await page.locator('input[name="tt-rm"][value="cover"]').check(); ok(await page.locator("#tt-rl").isHidden(), tag + "back to cover hides it again");
+    await page.waitForTimeout(450); if (SC && mode !== "dark") await page.screenshot({ path: path.join(SC, "reassign-form-" + mode + ".png") });
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), tag + "no sideways scroll with the form open");
+    await page.fill("#tt-rr", "Tutor One is unwell"); await page.click("#tt-rs");
+    await page.waitForFunction(() => !document.querySelector("#tt-sheet.on")); await page.waitForSelector(".tt-chip.cover");
+    ok(/Covered by Tutor Two/.test(await page.locator(".tt-row", { hasText: "Aiden" }).first().innerText()), tag + "the row now says 'Covered by Tutor Two'");
+    const calls = await page.evaluate(() => window.__calls.filter((c) => c[0] === "staff_reassign_lesson").map((c) => c[1]));
+    ok(calls.length === 1 && calls[0].p_mode === "cover" && calls[0].p_reason === "Tutor One is unwell" && calls[0].p_update_links === false && calls[0].p_new_tutor === "m2", tag + "one cover call with the reason, and no assigned-tutor change");
+    await page.selectOption("#tt-tutor", "m1"); await page.waitForFunction(() => document.querySelectorAll(".tt-row").length === 1);
+    ok(!/Covered/.test(await page.locator("#tt").innerText()), tag + "filtered to Tutor One: the covered lesson is gone from their list (Aiden's next week is still theirs)");
+    await page.selectOption("#tt-tutor", "m2"); await page.waitForFunction(() => document.querySelectorAll(".tt-row").length === 2);
+    ok(/Covered by Tutor Two/.test(await page.locator("#tt").innerText()), tag + "and it is on Tutor Two's list");
+    await page.click("#tt-clear"); await page.waitForFunction(() => document.querySelectorAll(".tt-row").length === 5);
+    // the sheet of the covered lesson says who it was meant for; the other choice sends the assigned-tutor box when ticked
+    await page.locator(".tt-row", { hasText: "Aiden" }).first().click(); await page.waitForSelector("#tt-sheet.on");
+    ok(/Covering for\s*\n?\s*Tutor One/.test(await page.locator("#tt-sb").innerText()), tag + "the sheet says 'Covering for Tutor One'");
+    await page.click("#tt-sx");
+    await page.locator(".tt-row", { hasText: "Aiden" }).nth(1).click(); await page.waitForSelector("#tt-sheet.on");
+    await page.click("#tt-reassign"); await page.selectOption("#tt-rt", "m2"); await page.locator('input[name="tt-rm"][value="reassign"]').check(); await page.locator("#tt-rl").check();
+    await page.fill("#tt-rr", "Moves to Tutor Two"); await page.click("#tt-rs"); await page.waitForFunction(() => !document.querySelector("#tt-sheet.on"));
+    const c2 = await page.evaluate(() => window.__calls.filter((c) => c[0] === "staff_reassign_lesson").map((c) => c[1]));
+    ok(c2.length === 2 && c2[1].p_mode === "reassign" && c2[1].p_update_links === true, tag + "reassign with the box ticked asks for the assigned-tutor change");
+    // no tutor yet: a first assignment, no reason needed
+    await page.locator(".tt-row", { hasText: "Ravi" }).click(); await page.waitForSelector("#tt-sheet.on");
+    ok(/Assign a tutor/.test(await page.locator("#tt-reassign").innerText()), tag + "a lesson with no tutor offers 'Assign a tutor'");
+    await page.click("#tt-reassign"); ok(await page.locator('input[name="tt-rm"]').count() === 0, tag + "no cover/reassign choice for a first assignment");
+    await page.selectOption("#tt-rt", "m1"); await page.click("#tt-rs"); await page.waitForFunction(() => !document.querySelector("#tt-sheet.on"));
+    ok(!/No tutor yet/.test(await page.locator(".tt-row", { hasText: "Ravi" }).innerText()), tag + "assigned without a reason");
+    ok(errs.length === 0, tag + "no console errors " + errs.join("|"));
+    await ctx.close();
+  }
+  // the centre switched replacements OFF: the page explains instead of offering the form, a first assignment is still possible
+  { const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_timetable"])], replOff: true }, { phone: true });
+    await page.goto(BASE + "centre-timetable.html?id=c1&view=next14"); await page.waitForSelector(".tt-row");
+    await page.locator(".tt-row", { hasText: "Aiden" }).first().click(); await page.waitForSelector("#tt-sheet.on");
+    ok(await page.locator("#tt-reassign").count() === 0 && /doesn’t allow replacement tutors/.test(await page.locator("#tt-ranote").innerText()), "replacements OFF: no button, a plain note instead");
+    await page.waitForTimeout(450); if (SC) await page.screenshot({ path: path.join(SC, "reassign-off-phone.png") });
+    await page.click("#tt-sx");
+    await page.locator(".tt-row", { hasText: "Ravi" }).click(); await page.waitForSelector("#tt-sheet.on");
+    ok(await page.locator("#tt-reassign").count() === 1, "replacements OFF: a lesson with no tutor can still be assigned");
+    ok(errs.length === 0, "replacements OFF: no console errors " + errs.join("|")); await ctx.close(); }
+  // the page thought it was allowed but the database refuses (the setting changed meanwhile): the plain message, no code, the form stays
+  { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_timetable"])], refuse: "REPLACEMENT_OFF: this centre doesn't allow replacement tutors. An owner can switch this on in the centre settings" });
+    await page.goto(BASE + "centre-timetable.html?id=c1&view=next14"); await page.waitForSelector(".tt-row");
+    await page.locator(".tt-row", { hasText: "Aiden" }).first().click(); await page.click("#tt-reassign");
+    await page.selectOption("#tt-rt", "m2"); await page.fill("#tt-rr", "Sick"); await page.click("#tt-rs"); await page.waitForSelector("#tt-re:not([hidden])");
+    const t = await page.locator("#tt-re").innerText();
+    ok(/doesn’t allow replacement tutors/.test(t) && !/REPLACEMENT_OFF/.test(t) && await page.locator("#tt-rf").count() === 1, "refused by the database: the plain message shows, no error code, the form stays"); await ctx.close(); }
+  // locked lessons (marked / paid / invoiced) and a login without manage_timetable
+  { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_students"])], canEdit: false });
+    await page.goto(BASE + "centre-timetable.html?id=c1&view=next14"); await page.waitForSelector(".tt-row");
+    await page.locator(".tt-row", { hasText: "Aiden" }).first().click(); await page.waitForSelector("#tt-sheet.on");
+    ok(await page.locator("#tt-reassign").count() === 0 && await page.locator("#tt-ranote").count() === 0, "front desk (no manage_timetable): no Reassign button and no note"); await ctx.close(); }
+
   // branches present: the control shows
   { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], branches: [{ id: "b1", name: "Bishan" }] });
     await page.goto(BASE + "centre-timetable.html?id=c1"); await page.waitForSelector(".tt-row, .tt-none");

@@ -16,8 +16,8 @@ const OTHER = ["f-billing-model", "f-billing-absences-mode", "f-billing-proratio
     page.on("pageerror", (e) => errs.push(e.message));
     await page.route("**/assets/vendor/supabase-2.118.0.js", (r) => r.fulfill({ body: STUB, contentType: "application/javascript" }));
     await page.goto(BASE + "org.html?id=o2#calendar", { waitUntil: "load" }); await page.waitForTimeout(1300);
-    ok(await page.$eval("#f-calendar-skip_holidays", (e) => e.disabled), vp + ": skip_holidays disabled");
-    ok(/Coming soon/.test(await page.textContent("#og")), vp + ": calendar step shows Coming soon");
+    ok(!(await page.$eval("#f-calendar-skip_holidays", (e) => e.disabled)), vp + ": skip_holidays is editable (built in T3 step 7)");
+    ok(!/Coming soon/.test(await page.textContent("#og")), vp + ": calendar step no longer shows Coming soon");
     if (SC) await page.screenshot({ path: path.join(SC, "wizard-calendar-" + vp + ".png"), fullPage: true });
     await page.click("[data-step=billing]"); await page.waitForTimeout(500);
     for (const id of SOON) {

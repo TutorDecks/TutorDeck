@@ -150,3 +150,60 @@ test("new refusals are explained", () => {
   assert.match(T.errorText({ message: "CHARGE_ADMIN_ONLY: x" }), /admin enters the charge/);
   assert.match(T.errorText({ message: "TRIAL_ADMIN_ONLY: x" }), /admin flags trial/);
 });
+
+// ---------------- T6 step 1: the read-only Schedule ----------------
+test("schedule: weeks start on Monday and are titled plainly", () => {
+  assert.strictEqual(T.weekStart("2026-11-26"), "2026-11-23");   // Thursday → Monday
+  assert.strictEqual(T.weekStart("2026-11-23"), "2026-11-23");
+  assert.strictEqual(T.weekStart("2026-11-29"), "2026-11-23");   // Sunday belongs to the week before the next Monday
+  assert.strictEqual(T.weekStart("2026-11-30"), "2026-11-30");
+  assert.strictEqual(T.weekTitle("2026-11-23", "2026-11-26"), "This week");
+  assert.strictEqual(T.weekTitle("2026-11-30", "2026-11-26"), "Next week");
+  assert.strictEqual(T.weekTitle("2026-11-16", "2026-11-26"), "Last week");
+  assert.strictEqual(T.weekTitle("2026-12-07", "2026-11-26"), "7 Dec – 13 Dec");
+  assert.strictEqual(T.rangeLabel("2026-11-23", "2026-11-29"), "23 Nov – 29 Nov");
+});
+test("schedule: days with a lesson or a holiday are listed in order; a holiday band shows even with no lesson", () => {
+  const data = {
+    lessons: [{ lesson_id: "a", lesson_date: "2026-11-25" }, { lesson_id: "b", lesson_date: "2026-11-25" }, { lesson_id: "c", lesson_date: "2026-11-27" }],
+    holidays: [{ name: "Deepavali", starts_on: "2026-11-26", ends_on: "2026-11-27" }, { name: "Before", starts_on: "2026-11-01", ends_on: "2026-11-02" }] };
+  const d = T.scheduleDays(data, "2026-11-23", "2026-11-29");
+  assert.deepStrictEqual(d.map((x) => x.date), ["2026-11-25", "2026-11-26", "2026-11-27"]);
+  assert.deepStrictEqual(d.map((x) => x.lessons.length), [2, 0, 1]);
+  assert.deepStrictEqual(d.map((x) => x.holidays), [[], ["Deepavali"], ["Deepavali"]]);
+  assert.deepStrictEqual(T.scheduleDays({ lessons: [], holidays: [] }, "2026-11-23", "2026-11-29"), []);
+  assert.deepStrictEqual(T.scheduleDays(null, "2026-11-23", "2026-11-29"), []);
+  // a long holiday is clipped to the week, never loops forever
+  assert.strictEqual(T.scheduleDays({ holidays: [{ name: "Long", starts_on: "2026-01-01", ends_on: "2027-12-31" }] }, "2026-11-23", "2026-11-29").length, 7);
+});
+test("schedule: the badge and the small facts say what the database flagged, and never anything about money", () => {
+  assert.strictEqual(T.scheduleChip({}), null);
+  assert.deepStrictEqual(T.scheduleChip({ cancelled: true, attendance: "attended" }), { text: "Cancelled", tone: "muted" });
+  assert.strictEqual(T.scheduleChip({ attendance: "attended" }).tone, "ok");
+  assert.strictEqual(T.scheduleChip({ attendance: "absent" }).text, "Absent");
+  assert.strictEqual(T.scheduleChip({ attendance: "late_cancelled" }).text, "Late cancellation");
+  assert.strictEqual(T.scheduleChip({ postponed: true }).text, "Moved");
+  assert.strictEqual(T.scheduleChip({ covering: true }).text, "Covering");
+  assert.strictEqual(T.scheduleChip({ trial: true }).text, "Trial");
+  assert.deepStrictEqual(T.scheduleFacts({ student_level: "P5", subject: "Math", trial: true, covering: true, postponed: true, org_name: "Opus" }, true),
+    ["P5", "Math", "Trial", "Covering for another tutor", "Moved from its usual day", "Opus"]);
+  assert.deepStrictEqual(T.scheduleFacts({ student_level: null, subject: null }, false), []);
+  const everything = JSON.stringify([T.scheduleChip({ cancelled: true }), T.scheduleFacts({ trial: true, covering: true, postponed: true }, false), T.editNote("admin_only"), T.editNote("tutors_own"), T.scheduleErrorText({ message: "NOT_FOUND" })]);
+  assert.ok(!/\b(rate|price|amount|paid|compensation|charge|fee|cents)\b/i.test(everything), "no money word in anything the Schedule says");
+});
+test("schedule: the note about changes, the weekly slots and the plain error words", () => {
+  assert.strictEqual(T.editNote("admin_only"), "Your centre handles changes: ask an admin.");
+  assert.strictEqual(T.editNote(undefined), "Your centre handles changes: ask an admin.");
+  assert.ok(/coming soon/.test(T.editNote("tutors_own")));
+  assert.strictEqual(T.weekdayName(0), "Monday"); assert.strictEqual(T.weekdayName(6), "Sunday"); assert.strictEqual(T.weekdayName(9), "");
+  const rows = [
+    { slot_id: "s3", weekday: 3, start_time: "17:00:00", end_time: "18:00:00", student_name: "C", student_level: "P3", subject: "Sci", org_name: "O" },
+    { slot_id: "s1", weekday: 1, start_time: "15:00:00", end_time: "16:00:00", student_name: "A", student_level: "P1", session_key: "g", subject: "Math", org_name: "O" },
+    { slot_id: "s2", weekday: 1, start_time: "15:00:00", end_time: "16:00:00", student_name: "B", student_level: "P2", session_key: "g", subject: "Math", org_name: "O" }];
+  const l = T.slotList(rows);
+  assert.strictEqual(l.length, 2); assert.strictEqual(l[0].weekday, 1); assert.deepStrictEqual(l[0].students.map((x) => x.name), ["A", "B"]); assert.strictEqual(l[1].weekday, 3);
+  assert.deepStrictEqual(T.slotList(null), []);
+  assert.ok(/for tutors at a centre/.test(T.scheduleErrorText({ message: "NOT_FOUND" })));
+  assert.ok(/isn't available right now/.test(T.scheduleErrorText({ message: "boom" })));
+  assert.ok(/isn't available right now/.test(T.scheduleErrorText(null)));
+});

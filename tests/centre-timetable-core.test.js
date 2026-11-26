@@ -133,3 +133,81 @@ test("errors are plain words; a missing function is recognised", () => {
   assert.strictEqual(TT.isMissing({ code: "42883", message: "x" }), true);
   assert.strictEqual(TT.isMissing({ message: "NOT_FOUND" }), false);
 });
+
+// ---- T3 step 8: reassign or cover ----
+const RES = { can_edit: true, replacements_allowed: true, tutors: [{ id: "m1", name: "Tutor One", active: true }, { id: "m2", name: "Tutor Two", active: true },
+  { id: "m3", name: "Alma Invited", active: false }, { id: "m4", name: "Ben Three" }] };
+const rr = (o) => row(Object.assign({ can_reassign: true, state: "future" }, o));
+
+test("the 'Covered by X' chip and the 'Covering for' fact", () => {
+  const r = rr({ tutor_name: "Tutor Two", covered_for_id: "m1", covered_for_name: "Tutor One" });
+  assert.deepStrictEqual(TT.chips(r).map((c) => c.text + ":" + c.tone), ["Covered by Tutor Two:cover"]);
+  assert.deepStrictEqual(TT.facts(r).filter((f) => f[0] === "Covering for"), [["Covering for", "Tutor One"]]);
+  assert.deepStrictEqual(TT.chips(rr({ covered_for_name: null })).map((c) => c.text), [], "an ordinary lesson has no chip");
+  assert.deepStrictEqual(TT.chips(rr({ covered_for_name: "Tutor One", cancelled: true })).map((c) => c.text), ["Cancelled"], "a cancelled lesson is not 'covered'");
+  assert.strictEqual(TT.facts(rr({})).filter((f) => f[0] === "Covering for").length, 0);
+});
+
+test("reassignState: who is offered what (the database decides; this saves a round trip)", () => {
+  assert.strictEqual(TT.reassignState(RES, rr({})).kind, "form");
+  assert.strictEqual(TT.reassignState(RES, rr({})).label, "Reassign or cover");
+  assert.strictEqual(TT.reassignState(Object.assign({}, RES, { can_edit: false }), rr({})).kind, "hidden", "no manage_timetable: no button");
+  assert.strictEqual(TT.reassignState({ tutors: [] }, rr({})).kind, "hidden", "an older database without the field: no button");
+  assert.strictEqual(TT.reassignState(RES, row({})).kind, "hidden", "a row without can_reassign: no button");
+  const off = TT.reassignState(Object.assign({}, RES, { replacements_allowed: false }), rr({}));
+  assert.strictEqual(off.kind, "off"); assert.ok(!off.label); assert.match(off.note, /doesn’t allow replacement tutors/);
+  const first = TT.reassignState(Object.assign({}, RES, { replacements_allowed: false }), rr({ tutor_id: null, tutor_name: null, no_tutor: true }));
+  assert.strictEqual(first.kind, "assign", "a lesson with no tutor can still be given its first tutor when replacements are off");
+  assert.strictEqual(first.label, "Assign a tutor");
+  assert.match(TT.reassignState(RES, rr({ can_reassign: false, state: "marked" })).note, /already marked/);
+  assert.match(TT.reassignState(RES, rr({ can_reassign: false, state: "cancelled", cancelled: true })).note, /cancelled/);
+  assert.match(TT.reassignState(RES, rr({ can_reassign: false })).note, /paid or on an invoice/);
+  assert.ok(!TT.reassignState(RES, rr({ can_reassign: false })).label, "a locked lesson has no button");
+});
+
+test("coverOptions: active tutors only, never the one who already teaches it, sorted by name", () => {
+  assert.deepStrictEqual(TT.coverOptions(RES, rr({ tutor_id: "m1" })).map((t) => t.id), ["m4", "m2"]);
+  assert.deepStrictEqual(TT.coverOptions(RES, rr({ tutor_id: null })).map((t) => t.id), ["m4", "m1", "m2"]);
+  assert.deepStrictEqual(TT.coverOptions({}, rr({})), []);
+});
+
+test("checkReassign and reassignArgs", () => {
+  const r = rr({ lesson_id: "L9", tutor_id: "m1" });
+  assert.match(TT.checkReassign(r, { tutor: "", mode: "cover", reason: "x" }), /Choose who/);
+  assert.match(TT.checkReassign(r, { tutor: "m1", mode: "cover", reason: "x" }), /already teaches/);
+  assert.match(TT.checkReassign(r, { tutor: "m2", mode: "cover", reason: "  " }), /Say why/);
+  assert.match(TT.checkReassign(r, { tutor: "m2", mode: "cover", reason: "x".repeat(501) }), /under 500/);
+  assert.strictEqual(TT.checkReassign(r, { tutor: "m2", mode: "cover", reason: "Unwell" }), "");
+  assert.strictEqual(TT.checkReassign(rr({ tutor_id: null }), { tutor: "m2", mode: "reassign", reason: "" }), "", "a first tutor needs no reason");
+  assert.deepStrictEqual(TT.reassignArgs(r, { tutor: "m2", mode: "cover", reason: " Unwell ", links: true }),
+    { p_lesson: "L9", p_new_tutor: "m2", p_mode: "cover", p_reason: "Unwell", p_update_links: false }, "a cover never asks for the link change");
+  assert.deepStrictEqual(TT.reassignArgs(r, { tutor: "m2", mode: "reassign", reason: "Moved", links: true }),
+    { p_lesson: "L9", p_new_tutor: "m2", p_mode: "reassign", p_reason: "Moved", p_update_links: true });
+  assert.deepStrictEqual(TT.reassignArgs(r, { tutor: "m2", mode: "reassign", reason: "Moved", links: false }).p_update_links, false, "the link change is an explicit second choice");
+  assert.deepStrictEqual(TT.reassignArgs(rr({ tutor_id: null }), { tutor: "m2", mode: "cover", reason: "" }),
+    { p_lesson: "l", p_new_tutor: "m2", p_mode: "reassign", p_reason: null, p_update_links: false }, "no tutor yet: always an assignment");
+});
+
+test("the database's refusals to reassign, in plain words", () => {
+  const t = (m) => TT.reassignErrorText({ message: m });
+  assert.match(t("REPLACEMENT_OFF: this centre doesn't allow replacement tutors."), /doesn’t allow replacement tutors/);
+  assert.match(t("ALREADY_MARKED: x"), /already marked/);
+  assert.match(t("CANCELLED: this lesson was cancelled"), /cancelled, so it can’t change tutor/);
+  assert.match(t("PAID: x"), /already paid/);
+  assert.match(t("INVOICED: x"), /on an invoice/);
+  assert.match(t("NOT_ALLOWED: your account"), /can’t change the timetable/);
+  assert.match(t("NOT_AVAILABLE: x"), /active tutor/);
+  assert.match(t("NO_TUTOR_TO_COVER: x"), /Assign one instead/);
+  assert.match(t("REASON_REQUIRED: x"), /Say why/);
+  assert.match(t("LINK_NOT_FOR_COVER: x"), /this lesson only/);
+  assert.match(t("NOT_FOUND"), /isn’t available any more/);
+  assert.match(TT.reassignErrorText({ code: "PGRST202", message: "Could not find the function public.staff_reassign_lesson" }), /migration_staff_reassign\.sql/);
+  assert.match(TT.reassignErrorText({ message: "Failed to fetch" }), /Couldn’t reach the server/);
+  assert.ok(!/[A-Z_]{6,}:/.test(t("REPLACEMENT_OFF: x")), "no error code is shown to the person");
+});
+
+test("reassignedText says what happened", () => {
+  assert.strictEqual(TT.reassignedText({ tutor_name: "Tutor Two", covered_for: "m1", lessons: 1 }, { mode: "cover" }), "Tutor Two is covering this lesson.");
+  assert.strictEqual(TT.reassignedText({ tutor_name: "Tutor Two", covered_for: null, lessons: 1 }, { mode: "reassign" }), "Tutor Two now teaches this lesson.");
+  assert.strictEqual(TT.reassignedText({ tutor_name: "Tutor Two", covered_for: "m1", lessons: 3 }, { mode: "cover" }), "Tutor Two is covering this lesson (3 lessons of the class).");
+});
