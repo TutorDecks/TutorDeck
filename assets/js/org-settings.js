@@ -145,6 +145,8 @@
       { path: "invoicing.review_before_sending", label: "Create as drafts for an admin to approve", type: "toggle" },
       { path: "invoicing.delivery.email", label: "Email parents a secure link", type: "toggle", soon: true },
       { path: "invoicing.delivery.share_link", label: "Shareable link for WhatsApp", type: "toggle" },
+      { path: "invoicing.whatsapp_template", label: "WhatsApp message for an invoice", type: "textarea",
+        help: "Your own wording. {name} {centre} {number} {amount} {due_date} {link} are filled in for each invoice. Leave it as it is to use the standard message." },
       { path: "invoicing.reminders.enabled", label: "Payment reminders", type: "toggle", soon: true },
       { path: "invoicing.reminders.schedule", label: "Remind (days from due date, e.g. -3, 0, 7)", type: "list", soon: true,
         show: function (s) { return s.invoicing.reminders.enabled; } }
@@ -241,7 +243,8 @@
           forfeit_notice_days: 0, set_off_unpaid: false, final_month: false, refund_approved_by: "owner" },
         late_fee: { enabled: false, repeat: "once", type: "fixed", amount_cents: 1000, percent_bp: 500, after_days: 7, cap_cents: 0, show_as: "next_invoice_line", waived_by: "owner" } },
       invoicing: { grouping: "family", generate: { mode: "day_of_month", day: 1, days_before: 7 }, due_days: 7, review_before_sending: true,
-        delivery: { email: false, share_link: true }, reminders: { enabled: false, schedule: [-3, 0, 7] } },
+        delivery: { email: false, share_link: true },
+        whatsapp_template: "Hi {name}, this is {centre}. Invoice {number} for {amount} is due on {due_date}.\nYou can see it and pay by PayNow here: {link}\nThank you!", reminders: { enabled: false, schedule: [-3, 0, 7] } },
       payments: { modes: ["manual_paynow"], paynow: { type: "uen", id: "" }, statement_bank: "DBS", hitpay: { paynow: true, cards: false },
         gateway_fees: "absorb", partial_payments: true, overpayments: "credit" },
       lessons: { class_type: "both", timetable_editing: "admin_only", attendance_by: "tutor", attendance_window_days: 14, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },

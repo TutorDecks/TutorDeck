@@ -417,7 +417,7 @@ window.TL = (function () {
       if (!G.length) G = CENTRE_GROUPS;
     }
     var tabQ = (/[?&]tab=([a-z]+)/.exec(location.search) || [])[1] || "";
-    var on = (active === "centre-students" || active === "centre-attendance" || active === "centre-timetable") ? (G.filter(function (g) { return g.page === active; })[0] || G[0] || {}).id
+    var on = (active === "centre-students" || active === "centre-attendance" || active === "centre-timetable" || active === "centre-money") ? (G.filter(function (g) { return g.page === active; })[0] || G[0] || {}).id
            : active === "centre" ? (G.filter(function (g) { return (g.tab || "") === tabQ; })[0] || G[0] || {}).id
            : active === "org" ? (/[?&]id=/.test(location.search) ? "orgsettings" : "orglist") : active;
     var more = [];
@@ -713,6 +713,7 @@ window.TL = (function () {
                  "centre-students": ["Students", "Your students and their families"],
                  "centre-attendance": ["Attendance", "Mark lessons and correct marks"],
                  "centre-timetable": ["Timetable", "The week at your centre"],
+                 "centre-money": ["Money", "Invoice run"],
                  org: ["Organisation", "Your tuition centre, set up your way"],
                  tutor: ["My lessons", "Your classes and attendance"],
                  "tutor-schedule": ["Schedule", "Your week and weekly slots"],
