@@ -1,0 +1,10 @@
+﻿"Statement of account (dummy layout, not a real bank file)",,,,,
+Account,000-000000-0 (fake),,,,
+,,,,,
+Date,Description,Withdrawal,Deposit,Payer,Reference
+24/11/2026,DLC-0001 tuition fees,,100.00,TAN AH KOW,TX200100
+23/11/2026,DLC-0002 tuition fees,,54.50,LIM MEI LING,TX200107
+25/11/2026,school fees,,60.00,KOH XIAO MING,TX200901
+25/11/2026,FAST PAYMENT,,77.77,SITI AMINAH,TX200902
+26/11/2026,FAST PAYMENT TO SUPPLIER 1001,30.00,,,TX200903
+,Closing balance,,"99,999.99",,

@@ -1,0 +1,23 @@
+[
+  {
+    "severity": "error",
+    "file": "students.csv",
+    "line": 5,
+    "column": "start_date",
+    "code": "BAD_DATE"
+  },
+  {
+    "severity": "error",
+    "file": "students.csv",
+    "line": 2,
+    "column": "family_ref",
+    "code": "UNKNOWN_FAMILY"
+  },
+  {
+    "severity": "error",
+    "file": "tutors.csv",
+    "line": 3,
+    "column": "phone",
+    "code": "BAD_PHONE"
+  }
+]

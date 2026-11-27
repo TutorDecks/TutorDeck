@@ -1,7 +1,7 @@
 -- Undo for migration_import.sql (T33 I1): removes the import tables, functions, columns and the billing-start check.
 -- Run it BEFORE migration_org_separation_down.sql (reverse order of the migrations). Imported data (students, families, tutors' invitations,
--- weekly lessons) is NOT touched: only the bookkeeping that says "this came from an import" goes, and the two student columns the import filled
--- (online_link, start_date) are dropped with their values. Safe to run twice.
+-- weekly lessons) is NOT touched: only the bookkeeping that says "this came from an import" goes. The columns the import fills stay (they belong to
+-- staff_slots and centre_deposits). Safe to run twice.
 drop function if exists public.import_undo(uuid);
 drop function if exists public.import_undo_preview(uuid);
 drop function if exists public.import_undo_run(uuid, boolean);
@@ -20,9 +20,8 @@ drop table if exists public.import_items;
 drop table if exists public.import_batches;
 drop index if exists public.recurring_slots_taught_by;
 alter table public.recurring_slots drop constraint if exists recurring_slots_taught_by_same_org;
-alter table public.recurring_slots drop column if exists taught_by;
-alter table public.students drop column if exists online_link;
-alter table public.students drop column if exists start_date;
+-- the three columns the import fills (recurring_slots.taught_by, students.online_link, students.start_date) are NOT dropped here: they belong to
+-- migration_staff_slots.sql and migration_centre_deposits.sql (the import only added them if missing), and the timetable and deposits use them.
 -- (memberships_id_org belongs to migration_tutor_access.sql and stays)
 
 -- the settings check as it was before: no billing.starts_from rule

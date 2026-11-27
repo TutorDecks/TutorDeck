@@ -34,7 +34,7 @@ jobs:
           pip install playwright==1.56.0
           python -m playwright install --with-deps chromium
       - name: Unit tests (money maths, settings schema)
-        run: node --test tests/money.test.js tests/org-settings.test.js tests/billing-core.test.js tests/billing-api.test.js tests/billing-job.test.js tests/billing-cron.test.js tests/contact.test.js tests/config.test.js tests/delete-account-api.test.js tests/tutor-core.test.js tests/password-rules.test.js
+        run: node --test tests/money.test.js tests/org-settings.test.js tests/billing-core.test.js tests/billing-api.test.js tests/billing-job.test.js tests/billing-cron.test.js tests/contact.test.js tests/config.test.js tests/delete-account-api.test.js tests/tutor-core.test.js tests/password-rules.test.js tests/import-core.test.js tests/centre-tutor-pay-core.test.js tests/statement-core.test.js tests/invoice-email-core.test.js tests/invoice-email-api.test.js tests/centre-credits-core.test.js tests/credits-cron.test.js tests/org-export-core.test.js tests/tutor-changes-core.test.js tests/migrations-safeupdate.test.js tests/sql-safeupdate.test.js tests/dev-pack.test.js
       - name: Database tests (organisations, isolation, undo) on a throwaway Postgres
         run: |
           sudo apt-get install -y -q postgresql-16 >/dev/null

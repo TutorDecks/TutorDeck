@@ -1,0 +1,14 @@
+family_ref,family_name,guardian_name,relation,phone,email,main
+F0001,Ban family,Evran Ban,Mother,91000001,guardian1@example.test,Y
+F0001,Ban family,Makeh Ban,Father,81000002,,N
+F0002,Zho family,Lukes Zho,Mother,91000003,guardian2@example.test,Y
+F0003,Baw family,Lunas Baw,Mother,91000004,guardian3@example.test,Y
+F0003,Baw family,Nidoy Baw,Father,81000005,,N
+F0004,Ngn family,Malen Ngn,Mother,91000006,guardian4@example.test,Y
+F0004,Ngn family,Davin Ngn,Father,81000007,,N
+F0005,Yom family,Ialoh Yom,Mother,91000008,guardian5@example.test,Y
+F0005,Yom family,Keran Yom,Father,81000009,,N
+F0006,Bam family,Ranay Bam,Mother,91000010,guardian6@example.test,Y
+F0006,Bam family,Kasun Bam,Father,81000011,,N
+F0007,Zho family,Jomoh Zho,Mother,91000012,guardian7@example.test,Y
+F0007,Zho family,Juley Zho,Father,81000013,,N
