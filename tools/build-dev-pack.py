@@ -102,7 +102,7 @@ def main():
         assert m in allm, "run.sh no longer lists " + m
     assert allm[:len(STANDARD)] == STANDARD, "the standard migrations must come first in run.sh: %s" % allm[:len(STANDARD)]
     new = [m for m in allm if m not in ON_DEV and m not in LATER]
-    assert new == ["tutor_own_lessons", "import", "centre_tutor_pay", "statement_matching", "invoice_email", "makeup_credits", "org_export"], "unexpected pack order: %s" % new
+    assert new == ["b5_fix", "tutor_own_lessons", "import", "centre_tutor_pay", "statement_matching", "invoice_email", "makeup_credits", "org_export"], "unexpected pack order: %s" % new
     tables, funcs = [], []
     for m in new:
         t, f = names(read("db/migration_%s.sql" % m))

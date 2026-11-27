@@ -94,6 +94,8 @@
 
   // ---- the invoice run's messages about deposits ----
   function runDepositNote(p) { return (p && p.deposit_note) || ""; }
+  // "No deposit: Kid has no lesson ready to invoice yet…" (the database's reason starts with a verb, so it reads on after the name)
+  function whyLine(r) { var t = String((r && r.reason) || "").trim(); return t ? "This student " + t.charAt(0).toLowerCase() + t.slice(1) : "No deposit is raised."; }
   function runDepositTotal(p) { var t = (p && p.totals) || {}; return t.deposits ? t.deposits + " " + plural(t.deposits, "deposit", "deposits") + " · " + money(t.deposit_cents) : ""; }
 
   // ---- refusals in plain words (the database's messages are already plain; this strips the code in front) ----
@@ -110,6 +112,6 @@
 
   return { stateChip: stateChip, basisText: basisText, previewLine: previewLine, rowSub: rowSub, rowAmount: rowAmount, summaryLine: summaryLine, shortLine: shortLine,
            emptyText: emptyText, searchRows: searchRows, kindLabel: kindLabel, entryAmount: entryAmount, entryLine: entryLine, canWaive: canWaive, waiveQuestion: waiveQuestion,
-           checkOpening: checkOpening, openingText: openingText, waivedText: waivedText, runDepositNote: runDepositNote, runDepositTotal: runDepositTotal,
+           checkOpening: checkOpening, openingText: openingText, waivedText: waivedText, runDepositNote: runDepositNote, whyLine: whyLine, runDepositTotal: runDepositTotal,
            errorText: errorText, isMissing: isMissing };
 });

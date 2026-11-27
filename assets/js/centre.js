@@ -26,7 +26,7 @@
   function changesBlock(ch, h) {
     var tcc = window.TutorChangesCore, rows = (ch && ch.rows) || [];
     if (!tcc || !rows.length) return "";
-    return '<div class="ch-h">Tutor changes</div><div class="card ch-list" id="ch-changes">' + rows.slice(0, 20).map(function (r) {
+    return '<div class="ch-h">Tutor changes</div><div class="card ch-list" id="ch-changes">' + rows.slice(0, 50).map(function (r) {
       var href = "centre-timetable?id=" + encodeURIComponent(h.org_id) + (r.kind === "slot" || r.kind === "run" || !r.lesson_date ? "&view=next14" : "&date=" + encodeURIComponent(r.lesson_date) + "&view=day");
       var cc = tcc.confirmChip(r);
       return '<a class="ch-chg" href="' + esc(href) + '"><span class="ch-chg-main"><span class="ch-chg-t">' + esc(tcc.headline(r)) + '</span><span class="ch-chg-d">' + esc(tcc.detail(r)) +

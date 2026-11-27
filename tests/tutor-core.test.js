@@ -245,7 +245,7 @@ test("T6.2 every refusal of a move, put-back or cancel is said in plain words; n
 test("T6.2 why a lesson shows no button, and the end of a moved lesson", () => {
   assert.ok(/less than 24 hours/.test(T.blockText("TOO_LATE", { min_notice_hours: 24 })) && /less than 1 hour,/.test(T.blockText("TOO_LATE", { min_notice_hours: 1 })));
   assert.ok(/already marked/.test(T.blockText("ALREADY_MARKED")) && /closed/.test(T.blockText("LOCKED")) && /already started/.test(T.blockText("PAST")) && /all the changes/.test(T.blockText("LIMIT")));
-  assert.strictEqual(T.blockText("NOT_FOUND"), ""); assert.strictEqual(T.blockText("SOMETHING_ELSE"), ""); assert.strictEqual(T.blockText(null), "");
+  assert.strictEqual(T.blockText("NOT_FOUND"), "Ask an admin to assign this student to you before you can change this lesson."); assert.strictEqual(T.blockText("SOMETHING_ELSE"), ""); assert.strictEqual(T.blockText(null), "");
   for (const c of ["TOO_LATE", "PAST", "ALREADY_MARKED", "CANCELLED", "LOCKED", "LIMIT"]) assert.ok(!/\b(rate|price|amount|paid|compensation|charge|fee|cents|invoice|invoiced)\b/i.test(T.blockText(c, { min_notice_hours: 24 })), c);
   assert.strictEqual(T.endTime("16:30:00", 90), "18:00"); assert.strictEqual(T.endTime("09:00", 60), "10:00"); assert.strictEqual(T.endTime("22:59", 60), "23:59");
   assert.strictEqual(T.endTime("23:30", 60), null, "past midnight"); assert.strictEqual(T.endTime("", 60), null); assert.strictEqual(T.endTime("10:00", 0), null); assert.strictEqual(T.endTime("nope", 60), null);

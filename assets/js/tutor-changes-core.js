@@ -52,7 +52,7 @@
     return [r.what === "cancelled" ? "Cancelled by" : r.what === "reverted" ? "Put back by" : r.what === "added" ? "Added by" : "Moved by",
             (r.tutor_name || "A tutor") + ", " + ago(r, today) + (r.reason ? ". “" + r.reason + "”" : "") + (r.what === "moved" && r.from_date ? ". Was " + when(r.from_date, r.from_start) : "")];
   }
-  function byLesson(rows) { var m = {}; (rows || []).forEach(function (r) { if (r && r.lesson_id && r.kind !== "slot" && r.kind !== "run") m[r.lesson_id] = r; }); return m; }
+  function byLesson(rows) { var m = {}; (rows || []).forEach(function (r) { if (r && r.lesson_id && r.kind !== "slot" && r.kind !== "run" && !m[r.lesson_id]) m[r.lesson_id] = r; }); return m; }   // rows are newest first: the newest change of a lesson is the one its row shows; slots and runs never land on a lesson row
   // the note under the Home list: what staff are expected to do
   function homeNote(tellFamily) {
     return tellFamily ? "Tell the family about each change. A tutor’s cancel is at no charge to them; decide whether they get a make-up lesson." : "Tutors’ changes are listed for your information.";
