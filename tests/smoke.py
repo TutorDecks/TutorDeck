@@ -20,7 +20,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TESTS = os.path.join(ROOT, "tests")
 PORT = int(os.environ.get("SMOKE_PORT", "8765"))
 BASE = "http://127.0.0.1:%d/" % PORT
-APP = ["home", "calendar", "planner", "ledger", "invoices", "insights", "students", "student", "exams", "settings", "org", "tutor", "tutor-schedule", "centre", "centre-students", "centre-attendance", "centre-timetable", "centre-money", "centre-money?tab=deposits", "centre-people", "tutor-settings"]
+APP = ["home", "calendar", "planner", "ledger", "invoices", "insights", "students", "student", "exams", "settings", "org", "tutor", "tutor-schedule", "centre", "centre-students", "centre-attendance", "centre-timetable", "centre-money", "centre-money?tab=deposits", "centre-people", "tutor-settings", "org-import", "org-wizard-import"]
+# pages that are the same file opened another way (name → address)
+ALIAS = {"org-import": "org?id=o3#import", "org-wizard-import": "org?id=o2#import"}
 PUBLIC = ["index", "login", "privacy", "terms", "changelog", "reset", "confirmed", "pay"]
 failures = []
 
@@ -103,7 +105,7 @@ def browser_checks():
                     page.on("pageerror", lambda e, errs=errs: errs.append("script error: " + str(e)[:300]))
                     page.on("console", lambda m, errs=errs: errs.append("console: " + m.text[:300]) if m.type == "error" and "Failed to load resource" not in m.text else None)
                     page.on("response", lambda r, errs=errs: errs.append("HTTP %d %s" % (r.status, r.url.replace(BASE, "/"))) if r.url.startswith(BASE) and r.status >= 400 else None)
-                    url = BASE + ("" if name == "index" else name) + ("?id=s1" if name == "student" else "")
+                    url = BASE + ALIAS.get(name, ("" if name == "index" else name) + ("?id=s1" if name == "student" else ""))
                     try:
                         page.goto(url, wait_until="load", timeout=20000)
                         page.wait_for_timeout(1500)

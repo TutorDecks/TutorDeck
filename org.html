@@ -94,6 +94,59 @@
   .og-audit td{font-size:13px;vertical-align:top;padding:7px 8px 7px 0;border-bottom:1px solid var(--line)}
   .og-audit .when{white-space:nowrap;color:var(--muted)}
   .og-empty{text-align:center;padding:28px 16px}
+  /* import page (wizard step 9 and Settings > Import) */
+  .imp h3{font-size:15px;font-weight:800;margin:22px 0 6px}
+  .imp h3:first-child{margin-top:4px}
+  .imp h4{font-size:14px;font-weight:800;margin:16px 0 6px}
+  .imp-sub{font-size:13.5px;color:var(--muted);margin:0 0 12px;line-height:1.5}
+  .imp-meta{font-size:12.5px;color:var(--muted);font-weight:500}
+  .imp-help{font-size:12.5px;color:var(--muted);margin:6px 0 0;line-height:1.45}
+  .imp-list{display:flex;flex-direction:column;gap:8px}
+  .imp-file{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .imp-file-h{display:flex;align-items:center;gap:10px}
+  .imp-file-h .grow{flex:1;min-width:0}
+  .imp-file .btn{padding:7px 14px;font-size:13px;flex:none}
+  .imp-later{opacity:1;background:var(--bg)}
+  .imp-tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--muted);margin-left:6px;vertical-align:1px}
+  .imp-file details{margin-top:8px}
+  .imp-file summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--accent-ink)}
+  .imp-scroll{overflow-x:auto}
+  .imp-tbl{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0 2px}
+  .imp-tbl th{text-align:left;font-size:12px;color:var(--muted);font-weight:700;padding:6px 10px 6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+  .imp-tbl td{padding:7px 10px 7px 0;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.4}
+  .imp-tbl td code,.imp-cols code{font-size:12.5px;word-break:break-word}
+  .imp-tbl td[data-label="Value"]{min-width:120px}
+  .imp-req{font-size:11px;font-weight:700;color:var(--accent-ink);margin-left:4px}
+  .imp-drop{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1.5px dashed var(--line);border-radius:12px;padding:16px;cursor:pointer;position:relative}
+  .imp-drop.over,.imp-drop:focus-within{border-color:var(--accent);background:var(--accent-soft)}
+  .imp-drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+  .imp-priv{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+  .imp-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .imp-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:20px;padding:5px 6px 5px 12px;font-size:13px}
+  .imp-chip.bad{border-color:var(--owed)}
+  .imp-x{all:unset;cursor:pointer;color:var(--muted);font-size:18px;line-height:1;padding:2px 8px;border-radius:12px}
+  .imp-x:hover,.imp-x:focus-visible{background:rgba(180,67,47,.08);color:var(--owed)}
+  .imp-status{font-size:14px;margin:0 0 10px;padding:10px 12px;border-radius:10px;background:var(--bg);line-height:1.45}
+  .imp-status.bad{border-left:3px solid var(--owed)} .imp-status.ok{border-left:3px solid var(--accent)}
+  .imp-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px}
+  .imp-actions .btn{padding:7px 14px;font-size:13px}
+  .imp-sev{display:inline-block;font-size:11px;font-weight:800;padding:1px 7px;border-radius:20px;margin-right:4px;white-space:nowrap}
+  .imp-sev.error{background:rgba(180,67,47,.12);color:var(--owed)} .imp-sev.warning{background:rgba(180,83,9,.12);color:var(--warn)}
+  .imp-notes{margin:8px 0;font-size:13px;color:var(--muted)} .imp-notes summary{cursor:pointer} .imp-notes ul{margin:6px 0 0;padding-left:20px;line-height:1.5}
+  .imp-sum{width:100%;border-collapse:collapse;font-size:14px;margin:4px 0 6px}
+  .imp-sum th{text-align:left;font-weight:800;padding:8px 14px 8px 0;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+  .imp-sum td{padding:8px 0;border-bottom:1px solid var(--line);color:var(--muted)}
+  .imp-go{margin:14px 0 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .imp-go .btn:disabled{opacity:.5;cursor:not-allowed}
+  @media(max-width:600px){
+    .imp-file-h{flex-wrap:wrap}
+    .imp-tbl thead{position:absolute;left:-9999px}
+    .imp-tbl,.imp-tbl tbody,.imp-tbl tr,.imp-tbl td{display:block;width:100%}
+    .imp-tbl tr{border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin:0 0 8px}
+    .imp-tbl td{border:0;padding:3px 0}
+    .imp-tbl td::before{content:attr(data-label);display:block;font-size:11px;font-weight:700;color:var(--muted)}
+    .imp-sum th{white-space:normal}
+  }
 </style>
 <link rel="stylesheet" href="assets/css/dark.css?v=354">
 </head>
@@ -113,6 +166,8 @@
 <script src="assets/js/org-settings.js?v=354"></script>
 <script src="assets/js/invite-status.js?v=354"></script>
 <script src="assets/js/holiday-library.js?v=354"></script>
+<script src="assets/js/import-core.js?v=354"></script>
+<script src="assets/js/import-page.js?v=354"></script>
 <script src="assets/js/org.js?v=354"></script>
 </body>
 </html>
