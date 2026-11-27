@@ -415,10 +415,13 @@ window.TL = (function () {
       if (!G.length) G = CENTRE_GROUPS;
     }
     var tabQ = (/[?&]tab=([a-z]+)/.exec(location.search) || [])[1] || "";
-    var on = (active === "centre-students" || active === "centre-attendance" || active === "centre-timetable" || active === "centre-money") ? (G.filter(function (g) { return g.page === active; })[0] || G[0] || {}).id
+    var on = active === "centre-tutor-pay" ? "orgpay"                                                                        // (T4 S7) Tutor pay lives in the More sheet, so no main tab is active
+           : (active === "centre-students" || active === "centre-attendance" || active === "centre-timetable" || active === "centre-money") ? (G.filter(function (g) { return g.page === active; })[0] || G[0] || {}).id
            : active === "centre" ? (G.filter(function (g) { return (g.tab || "") === tabQ; })[0] || G[0] || {}).id
            : active === "org" ? (/[?&]id=/.test(location.search) ? "orgsettings" : "orglist") : active;
     var more = [];
+    // (T4 S7) Tutor pay: rates, the pay list and the lessons-taught report; only the owner and staff with "Run tutor pay" (tutors never see pay)
+    if (o.role !== "tutor" && OC && OC.can(o, "run_tutor_pay")) more.push({ id: "orgpay", label: "Tutor pay", href: "centre-tutor-pay?id=" + encodeURIComponent(o.id), ic: "money" });
     if (o.role !== "tutor") more.push({ id: "orgsettings", label: "Centre settings", href: "org?id=" + encodeURIComponent(o.id), ic: "settings" },
                                       { id: "orglist", label: "Your centres", href: "org", ic: "students" });
     return { groups: G, active: on, extras: more.concat(EXTRA.filter(function (n) { return n.id === "settings"; })) };
@@ -712,6 +715,7 @@ window.TL = (function () {
                  "centre-attendance": ["Attendance", "Mark lessons and correct marks"],
                  "centre-timetable": ["Timetable", "The week at your centre"],
                  "centre-money": ["Money", "Invoice run"],
+                 "centre-tutor-pay": ["Tutor pay", "Rates, pay list and lessons taught"],
                  org: ["Organisation", "Your tuition centre, set up your way"],
                  tutor: ["My lessons", "Your classes and attendance"],
                  exams: ["Exams", "Upcoming assessments"],

@@ -27,7 +27,7 @@
   // Centre money (T4, steps S0-S8): the options exist from S0 so owners can see what is coming; nothing reads them until their step ships.
   var DEPOSIT_HELP = "A refundable deposit is money you hold for the family, not income. It is invoiced separately, once, with a student's first invoice. When a student leaves, it is refunded, kept against unpaid invoices or kept by the centre, always approved and recorded step by step. A top-up, and using it as the final month's fee, come in a later update.";
   var LATE_HELP = "When a lesson invoice is still unpaid after its grace period, TutorDeck suggests a late fee. A person approves or waives each one (a reason is needed to waive); nothing is added to a family’s bill on its own. An approved fee is its own small invoice. Adding it as a line on the family’s next invoice comes in a later update.";
-  var PAY_SOON = "Percentage pay and pay runs come in a later update.";
+  var PAY_SOON = "Showing tutors their own pay comes in a later update.";
   var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
   // Field: { path, label, type, options?, help?, soon?, show?(s) }
   // types: text, email, color, toggle, select, number, money (cents), percent (bp), days, list (number list),
@@ -197,34 +197,33 @@
         help: "Tutors always see student names and levels." }
     ]},
     { id: "tutor_pay", n: 8, title: "Tutor pay", fields: [
-      { path: "tutor_pay.mode", label: "Tutor pay", type: "select", options: [o("off", "Off"), o("report", "Lessons-taught report only"), o("full", "Full pay calculation")],
-        soonOptions: ["full"] },
+      { path: "tutor_pay.mode", label: "Tutor pay", type: "select", options: [o("off", "Off"), o("report", "Lessons-taught report only"), o("full", "Full pay calculation")] },
       { path: "tutor_pay.payable_when", label: "Pay tutors for a lesson", type: "select", options: [
         o("parent_paid", "Only after the parent's payment is received and reconciled"), o("taught", "As soon as it is taught")],
         help: "With the first option, unpaid lessons roll into the next pay period and show as pending. Changing this later is recorded in the audit log." },
       { path: "tutor_pay.rate_model", label: "Pay rate", type: "select", options: [
         o("per_lesson", "Per lesson"), o("per_hour", "Per hour"), o("per_student_lesson", "Per student per lesson"), o("monthly_fixed", "Fixed monthly amount"),
         o("percent_of_fee", "A percentage of the fee the family is billed")],
-        soonOptions: ["percent_of_fee"], groupOnlyOptions: ["per_student_lesson"], show: function (s) { return s.tutor_pay.mode !== "off"; } },
-      { path: "tutor_pay.percent_base", label: "A percentage is worked out on", type: "select", soon: true, options: [
+        groupOnlyOptions: ["per_student_lesson"], show: function (s) { return s.tutor_pay.mode !== "off"; } },
+      { path: "tutor_pay.percent_base", label: "A percentage is worked out on", type: "select", options: [
         o("billed_after_discounts", "The fee billed, after discounts and before GST"), o("list_price", "The list price, before discounts and GST")],
-        help: "Never includes GST, late fees or deposits. " + PAY_SOON },
-      { path: "tutor_pay.part_payments", label: "When the family pays part of an invoice", type: "select", soon: true, options: [
+        help: "Never includes GST, late fees or deposits." },
+      { path: "tutor_pay.part_payments", label: "When the family pays part of an invoice", type: "select", options: [
         o("after_full", "Pay the tutor only once that lesson's line is fully paid"), o("pro_rata", "Pay in proportion to what was paid")],
-        soonOptions: ["pro_rata"], help: PAY_SOON },
-      { path: "tutor_pay.cancelled_lessons", label: "Cancelled lessons with a fixed rate", type: "select", soon: true, options: [
-        o("pay_if_charged", "Pay the tutor only if the family is charged"), o("pay_rate", "Pay the usual rate"), o("pay_nothing", "Pay nothing")], help: PAY_SOON },
-      { path: "tutor_pay.group_count", label: "A per-student rate counts students who were", type: "select", soon: true, groupOnly: true, options: [
-        o("attended", "Present"), o("enrolled", "Enrolled")], help: PAY_SOON },
-      { path: "tutor_pay.rates_note", label: "Rates", type: "note", soon: true,
-        help: "Each tutor has their own rate, and you can set a different rate for one student. A new rate applies from the date you choose; lessons already taught keep the rate they had. " + PAY_SOON },
+        help: "Only matters when tutors are paid after the parent's payment is received." },
+      { path: "tutor_pay.cancelled_lessons", label: "Cancelled lessons with a fixed rate", type: "select", options: [
+        o("pay_if_charged", "Pay the tutor only if the family is charged"), o("pay_rate", "Pay the usual rate"), o("pay_nothing", "Pay nothing")] },
+      { path: "tutor_pay.group_count", label: "A per-student rate counts students who were", type: "select", groupOnly: true, options: [
+        o("attended", "Present"), o("enrolled", "Enrolled")] },
+      { path: "tutor_pay.rates_note", label: "Rates", type: "note",
+        help: "Each tutor has their own rate, and you can set a different rate for one student or level. Set them in Money > Tutor pay. A new rate applies from the date you choose; lessons already taught keep the rate they had." },
       { path: "tutor_pay.adjustments", label: "Bonuses and deductions (with a reason)", type: "toggle", show: function (s) { return s.tutor_pay.mode === "full"; } },
       { path: "tutor_pay.cycle.cutoff_day", label: "Pay period ends on day", type: "number", show: function (s) { return s.tutor_pay.mode !== "off"; } },
       { path: "tutor_pay.cycle.pay_day", label: "Pay day", type: "number", show: function (s) { return s.tutor_pay.mode === "full"; } },
       { path: "tutor_pay.payout_method", label: "Paying tutors", type: "select", options: [o("manual_list", "A list for manual transfers"), o("bank_file", "Bulk payment file for your bank")],
         soonOptions: ["bank_file"], show: function (s) { return s.tutor_pay.mode === "full"; } },
-      { path: "tutor_pay.tutor_visibility", label: "Tutors see", type: "select", options: [o("running", "Running earnings during the month"), o("closed_only", "Only closed pay statements")],
-        show: function (s) { return s.tutor_pay.mode !== "off"; } },
+      { path: "tutor_pay.tutor_visibility", label: "Tutors see", type: "select", soon: true, options: [o("running", "Running earnings during the month"), o("closed_only", "Only closed pay statements")],
+        help: "For now tutors never see rates or pay in TutorDeck: only you and staff you allow can. " + PAY_SOON, show: function (s) { return s.tutor_pay.mode !== "off"; } },
       { path: "tutor_pay.employment_note", label: "", type: "note",
         help: "Each tutor is an employee or a freelancer (set when you add them). Employees may need itemised payslips and CPF; please confirm your obligations with your accountant." }
     ]},
