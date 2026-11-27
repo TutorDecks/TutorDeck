@@ -569,8 +569,9 @@
     var errors = issues.filter(function (x) { return x.severity === "error"; }), warnings = issues.filter(function (x) { return x.severity === "warning"; }), notesOut = issues.filter(function (x) { return x.severity === "note"; });
     var ready = errors.length === 0 && missing.length === 0;
     var summary = ready ? summarise(T) : null;
+    var payload = ready ? buildPayload(T) : null;
     var t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
-    return { files: fileInfo, errors: errors, warnings: warnings, notes: notesOut, missing: missing, ready: ready, summary: summary, ms: Math.round((t1 - t0) * 10) / 10 };
+    return { files: fileInfo, errors: errors, warnings: warnings, notes: notesOut, missing: missing, ready: ready, summary: summary, payload: payload, ms: Math.round((t1 - t0) * 10) / 10 };
   }
 
   function summarise(T) {
@@ -587,6 +588,85 @@
     return s;
   }
 
+  // ------------------------------------------------------------------ what is sent to the database (T33 I1)
+  // Only checked values, never raw cells: the same four stage-A files, one object per row, with the file line so the server can say "line 17".
+  // Money is integer cents, the weekday is 0 = Monday (the Planner's count), times are HH:MM. Tutor pay columns and the money files are NOT sent:
+  // they belong to the money stage. Nothing here is stored by the browser; the page sends it in ONE call.
+  function buildPayload(T) {
+    function pick(rows, fn) { return rows.map(function (r) { var o = fn(r.v, r); o.line = r.line; return o; }); }
+    return {
+      families: pick(T.families.rows, function (v) { return { family_ref: v.family_ref, family_name: v.family_name, guardian_name: v.guardian_name, relation: v.relation, phone: v.phone, email: v.email, main: v.main }; }),
+      students: pick(T.students.rows, function (v) { return { student_ref: v.student_ref, family_ref: v.family_ref, student_name: v.student_name, level: v.level, lesson_location: v.lesson_location, online_link: v.online_link, start_date: v.start_date, notes: v.notes }; }),
+      tutors: pick(T.tutors.rows, function (v) { return { tutor_email: v.tutor_email, tutor_name: v.tutor_name, phone: v.phone, subjects: v.subjects, employment: v.employment }; }),
+      weekly_lessons: pick(T.weekly_lessons.rows, function (v) {
+        return { student_ref: v.student_ref, tutor_email: v.tutor_email, day: DAYS.indexOf(v.day), start: fmtTime(v.start), end: fmtTime(v.end), subject: v.subject, level: v.level, rate_cents: v.family_rate_per_hour };
+      })
+    };
+  }
+
+  // The database re-checks every rule and answers with codes only (file, line, column, code). These are the words for them.
+  var SERVER_FILE = { families: "families.csv", students: "students.csv", tutors: "tutors.csv", weekly_lessons: "weekly_lessons.csv", payload: "your files" };
+  var SERVER_TEXT = {
+    REQUIRED: ["is empty, but this column is required.", "Fill it in."], TOO_LONG: ["is too long.", "Shorten it to the limit shown in the template."],
+    BAD_PHONE: ["is not a valid phone number.", "Use 6 to 15 digits (tutors: a Singapore number)."], BAD_EMAIL: ["is not a valid email address.", "Write it like name@example.com."],
+    NEED_CONTACT: ["has no phone and no email.", "Each guardian needs a phone number or an email address."], FAMILY_NAME_MISMATCH: ["is not the same name as the other rows of this family.", "Use one family_name for every row of a family."],
+    TOO_MANY_GUARDIANS: ["is the 7th guardian of a family; the limit is 6.", "Remove the extra guardians."], MULTIPLE_MAIN: ["is a second main contact for the family.", "Only one guardian per family can be Y."],
+    DUPLICATE_ROW: ["repeats another row.", "Delete the repeated row."], BAD_URL: ["is not a link starting with https://", "Paste the full link."], BAD_DATE: ["is not a real date.", "Use YYYY-MM-DD or DD/MM/YYYY."],
+    FUTURE_DATE: ["is too far ahead.", "Check the year."], DUPLICATE_KEY: ["is used twice.", "Give each row its own code."], UNKNOWN_FAMILY: ["is not a family in your files or in TutorDeck.", "Add the family to families.csv or correct the code."],
+    DUPLICATE_STUDENT_NAME: ["is already a student of this family.", "Check for a repeated row."], BAD_VALUE: ["is not an allowed value.", "Use one of the values in the template."],
+    TUTOR_OTHER_ROLE: ["is the email of someone who already works here as an owner, staff member or parent.", "Remove this tutor, or use another email."],
+    UNKNOWN_STUDENT: ["is not a student in your files or in TutorDeck.", "Add the student to students.csv or correct the code."], UNKNOWN_TUTOR: ["is not a tutor in your files or in TutorDeck.", "Add the tutor to tutors.csv or correct the email."],
+    TUTOR_NOT_AVAILABLE: ["is a tutor who has been switched off.", "Switch the tutor on again in Users, or give the lesson to someone else."], BAD_TIME: ["is not a time.", "Use 24-hour HH:MM."],
+    END_BEFORE_START: ["is not after the start time.", "Make the end later than the start."], BAD_DURATION: ["makes a lesson shorter than 15 minutes or longer than 8 hours.", "Check the times."],
+    OUT_OF_RANGE: ["is outside the allowed range.", "Check the amount."], SLOT_CLASH: ["overlaps another lesson of the same student on that day (in your files or already in TutorDeck).", "A student cannot have two lessons at the same time."],
+    BAD_PAYLOAD: ["could not be read.", "Reload the page and add the files again."], TOO_MANY_ROWS: ["has more rows than one import takes.", "Split the file in two."]
+  };
+  // → the same shape as a browser-side problem, so the page can show it in the same table
+  function serverIssue(e) {
+    var t = SERVER_TEXT[e.code] || ["did not pass TutorDeck's check (" + e.code + ").", "Check the row."];
+    return { severity: "error", file: SERVER_FILE[e.file] || e.file, line: e.line || 0, column: e.column || "", value: "", code: e.code, message: t[0], fix: t[1] };
+  }
+  function n0(x) { return Number(x || 0).toLocaleString("en-SG"); }
+  function plural(n, one, many) { return n0(n) + " " + (n === 1 ? one : many); }
+  // the plain-words result of a commit
+  function resultLines(res) {
+    var c = res.created || {}, k = res.skipped || {}, L = [];
+    if (!(c.students || c.tutors || c.weekly_lessons || c.guardians)) { L.push("Nothing new: everything in your files is already in TutorDeck, so nothing was added."); }
+    else {
+      L.push("Added " + plural(c.students, "student", "students") + " in " + plural(c.families, "new family", "new families") + " (" + plural(c.guardians, "guardian", "guardians") + ").");
+      L.push("Saved " + plural(c.tutors, "tutor invitation", "tutor invitations") + ". No email was sent: you decide when each tutor is invited.");
+      L.push("Added " + plural(c.weekly_lessons, "weekly lesson", "weekly lessons") + ".");
+    }
+    var skipped = (k.students || 0) + (k.tutors || 0) + (k.weekly_lessons || 0) + (k.families || 0);
+    if (skipped) L.push(n0(skipped) + " rows were already in TutorDeck and were left as they are (an import never changes or deletes anything that exists).");
+    var d = (res.warnings || []).length;
+    if (d) L.push(plural(d, "row differs", "rows differ") + " from what is already in TutorDeck. They were not changed. Edit them in TutorDeck if the file is right.");
+    return L;
+  }
+  var REASON = { EDITED: "someone changed it after the import", ACTIVITY: "lessons of it were marked, charged or invoiced, or it has exams or invoices", IN_USE: "something that stays still depends on it", ACCEPTED: "the tutor accepted the invitation and has a login" };
+  var KIND = { family: "family", student: "student", tutor: "tutor", slot: "weekly lesson", guardian: "guardian" };
+  var TBL = { students: "student", households: "family", guardians: "guardian", memberships: "tutor invitation", recurring_slots: "weekly lesson" };
+  function deletedLine(del) {
+    var parts = [];
+    ["students", "households", "guardians", "memberships", "recurring_slots"].forEach(function (t) { if (del && del[t]) parts.push(n0(del[t]) + " " + (del[t] === 1 ? TBL[t] : TBL[t] === "family" ? "families" : TBL[t] + "s")); });
+    return parts.length ? parts.join(", ") : "nothing";
+  }
+  // the plain-words result (or preview) of an undo; kept rows grouped by reason
+  function undoLines(res, preview) {
+    var L = [], del = preview ? res.would_delete : res.deleted;
+    L.push((preview ? "Undo will remove: " : "Removed: ") + deletedLine(del) + ".");
+    var byReason = {};
+    (res.kept || []).forEach(function (x) { (byReason[x.reason] = byReason[x.reason] || []).push(x); });
+    Object.keys(byReason).forEach(function (r) {
+      var items = byReason[r].filter(function (x) { return x.type !== "guardian"; });
+      var kinds = {}; items.forEach(function (x) { kinds[KIND[x.type] || x.type] = (kinds[KIND[x.type] || x.type] || 0) + 1; });
+      var txt = Object.keys(kinds).map(function (k) { return kinds[k] + " " + k + (kinds[k] === 1 ? "" : "s"); }).join(", ");
+      if (txt) L.push((preview ? "Stays: " : "Left in place: ") + txt + ", because " + (REASON[r] || "it is in use") + ".");
+    });
+    if (res.already_gone) L.push(n0(res.already_gone) + " records had already been removed by hand.");
+    return L;
+  }
+
   // "students.csv, line 17, level: "Pri 5" is not recognised. Use P5."
   function describe(it) {
     var where = it.file + (it.line ? ", line " + it.line : "") + (it.column ? ", " + it.column : "");
@@ -600,6 +680,6 @@
     MAX_CHARS: MAX_CHARS, LEVELS: LEVELS, DAYS: DAYS, FILES: FILES, FILE_ORDER: FILE_ORDER, STAGE_A: STAGE_A,
     readCsv: readCsv, toCsv: toCsv, templateRows: templateRows, templateCsv: templateCsv, readmeText: readmeText,
     parseDate: parseDate, parseTime: parseTime, parseCents: parseCents, fmtMoney: fmtMoney, suggestLevel: suggestLevel,
-    validateFiles: validateFiles, detectText: detectText, describe: describe, errorsCsv: errorsCsv, detectFile: detectFile, norm: norm
+    validateFiles: validateFiles, buildPayload: buildPayload, serverIssue: serverIssue, SERVER_TEXT: SERVER_TEXT, resultLines: resultLines, undoLines: undoLines, detectText: detectText, describe: describe, errorsCsv: errorsCsv, detectFile: detectFile, norm: norm
   };
 });

@@ -214,13 +214,99 @@ test("the 3-error fixture used for the click-through has 3 errors and no warning
   assert.deepEqual(g.planted.map((p) => p.severity), ["error", "error", "error"]);
 });
 
-// ---------------------------------------------------------------- privacy: nothing leaves the browser
-test("the import code never talks to the network or saves the files", () => {
+// ---------------------------------------------------------------- privacy: the files stay in the browser until the owner presses Import now
+test("the import code never saves the files, never logs them, and talks to the database only through the five import functions", () => {
   const dir = path.join(__dirname, "../assets/js");
-  for (const f of ["import-core.js", "import-page.js"]) {
-    const src = fs.readFileSync(path.join(dir, f), "utf8").replace(/\/\/.*$/gm, "");
-    for (const bad of [/\bfetch\s*\(/, /XMLHttpRequest/, /sendBeacon/, /WebSocket/, /localStorage/, /sessionStorage/, /indexedDB/, /TL\.store/, /\bsb\s*\(/, /\.rpc\s*\(/, /\.from\s*\(\s*["']/, /supabase/i, /new Image\s*\(/]) {
-      assert.ok(!bad.test(src), f + " must not use " + bad);
-    }
+  const strip = (f) => fs.readFileSync(path.join(dir, f), "utf8").replace(/\/\/.*$/gm, "");
+  const common = [/\bfetch\s*\(/, /XMLHttpRequest/, /sendBeacon/, /WebSocket/, /localStorage/, /sessionStorage/, /indexedDB/, /TL\.store/, /\.from\s*\(\s*["']/, /supabase/i, /new Image\s*\(/, /\bconsole\./];
+  const core = strip("import-core.js");
+  for (const bad of common.concat([/\bsb\s*\(/, /\.rpc\s*\(/, /window\.sb/])) assert.ok(!bad.test(core), "import-core.js must not use " + bad);
+  const page = strip("import-page.js");
+  for (const bad of common) assert.ok(!bad.test(page), "import-page.js must not use " + bad);
+  const calls = [...page.matchAll(/\.rpc\(\s*"([a-z_]+)"/g)].map((m) => m[1]);
+  assert.ok(calls.length >= 5, "the page calls the database");
+  for (const c of calls) assert.ok(["import_dry_run", "import_commit", "import_history", "import_undo_preview", "import_undo"].includes(c), "the page may call only the import functions, not " + c);
+  assert.equal([...page.matchAll(/\.rpc\(/g)].length, calls.length, "every call names its function as a plain string");
+});
+
+// ---------------------------------------------------------------- T33 I1: what the page sends to the database, and how it explains the answers
+const SQL = fs.readFileSync(path.join(__dirname, "../db/migration_import.sql"), "utf8");
+
+test("buildPayload: the four stage-A files, checked values only, cents and Monday = 0", () => {
+  const g = generate({ errors: 0, students: 20, tutors: 6, lessons: 30 });
+  const r = IC.validateFiles(Object.keys(g.files).map((f) => ({ name: f, text: g.files[f] })));
+  assert.ok(r.ready && r.payload);
+  assert.deepEqual(Object.keys(r.payload).sort(), ["families", "students", "tutors", "weekly_lessons"]);
+  assert.equal(r.payload.students.length, 20);
+  assert.equal(r.payload.tutors.length, 6);
+  assert.equal(r.payload.weekly_lessons.length, 30);
+  for (const w of r.payload.weekly_lessons) {
+    assert.ok(Number.isInteger(w.rate_cents) && w.rate_cents >= 0 && w.rate_cents <= 100000, "rate in whole cents");
+    assert.ok(Number.isInteger(w.day) && w.day >= 0 && w.day <= 6, "day 0-6");
+    assert.match(w.start, /^\d{2}:\d{2}$/); assert.match(w.end, /^\d{2}:\d{2}$/);
+    assert.ok(Number.isInteger(w.line) && w.line >= 2, "carries its file line");
   }
+  for (const t of r.payload.tutors) assert.deepEqual(Object.keys(t).sort(), ["employment", "line", "phone", "subjects", "tutor_email", "tutor_name"], "no pay columns are sent");
+  // money files are never part of the payload
+  const withMoney = IC.validateFiles(Object.keys(g.files).map((f) => ({ name: f, text: g.files[f] })));
+  assert.equal(withMoney.payload.deposits, undefined); assert.equal(withMoney.payload.unpaid_invoices, undefined);
+  assert.equal(IC.validateFiles([{ name: "students.csv", text: g.files["students.csv"] }]).payload, null, "no payload until every error is fixed and all four files are there");
+});
+test("buildPayload: a known small file maps cell by cell", () => {
+  const f = {
+    "families.csv": "family_ref,family_name,guardian_name,relation,phone,email,main\nF1,Tan family,Mary Tan,Mother,9123 4501,MARY@example.test,Y\n",
+    "students.csv": "student_ref,family_ref,student_name,level,lesson_location,online_link,start_date,notes\nS1,F1,Ethan Tan,p5,Online,https://meet.example.test/a,12/01/2026,Hi\n",
+    "tutors.csv": "tutor_email,tutor_name,phone,subjects,employment\nAva@Example.test,Ava Lim,9100 0001,Maths,Freelancer\n",
+    "weekly_lessons.csv": "student_ref,tutor_email,day,start,end,subject,level,family_rate_per_hour\nS1,ava@example.test,Wednesday,9:05,10:35,Maths,,55.5\n"
+  };
+  const r = IC.validateFiles(Object.keys(f).map((n) => ({ name: n, text: f[n] })));
+  assert.ok(r.ready, r.errors.map(IC.describe).join("; "));
+  assert.deepEqual(r.payload.families[0], { family_ref: "F1", family_name: "Tan family", guardian_name: "Mary Tan", relation: "Mother", phone: "91234501", email: "mary@example.test", main: true, line: 2 });
+  assert.deepEqual(r.payload.students[0], { student_ref: "S1", family_ref: "F1", student_name: "Ethan Tan", level: "P5", lesson_location: "Online", online_link: "https://meet.example.test/a", start_date: "2026-01-12", notes: "Hi", line: 2 });
+  assert.deepEqual(r.payload.tutors[0], { tutor_email: "ava@example.test", tutor_name: "Ava Lim", phone: "+6591000001", subjects: "Maths", employment: "freelancer", line: 2 });
+  assert.deepEqual(r.payload.weekly_lessons[0], { student_ref: "S1", tutor_email: "ava@example.test", day: 2, start: "09:05", end: "10:35", subject: "Maths", level: null, rate_cents: 5550, line: 2 });
+});
+
+test("every error code the database can return has words in the page (and nothing is invented the other way)", () => {
+  // the codes the SQL puts in its error table: insert into imp_err select 'file', line, 'col', 'CODE'
+  const sqlCodes = new Set([...SQL.matchAll(/insert into imp_err select [^;]*?'([A-Z_]+)'\s+from/g)].map((m) => m[1]));
+  for (const c of ["BAD_PAYLOAD", "TOO_MANY_ROWS"]) sqlCodes.add(c);                      // returned directly, not through the table
+  assert.ok(sqlCodes.size >= 25, "found the codes in the migration (" + sqlCodes.size + ")");
+  for (const c of sqlCodes) assert.ok(IC.SERVER_TEXT[c], "the page has words for " + c);
+  for (const c of Object.keys(IC.SERVER_TEXT)) assert.ok(sqlCodes.has(c), c + " is described but the database never returns it");
+});
+test("every code the SQL returns that the page also checks uses the same code name", () => {
+  const src = fs.readFileSync(path.join(__dirname, "../assets/js/import-core.js"), "utf8");
+  const jsCodes = new Set([...src.matchAll(/"([A-Z][A-Z_]{3,})"/g)].map((m) => m[1]));
+  const sqlOnly = new Set(["BAD_PAYLOAD", "TUTOR_OTHER_ROLE", "TUTOR_NOT_AVAILABLE"]);          // rules about what is already in the centre: only the database can see them
+  for (const c of Object.keys(IC.SERVER_TEXT)) if (!sqlOnly.has(c)) assert.ok(jsCodes.has(c), c + " is also a code of the page's own checks");
+});
+test("serverIssue: a database error reads like a page error, with the file name and no cell text", () => {
+  const i = IC.serverIssue({ file: "weekly_lessons", line: 212, column: "start", code: "SLOT_CLASH" });
+  assert.equal(i.file, "weekly_lessons.csv"); assert.equal(i.line, 212); assert.equal(i.column, "start"); assert.equal(i.severity, "error"); assert.equal(i.value, "");
+  assert.match(IC.describe(i), /weekly_lessons\.csv, line 212, start: .*overlaps/);
+  assert.match(IC.serverIssue({ file: "students", line: 3, column: "x", code: "SOMETHING_NEW" }).message, /SOMETHING_NEW/, "an unknown code is still shown, not hidden");
+});
+test("resultLines: plain words for a commit", () => {
+  const L = IC.resultLines({ created: { families: 300, guardians: 600, students: 400, tutors: 200, weekly_lessons: 1640 }, skipped: { students: 0, tutors: 0, weekly_lessons: 0, families: 0 }, warnings: [] });
+  assert.match(L.join(" "), /Added 400 students in 300 new families \(600 guardians\)/);
+  assert.match(L.join(" "), /Saved 200 tutor invitations\. No email was sent/);
+  assert.match(L.join(" "), /Added 1,640 weekly lessons/);
+  const again = IC.resultLines({ created: { students: 0, tutors: 0, weekly_lessons: 0, guardians: 0 }, skipped: { students: 400, tutors: 200, weekly_lessons: 1640, families: 300 }, warnings: [{}] });
+  assert.match(again[0], /Nothing new/); assert.match(again.join(" "), /2,540 rows were already in TutorDeck/); assert.match(again.join(" "), /1 row differs/);
+  assert.equal(IC.resultLines({ created: { students: 1, tutors: 1, weekly_lessons: 1, guardians: 1, families: 1 }, skipped: {}, warnings: [] })[0].includes("1 student in 1 new family"), true, "singular forms");
+});
+test("undoLines: says what went, and why the rest stayed", () => {
+  const rep = { deleted: { students: 1, recurring_slots: 1 }, kept: [
+    { type: "student", code: "s1", reason: "ACTIVITY" }, { type: "student", code: "s2", reason: "EDITED" }, { type: "tutor", code: "b@x.test", reason: "ACCEPTED" },
+    { type: "guardian", code: null, reason: "IN_USE" }, { type: "slot", code: "k", reason: "ACTIVITY" }], already_gone: 2 };
+  const L = IC.undoLines(rep, false);
+  assert.match(L[0], /^Removed: 1 student, 1 weekly lesson\.$/);
+  assert.ok(L.some((l) => /Left in place: 1 student, 1 weekly lesson, because lessons of it were marked, charged or invoiced/.test(l)));
+  assert.ok(L.some((l) => /1 student, because someone changed it after the import/.test(l)));
+  assert.ok(L.some((l) => /1 tutor, because the tutor accepted the invitation/.test(l)));
+  assert.ok(L.some((l) => /2 records had already been removed by hand/.test(l)));
+  assert.ok(!L.some((l) => /guardian/.test(l)), "guardians follow their family and are not listed one by one");
+  assert.match(IC.undoLines({ would_delete: { students: 3 }, kept: [] }, true)[0], /^Undo will remove: 3 students\.$/);
+  assert.match(IC.undoLines({ deleted: {}, kept: [] }, false)[0], /Removed: nothing/);
 });

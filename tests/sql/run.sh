@@ -38,8 +38,19 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/lockdown_test.sql
 $P -f db/migration_org_separation.sql
 $P -f db/migration_org_separation.sql                       # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_separation_test.sql
+$P -f db/migration_import.sql
+$P -f db/migration_import.sql                               # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/import_test.sql
+if command -v node >/dev/null 2>&1; then                    # the page's own payload through the database (JS and SQL checks agree)
+  export IMPORT_PAYLOAD_FILE="$(mktemp)"; node tests/fixtures/make-import-payload.js > "$IMPORT_PAYLOAD_FILE"
+  psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/import_payload_test.sql; rm -f "$IMPORT_PAYLOAD_FILE"
+else echo "SKIP import payload test (node not installed)"; fi
+$P -f db/migration_import_down.sql
+$P -f db/migration_import_down.sql                          # undo is safe to run twice
 $P -f db/migration_org_separation_down.sql
 $P -f db/migration_org_separation.sql                       # and again, so the shipped state is what the undo chain below unwinds
+$P -f db/migration_import.sql                               # (import too: the undo chain starts from the full set)
+$P -f db/migration_import_down.sql
 $P -f db/migration_org_separation_down.sql
 $P -f db/migration_function_lockdown_down.sql
 $P -f db/migration_org_delete_down.sql

@@ -120,7 +120,7 @@
     bindFields(step);
     if (step.custom === "calendar") bindCalendar();
     if (step.custom === "users") bindUsers();
-    if (step.custom === "import" && canImport() && window.ImportPage) window.ImportPage.mount($("imp-root"));
+    if (step.custom === "import" && canImport() && window.ImportPage) window.ImportPage.mount($("imp-root"), { orgId: st.org.id, getBillingStart: function () { return S.get(st.draft, "billing.starts_from") || ""; }, goBilling: function () { go("billing"); } });
     if (step.custom === "review") bindReview();
     bindNav(step);
   }
@@ -154,7 +154,7 @@
     } else {
       var shown = f.type === "money" ? (v == null ? "" : M.format(v, { symbol: false }).replace(/,/g, "")) : f.type === "percent" ? (v == null ? "" : String(v / 100))
         : f.type === "list" ? (v || []).join(", ") : (v == null ? "" : v);
-      var t = f.type === "email" ? "email" : f.type === "color" ? "color" : (f.type === "number" || f.type === "days") ? "number" : "text";
+      var t = f.type === "email" ? "email" : f.type === "color" ? "color" : f.type === "date" ? "date" : (f.type === "number" || f.type === "days") ? "number" : "text";
       var extra = (f.type === "money" || f.type === "percent") ? ' inputmode="decimal"' : t === "number" ? ' min="0" step="1"' : "";
       input = '<input id="' + id + '" type="' + t + '" data-path="' + f.path + '" data-type="' + f.type + '" value="' + esc(shown) + '"' + extra + (lock ? " disabled" : "") +
         (t === "color" ? ' style="height:44px;padding:4px"' : "") + ">";
@@ -430,7 +430,7 @@
     });
   }
 
-  // ------------------------------------------------------------------ step 9: import (templates + check; saving comes in the next step)
+  // ------------------------------------------------------------------ step 9: import (templates, check, import, undo, history: assets/js/import-page.js)
   function importHtml() {
     if (!canImport()) return '<p class="og-sub" style="margin:0">Only the owner of a centre imports data.</p>';
     return '<p class="og-sub">Bring in your families, students, tutors and weekly lessons from your own sheets. Every row is checked first and problems are listed line by line. ' +
