@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>My lessons · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=354">
+<link rel="stylesheet" href="assets/css/app.css?v=355">
 <script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   /* ---- lesson detail sheet (same component as Exams / Ledger) ---- */
@@ -79,13 +79,24 @@
   .tt-check{display:flex;align-items:center;gap:10px;margin:0 0 16px;font-size:14px;font-weight:600;color:var(--ink);min-height:44px}
   .tt-check input{width:20px;height:20px;accent-color:var(--accent)}
   .tt-ro{margin:0 0 14px;font-size:14px;white-space:pre-wrap}
+  /* (S7b) your own pay */
+  .tt-pay{font-size:12.5px;font-weight:700;color:var(--teal)}
+  .tt-pay.pending{color:#9A4A07;font-weight:600}
+  .tt-paycard{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:baseline;margin:0 0 14px;padding:12px 16px;border:1px solid var(--line);border-radius:14px;background:#fff;text-decoration:none;color:var(--ink)}
+  .tt-paycard:hover{background:#FBFAF7}
+  .tt-paycard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .tt-pc-l{font-size:13px;font-weight:700;color:var(--muted)}
+  .tt-pc-l small{font-weight:600}
+  .tt-pc-v{font-size:22px;font-weight:800;letter-spacing:-.02em;grid-row:1 / span 2;grid-column:2;align-self:center}
+  .tt-pc-n{font-size:12.5px;color:var(--muted)}
   .tt-ro small{display:block;color:var(--muted);font-size:12.5px;font-weight:700;margin-bottom:2px}
 </style>
-<link rel="stylesheet" href="assets/css/dark.css?v=354">
+<link rel="stylesheet" href="assets/css/dark.css?v=355">
 </head>
 <body>
 <div id="view" data-page="tutor">
   <div class="tt-sum" id="tt-sum" aria-live="polite">Loading your lessons…</div>
+  <div id="tt-pay" style="display:none"></div>
   <div id="tt-lists"></div>
 
   <!-- lesson sheet -->
@@ -106,12 +117,13 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=354"></script>
-<script src="assets/js/supabase.js?v=354"></script>
-<script src="assets/js/org-current.js?v=354"></script>
-<script src="assets/js/org-scope.js?v=354"></script>
-<script src="assets/js/app.js?v=354"></script>
-<script src="assets/js/tutor-core.js?v=354"></script>
-<script src="assets/js/tutor.js?v=354"></script>
+<script src="assets/js/config.js?v=355"></script>
+<script src="assets/js/supabase.js?v=355"></script>
+<script src="assets/js/org-current.js?v=355"></script>
+<script src="assets/js/org-scope.js?v=355"></script>
+<script src="assets/js/app.js?v=355"></script>
+<script src="assets/js/tutor-core.js?v=355"></script>
+<script src="assets/js/tutor-pay-core.js?v=355"></script>
+<script src="assets/js/tutor.js?v=355"></script>
 </body>
 </html>

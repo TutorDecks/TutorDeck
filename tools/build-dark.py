@@ -14,7 +14,7 @@ import re, glob, colorsys, math, os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # The invoice "paper" (rendered to an image for parents) always stays light.
 PAPER = re.compile(r'\.(invoice|inv-(head|biz|meta|to|table|total|pay|bank)|pn-(dot|h|sub|arrow))\b')
-PAGES = ["home","calendar","planner","ledger","invoices","insights","students","student","exams","settings","org","tutor","centre","centre-students","centre-attendance","centre-timetable","centre-money","centre-tutor-pay","pay"]
+PAGES = ["home","calendar","planner","ledger","invoices","insights","students","student","exams","settings","org","tutor","my-pay","centre","centre-students","centre-attendance","centre-timetable","centre-money","centre-tutor-pay","pay"]
 P = 'html[data-theme="dark"]'
 
 # ---- dark palette (variables) ----

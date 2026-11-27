@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Home · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=354">
+<link rel="stylesheet" href="assets/css/app.css?v=355">
 <script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   #onboard{display:none;margin-bottom:20px}
@@ -188,8 +188,17 @@
     .mc-col+.mc-col{padding-left:14px}
     .hs-v{font-size:21px}
   }
+  /* (T4 S7b) combined earnings: My students + At <centre> */
+  .cp-card{margin-top:12px;padding:14px 16px}
+  .cp-h{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px}
+  .cp-row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;font-size:14.5px;color:var(--ink)}
+  .cp-row span:last-child{font-weight:700;font-variant-numeric:tabular-nums}
+  .cp-row.total{border-top:1px solid var(--line);margin-top:4px;padding-top:10px;font-weight:800}
+  .cp-row.total span:last-child{font-size:18px;font-weight:800}
+  .cp-pend{display:flex;justify-content:space-between;gap:12px;padding:6px 0 0;font-size:13.5px;color:#9A4A07;font-weight:600}
+  .cp-note{margin:8px 0 0;font-size:12.5px;color:var(--muted)}
 </style>
-<link rel="stylesheet" href="assets/css/dark.css?v=354">
+<link rel="stylesheet" href="assets/css/dark.css?v=355">
 </head>
 <body>
 <div id="view">
@@ -214,6 +223,8 @@
         <span><i class="mdot grey"></i>Upcoming <b id="mprog-u">—</b></span>
       </div>
     </div>
+    <!-- (T4 S7b) only for a tutor who ticked "Include my centre earnings in my totals" in Settings: read-only, an estimate, never part of the ledger above -->
+    <div class="card cp-card" id="home-centre-pay" style="display:none" aria-live="polite"></div>
   </section>
 
   <!-- TEACHING -->
@@ -272,11 +283,12 @@
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
 <script src="assets/vendor/chart-4.6.1.umd.js"></script>
-<script src="assets/js/config.js?v=354"></script>
-<script src="assets/js/supabase.js?v=354"></script>
-<script src="assets/js/org-current.js?v=354"></script>
-<script src="assets/js/org-scope.js?v=354"></script>
-<script src="assets/js/app.js?v=354"></script>
-<script src="assets/js/dashboard.js?v=354"></script>
+<script src="assets/js/config.js?v=355"></script>
+<script src="assets/js/supabase.js?v=355"></script>
+<script src="assets/js/org-current.js?v=355"></script>
+<script src="assets/js/org-scope.js?v=355"></script>
+<script src="assets/js/app.js?v=355"></script>
+<script src="assets/js/tutor-pay-core.js?v=355"></script>
+<script src="assets/js/dashboard.js?v=355"></script>
 </body>
 </html>

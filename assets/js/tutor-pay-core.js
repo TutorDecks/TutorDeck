@@ -20,10 +20,11 @@
 
   function int(n) { var v = Math.round(Number(n)); return isFinite(v) ? v : 0; }
   // 123456 → "S$1,234.56"; negative → "−S$5.00" (a real minus sign)
-  function sgd(cents) {
+  // sym: the currency mark, "S$" by default; the Dashboard shows its own figures with a plain "$", so it asks for that to keep one screen consistent
+  function sgd(cents, sym) {
     var c = int(cents), neg = c < 0; c = Math.abs(c);
     var d = Math.floor(c / 100), r = c % 100;
-    return (neg ? "−" : "") + "S$" + String(d).replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + (r < 10 ? "0" : "") + r;
+    return (neg ? "−" : "") + (sym || "S$") + String(d).replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + (r < 10 ? "0" : "") + r;
   }
   // "+S$15.00" / "−S$5.00" (for bonus and deduction lines)
   function signed(cents) { var c = int(cents); return (c > 0 ? "+" : "") + sgd(c); }
@@ -102,16 +103,16 @@
   // Builds the Dashboard's combined lines. soloCents = what the tutor's own students gave this month (the Dashboard's own figure, whole cents);
   // monthRows = rows of tutor_my_pay_month for that month. Centres that don't show pay are not in monthRows at all.
   // Pending centre lessons are counted and shown on their own line, never added. Returns NEW objects; nothing passed in is changed.
-  function combine(soloCents, monthRows) {
+  function combine(soloCents, monthRows, sym) {
     var centres = (monthRows || []).map(function (r) {
-      return { name: r.org_name, label: "At " + r.org_name, cents: int(r.total_cents), text: sgd(r.total_cents), pending: int(r.pending_lessons), final: !!r.run_recorded,
+      return { name: r.org_name, label: "At " + r.org_name, cents: int(r.total_cents), text: sgd(r.total_cents, sym), pending: int(r.pending_lessons), final: !!r.run_recorded,
                period: periodLabel(r.period_from, r.period_to) };
     });
     var mine = int(soloCents), sum = centres.reduce(function (t, c) { return t + c.cents; }, 0), pend = centres.reduce(function (t, c) { return t + c.pending; }, 0);
     return {
-      mine: { label: "My students", cents: mine, text: sgd(mine) },
+      mine: { label: "My students", cents: mine, text: sgd(mine, sym) },
       centres: centres,
-      total: { label: "Combined", cents: mine + sum, text: sgd(mine + sum) },
+      total: { label: "Combined", cents: mine + sum, text: sgd(mine + sum, sym) },
       pending: pend, pendingText: pend ? pendingWord(pend) : "",
       allFinal: centres.length > 0 && centres.every(function (c) { return c.final; }),
       note: centres.length && centres.every(function (c) { return c.final; }) ? "Centre pay: pay run confirmed." : "Centre pay is an estimate until the pay run is confirmed."

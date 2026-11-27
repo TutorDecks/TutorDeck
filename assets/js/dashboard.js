@@ -64,9 +64,35 @@
     if($("mprog-sub"))$("mprog-sub").textContent=projected>0
       ? TL.sgd(collected)+" collected of "+TL.sgd(projected)+" booked this month"
       : "No lessons booked this month yet.";
+    renderCombine(collected);
     var d1=new Date(selY,selM,1);
     setText("k-collected-n",d1.toLocaleString("en-SG",{month:"long"}));
     if($("dm-label"))$("dm-label").textContent=d1.toLocaleString("en-SG",{month:"long",year:"numeric"});
+  }
+  // (T4 S7b) "Include my centre earnings in my totals" (Settings, off by default): two labelled lines, "My students" and "At <centre>", and a combined total.
+  // Read-only and an estimate. Centre pay is only DISPLAYED here: it is never added to the ledger, an invoice, the unpaid tracking, a reminder or an export,
+  // and pending (held) centre pay is not in the total: it is its own line, with no amount. The centre never learns the tutor's own income.
+  var combineModes=null, combineBusy=0;
+  async function renderCombine(collectedDollars){
+    var box=$("home-centre-pay"), PC=window.TutorPayCore; if(!box)return;
+    var hide=function(){box.style.display="none";box.innerHTML="";};
+    if(!PC||!TL.roleMode||TL.roleMode()!=="both"||!window.sb||!window.sb.rpc){hide();return;}   // solo-only tutors never even ask
+    var my=++combineBusy;
+    try{
+      if(combineModes===null){var m=await window.sb.rpc("tutor_my_pay_modes"); combineModes=m.error?[]:(m.data||[]);}
+      if(!PC.combineOn(TL.store.get("combine_pay"),combineModes)){hide();return;}
+      var r=await window.sb.rpc("tutor_my_pay_month",{p_month:selY+"-"+pad(selM+1)+"-01"});
+      if(my!==combineBusy)return;
+      if(r.error||!(r.data||[]).length){hide();return;}
+      var c=PC.combine(PC.toCents(collectedDollars),r.data,"$");   // the same "$" the figures above use
+      var h='<div class="cp-h">Earnings this month</div>'+
+        '<div class="cp-row"><span>'+esc(c.mine.label)+'</span><span>'+esc(c.mine.text)+'</span></div>'+
+        c.centres.map(function(x){return '<div class="cp-row"><span>'+esc(x.label)+'</span><span>'+esc(x.text)+'</span></div>';}).join("")+
+        '<div class="cp-row total"><span>'+esc(c.total.label)+'</span><span>'+esc(c.total.text)+'</span></div>'+
+        (c.pending?'<div class="cp-pend"><span>Pending at your centre</span><span>'+esc(c.pendingText)+'</span></div>':"")+
+        '<div class="cp-note">'+esc(c.note)+' Your own students: money collected.</div>';
+      box.innerHTML=h; box.style.display="";
+    }catch(e){hide();}
   }
   function stepDMonth(d){var dt=new Date(selY,selM+d,1);selY=dt.getFullYear();selM=dt.getMonth();renderMonthKpis();}
 

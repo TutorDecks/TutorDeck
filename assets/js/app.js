@@ -16,6 +16,7 @@ window.TL = (function () {
     more:     '<circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/><circle cx="5" cy="12" r="1.4"/>',
     settings: '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
     materials:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+    banknote: '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
     signout:  '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>'
   };
   function icon(name, size) {
@@ -40,6 +41,26 @@ window.TL = (function () {
     { id: "tutor", label: "My lessons", ic: "schedule", pages: [ { id: "tutor", label: "My lessons", href: "tutor" } ] }
   ];
   var TUTOR_EXTRA = { id: "tutor", label: "My lessons", href: "tutor", ic: "schedule" };
+  // (T4 S7b) "Your pay": only for a login that teaches at a centre whose settings let tutors see their own pay (remembered 12 hours by detectPay()).
+  // Its own icon (a banknote), distinct from Money's wallet. A solo tutor with no centre never gets it.
+  var PAY_GROUP = { id: "mypay", label: "Your pay", ic: "banknote", pages: [ { id: "mypay", label: "Your pay", href: "my-pay" } ] };
+  var PAY_EXTRA = { id: "mypay", label: "Your pay", href: "my-pay", ic: "banknote" };
+  function payOn() { try { var o = JSON.parse(store.get("payview") || "null"); return !!(o && o.v === "on" && o.at > Date.now() - 12 * 3600e3); } catch (e) { return false; } }
+  function tutorGroups() { return payOn() ? TUTOR_GROUPS.concat([PAY_GROUP]) : TUTOR_GROUPS; }
+  function setPayView(on) { try { store.set("payview", JSON.stringify({ v: on ? "on" : "off", at: Date.now() })); } catch (e) {} }
+  // Ask the database which of my centres show me my pay (tutor_my_pay_modes). Only for logins that teach at a centre; any doubt = no menu entry.
+  async function detectPay(force) {
+    var mode = roleMode(), centreTutor = false;
+    try { var o = org(); centreTutor = !!(o && o.kind === "centre" && o.role === "tutor"); } catch (e) {}
+    if (mode !== "tutor-only" && mode !== "both" && !centreTutor) return false;
+    try {
+      if (!force) { var c = JSON.parse(store.get("payview") || "null"); if (c && c.at > Date.now() - 12 * 3600e3) return c.v === "on"; }
+      var r = await window.sb.rpc("tutor_my_pay_modes");
+      if (r.error) return false;                                      // not installed here yet, or not a centre tutor: no entry, nothing breaks
+      var on = (r.data || []).some(function (x) { return x.pay_view === "monthly_total" || x.pay_view === "per_lesson_and_total"; });
+      setPayView(on); return on;
+    } catch (e) { return false; }
+  }
   // Secondary destinations: sidebar footer on desktop, "More" sheet on phones.
   var EXTRA = [
     { id: "materials", label: "Materials", href: "https://mugcornersg.com", ic: "materials", ext: true, hint: "Materials on MugCorner (opens in a new tab)" },
@@ -106,8 +127,8 @@ window.TL = (function () {
   // Build sidebar + topbar around the page's <div id="view">
   function mountShell(active, email, title, sub) {
     var pageId = active;   // the page's own id (the menu may show a centre's items instead, T12c)
-    var mode = roleMode(), G = mode === "tutor-only" ? TUTOR_GROUPS : GROUPS;
-    var extras = (mode === "tutor-only" ? [] : mode === "both" ? [TUTOR_EXTRA].concat(EXTRA) : EXTRA)
+    var mode = roleMode(), G = mode === "tutor-only" ? tutorGroups() : GROUPS;
+    var extras = (mode === "tutor-only" ? [] : mode === "both" ? [TUTOR_EXTRA].concat(payOn() ? [PAY_EXTRA] : [], EXTRA) : EXTRA)
       .filter(function (n) { return !n.ownerOnly || isOwner; });
     if (mode !== "tutor-only" && inCentre()) { var cm = centreMenu(active); G = cm.groups; extras = cm.extras; active = cm.active; }   // T12c: a centre has its own menu
     var grp = groupOf(active, G);
@@ -313,7 +334,7 @@ window.TL = (function () {
   // owner/staff logins, not for a tutor under a centre). Everything else, Settings included, sends them to My lessons.
   // Returns the address to go to, or null to stay. Only a CONFIRMED "tutor-only" ever redirects: "solo", "both", null and
   // anything unexpected stay put, so no solo tutor can be moved by a doubt or an error.
-  var TUTOR_ONLY_PAGES = ["tutor"];
+  var TUTOR_ONLY_PAGES = ["tutor", "mypay"];       // (T4 S7b) My lessons and Your pay; Your pay says plainly when the centre doesn't show pay
   function tutorOnlyRedirect(active, mode) {
     if (mode !== "tutor-only") return null;
     if (!active || TUTOR_ONLY_PAGES.indexOf(active) >= 0) return null;
@@ -408,7 +429,7 @@ window.TL = (function () {
   ];
   function centreMenu(active) {
     var o = org(), G;
-    if (o.role === "tutor") G = TUTOR_GROUPS;
+    if (o.role === "tutor") G = tutorGroups();
     else {
       // (T3) owner / staff: Home · Timetable · Students · Attendance, then More. Which tabs: OrgCurrent.centreTabs (follows the staff permissions).
       G = (OC ? OC.centreTabs(o) : []).map(function (t) { return { id: t.id, label: t.label, ic: t.ic, soon: t.soon, tab: t.tab, page: t.page, pages: [ { id: t.id, label: t.label, href: t.href } ] }; });
@@ -718,6 +739,7 @@ window.TL = (function () {
                  "centre-tutor-pay": ["Tutor pay", "Rates, pay list and lessons taught"],
                  org: ["Organisation", "Your tuition centre, set up your way"],
                  tutor: ["My lessons", "Your classes and attendance"],
+                 mypay: ["Your pay", "What you have earned at your centre"],
                  exams: ["Exams", "Upcoming assessments"],
                  invoices: ["Invoices", "Saved invoices"],
                  materials: ["Teaching materials", "Your resource library"],
@@ -748,6 +770,7 @@ window.TL = (function () {
     // Which menu does this login get? (instant when remembered; one query about every 12 hours; any doubt = the usual menu)
     try { await detectRole(); } catch (e) { /* keep the usual menu */ }
     try { await detectOrgs(); } catch (e) { /* solo organisation, as always */ }
+    try { await detectPay(); } catch (e) { /* no Your pay entry */ }          // (T4 S7b) one query about every 12 hours, only for logins that teach at a centre
     // A tutor-only login who types a solo page's address (students, ledger, planner …) goes to My lessons, like Home does.
     // The decision only reads the role we just settled; tutorOnlyRedirect() never fires on a doubt, and never for "tutor" itself.
     var goTo = tutorOnlyRedirect(active, roleMode());
@@ -1335,7 +1358,7 @@ window.TL = (function () {
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
-           store: store, org: org, orgs: orgList, scope: scope, orgFields: orgFields, orgId: orgId, roleMode: roleMode, setRole: setRole, detectRole: detectRole, tutorOnlyRedirect: tutorOnlyRedirect, uid: function () { return UID; }, plural: plural,
+           store: store, org: org, orgs: orgList, scope: scope, orgFields: orgFields, orgId: orgId, roleMode: roleMode, setRole: setRole, detectRole: detectRole, tutorOnlyRedirect: tutorOnlyRedirect, detectPay: detectPay, setPayView: setPayView, payOn: payOn, uid: function () { return UID; }, plural: plural,
            confirm: tlConfirm, alert: tlAlert, prompt: tlPrompt, freeLimit: tlFreeLimit,
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,

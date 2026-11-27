@@ -92,6 +92,12 @@ test("combine: My students + At <centre> + a combined total; pending is separate
   assert.match(c.note, /estimate until the pay run is confirmed/);
 });
 
+test("combine can use the Dashboard's plain $ so one screen shows one currency mark", () => {
+  const c = P.combine(150000, [M({ total_cents: 12000 })], "$");
+  assert.deepStrictEqual([c.mine.text, c.centres[0].text, c.total.text], ["$1,500.00", "$120.00", "$1,620.00"]);
+  assert.strictEqual(P.sgd(-500, "$"), "−$5.00");
+});
+
 test("combine: two centres, a deduction month, nothing pending, a confirmed pay run", () => {
   const c = P.combine(0, [M({ org_name: "A", total_cents: 7000, run_recorded: true }), M({ org_name: "B", total_cents: -500, run_recorded: true })]);
   assert.deepStrictEqual(c.centres.map((x) => x.label), ["At A", "At B"]);

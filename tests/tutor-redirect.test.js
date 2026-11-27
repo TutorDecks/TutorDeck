@@ -24,6 +24,15 @@ test("tutor-only logins may stay on My lessons only (no redirect loop); Settings
   assert.strictEqual(R("tutor", "tutor-only"), null);
   assert.strictEqual(R("settings", "tutor-only"), "tutor");
 });
+test("(S7b) a tutor-only login may open Your pay as well (no redirect loop), and it is the only other page", () => {
+  assert.strictEqual(R("mypay", "tutor-only"), null);
+  for (const mode of ["solo", "both", null]) assert.strictEqual(R("mypay", mode), null);
+});
+test("(S7b) with nothing remembered (or signed out) there is no Your pay menu entry, and setting it never throws", () => {
+  assert.strictEqual(TL.payOn(), false);
+  assert.doesNotThrow(() => TL.setPayView(true));      // the store is per signed-in user: with nobody signed in it keeps nothing, so still no entry
+  assert.strictEqual(TL.payOn(), false);
+});
 test("solo, both and unknown logins are never redirected, on any page", () => {
   for (const mode of ["solo", "both", null, undefined, "", "TUTOR-ONLY", "tutor", "centre", 1, {}])
     for (const p of ["dashboard", "students", "ledger", "planner", "settings", "org", "tutor", "exams", "invoices", "calendar"])
