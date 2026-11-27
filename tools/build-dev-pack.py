@@ -20,6 +20,8 @@ BUNDLE4 = ["staff_home", "staff_students", "staff_attendance", "staff_charges", 
            "tutor_schedule", "money_settings", "centre_money", "centre_invoice_run", "centre_payments", "invites", "fee_050", "centre_billing_method",
            "centre_billing_start", "tutor_profile", "tutor_payout", "payout_permission"]
 ON_DEV = STANDARD + BUNDLE4
+# migrations that come AFTER bundle 5's pack and get their own pack later (so this file stays exactly what the orchestrator reviewed): T18-4 make-up credits
+LATER = ["makeup_credits"]
 
 # which branch each file came from (for the headers only)
 BRANCH = {
@@ -90,7 +92,7 @@ def main():
     for m in ON_DEV:
         assert m in allm, "run.sh no longer lists " + m
     assert allm[:len(STANDARD)] == STANDARD, "the standard migrations must come first in run.sh: %s" % allm[:len(STANDARD)]
-    new = [m for m in allm if m not in ON_DEV]
+    new = [m for m in allm if m not in ON_DEV and m not in LATER]
     assert new[:2] == ["reassign_link", "payment_fix"], "unexpected pack order: %s" % new
     tables, funcs = [], []
     for m in new:

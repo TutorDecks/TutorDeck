@@ -74,8 +74,17 @@
   async function showStudent(id, trigger) {
     var r = await window.sb.rpc("staff_student", { p_org: orgId, p_student: id });
     if (r.error) { TL.toast(CS.errorText(r.error), "err"); return null; }
-    cur = r.data; today = cur.today || today; tut = null; tutEdit = ""; renderSheet(); openSheet(trigger); loadTutors(cur.id);
+    cur = r.data; today = cur.today || today; tut = null; tutEdit = ""; renderSheet(); openSheet(trigger); loadTutors(cur.id); loadCredits(cur.id);
     return cur;
+  }
+  // ---- make-up credits (T18 step 4): "2 make-up credits owed" with a link to the owed list for this student. Own function; shows nothing at all when this
+  // person may not see credits, the database doesn't have them yet, or there is nothing owed or booked. ----
+  async function loadCredits(id) {
+    var CC = window.CentreCreditsCore; if (!CC) return;
+    var r = await window.sb.rpc("staff_credit_list", { p_org: orgId, p_status: "all", p_student: id, p_page: 1, p_size: 1 });
+    if (!cur || cur.id !== id || !$("cs-cr")) return;
+    var txt = !r.error && r.data && r.data.counts ? CC.chipText(r.data.counts) : "";
+    $("cs-cr").innerHTML = txt ? '<div class="cs-h">Make-up credits</div><a class="cs-credit" href="centre-attendance?id=' + encodeURIComponent(orgId) + '&amp;tab=makeups&amp;student=' + encodeURIComponent(id) + '">' + esc(txt) + '</a>' : "";
   }
   // ---- assigned tutors and the online lesson link (T3 step 7): own function; quietly absent on a database without the migration ----
   var SC = window.CentreSlotsCore, tut = null, tutEdit = "";
@@ -166,6 +175,7 @@
       return '<div><span>' + esc(TC.dateLabel(l.date, today)) + ' · ' + esc(TC.timeLabel(l.start)) + (l.subject ? ' · ' + esc(l.subject) : '') + '</span><span class="t">' + esc(l.tutor || 'No tutor yet') + '</span></div>';
     }).join("") + '</div>';
     html += '<div class="cs-tut" id="cs-tut" aria-live="polite"></div>';
+    html += '<div class="cs-cr" id="cs-cr" aria-live="polite"></div>';          // make-up credits (T18-4): a small chip, only for people who may see credits
     html += '<div class="cs-acts"><button class="btn btn-primary" type="button" id="cs-edit">Edit details</button>' +
       '<button class="btn" type="button" id="cs-sibling">Add a brother or sister</button>' +
       (s.ended || s.end_date ? '<button class="btn" type="button" id="cs-back">Bring back</button>' : '') +

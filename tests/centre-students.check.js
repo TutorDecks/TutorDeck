@@ -29,6 +29,7 @@ function override(cfg) {
       window.__calls.push([nm, a]);
       if (nm === "staff_home") return res({ org_id: "c1", org_name: "Demo Learning Centre", status: "active", today: TODAY, can: { students: true, timetable: false, charges: false } });
       if (!/^staff_/.test(nm)) return rpc(nm, a);
+      if (nm === "staff_credit_list") return cfg.credits ? res({ today: TODAY, page: 1, size: 1, total: 3, rows: [], enabled: true, counts: { open: 2, booked: 1, used: 0, expired: 0, revoked: 0 } }) : res(null, "NOT_FOUND");   // T18-4: the credits chip
       if (cfg.error) return res(null, cfg.error);
       if (nm === "staff_students") {
         var q = (a.p_q || "").toLowerCase(), m = ST.filter((s) => !q || (s.name + " " + s.level + " " + ((GS[s.hh] || []).map((g) => g.name + g.phone).join(" "))).toLowerCase().includes(q));
@@ -139,6 +140,20 @@ const rows = (page) => page.locator(".cs-row").count();
     ok(!/Students/.test((await page.locator(".tn-links a").filter({ visible: true }).allInnerTexts()).join("|")), "timetable-only: no Students tab in the menu"); await ctx.close(); }
   { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], error: { code: "PGRST202", message: "Could not find the function" } });
     await page.goto(BASE + "centre-students?id=c1"); await page.waitForSelector(".cs-block"); ok(/Not switched on yet/.test(await txt(page)), "migration missing: plain message"); await ctx.close(); }
+  // T18-4: the student sheet's make-up credits chip: shown with a link to that student's owed list when credits are owed; nothing at all when this person may not see them
+  for (const [credits, label] of [[true, "may see credits"], [false, "may not see credits"]]) {
+    const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_students", "manage_timetable"])], credits });
+    await page.goto(BASE + "centre-students?id=c1"); await page.waitForSelector(".cs-row"); await page.locator(".cs-row").first().click(); await page.waitForSelector("#cs-sheet.on");
+    await page.waitForTimeout(500);
+    const chip = page.locator("#cs-cr .cs-credit");
+    if (credits) {
+      ok(await chip.count() === 1 && /2 make-up credits owed · 1 booked/.test(await chip.innerText()), label + ": the chip says '2 make-up credits owed · 1 booked'");
+      ok(/centre-attendance\?id=c1&tab=makeups&student=/.test(await chip.getAttribute("href")), label + ": it links to this student's owed list");
+    } else {
+      ok(await chip.count() === 0 && (await page.locator("#cs-cr").innerText()).trim() === "", label + ": no chip and no heading");
+    }
+    ok(errs.length === 0, label + ": no console errors " + errs.join("|")); await ctx.close();
+  }
   // tutor: sent to My lessons; solo: Home
   { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "tutor")] });
     await page.goto(BASE + "centre-students?id=c1"); await page.waitForTimeout(1500); ok(/\/tutor/.test(page.url()), "a centre tutor is sent to My lessons (" + page.url() + ")"); await ctx.close(); }
