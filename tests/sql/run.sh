@@ -12,6 +12,7 @@ shape() { psql -qAt -d $DB -c "select string_agg(x, E'\n' order by x) from (
   union all select 'trg '||event_object_table||'.'||trigger_name from information_schema.triggers where trigger_schema='public'
   union all select 'fn '||p.oid::regprocedure::text from pg_proc p where pronamespace='public'::regnamespace
   union all select 'con '||conname from pg_constraint where connamespace='public'::regnamespace) s"; }
+fdefs() { psql -qAt -d $DB -c "select md5(string_agg(pg_get_functiondef(p.oid), '' order by p.oid::regprocedure::text)) from pg_proc p where pronamespace='public'::regnamespace and prokind='f'"; }
 psql -qAt -d postgres -c "drop database if exists $DB" -c "create database $DB"
 $P -f tests/sql/supabase_shim.sql
 $P -f db/baseline_2026-11.sql
@@ -161,6 +162,14 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/invoice_email_test.sql
 $P -f db/migration_makeup_credits.sql
 $P -f db/migration_makeup_credits.sql                       # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/makeup_credits_test.sql
+FDEFS_BEFORE=$(fdefs)
+$P -f db/migration_tutor_link_propose.sql
+$P -f db/migration_tutor_link_propose.sql                   # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_link_propose_test.sql
+$P -f db/migration_tutor_link_propose_down.sql
+if [ "$FDEFS_BEFORE" != "$(fdefs)" ]; then echo "FAIL: undoing tutor_link_propose did not put every function back exactly"; exit 1; fi
+echo "PASS undoing tutor_link_propose puts every function back exactly"
+$P -f db/migration_tutor_link_propose.sql                   # and again: the shipped state
 $P -f db/migration_centre_billing_method.sql                # the export reads the billing-method and billing-start columns (the chain above had undone them)
 $P -f db/migration_centre_billing_start.sql
 $P -f db/migration_org_export.sql
@@ -170,10 +179,10 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_export_perf_test.sql
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=full -f tests/sql/bundle6_chain_test.sql   # the settings check and the invoice run carry EVERY rule of the chain
 # undo in reverse, twice each (safe to run twice), then the whole set again, then undo again: undo + re-apply are proven on the shipped state
 for round in 1 2; do
-  for m in org_export makeup_credits invoice_email statement_matching centre_tutor_pay import; do $P -f db/migration_${m}_down.sql; $P -f db/migration_${m}_down.sql; done
+  for m in org_export tutor_link_propose makeup_credits invoice_email statement_matching centre_tutor_pay import; do $P -f db/migration_${m}_down.sql; $P -f db/migration_${m}_down.sql; done
   psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=undone -f tests/sql/bundle6_chain_test.sql
   if [ "$round" = 1 ]; then
-    for m in import centre_tutor_pay statement_matching invoice_email makeup_credits; do $P -f db/migration_${m}.sql; done
+    for m in import centre_tutor_pay statement_matching invoice_email makeup_credits tutor_link_propose; do $P -f db/migration_${m}.sql; done
     $P -f db/migration_org_export.sql
     psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=full -f tests/sql/bundle6_chain_test.sql
   fi

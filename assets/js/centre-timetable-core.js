@@ -83,7 +83,7 @@
     if (r.covered_for_name && !r.cancelled) out.push(["Covering for", r.covered_for_name]);
     if (r.student_level) out.push(["Level", r.student_level]);
     if (r.subject) out.push(["Subject", r.subject]);
-    out.push(["Online link", r.online_link ? r.online_link : "Not set"]);
+    out.push(["Online link", r.online_link ? r.online_link + (r.lesson_link ? " (this lesson only)" : "") : "Not set"]);
     var c = chips(r).map(function (x) { return x.text; });
     if (c.length) out.push(["Status", c.join(" · ")]);
     if (r.holiday) out.push(["Holiday", r.holiday]);

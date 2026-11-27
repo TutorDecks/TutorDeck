@@ -8,6 +8,7 @@ const SQL = fs.readFileSync(require.resolve("../db/migration_org_foundation.sql"
 const MONEY = fs.readFileSync(require.resolve("../db/migration_money_settings.sql"), "utf8");   // T4 S0: the replacement validator
 const field = (path) => S.STEPS.flatMap((s) => s.fields).find((f) => f.path === path);
 const MOVES = fs.readFileSync(require.resolve("../db/migration_tutor_moves.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
+const LINKP = fs.readFileSync(require.resolve("../db/migration_tutor_link_propose.sql"), "utf8");   // T6 steps 5-6: the validator that also knows request_expiry_days
 const OWN = fs.readFileSync(require.resolve("../db/migration_tutor_own_lessons.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
 const CREDITS = fs.readFileSync(require.resolve("../db/migration_makeup_credits.sql"), "utf8");   // T18 step 4: the validator that knows the make-up credit options   // T6 step 2: the validator that knows the tutor-editing options
 const PAYOUT_SQL = fs.readFileSync(require.resolve("../db/migration_payout_permission.sql"), "utf8");
@@ -259,7 +260,7 @@ test("T6.2: 'who edits the timetable' has the same values in the form and in the
   assert.deepEqual(f.options.map((x) => x[0]).sort(), sqlVals(/\{lessons,timetable_editing\}' not in \(([^)]*)\)/));
   assert.deepEqual(f.options.map((x) => x[0]).sort(), ["admin_only", "tutors_direct", "tutors_propose"]);
   assert.ok(!f.options.some((x) => x[0] === "tutors_own"), "tutors_own is renamed");
-  assert.deepEqual(f.soonOptions, ["tutors_propose"], "only asking-for-approval is still coming soon");
+  assert.ok(!(f.soonOptions || []).length, "T6.4: asking-for-approval is built, so nothing in the list is marked soon");
   assert.equal(S.get(S.defaults("centre"), "lessons.timetable_editing"), "admin_only");
   assert.equal(S.get(S.defaults("solo"), "lessons.timetable_editing"), "admin_only");
 });
@@ -271,14 +272,13 @@ test("T6.2: notify_family has the same values in the form and in the database, d
   assert.ok(!field("lessons.notify_family").soon && !(field("lessons.notify_family").soonOptions || []).length, "the in-app list is built, so nothing here is marked soon");
 });
 
-test("T6.2: the six switches: postpone and cancel are built, the other four are coming soon; every switch is a yes/no in the database", () => {
+test("T6.2: the six switches: all built by T6.4; every switch is a yes/no in the database", () => {
   const sw = ["postpone", "cancel", "weekly_slots", "generate", "one_off", "link"];
   for (const k of sw) {
     assert.ok(MOVES.includes("'{lessons,tutors_edit," + k + "}'"), k + " is validated in the migration");
     assert.equal(typeof S.get(S.defaults(), "lessons.tutors_edit." + k), "boolean", k);
   }
-  for (const k of ["postpone", "cancel", "weekly_slots", "generate", "one_off"]) assert.ok(!field("lessons.tutors_edit." + k).soon, k + " is built");
-  for (const k of ["link"]) assert.equal(field("lessons.tutors_edit." + k).soon, true, k + " must be soon");
+  for (const k of sw) assert.ok(!field("lessons.tutors_edit." + k).soon, k + " is built");
   // the defaults the form starts from are the ones the database assumes for a missing key (postpone on, cancel off)
   assert.equal(S.get(S.defaults(), "lessons.tutors_edit.postpone"), true);
   assert.equal(S.get(S.defaults(), "lessons.tutors_edit.cancel"), false);
@@ -294,8 +294,27 @@ test("T6.3: one_off, weekly_slots and generate are built, off by default in the 
   }
   assert.match(OWN, /\(cfg #>> array\['lessons', 'tutors_edit', p_switch\]\)::boolean, false\)/, "a missing switch means off in the database too");
   for (const k of ["one_off", "weekly_slots", "generate"]) assert.ok(OWN.includes("'" + k + "'"), k + " is read by the new functions");
-  assert.equal(field("lessons.tutors_edit.link").soon, true, "the online link switch stays soon until step 5");
-  assert.deepEqual(field("lessons.timetable_editing").soonOptions, ["tutors_propose"], "tutors_propose stays soon until step 6");
+  assert.ok(!field("lessons.tutors_edit.link").soon, "T6.4: the online link switch is built");
+  assert.equal(S.get(S.defaults(), "lessons.tutors_edit.link"), false, "and off by default");
+  assert.match(LINKP, /'link'\) then 'set the online lesson link'|when 'link' then 'set the online lesson link'/, "the database knows the link switch");
+  assert.match(LINKP, /p_switch not in \('one_off', 'weekly_slots', 'generate', 'link'\)/, "and reads it like the others");
+});
+
+test("T6.4: request_expiry_days is the same in the form and in the database (1-90, default 14), shown only when tutors ask", () => {
+  assert.equal(S.get(S.defaults(), "lessons.request_expiry_days"), 14);
+  assert.match(LINKP, /\{lessons,request_expiry_days\}/);
+  assert.match(LINKP, /between 1 and 90/);
+  assert.match(LINKP, /request_expiry_days\}'\)::int, 14\)/, "the database default is the form default");
+  const sFor = (mode) => { const s = S.defaults("centre"); s.lessons.timetable_editing = mode; return s; };
+  assert.equal(S.isVisible(field("lessons.request_expiry_days"), sFor("admin_only")), false);
+  assert.equal(S.isVisible(field("lessons.request_expiry_days"), sFor("tutors_direct")), false, "direct centres have no requests");
+  assert.equal(S.isVisible(field("lessons.request_expiry_days"), sFor("tutors_propose")), true);
+  const ok = () => { const s = S.defaults(); s.profile.trading_name = "T"; return s; };
+  for (const v of [0, 91, -1, 1.5]) { const s = ok(); s.lessons.request_expiry_days = v; assert.match(S.validate(s).join(" | "), /A request must wait 1.90 days/, String(v)); }
+  for (const v of [1, 14, 90]) { const s = ok(); s.lessons.request_expiry_days = v; assert.deepEqual(S.validate(s), [], String(v)); }
+  const old = S.withDefaults({ schema_version: 1, preset: "centre", profile: { trading_name: "Old" }, lessons: { timetable_editing: "tutors_propose" } });
+  assert.equal(old.lessons.request_expiry_days, 14, "settings saved before this load with 14 days");
+  assert.ok(!(field("lessons.request_expiry_days").soon), "built, not soon");
 });
 
 test("T6.2: the limits are the same in the form and in the database, and the defaults are the owner's (24 hours, no limit)", () => {

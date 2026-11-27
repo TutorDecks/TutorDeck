@@ -33,7 +33,7 @@ BRANCH = {
     "centre_billing_method": "t31a-centre-invoice-billing", "centre_billing_start": "t36-billing-start", "tutor_profile": "t24c-1-profile",
     "tutor_payout": "t24c-2-payout", "payout_permission": "t24c-3-payout", "slot_changes": "t3-9-timetable-nav",
     "reassign_link": "b4-fix", "payment_fix": "b4-fix",
-    "tutor_moves": "t6-2-tutor-moves", "tutor_own_lessons": "t6-3-tutor-own-lessons", "import": "t33-i1-stage-a", "centre_tutor_pay": "t4-s7-tutor-pay",
+    "tutor_moves": "t6-2-tutor-moves", "tutor_own_lessons": "t6-3-tutor-own-lessons", "tutor_link_propose": "t6-4-link-propose", "b5_fix": "b5-fix", "import": "t33-i1-stage-a", "centre_tutor_pay": "t4-s7-tutor-pay",
     "statement_matching": "t34-m0-matching", "invoice_email": "t7-3-invoice-email", "makeup_credits": "t18-4-makeup-credits", "org_export": "t35-e-export",
     "centre_deposits": "t4-s4-deposits", "centre_refunds": "t4-s5-refunds", "centre_late_fees": "t4-s6-late-fees",
     "centre_credit_undo": "t4-s5b-credit-undo",
@@ -49,6 +49,8 @@ WHAT = {
     "reassign_link": "reassign keeps the old tutor's link when they still teach the student", "payment_fix": "Record payment fix (DELETE without WHERE refused by Supabase)",
     "slot_changes": "slot stop dates, class members, 26-week lessons, holiday cancel, People list",
     "tutor_moves": "tutors move, put back and cancel their own lessons (centre option)",
+    "b5_fix": "follow-up fixes to bundle 5: deposit run, settings page, class share, tutor changes list",
+    "tutor_link_propose": "the online lesson link, and tutors who ask (tutors_propose): requests staff approve or decline",
     "tutor_own_lessons": "tutors add their own one-off lessons and weekly slots, Create lessons, price pending (centre option)",
     "import": "centre import stage A: dry run, commit, undo, history, billing-start setting", "centre_tutor_pay": "tutor pay: rates, monthly pay list, adjustments, payments (owner / staff only)",
     "statement_matching": "bank statement matching: upload, rules, review queue, confirm, undo", "invoice_email": "invoice / receipt / reminder emails: queue, send log, caps, bounces",
@@ -102,7 +104,7 @@ def main():
         assert m in allm, "run.sh no longer lists " + m
     assert allm[:len(STANDARD)] == STANDARD, "the standard migrations must come first in run.sh: %s" % allm[:len(STANDARD)]
     new = [m for m in allm if m not in ON_DEV and m not in LATER]
-    assert new == ["b5_fix", "tutor_own_lessons", "import", "centre_tutor_pay", "statement_matching", "invoice_email", "makeup_credits", "org_export"], "unexpected pack order: %s" % new
+    assert new == ["b5_fix", "tutor_own_lessons", "import", "centre_tutor_pay", "statement_matching", "invoice_email", "makeup_credits", "tutor_link_propose", "org_export"], "unexpected pack order: %s" % new
     tables, funcs = [], []
     for m in new:
         t, f = names(read("db/migration_%s.sql" % m))

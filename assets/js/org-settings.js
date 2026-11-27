@@ -29,11 +29,11 @@
   var DEPOSIT_HELP = "A refundable deposit is money you hold for the family, not income. It is invoiced separately, once, with a student's first invoice. When a student leaves, it is refunded, kept against unpaid invoices or kept by the centre, always approved and recorded step by step. A top-up, and using it as the final month's fee, come in a later update.";
   var LATE_HELP = "When a lesson invoice is still unpaid after its grace period, TutorDeck suggests a late fee. A person approves or waives each one (a reason is needed to waive); nothing is added to a family’s bill on its own. An approved fee is its own small invoice. Adding it as a line on the family’s next invoice comes in a later update.";
   var PAY_SOON = "Showing tutors their own pay comes in a later update.";
-  var TUTOR_EDIT_SOON = "Coming in a later update; until then only an admin does this.";
   function emailOn(s) { return !!s.email && s.email.mode !== "off"; }                                              // the email options matter only when email is on
   function remindersOn(s) { return emailOn(s) && !!s.email.reminders && s.email.reminders.enabled; }
   function depOn(s) { return s.billing.deposit.mode !== "none"; }                                // deposit details matter only when there is a deposit
   function lfOn(s) { return !!s.billing.late_fee.enabled; }                                        // late-fee details matter only when late fees are on
+  function tutorsAsk(s) { return s.lessons.timetable_editing === "tutors_propose"; }              // only the “Tutors ask” centres have requests
   function tutorsChange(s) { return s.lessons.timetable_editing !== "admin_only"; }          // the switches and limits matter only when tutors may change lessons
   var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
   // Field: { path, label, type, options?, help?, soon?, show?(s) }
@@ -244,8 +244,9 @@
     { id: "lessons", n: 7, title: "Tutors and lessons", fields: [
       { path: "lessons.timetable_editing", label: "Who edits the timetable", type: "select", options: [
         o("admin_only", "Admins only"), o("tutors_direct", "Tutors may change their own lessons (staff are told)"), o("tutors_propose", "Tutors ask, and an admin approves")],
-        soonOptions: ["tutors_propose"],
-        help: "A tutor only ever changes their own lessons for students assigned to them, never one that is marked, paid or invoiced, and never sees a price." },
+        help: "A tutor only ever changes their own lessons for students assigned to them, never one that is marked, paid or invoiced, and never sees a price. With “Tutors ask”, nothing changes until an admin approves: the request waits under “Waiting for you” on the centre Home." },
+      { path: "lessons.request_expiry_days", label: "A request nobody answers runs out after (days, 1-90)", type: "number", show: tutorsAsk,
+        help: "The tutor sees that it ran out and can ask again. Nothing is changed when a request runs out." },
       { path: "lessons.tutors_edit.postpone", label: "A tutor may move a lesson (and put it back)", type: "toggle", show: tutorsChange,
         help: "The lesson keeps its length and its price. Staff see an amber “changed by tutor” flag for 7 days." },
       { path: "lessons.tutors_edit.cancel", label: "A tutor may cancel a lesson in advance, at no charge to the family", type: "toggle", show: tutorsChange,
@@ -256,11 +257,12 @@
         help: "The same button you have, but only for that tutor's own slots. Pressing it twice makes nothing twice, and holidays are skipped." },
       { path: "lessons.tutors_edit.one_off", label: "A tutor may add a one-off lesson", type: "toggle", show: tutorsChange,
         help: "For one assigned student, never a trial or a group class. The tutor never types a price: it is copied from the student's latest lesson, or you confirm it before invoicing." },
-      { path: "lessons.tutors_edit.link", label: "A tutor may set the online lesson link", type: "toggle", soon: true, show: tutorsChange, help: TUTOR_EDIT_SOON },
+      { path: "lessons.tutors_edit.link", label: "A tutor may set the online lesson link", type: "toggle", show: tutorsChange,
+        help: "Their student's default link, or the link of one lesson that is still to come. https:// links only. Admins can always set it. Setting a link does not count toward the monthly limit." },
       { path: "lessons.min_notice_hours", label: "A tutor can change a lesson only if it starts in at least (hours, 0-168)", type: "number", show: tutorsChange,
         help: "For example 24: nothing can be moved or cancelled by a tutor closer to its start than that." },
       { path: "lessons.max_changes_per_month", label: "Most changes one tutor can make in a month (0 = no limit)", type: "number", show: tutorsChange,
-        help: "A move, a put-back, a cancel, an added lesson and each change to a weekly slot count as one. Pressing Create lessons does not." },
+        help: "A move, a put-back, a cancel, an added lesson and each change to a weekly slot count as one, and so does each request still waiting for an answer. Pressing Create lessons and setting a link do not." },
       { path: "lessons.notify_family", label: "When a tutor changes a lesson", type: "select", show: tutorsChange, options: [
         o("list_for_admin", "Show staff a list, so they can tell the family"), o("off", "Don't add anything for staff to do")],
         help: "TutorDeck does not email the family yet; sending that email comes with the email provider." },
@@ -344,7 +346,7 @@
       payments: { modes: ["manual_paynow"], paynow: { type: "uen", id: "" }, statement_bank: "custom", statement: { auto_confirm: "exact_only", window_before_days: 7, window_after_days: 90 }, hitpay: { paynow: true, cards: false },
         gateway_fees: "absorb", partial_payments: true, overpayments: "credit" },
       lessons: { class_type: "both", timetable_editing: "admin_only", tutors_edit: { postpone: true, cancel: false, weekly_slots: false, generate: false, one_off: false, link: false },
-        min_notice_hours: 24, max_changes_per_month: 0, notify_family: "list_for_admin", attendance_by: "tutor", attendance_window_days: 14, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
+        min_notice_hours: 24, max_changes_per_month: 0, request_expiry_days: 14, notify_family: "list_for_admin", attendance_by: "tutor", attendance_window_days: 14, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
         missed_remarks_reminders: true, replacement_tutors: true, auto_assign_tutors: true, tutors_see_parent_contact: false },
       tutor_pay: { mode: "report", payable_when: "parent_paid", rate_model: "per_hour", percent_base: "billed_after_discounts", part_payments: "after_full", cancelled_lessons: "pay_if_charged", group_count: "attended", adjustments: true,
         cycle: { cutoff_day: 31, pay_day: 7 }, payout_method: "manual_list", tutor_visibility: "closed_only" },
@@ -429,6 +431,7 @@
       if (st.window_before_days != null && !(Number.isSafeInteger(st.window_before_days) && st.window_before_days >= 0 && st.window_before_days <= 30)) e.push("The days before the invoice date must be 0–30.");
       if (st.window_after_days != null && !(Number.isSafeInteger(st.window_after_days) && st.window_after_days >= 0 && st.window_after_days <= 365)) e.push("The days after the due date must be 0–365.");
     }
+    var rx = s.lessons.request_expiry_days; if (rx != null && !(Number.isSafeInteger(rx) && rx >= 1 && rx <= 90)) e.push("A request must wait 1–90 days for an answer.");
     var aw = s.lessons.attendance_window_days; if (aw != null && !(Number.isSafeInteger(aw) && aw >= 1 && aw <= 60)) e.push("Attendance window must be 1–60 days.");
     var gd = s.invoicing.generate.day; if (!(gd >= 1 && gd <= 28)) e.push("Invoice day must be 1–28 (so it exists in every month).");
     var cd = s.tutor_pay.cycle; if (!(cd.cutoff_day >= 1 && cd.cutoff_day <= 31) || !(cd.pay_day >= 1 && cd.pay_day <= 31)) e.push("Pay days must be 1–31.");
