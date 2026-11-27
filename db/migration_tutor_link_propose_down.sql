@@ -14,10 +14,13 @@ drop function if exists public.schedule_requests_expire(uuid);
 drop function if exists public.schedule_request_reason(text);
 drop function if exists public.schedule_target_key(text, jsonb);
 -- the public functions go back to being the workers (the step 3 / 4 names), and the step 2 three go back to calling the worker directly
-drop function if exists public.tutor_add_lesson(uuid, date, time, time, text, text);
-drop function if exists public.tutor_save_slot(uuid, uuid, int, time, time, text);
-drop function if exists public.tutor_stop_slot(uuid);
-drop function if exists public.tutor_generate_lessons(uuid, date, date);
+-- (each public function is dropped only while its internal worker (the _do one) still exists: so a second run of this file, when the workers already carry their old names again, leaves them alone)
+do $$ begin
+  if to_regprocedure('public.tutor_add_lesson_do(uuid,date,time,time,text,text)') is not null then drop function if exists public.tutor_add_lesson(uuid, date, time, time, text, text); end if;
+  if to_regprocedure('public.tutor_save_slot_do(uuid,uuid,int,time,time,text)') is not null then drop function if exists public.tutor_save_slot(uuid, uuid, int, time, time, text); end if;
+  if to_regprocedure('public.tutor_stop_slot_do(uuid)') is not null then drop function if exists public.tutor_stop_slot(uuid); end if;
+  if to_regprocedure('public.tutor_generate_lessons_do(uuid,date,date)') is not null then drop function if exists public.tutor_generate_lessons(uuid, date, date); end if;
+end $$;
 do $$ begin
   if to_regprocedure('public.tutor_add_lesson_do(uuid,date,time,time,text,text)') is not null then alter function public.tutor_add_lesson_do(uuid, date, time, time, text, text) rename to tutor_add_lesson; end if;
   if to_regprocedure('public.tutor_save_slot_do(uuid,uuid,int,time,time,text)') is not null then alter function public.tutor_save_slot_do(uuid, uuid, int, time, time, text) rename to tutor_save_slot; end if;

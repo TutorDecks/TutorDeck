@@ -100,11 +100,11 @@ const noSideways = (page) => page.evaluate(() => document.documentElement.scroll
     }
     if (SC) await page.screenshot({ path: path.join(SC, `own-pay-lessons-${vp}-${theme}.png`), fullPage: true });
     await axeCheck(page, tag);
-    // the menu: a tutor-only login gets exactly two entries, the second with its own icon
+    // the menu: a tutor-only login gets three entries (My lessons, Schedule, Your pay), the last with its own icon
     const nav = await page.$$eval(vp === "phone" ? ".tabbar a" : ".tn-links a", (e) => e.map((x) => x.textContent.trim()));
-    ok(nav.join(",") === "My lessons,Your pay", tag + ": menu is My lessons, Your pay (" + nav.join(",") + ")");
+    ok(nav.join(",") === "My lessons,Schedule,Your pay", tag + ": menu is My lessons, Schedule, Your pay (" + nav.join(",") + ")");
     const icons = await page.$$eval(vp === "phone" ? ".tabbar a" : ".tn-links a", (e) => e.map((x) => x.querySelector("svg").innerHTML));
-    ok(icons.length === 2 && icons[0] !== icons[1] && /<rect/.test(icons[1]) && !/M19 7V4/.test(icons[1]), tag + ": Your pay has its own icon (not the Money wallet, not the calendar)");
+    ok(icons.length === 3 && new Set(icons).size === 3 && /<rect/.test(icons[2]) && !/M19 7V4/.test(icons[2]), tag + ": Your pay has its own icon (not the Money wallet, not the calendar)");
     await ctx.close();
   }
   // ---------- A2. the centre doesn't show pay: nothing at all (no line, no menu entry, no per-lesson call)
@@ -112,7 +112,7 @@ const noSideways = (page) => page.evaluate(() => document.documentElement.scroll
     const { ctx, page } = await open(b, "phone", "light", centreTutor(0, Object.assign({}, PAY, off)), "tutor");
     ok(!(await page.isVisible(".tt-paycard")) && !/Pay pending|est\./.test(await page.textContent("#tt-lists")), "pay off / not installed: no pay line and no amounts on My lessons");
     const nav = await page.$$eval(".tabbar a", (e) => e.map((x) => x.textContent.trim()));
-    ok(nav.join(",") === "My lessons", "pay off / not installed: no Your pay entry (" + nav.join(",") + ")");
+    ok(nav.join(",") === "My lessons,Schedule", "pay off / not installed: no Your pay entry (" + nav.join(",") + ")");
     ok((await callsOf(page, /^tutor_my_pay$/)) === 0, "pay off: the per-lesson function is not even asked");
     await ctx.close();
   }

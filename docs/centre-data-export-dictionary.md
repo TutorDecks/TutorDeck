@@ -63,6 +63,7 @@ Format: one UTF-8 CSV per table (with a byte-order mark so Excel reads names cor
 | `statement_lines_unresolved.csv` | `statement_lines` | Bank statement lines still to review |
 | `statement_matches.csv` | `statement_matches` | Bank statement matches |
 | `statement_payer_names.csv` | `statement_payer_links` | Remembered payer names |
+| `tutor_requests.csv` | `schedule_requests` | Tutor requests |
 | `emails_queued.csv` | `email_queue` | Emails to families: queue |
 | `emails_sent_log.csv` | `email_send_log` | Emails to families: send log |
 | `invoice_number_counters.csv` | `org_counters` | Invoice number counters |
@@ -762,6 +763,27 @@ Names that appear on your bank statement and the family each was matched to.
 | `times_used` | How often it was used. |
 | `last_used` | Date last used. |
 | `created_at` | When the row was created (UTC). |
+
+## `tutor_requests.csv` — Tutor requests
+
+Each change a tutor asked for when the centre asks tutors to propose (move, cancel, add a lesson, weekly slot, online link), and how staff answered.
+
+| Column | Meaning |
+|---|---|
+| `id` | Unique id of this row. Other files point at it (for example a lesson's student_id is a student's id), so you can join files in a spreadsheet. |
+| `membership_id` | The tutor who asked (people_tutors_and_staff.csv id). |
+| `kind` | postpone, revert, cancel, add_lesson, save_slot, stop_slot, generate or link. |
+| `student_id` | The student. |
+| `lesson_id` | The lesson. |
+| `slot_id` | The weekly slot. |
+| `reason` | The tutor's own words. |
+| `status` | pending, approved, declined, cancelled, expired or no_longer_possible. |
+| `decision_code` | The rule that stopped it, if any. |
+| `decision_reason` | What staff or the system told the tutor. |
+| `decided_by` | Who answered (the person's name; "Former member" if they have since left the centre). |
+| `decided_at` | When (UTC). |
+| `created_at` | When the row was created (UTC). |
+| `expires_at` | When it runs out (UTC). |
 
 ## `emails_queued.csv` — Emails to families: queue
 

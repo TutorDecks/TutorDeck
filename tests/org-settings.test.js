@@ -512,7 +512,7 @@ test("T18-4: the copy never promises what is not built and never shows a price",
 });
 
 test("T3.10: staff add past lessons: lessons.backfill_allowed_days has the same range in the form and in the database, default 31, 0 = off", () => {
-  const m = PAST.match(/\(v#>>'\{\}'\)::bigint between (\d+) and (\d+)/);
+  const m = PAST.match(/\{lessons,backfill_allowed_days\}'[\s\S]*?\(v#>>'\{\}'\)::bigint between (\d+) and (\d+)/);
   assert.ok(m, "the range is checked in the migration");
   assert.deepEqual([+m[1], +m[2]], [0, 366]);
   assert.match(PAST, /lessons,backfill_allowed_days\}'\)::int, 31\)/, "the plan reads a missing key as 31");

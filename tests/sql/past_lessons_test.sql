@@ -287,14 +287,17 @@ select t.ok((select (after->>'holiday_confirmed')::boolean from audit_log where 
 delete from holidays where org_id = t.id('pl') and true;
 -- the billing-start cut-off (import stage A): ignored while the function is absent, respected the moment it exists
 select pg_temp.expect(pg_temp.state(pg_temp.prev(:'stf', 'billing', 'tia', pg_temp.items(5))), 'new', 'no billing-start function on this database: no cut-off (stage A not applied)');
-select format('create function public.org_billing_start(p_org uuid) returns date language sql stable as $f$ select %L::date $f$', (select today - 4 from td)) as ddl \gset
+-- (import stage A may be applied already: its real org_billing_start is saved here and put back afterwards)
+select coalesce(pg_get_functiondef(to_regprocedure('public.org_billing_start(uuid)')), '') as origdef \gset
+select format('create or replace function public.org_billing_start(p_org uuid) returns date language sql stable as $f$ select %L::date $f$', (select today - 4 from td)) as ddl \gset
 :ddl;
 select pg_temp.expect(pg_temp.code(pg_temp.prev(:'stf', 'billing', 'tia', pg_temp.items(5))), 'BEFORE_BILLING_START', 'billing starts 4 days ago: a lesson 5 days ago is refused');
 select t.ok((pg_temp.prev(:'stf', 'billing', 'tia', pg_temp.items(5))::jsonb #>> '{rows,0,message}') like 'Billing for this centre starts from%', 'in plain words');
 select pg_temp.expect(pg_temp.state(pg_temp.prev(:'stf', 'billing', 'tia', pg_temp.items(4))), 'new', 'the start day itself is fine');
 select pg_temp.expect(pg_temp.add(:'o1', 'billing', 'tia', pg_temp.items(5, 4)), 'REFUSED', 'not even the owner may add before it (all or nothing)');
 select t.ok((pg_temp.call(:'stf', format('staff_past_lessons_options(%L::uuid, %L::uuid)', t.id('pl'), t.id('billing')))::jsonb ->> 'billing_start')::date = (select today - 4 from td), 'the form is told where billing starts');
-drop function public.org_billing_start(uuid);
+select case when :'origdef' = '' then 'drop function public.org_billing_start(uuid)' else :'origdef' end as ddl2 \gset
+:ddl2;
 select pg_temp.expect(pg_temp.state(pg_temp.prev(:'stf', 'billing', 'tia', pg_temp.items(5))), 'new', 'function gone again: no cut-off');
 -- a month whose platform fee is already recorded
 select pg_temp.lset(t.id('pl'), :'o1', 'backfill_allowed_days', '120'::jsonb);
