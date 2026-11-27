@@ -1040,6 +1040,7 @@ html[data-theme="dark"] .imp-notes{color:var(--muted)}
 html[data-theme="dark"] .imp-sum{border-collapse:collapse}
 html[data-theme="dark"] .imp-sum th{border-bottom:1px solid var(--line)}
 html[data-theme="dark"] .imp-sum td{border-bottom:1px solid var(--line);color:var(--muted)}
+html[data-theme="dark"] .imp-backup{background:var(--bg);border-left:3px solid var(--warn)}
 @media(max-width:600px){html[data-theme="dark"] .imp-tbl tr{border:1px solid var(--line)}}
 @media(max-width:600px){html[data-theme="dark"] .imp-tbl td{border:0}}
 @media(max-width:600px){html[data-theme="dark"] .imp-tbl td::before{color:var(--muted)}}

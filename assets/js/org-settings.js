@@ -33,7 +33,7 @@
   function tutorsChange(s) { return s.lessons.timetable_editing !== "admin_only"; }          // the switches and limits matter only when tutors may change lessons
   var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
   // Field: { path, label, type, options?, help?, soon?, show?(s) }
-  // types: text, email, color, toggle, select, number, money (cents), percent (bp), days, list (number list),
+  // types: text, email, color, date (YYYY-MM-DD or empty), toggle, select, number, money (cents), percent (bp), days, list (number list),
   //        note (a paragraph), group (a sub-heading; no value)
   // groupOnly: true / groupOnlyOptions: [...] = only for centres that run group classes (hidden when lessons.class_type is one_to_one)
   var STEPS = [
@@ -64,6 +64,8 @@
     ]},
     { id: "users", n: 3, title: "Users and permissions", custom: "users", fields: [] },
     { id: "billing", n: 4, title: "How lessons are billed", fields: [
+      { path: "billing.starts_from", label: "Billing starts from", type: "date",
+        help: "Lessons dated before this day are never put on an invoice. Use it when you move to TutorDeck part-way through a month: leave it empty to bill every lesson." },
       { path: "billing.model", label: "Default billing model", type: "select", options: [
         o("prepaid_packages", "Prepaid packages — parents buy lessons in advance"),
         o("fixed_in_advance", "Fixed fee in advance — per month or term, before it starts"),
@@ -261,7 +263,7 @@
         gst_registered: false, gst_number: "", gst_rate_bp: 900, gst_inclusive: false, timezone: "Asia/Singapore", currency: "SGD",
         invoice_prefix: "INV", next_invoice_number: 1, reply_to_email: "" },
       calendar: { skip_holidays: true },
-      billing: { model: "postpaid_lessons", fixed_period: "month", pay_per_lesson_grouping: "lesson", low_balance_credits: 2, credit_expiry_days: 0,
+      billing: { starts_from: "", model: "postpaid_lessons", fixed_period: "month", pay_per_lesson_grouping: "lesson", low_balance_credits: 2, credit_expiry_days: 0,
         absences: { mode: "charged_unless_notice", notice_hours: 24 }, makeups: { allowed: true, per_period: 2, uses_credit: false },
         proration: "by_remaining", sibling_discount: { type: "none", percent_bp: 1000, fixed_cents: 500 }, adhoc_discounts: true,
         one_off_fees: { registration_cents: 0, deposit_cents: 0, materials_cents: 0 }, trials: { charged: false },
@@ -344,6 +346,12 @@
     if (p.reply_to_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(p.reply_to_email)) e.push("Reply-to email doesn't look right.");
     if (!/^[A-Za-z0-9-]{1,8}$/.test(p.invoice_prefix || "")) e.push("Invoice prefix: 1–8 letters or numbers.");
     if (!(p.next_invoice_number >= 1)) e.push("Next invoice number must be 1 or more.");
+    var bs = s.billing.starts_from;
+    if (bs != null && bs !== "") {
+      var okDate = typeof bs === "string" && /^\d{4}-\d{2}-\d{2}$/.test(bs) && (function () { var d = new Date(bs + "T00:00:00Z"); return !isNaN(d) && d.toISOString().slice(0, 10) === bs; })();
+      if (!okDate) e.push("Billing starts from: pick a real date.");
+      else if (bs < "2020-01-01" || bs > "2100-01-01") e.push("Billing starts from: the date must be between 2020 and 2100.");
+    }
     if (!Array.isArray(s.payments.modes) || !s.payments.modes.length) e.push("Pick at least one way for parents to pay.");
     var mn = s.lessons.min_notice_hours; if (mn != null && !(Number.isSafeInteger(mn) && mn >= 0 && mn <= 168)) e.push("Notice before a tutor's change must be 0–168 hours.");
     var mc = s.lessons.max_changes_per_month; if (mc != null && !(Number.isSafeInteger(mc) && mc >= 0 && mc <= 500)) e.push("Changes per tutor per month must be 0–500 (0 = no limit).");
