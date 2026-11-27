@@ -51,6 +51,7 @@
     var r = await rpc("stmt_queue", { p_org: orgId });
     if (mine !== seq) return;
     if (r.error) return fail(r.error);
+    if (!r.data) return fail({ message: "EMPTY" });
     data = r.data; draw(msg);
   }
   function fail(err) {

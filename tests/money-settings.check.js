@@ -30,7 +30,7 @@ const LATE_IDS = ["f-billing-late_fee-enabled", "f-billing-late_fee-repeat", "f-
     ok(og.includes("always approved and recorded step by step") && og.includes("comes in a later update") && og.includes("A person approves or waives each one"), vp + ": help says what is built and what is missing");
     for (const id of ["f-billing-deposit-mode", "f-billing-deposit-taxable", "f-billing-deposit-due", "f-billing-deposit-waived_by", "f-billing-deposit-release", "f-billing-deposit-forfeit_notice_days", "f-billing-deposit-refund_approved_by"]) ok(await page.$eval("#" + id, (e) => !e.disabled), vp + ": " + id + " is editable now (S4/S5)");
     const nSoon = (await page.$$(".og-soon")).length;
-    ok(nSoon >= 10, vp + ": Coming soon badges (" + nSoon + ")");
+    ok(nSoon >= 5, vp + ": Coming soon badges still shown (" + nSoon + "; it was 10+ before tutor pay, credits and the tutor switches were built)");
     ok(await page.$eval("#f-billing-sibling_discount-type", (e) => !e.disabled), vp + ": sibling discount still editable");
     ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), vp + ": no sideways scroll");
     if (SC) await page.screenshot({ path: path.join(SC, "money-billing-" + vp + ".png"), fullPage: true });

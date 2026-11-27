@@ -193,6 +193,7 @@
   async function loadRates() {
     var r = await rpc("centre_tutor_rate_list", { p_org: orgId });
     if (r.error) return fatal(r.error);
+    if (!r.data) return fatal({ message: "EMPTY" });
     rates = r.data; mode = rates.mode; drawRates();
   }
   function rateRow(t, i) {
@@ -317,6 +318,7 @@
     wire(); nav();
     var r = await rpc("centre_tutor_rate_list", { p_org: orgId });                                      // also tells us the mode and whether this person may be here at all
     if (r.error) return fatal(r.error);
+    if (!r.data) return fatal({ message: "EMPTY" });
     rates = r.data; mode = rates.mode;
     var want = q.get("tab") === "rates" ? "rates" : q.get("tab") === "taught" ? "taught" : mode === "full" ? "pay" : "rates";
     setTab(want);

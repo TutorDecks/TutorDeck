@@ -83,7 +83,7 @@ Use a private window per login. One line per step: **where → what to do → wh
 48. [ ] Tutors (`tutor.one@`, `tutor.two@`) see **no credits and no money** anywhere; `centre.frontdesk@` has no Make-ups tab.
 
 ## H. Data export (owner only)
-49. [ ] First, so there is something to mask: `tutor.one@` → **Settings** → payout details → PayNow mobile `91234567` (any made-up number) → save.
+49. [ ] First, so there is something to mask: `tutor.one@` → **Settings** → payout details → PayNow mobile with a made-up 8-digit number → save.
 50. [ ] Owner → **Organisation** page → **Data export** tab. The page says the file holds families' contact details (personal data, PDPA), what is **not** included (passwords, Stripe ids, share links…), and **Include full payout numbers** is **off**. One primary button: **Download export (ZIP)**.
 51. [ ] Download → a file named `tutordeck-export-<centre>-<date>.zip`; a progress bar; a message with the row count and "store it somewhere private". Open the ZIP: one CSV per table (families, parents and guardians, students, tutors and staff, lessons, weekly slots, exams, invoices, payments, deposits, refunds, late fees, **tutor pay rates / payments / adjustments, make-up credits, imports, bank statement uploads and matches, emails queued and sent**, settings history, fee plans, audit log) plus `README.txt` (the data dictionary). Names are people's names ("Former member" for someone who left), never login ids. The tutor's payout number shows as **•••••4567**.
 52. [ ] Tick **Include full payout numbers** → it asks you to confirm → export again → `README.txt` says **FULL** and the number is whole; the audit log gets *export started*, *payout full* and *export finished* rows (counts, never data).
