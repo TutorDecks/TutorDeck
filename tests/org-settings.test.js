@@ -11,6 +11,7 @@ const MOVES = fs.readFileSync(require.resolve("../db/migration_tutor_moves.sql")
 const LINKP = fs.readFileSync(require.resolve("../db/migration_tutor_link_propose.sql"), "utf8");   // T6 steps 5-6: the validator that also knows request_expiry_days
 const OWN = fs.readFileSync(require.resolve("../db/migration_tutor_own_lessons.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
 const CREDITS = fs.readFileSync(require.resolve("../db/migration_makeup_credits.sql"), "utf8");   // T18 step 4: the validator that knows the make-up credit options   // T6 step 2: the validator that knows the tutor-editing options
+const PAST = fs.readFileSync(require.resolve("../db/migration_past_lessons.sql"), "utf8");   // T3.10: the validator that knows lessons.backfill_allowed_days
 const PAYOUT_SQL = fs.readFileSync(require.resolve("../db/migration_payout_permission.sql"), "utf8");
 
 test("defaults are valid once named, for both presets", () => {
@@ -509,4 +510,19 @@ test("T18-4: the copy never promises what is not built and never shows a price",
     const f = field("billing.credits." + k), text = [f.label, f.help || ""].concat((f.options || []).map((o) => o[1])).join(" ");
     assert.doesNotMatch(text, /coming soon|later update|S\$/i, k);
   }
+});
+
+test("T3.10: staff add past lessons: lessons.backfill_allowed_days has the same range in the form and in the database, default 31, 0 = off", () => {
+  const m = PAST.match(/\(v#>>'\{\}'\)::bigint between (\d+) and (\d+)/);
+  assert.ok(m, "the range is checked in the migration");
+  assert.deepEqual([+m[1], +m[2]], [0, 366]);
+  assert.match(PAST, /lessons,backfill_allowed_days\}'\)::int, 31\)/, "the plan reads a missing key as 31");
+  assert.equal(S.get(S.defaults(), "lessons.backfill_allowed_days"), 31);
+  const f = field("lessons.backfill_allowed_days");
+  assert.ok(f && f.type === "number" && !f.soon, "it is a built number field, not marked soon");
+  const ok = () => { const s = S.defaults(); s.profile.trading_name = "T"; return s; };
+  for (const v of [-1, 367, 1.5, 1e9]) { const s = ok(); s.lessons.backfill_allowed_days = v; assert.match(S.validate(s).join(" | "), /Days staff may add past lessons/, "value " + v); }
+  for (const v of [0, 1, 31, 366]) { const s = ok(); s.lessons.backfill_allowed_days = v; assert.deepEqual(S.validate(s), [], "value " + v); }
+  assert.equal(S.withDefaults({ schema_version: 1, preset: "centre", profile: { trading_name: "Old" }, lessons: {} }).lessons.backfill_allowed_days, 31, "settings saved before this load with 31");
+  assert.match(PAST, /Days staff may add past lessons must be 0-366/, "the database says the same words");
 });

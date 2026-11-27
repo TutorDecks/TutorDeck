@@ -73,6 +73,7 @@
   }
   function draw(res) {
     lastRes = res; today = res.today;
+    $("tt-past").hidden = !(res.can_edit && window.CentrePastLessons);
     var r = TT.range(state.view, state.anchor);
     drawTutors(res.tutors); drawStudents(res.students, res.students_more); drawBranches(res.branches);
     controls();
@@ -243,6 +244,8 @@
     $("tt-prev").addEventListener("click", function () { go(TT.shift(state.view, state.anchor || today, -1)); });
     $("tt-next").addEventListener("click", function () { go(TT.shift(state.view, state.anchor || today, 1)); });
     $("tt-today").addEventListener("click", function () { go(today || localToday()); });
+    var openPast = function (e) { window.CentrePastLessons.open(orgId, { onDone: function () { stale = true; if (mode === "lessons") { stale = false; load(); } } }, e.currentTarget); };
+    $("tt-past").addEventListener("click", openPast); $("sl-past").addEventListener("click", openPast);
     $("tt-view").addEventListener("click", function (e) {
       var b = e.target.closest("[data-v]"); if (!b || b.dataset.v === state.view) return;
       var t = today || localToday();

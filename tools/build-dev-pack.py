@@ -33,7 +33,7 @@ BRANCH = {
     "centre_billing_method": "t31a-centre-invoice-billing", "centre_billing_start": "t36-billing-start", "tutor_profile": "t24c-1-profile",
     "tutor_payout": "t24c-2-payout", "payout_permission": "t24c-3-payout", "slot_changes": "t3-9-timetable-nav",
     "reassign_link": "b4-fix", "payment_fix": "b4-fix",
-    "tutor_moves": "t6-2-tutor-moves", "tutor_own_lessons": "t6-3-tutor-own-lessons", "tutor_link_propose": "t6-4-link-propose", "b5_fix": "b5-fix", "import": "t33-i1-stage-a", "centre_tutor_pay": "t4-s7-tutor-pay",
+    "tutor_moves": "t6-2-tutor-moves", "tutor_own_lessons": "t6-3-tutor-own-lessons", "tutor_link_propose": "t6-4-link-propose", "past_lessons": "t3-10-past-lessons", "b5_fix": "b5-fix", "import": "t33-i1-stage-a", "centre_tutor_pay": "t4-s7-tutor-pay",
     "statement_matching": "t34-m0-matching", "invoice_email": "t7-3-invoice-email", "makeup_credits": "t18-4-makeup-credits", "org_export": "t35-e-export",
     "centre_deposits": "t4-s4-deposits", "centre_refunds": "t4-s5-refunds", "centre_late_fees": "t4-s6-late-fees",
     "centre_credit_undo": "t4-s5b-credit-undo",
@@ -57,6 +57,7 @@ WHAT = {
     "makeup_credits": "make-up credits: owed list, booking, expiry, invoice skip", "org_export": "centre data export (owner only): catalogue, paged reads, audit",
     "centre_deposits": "refundable deposits: ledger, deposit invoice, waive, opening balance", "centre_refunds": "refunds + family credit (request, approve, pay, apply)",
     "centre_late_fees": "late fee proposals (approve / waive, monthly repeat)", "centre_credit_undo": "undo of applied credit / deposit, four-eyes guard, notices",
+    "past_lessons": "staff add past lessons (backfill), centre setting lessons.backfill_allowed_days",
 }
 
 
