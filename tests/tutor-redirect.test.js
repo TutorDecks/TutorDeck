@@ -10,6 +10,7 @@ function loadTL() {
   const win = { document, localStorage: ls, location: { pathname: "/", href: "", replace() {} }, addEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {} }), sb: null };
   win.window = win;
   const ctx = vm.createContext(Object.assign(win, { localStorage: ls, document, console, setTimeout() {}, clearTimeout() {}, navigator: { userAgent: "" } }));
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../assets/js/menus.js"), "utf8"), ctx);   // the menus app.js draws (UX1)
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../assets/js/app.js"), "utf8"), ctx);
   return ctx.TL;
 }

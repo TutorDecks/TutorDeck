@@ -7,51 +7,13 @@ window.TL = (function () {
   var isOwner = false;
   // Navigation is grouped by job. Each group is one tab (bottom bar on phones, sidebar on
   // desktop); its pages show as sub-tabs under the page title.
-  var ICONS = {
-    home:     '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
-    schedule: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/>',
-    students: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-    money:    '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
-    check:    '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
-    more:     '<circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/><circle cx="5" cy="12" r="1.4"/>',
-    settings: '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
-    materials:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
-    user:     '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
-    signout:  '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>'
-  };
+  var MN = window.Menus;   // menus + icons of every login live in assets/js/menus.js (pure, unit-tested: no two destinations of one menu share an icon)
+  var ICONS = MN.ICONS, GROUPS = MN.GROUPS;
   function icon(name, size) {
     var z = size || 20;
     return '<svg class="i" width="' + z + '" height="' + z + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
            'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || "") + '</svg>';
   }
-  var GROUPS = [
-    { id: "home",     label: "Home",     ic: "home",     pages: [ { id: "dashboard", label: "Dashboard", href: "home" } ] },
-    { id: "schedule", label: "Schedule", ic: "schedule", pages: [ { id: "calendar", label: "Calendar", href: "calendar" },
-                                                                  { id: "planner",  label: "Weekly planner", href: "planner" } ] },
-    { id: "students", label: "Students", ic: "students", pages: [ { id: "students", label: "Roster", href: "students" },
-                                                                  { id: "exams",    label: "Exams",  href: "exams" } ],
-      also: ["student"] },
-    { id: "money",    label: "Money",    ic: "money",    pages: [ { id: "ledger",   label: "Ledger",   href: "ledger" },
-                                                                  { id: "invoices", label: "Invoices", href: "invoices" },
-                                                                  { id: "insights", label: "Insights", href: "insights" } ] }
-  ];
-  // A login that is ONLY a centre tutor (no students of their own) sees a one-page menu instead of the solo-tutor screens;
-  // a solo tutor who also teaches at a centre gets "My lessons" in the More sheet. See roleMode() / detectRole().
-  var TUTOR_GROUPS = [
-    { id: "tutor", label: "My lessons", ic: "schedule", pages: [ { id: "tutor", label: "My lessons", href: "tutor" } ] },
-    { id: "tutor-schedule", label: "Schedule", ic: "schedule", pages: [ { id: "tutor-schedule", label: "Schedule", href: "tutor-schedule" } ] }   // T6: read-only week + weekly slots
-  ];
-  var TUTOR_EXTRA = { id: "tutor", label: "My lessons", href: "tutor", ic: "schedule" };
-  var TUTOR_SCHEDULE_EXTRA = { id: "tutor-schedule", label: "Schedule", href: "tutor-schedule", ic: "schedule" };
-  var TUTOR_SETTINGS_EXTRA = { id: "tutor-settings", label: "My tutor profile", href: "tutor-settings", ic: "settings" };   // T24c: profile and password of a centre tutor
-  // (T3.9) On the tutor's own menu (a tutor-only login, or a "both" login while the current organisation is the centre) the same page is simply "Settings".
-  // Solo menus are untouched: a solo tutor's Settings is /settings, and "both" logins keep "My tutor profile" in More while they are in their own solo organisation.
-  var TUTOR_MENU_SETTINGS = { id: "tutor-settings", label: "Settings", href: "tutor-settings", ic: "settings" };
-  // Secondary destinations: sidebar footer on desktop, "More" sheet on phones.
-  var EXTRA = [
-    { id: "materials", label: "Materials", href: "https://mugcornersg.com", ic: "materials", ext: true, hint: "Materials on MugCorner (opens in a new tab)" },
-    { id: "settings",  label: "Settings",  href: "settings",  ic: "settings" }
-  ];
   // A menu entry whose screen isn't built yet (T3 centre tabs): a visible "soon" pill, and the same words for screen readers. The link still goes
   // to a real page that says "Coming next", never a dead end.
   function soonTag(g) { return g && g.soon ? '<em class="soon-pill" aria-hidden="true">soon</em><span class="sr-only"> (coming next)</span>' : ""; }
@@ -113,12 +75,12 @@ window.TL = (function () {
   // Build sidebar + topbar around the page's <div id="view">
   function mountShell(active, email, title, sub) {
     var pageId = active;   // the page's own id (the menu may show a centre's items instead, T12c)
-    var mode = roleMode(), G = mode === "tutor-only" ? TUTOR_GROUPS : GROUPS;
-    var extras = (mode === "tutor-only" ? [TUTOR_MENU_SETTINGS] : mode === "both" ? [TUTOR_EXTRA, TUTOR_SCHEDULE_EXTRA, TUTOR_SETTINGS_EXTRA].concat(EXTRA) : EXTRA)
-      .filter(function (n) { return !n.ownerOnly || isOwner; });
-    if (mode !== "tutor-only" && inCentre()) { var cm = centreMenu(active); G = cm.groups; extras = cm.extras; active = cm.active; }   // T12c: a centre has its own menu
+    var cur = org(), mn = MN.build(roleMode(), cur, OC ? OC.centreTabs(cur) : []), G = mn.groups;   // what each login sees: assets/js/menus.js (UX1)
+    var extras = mn.extras.filter(function (n) { return !n.ownerOnly || isOwner; });
+    if (mn.kind === "centre") active = centreActive(active, G, cur);   // T12c: a centre has its own menu
     var grp = groupOf(active, G);
-    var onExtra = extras.some(function (n) { return n.id === active; });
+    var xg = extras.filter(function (n) { return n.id === active || (n.also || []).indexOf(active) > -1; })[0];   // an extra can own sub-tabs (UX1)
+    var onExtra = !!xg;
 
     // Desktop top bar: brand · the four groups · Settings/Materials icons + account menu.
     var side = G.map(function (g) {
@@ -141,8 +103,9 @@ window.TL = (function () {
 
     // Sub-tabs: the other pages in this group (hidden when the group has one page).
     var subtabs = "";
-    if (grp && grp.pages.length > 1 && grp.pages.some(function (p) { return p.id === active; })) {
-      subtabs = '<nav class="subtabs" aria-label="' + grp.label + '">' + grp.pages.map(function (p) {
+    var sg = grp && grp.pages.length > 1 ? grp : (xg && xg.pages ? xg : null);
+    if (sg && sg.pages.some(function (p) { return p.id === active; })) {
+      subtabs = '<nav class="subtabs" aria-label="' + sg.label + '">' + sg.pages.map(function (p) {
         return '<a href="' + p.href + '" class="' + (p.id === active ? "on" : "") + '"' +
                (p.id === active ? ' aria-current="page"' : "") + '>' + p.label + '</a>';
       }).join("") + '</nav>';
@@ -426,19 +389,9 @@ window.TL = (function () {
   function orgId() { try { return OS ? OS.soloId(org()) : null; } catch (e) { return null; } }
   function inCentre() { try { var o = org(); return !!(o && o.kind === "centre" && o.id); } catch (e) { return false; } }
   function centreRedirect(active) { try { return OS ? OS.centreRedirect(org(), active) : null; } catch (e) { return null; } }
-  // Menu while the current organisation is a centre (a person who is only a tutor there gets My lessons, as a tutor-only login does).
-  var CENTRE_GROUPS = [
-    { id: "orghome", label: "Centre home", ic: "home",     pages: [ { id: "orghome", label: "Centre home", href: "org" } ] },
-    { id: "orglist", label: "Centres",     ic: "students", pages: [ { id: "orglist", label: "Centres", href: "org" } ] }
-  ];
-  function centreMenu(active) {
-    var o = org(), G;
-    if (o.role === "tutor") G = TUTOR_GROUPS;
-    else {
-      // (T3) owner / staff: Home · Timetable · Students · Attendance, then More. Which tabs: OrgCurrent.centreTabs (follows the staff permissions).
-      G = (OC ? OC.centreTabs(o) : []).map(function (t) { return { id: t.id, label: t.label, ic: t.ic, soon: t.soon, tab: t.tab, page: t.page, pages: [ { id: t.id, label: t.label, href: t.href } ] }; });
-      if (!G.length) G = CENTRE_GROUPS;
-    }
+  // Which tab of a centre's menu is "on" for this page (the menus themselves: assets/js/menus.js).
+  function centreActive(active, G, o) {
+    if (o.role === "tutor") return active;
     var tabQ = (/[?&]tab=([a-z]+)/.exec(location.search) || [])[1] || "";
     var on = active === "centre-tutor-pay" ? "orgpay"                                                                        // (T4 S7) Tutor pay lives in the More sheet, so no main tab is active
            : (active === "centre-students" || active === "centre-attendance" || active === "centre-timetable" || active === "centre-money" || active === "centre-people") ? (G.filter(function (g) { return g.page === active; })[0] || G[0] || {}).id
@@ -743,15 +696,16 @@ window.TL = (function () {
                  "centre-money": ["Money", "Invoice run"],
                  "centre-people": ["People", "Tutors and staff at your centre"],
                  "centre-tutor-pay": ["Tutor pay", "Rates, pay list and lessons taught"],
-                 org: ["Organisation", "Your tuition centre, set up your way"],
+                 org: /[?&]id=/.test(location.search) ? ["Centre settings", "Your tuition centre, set up your way"] : ["Your centres", "The centres you run or work at"],   // UX1: the title says what the menu entry says
                  tutor: ["My lessons", "Your classes and attendance"],
                  "tutor-schedule": ["Schedule", "Your week and weekly slots"],
-                 "tutor-settings": ["Your settings", "Profile and password"],
+                 "tutor-settings": ["Settings", "Your profile and password"],   // UX1: the menu says Settings, so does the page
                  exams: ["Exams", "Upcoming assessments"],
                  invoices: ["Invoices", "Saved invoices"],
                  materials: ["Teaching materials", "Your resource library"],
                  student: ["Student", "Profile"],
                  students: ["Students", "Your roster"] }[active] || ["", ""];
+    if (active === "org") { try { document.title = meta[0] + " · TutorDeck"; } catch (e) {} }
 
     if (!window.TL_CONFIGURED) {
       // Render the shell so the setup banner is visible, skip the auth call.

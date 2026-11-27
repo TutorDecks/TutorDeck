@@ -456,7 +456,9 @@ const MONEY = /(S\$|\$\s?\d|\bprice\b|\brate\b|\bpaid\b|\bamount\b|\bcompensatio
     ok(/\/tutor$/.test(page.url()), "…but typing a solo page still sends them to My lessons"); await ctx.close(); }
   { const { ctx, page } = await open(b, "phone", "light", centreTutor(4), "home");
     const sheet = await page.$$eval("#tl-sheet a", (e) => e.map((x) => x.getAttribute("href")));
-    ok(sheet.includes("tutor-schedule") && /\/home$/.test(page.url()), "a solo tutor who also teaches at a centre finds Schedule in More: " + sheet.join(","));
+    ok(sheet.filter((h) => /^tutor/.test(h)).join() === "tutor" && /\/home$/.test(page.url()), "UX1: a solo tutor who also teaches at a centre has ONE centre entry in More (My lessons): " + sheet.join(","));
+    await page.goto(BASE + "tutor-schedule"); await page.waitForTimeout(1200);
+    ok((await page.$$eval(".subtabs a", (e) => e.map((x) => x.textContent.trim()))).join("|") === "My lessons|Schedule", "…and its Schedule is a sub-tab on those pages");
     await ctx.close(); }
   for (const pg of ["home", "calendar", "students", "settings"]) {
     const { ctx, page } = await open(b, "desktop", "light", SOLO_ONLY, pg);
