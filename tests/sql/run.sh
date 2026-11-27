@@ -12,6 +12,7 @@ shape() { psql -qAt -d $DB -c "select string_agg(x, E'\n' order by x) from (
   union all select 'trg '||event_object_table||'.'||trigger_name from information_schema.triggers where trigger_schema='public'
   union all select 'fn '||p.oid::regprocedure::text from pg_proc p where pronamespace='public'::regnamespace
   union all select 'con '||conname from pg_constraint where connamespace='public'::regnamespace) s"; }
+fdefs() { psql -qAt -d $DB -c "select md5(string_agg(pg_get_functiondef(p.oid), '' order by p.oid::regprocedure::text)) from pg_proc p where pronamespace='public'::regnamespace and prokind='f'"; }
 psql -qAt -d postgres -c "drop database if exists $DB" -c "create database $DB"
 $P -f tests/sql/supabase_shim.sql
 $P -f db/baseline_2026-11.sql
@@ -115,6 +116,15 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_moves_test.sql
 $P -f db/migration_tutor_own_lessons.sql
 $P -f db/migration_tutor_own_lessons.sql                    # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_own_lessons_test.sql
+FDEFS_BEFORE=$(fdefs)
+$P -f db/migration_tutor_link_propose.sql
+$P -f db/migration_tutor_link_propose.sql                   # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_link_propose_test.sql
+$P -f db/migration_tutor_link_propose_down.sql
+if [ "$FDEFS_BEFORE" != "$(fdefs)" ]; then echo "FAIL: undoing tutor_link_propose did not put every function back exactly"; exit 1; fi
+echo "PASS undoing tutor_link_propose puts every function back exactly"
+$P -f db/migration_tutor_link_propose.sql                   # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_tutor_link_propose_down.sql
 $P -f db/migration_tutor_own_lessons_down.sql
 $P -f db/migration_tutor_own_lessons.sql                    # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_tutor_own_lessons_down.sql
