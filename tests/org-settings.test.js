@@ -351,4 +351,38 @@ test("the migration's settings check keeps every other rule of the original (not
   for (const re of [/\{billing,model\}' not in \(([^)]*)\)/, /\{tutor_pay,mode\}' not in \(([^)]*)\)/, /\{tutor_pay,payable_when\}' not in \(([^)]*)\)/, /\{invoicing,grouping\}' not in \(([^)]*)\)/,
                     /\{lessons,attendance_by\}' not in \(([^)]*)\)/, /\{lessons,cancellations_marked_by\}' not in \(([^)]*)\)/, /\{lessons,compensation_entered_by\}' not in \(([^)]*)\)/, /\{lessons,trials_flagged_by\}' not in \(([^)]*)\)/, /\{payments,modes\}' \?\| array\[([^\]]*)\]/])
     assert.equal((sql.match(re) || [])[1], (orig.match(re) || [])[1], String(re));
+// ---------------------------------------------------------------------------------------------------- T34: bank statement matching options
+const STMT = fs.readFileSync(require.resolve("../db/migration_statement_matching.sql"), "utf8");
+test("T34: the statement options have the same values and limits in the form and in db/migration_statement_matching.sql", () => {
+  const enumOf = (key) => { const m = STMT.match(new RegExp("\\{" + key + "\\}' not in \\(([^)]*)\\)")); assert.ok(m, key + " is checked in the migration"); return m[1].match(/'([A-Za-z_]+)'/g).map((x) => x.slice(1, -1)).sort(); };
+  assert.deepEqual(field("payments.statement.auto_confirm").options.map((o) => o[0]).sort(), enumOf("payments,statement,auto_confirm"));
+  assert.deepEqual(field("payments.statement_bank").options.map((o) => o[0]).sort(), enumOf("payments,statement_bank"));
+  assert.ok(STMT.includes("between 0 and 30") && STMT.includes("between 0 and 365"), "the two windows have the limits 0-30 and 0-365 in the migration");
+  const d = S.defaults();
+  assert.equal(d.payments.statement.auto_confirm, "exact_only", "default: the plan's recommendation");
+  assert.equal(d.payments.statement.window_before_days, 7); assert.equal(d.payments.statement.window_after_days, 90);
+  assert.equal(d.payments.statement_bank, "custom", "the default bank is the one that works");
+  assert.ok(field("payments.statement.auto_confirm").options.some((o) => o[0] === d.payments.statement.auto_confirm));
+});
+
+test("T34: statement matching is switched on only where it works: custom columns yes, the three banks 'coming soon'", () => {
+  assert.ok(!(field("payments.modes").soonOptions || []).includes("statement_matching"), "matching itself is built");
+  assert.deepEqual(field("payments.statement_bank").soonOptions.sort(), ["DBS", "OCBC", "UOB"]);
+  assert.ok(!field("payments.statement_bank").soon, "the field is live (custom works)");
+  assert.ok(!field("payments.statement_bank").soonOptions.includes(S.defaults().payments.statement_bank), "the default is not a 'coming soon' option");
+  for (const p of ["payments.statement.auto_confirm", "payments.statement.window_before_days", "payments.statement.window_after_days"]) assert.ok(!field(p).soon, p + " is built");
+  const s = S.defaults(); assert.equal(field("payments.statement.auto_confirm").show(s), false, "hidden while matching is not switched on");
+  s.payments.modes = ["manual_paynow", "statement_matching"]; assert.equal(field("payments.statement.auto_confirm").show(s), true);
+});
+
+test("T34: every value of the statement options is accepted and a wrong one refused (the form's twin of org_validate_settings)", () => {
+  const ok = () => { const s = S.defaults(); s.profile.trading_name = "T"; return s; };
+  for (const v of ["exact_only", "never"]) { const s = ok(); s.payments.statement.auto_confirm = v; assert.deepEqual(S.validate(s), [], v); }
+  for (const v of [0, 30]) { const s = ok(); s.payments.statement.window_before_days = v; assert.deepEqual(S.validate(s), [], "before " + v); }
+  for (const v of [0, 365]) { const s = ok(); s.payments.statement.window_after_days = v; assert.deepEqual(S.validate(s), [], "after " + v); }
+  const bad = (mut, want) => { const s = ok(); mut(s); assert.match(S.validate(s).join(" | "), want); };
+  bad((s) => { s.payments.statement.auto_confirm = "always"; }, /Pick how matched payments are confirmed/);
+  bad((s) => { s.payments.statement.window_before_days = 31; }, /0–30/); bad((s) => { s.payments.statement.window_before_days = -1; }, /0–30/);
+  bad((s) => { s.payments.statement.window_after_days = 366; }, /0–365/); bad((s) => { s.payments.statement.window_after_days = 1.5; }, /0–365/);
+  const old = ok(); delete old.payments.statement; assert.deepEqual(S.validate(old), [], "settings saved before this still pass");
 });

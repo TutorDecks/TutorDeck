@@ -166,12 +166,24 @@
         o("statement_matching", "Bank statement matching"),
         o("hitpay", "HitPay — your own account, “Pay now” link"),
         o("stripe", "Stripe — your own account, “Pay now” link")],
-        soonOptions: ["statement_matching", "hitpay", "stripe"],
+        soonOptions: ["hitpay", "stripe"],
         help: "Cash, bank transfer and cheque can always be recorded by hand. Money always goes straight to your account." },
       { path: "payments.paynow.type", label: "PayNow to", type: "select", options: [o("uen", "UEN"), o("mobile", "Mobile number")] },
       { path: "payments.paynow.id", label: "PayNow UEN or number", type: "text" },
-      { path: "payments.statement_bank", label: "Bank for statement matching", type: "select", soon: true,
-        options: [o("DBS", "DBS"), o("OCBC", "OCBC"), o("UOB", "UOB"), o("custom", "Custom CSV columns")] },
+      // T34: statement matching is built for the custom column mapping. DBS/POSB, OCBC and UOB stay "coming soon" until each has been checked against a real
+      // export (assets/js/statement-core.js PRESETS are unverified placeholders).
+      { path: "payments.statement_bank", label: "Bank for statement matching", type: "select",
+        options: [o("DBS", "DBS / POSB"), o("OCBC", "OCBC"), o("UOB", "UOB"), o("custom", "Custom CSV columns")], soonOptions: ["DBS", "OCBC", "UOB"],
+        show: function (s) { return s.payments.modes.indexOf("statement_matching") > -1; },
+        help: "You upload your bank's CSV in Money > Statements and tell TutorDeck which column is which, once. Ready-made layouts for DBS / POSB, OCBC and UOB come after each has been checked against a real file." },
+      { path: "payments.statement.auto_confirm", label: "Matched payments are", type: "select",
+        options: [o("exact_only", "Marked paid automatically when the invoice number and the exact amount match, or a remembered payer pays the exact amount"), o("never", "Never automatic: a person confirms every line")],
+        show: function (s) { return s.payments.modes.indexOf("statement_matching") > -1; },
+        help: "Everything else always waits for a person: a different amount, no invoice number, two possible invoices. Amounts must match to the cent." },
+      { path: "payments.statement.window_before_days", label: "A payment may arrive up to this many days before the invoice date", type: "number",
+        show: function (s) { return s.payments.modes.indexOf("statement_matching") > -1; }, help: "0 to 30 days." },
+      { path: "payments.statement.window_after_days", label: "…and up to this many days after its due date", type: "number",
+        show: function (s) { return s.payments.modes.indexOf("statement_matching") > -1; }, help: "0 to 365 days. A payment outside this window waits for a person." },
       { path: "payments.hitpay.paynow", label: "HitPay: PayNow", type: "toggle", soon: true },
       { path: "payments.hitpay.cards", label: "HitPay: cards (higher fees)", type: "toggle", soon: true },
       { path: "payments.gateway_fees", label: "Gateway fees", type: "select", options: [o("absorb", "Absorbed by the centre"), o("pass_on", "Passed on as a separate line")] },
@@ -275,7 +287,7 @@
       invoicing: { grouping: "family", generate: { mode: "day_of_month", day: 1, days_before: 7 }, due_days: 7, review_before_sending: true,
         delivery: { email: false, share_link: true },
         whatsapp_template: "Hi {name}, this is {centre}. Invoice {number} for {amount} is due on {due_date}.\nYou can see it and pay by PayNow here: {link}\nThank you!", reminders: { enabled: false, schedule: [-3, 0, 7] } },
-      payments: { modes: ["manual_paynow"], paynow: { type: "uen", id: "" }, statement_bank: "DBS", hitpay: { paynow: true, cards: false },
+      payments: { modes: ["manual_paynow"], paynow: { type: "uen", id: "" }, statement_bank: "custom", statement: { auto_confirm: "exact_only", window_before_days: 7, window_after_days: 90 }, hitpay: { paynow: true, cards: false },
         gateway_fees: "absorb", partial_payments: true, overpayments: "credit" },
       lessons: { class_type: "both", timetable_editing: "admin_only", tutors_edit: { postpone: true, cancel: false, weekly_slots: false, generate: false, one_off: false, link: false },
         min_notice_hours: 24, max_changes_per_month: 0, notify_family: "list_for_admin", attendance_by: "tutor", attendance_window_days: 14, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
@@ -357,6 +369,12 @@
     if (!Array.isArray(s.payments.modes) || !s.payments.modes.length) e.push("Pick at least one way for parents to pay.");
     var mn = s.lessons.min_notice_hours; if (mn != null && !(Number.isSafeInteger(mn) && mn >= 0 && mn <= 168)) e.push("Notice before a tutor's change must be 0–168 hours.");
     var mc = s.lessons.max_changes_per_month; if (mc != null && !(Number.isSafeInteger(mc) && mc >= 0 && mc <= 500)) e.push("Changes per tutor per month must be 0–500 (0 = no limit).");
+    var st = s.payments.statement;                                                    // T34 (db: org_validate_settings in migration_statement_matching.sql)
+    if (st) {
+      if (st.auto_confirm != null && ["exact_only", "never"].indexOf(st.auto_confirm) < 0) e.push("Pick how matched payments are confirmed.");
+      if (st.window_before_days != null && !(Number.isSafeInteger(st.window_before_days) && st.window_before_days >= 0 && st.window_before_days <= 30)) e.push("The days before the invoice date must be 0–30.");
+      if (st.window_after_days != null && !(Number.isSafeInteger(st.window_after_days) && st.window_after_days >= 0 && st.window_after_days <= 365)) e.push("The days after the due date must be 0–365.");
+    }
     var aw = s.lessons.attendance_window_days; if (aw != null && !(Number.isSafeInteger(aw) && aw >= 1 && aw <= 60)) e.push("Attendance window must be 1–60 days.");
     var gd = s.invoicing.generate.day; if (!(gd >= 1 && gd <= 28)) e.push("Invoice day must be 1–28 (so it exists in every month).");
     var cd = s.tutor_pay.cycle; if (!(cd.cutoff_day >= 1 && cd.cutoff_day <= 31) || !(cd.pay_day >= 1 && cd.pay_day <= 31)) e.push("Pay days must be 1–31.");
