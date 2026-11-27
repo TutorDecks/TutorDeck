@@ -13,7 +13,7 @@
   function prettyDate(iso) { return new Date(iso + "T00:00:00").toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" }); }
 
   var st = { mail: null, perms: [], lib: undefined, libBusy: false, org: null, role: null, saved: null, draft: null, step: "profile", members: [], branches: [], rooms: [], terms: [], holidays: [] };
-  var EXTRA_TABS = [["plan", "Plan"], ["audit", "Audit log"]];
+  var EXTRA_TABS = [["plan", "Plan"], ["audit", "Audit log"], ["export", "Data export"]];
   function isOwner() { return st.role === "owner"; }
   // who may email / re-email invites: the owner, or a staff admin with "manage tutors" (the same rule org_invite_mail_reserve() enforces in SQL)
   function canMail() { return st.role === "owner" || (st.role === "staff" && st.perms.indexOf("manage_tutors") >= 0); }
@@ -104,13 +104,14 @@
       '<div class="og-steps" role="tablist">' + tabs.map(function (x) {
         var done = setup() && x.n < (st.org.setup_step || 1);
         return '<button role="tab" data-step="' + x.id + '" class="' + (st.step === x.id ? "on " : "") + (done ? "done" : "") + '">' + (setup() ? '<span class="n">' + x.n + "</span>" : "") + esc(x.title) + "</button>";
-      }).join("") + (setup() ? "" : EXTRA_TABS.map(function (t) { return '<button role="tab" data-step="' + t[0] + '" class="' + (st.step === t[0] ? "on" : "") + '">' + t[1] + "</button>"; }).join("")) + "</div>" +
+      }).join("") + (setup() ? "" : EXTRA_TABS.filter(function (t) { return t[0] !== "export" || isOwner(); }).map(function (t) { return '<button role="tab" data-step="' + t[0] + '" class="' + (st.step === t[0] ? "on" : "") + '">' + t[1] + "</button>"; }).join("")) + "</div>" +
       '<div id="og-body"></div>';
     $("og").innerHTML = h;
     $("og").querySelectorAll("[data-step]").forEach(function (b) { b.onclick = function () { go(b.getAttribute("data-step")); }; });
     var on = $("og").querySelector(".og-steps .on"); if (on && on.scrollIntoView) on.scrollIntoView({ block: "nearest", inline: "center" });
     if (st.step === "plan") return tabPlan();
     if (st.step === "audit") return tabAudit();
+    if (st.step === "export") return tabExport();
     renderStep(cur);
   }
   function go(step) { st.step = step; history.replaceState(null, "", location.pathname + location.search + "#" + step); render(); window.scrollTo(0, 0); }
@@ -642,6 +643,9 @@
       }).join("") + "</tbody></table>" : '<p class="og-sub" style="margin:0">Your first monthly count appears here after your first full month.</p>');
   }
 
+  // ------------------------------------------------------------------ Data export (T35-E): owner only, everything lives in assets/js/org-export.js
+  function tabExport() { window.OrgExport.render({ el: $("og-body"), org: st.org, isOwner: isOwner(), sb: sb(), members: st.members }); }
+
   // ------------------------------------------------------------------ Audit log
   async function tabAudit() {
     $("og-body").innerHTML = '<section class="card og-card"><h2>Audit log</h2><p class="og-sub">Who changed what: settings, people, students, lessons and invoices. It can’t be edited or deleted.</p><div id="au" class="muted">Loading…</div></section>';
@@ -652,7 +656,7 @@
     var T = { organisations: "Organisation", memberships: "Person", org_settings: "Settings", org_plans: "Plan", support_access_grants: "Support access",
       branches: "Branch", rooms: "Room", terms: "Term", holidays: "Holiday", households: "Family", guardians: "Parent", students: "Student",
       recurring_slots: "Weekly slot", lessons: "Lesson", invoices: "Invoice" };
-    var A = { insert: "added", update: "changed", delete: "removed", migrate: "set up" };
+    var A = { insert: "added", update: "changed", delete: "removed", migrate: "set up", org_export_started: "started a data export", org_export_finished: "finished a data export", org_export_payout_full: "asked for full payout numbers in a data export" };
     function what(a) {
       var x = a.after || a.before || {};
       if (a.table_name === "org_settings") return "version " + x.version + (x.effective_from ? " from " + prettyDate(x.effective_from) : "");
