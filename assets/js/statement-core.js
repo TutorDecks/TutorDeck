@@ -274,7 +274,36 @@
     return r;
   }
 
-  return { DELIMS: DELIMS, DATE_FORMATS: DATE_FORMATS, AMOUNT_MODES: AMOUNT_MODES, PRESETS: PRESETS, parseCSV: parseCSV, detectDelimiter: detectDelimiter, parseDate: parseDate,
+  // a first guess for a file nobody has mapped yet: the header row is the first one with a "date" cell; columns are found by the words in the headers; the
+  // date format is the first one that reads the first dates. Always shown to the person to check (the preview), never trusted blindly.
+  function guessMapping(rows, delimiter) {
+    var m = { delimiter: delimiter || ",", header_rows: 1, date_col: 0, date_format: "dmy_slash", amount_mode: "signed", amount_col: 1, ref_cols: [], payer_col: null, bank_ref_col: null, skip_empty_date: true };
+    var hi = -1, i, j;
+    for (i = 0; i < Math.min(rows.length, 40) && hi < 0; i++) if (rows[i].length >= 3 && rows[i].some(function (c) { return /date/i.test(c); })) hi = i;
+    if (hi < 0) hi = 0;
+    m.header_rows = hi + 1;
+    var h = (rows[hi] || []).map(function (c) { return String(c || "").trim(); });
+    function find(re, not) { for (var k = 0; k < h.length; k++) if (re.test(h[k]) && !(not && not.test(h[k]))) return k; return null; }
+    var d = find(/date/i, /value|post/i); if (d == null) d = find(/date/i); if (d != null) m.date_col = d;
+    var deb = find(/debit|withdraw|money out|paid out/i), cre = find(/credit|deposit|money in|paid in/i), amt = find(/^(txn |transaction )?amount|^amt/i), dc = find(/^dr ?\/ ?cr|^cr ?\/ ?dr|^type$|indicator/i);
+    if (deb != null && cre != null) { m.amount_mode = "debit_credit"; m.debit_col = deb; m.credit_col = cre; delete m.amount_col; }
+    else if (amt != null && dc != null) { m.amount_mode = "amount_drcr"; m.amount_col = amt; m.drcr_col = dc; }
+    else m.amount_col = amt != null ? amt : (cre != null ? cre : 1);
+    var refs = [], used = [m.date_col, m.amount_col, m.debit_col, m.credit_col, m.drcr_col].filter(function (x) { return x != null; });
+    var pay = find(/payer|sender|from|remitter|name/i), bref = find(/(bank|txn|transaction|customer) ?(ref|id|no)|^ref(erence)? ?(no|num|id)/i);
+    if (pay != null) m.payer_col = pay;
+    if (bref != null && bref !== pay) m.bank_ref_col = bref;
+    for (j = 0; j < h.length; j++) if (/desc|detail|particular|narrat|remark|reference|ref\b|message|note/i.test(h[j]) && used.indexOf(j) < 0 && j !== m.payer_col && j !== m.bank_ref_col) refs.push(j);
+    m.ref_cols = refs.slice(0, 6);
+    var fmts = ["dmy_slash", "dmy_dash", "dmy_text", "iso", "mdy_slash"], sample = [];
+    for (i = hi + 1; i < rows.length && sample.length < 8; i++) { var c = String(rows[i][m.date_col] || "").trim(); if (c) sample.push(c); }
+    var best = null, bestN = 0;
+    fmts.forEach(function (f) { var n = sample.filter(function (c) { return parseDate(c, f); }).length; if (n > bestN) { best = f; bestN = n; } });
+    if (best) m.date_format = best;
+    return m;
+  }
+
+  return { guessMapping: guessMapping, DELIMS: DELIMS, DATE_FORMATS: DATE_FORMATS, AMOUNT_MODES: AMOUNT_MODES, PRESETS: PRESETS, parseCSV: parseCSV, detectDelimiter: detectDelimiter, parseDate: parseDate,
     parseAmount: parseAmount, fmtMoney: fmtMoney, maskDigits: maskDigits, normPayer: normPayer, normRef: normRef, numberPattern: numberPattern, validateMapping: validateMapping,
     applyMapping: applyMapping, summarise: summarise, score: score, colName: colName, dayNo: dayNo };
 });

@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Centre money · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=353">
+<link rel="stylesheet" href="assets/css/app.css?v=354">
 <script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   .cm-wrap{max-width:820px;display:flex;flex-direction:column;gap:14px}
@@ -128,8 +128,31 @@
   @media(max-width:820px){.cm-f{padding:10px 14px}}
   /* ---- deposits (S4) ---- */
   .cd-big{font-size:30px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+  /* ---- bank statements (T34) ---- */
+  .st-text{overflow-wrap:anywhere;white-space:normal}
+  .st-out{color:var(--muted)}
+  .st-lab{display:block;font-size:13px;font-weight:700;color:var(--ink);margin:12px 0 4px}
+  .st-up input[type=text],.st-up input[type=number],.st-up select,.st-up input[type=file]{width:100%;box-sizing:border-box;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font:inherit;color:var(--ink)}
+  .st-up input[type=file]{padding:9px 10px}
+  .st-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .st-chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.4;margin:8px 0;color:var(--ink)}
+  .st-chk input[type=checkbox]{flex:none;width:20px;height:20px;margin-top:1px;accent-color:var(--accent)}
+  .st-chk input[type=text]{width:auto;flex:1;min-width:120px;margin-left:6px}
+  .st-refs{max-height:210px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:2px 12px;background:#fff}
+  .st-opt{display:flex;gap:10px;align-items:center;padding:10px 4px;border-top:1px solid var(--line);font-size:14px}
+  .st-opt:first-child{border-top:none}
+  .st-opt input{flex:none;width:20px;height:20px;accent-color:var(--accent)}
+  .st-opt-t{flex:1;min-width:0;overflow-wrap:anywhere}
+  .st-opt-a{font-variant-numeric:tabular-nums;font-weight:700}
+  .st-tbl-w{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+  .st-tbl{width:100%;border-collapse:collapse;font-size:13px}
+  .st-tbl th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line)}
+  .st-tbl td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}
+  .st-tbl .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .ok-note{color:var(--accent-ink);font-weight:600}
+  @media(max-width:820px){.st-two{grid-template-columns:1fr}}
 </style>
-<link rel="stylesheet" href="assets/css/dark.css?v=353">
+<link rel="stylesheet" href="assets/css/dark.css?v=354">
 </head>
 <body>
 <div id="view" data-page="centre-money">
@@ -140,6 +163,7 @@
       <button class="cm-tab" id="cm-tab-dep" role="tab" type="button" aria-selected="false" aria-controls="cm-dep" tabindex="-1">Deposits</button>
       <button class="cm-tab" id="cm-tab-ref" role="tab" type="button" aria-selected="false" aria-controls="cm-ref" tabindex="-1">Refunds</button>
       <button class="cm-tab" id="cm-tab-late" role="tab" type="button" aria-selected="false" aria-controls="cm-late" tabindex="-1">Late fees</button>
+      <button class="cm-tab" id="cm-tab-stmt" role="tab" type="button" aria-selected="false" aria-controls="cm-stmt" tabindex="-1">Statements</button>
     </div>
     <div id="cm-notices" aria-live="polite"></div>
     <div class="cm-msg" id="cm-msg" role="status" aria-live="polite"></div>
@@ -157,6 +181,7 @@
     <div class="cm-panel" id="cm-dep" role="tabpanel" aria-labelledby="cm-tab-dep" hidden></div>
     <div class="cm-panel" id="cm-ref" role="tabpanel" aria-labelledby="cm-tab-ref" hidden></div>
     <div class="cm-panel" id="cm-late" role="tabpanel" aria-labelledby="cm-tab-late" hidden></div>
+    <div class="cm-panel" id="cm-stmt" role="tabpanel" aria-labelledby="cm-tab-stmt" hidden></div>
   </div>
 
   <!-- invoice sheet -->
@@ -173,21 +198,23 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=353"></script>
-<script src="assets/js/supabase.js?v=353"></script>
-<script src="assets/js/org-current.js?v=353"></script>
-<script src="assets/js/org-scope.js?v=353"></script>
-<script src="assets/js/app.js?v=353"></script>
-<script src="assets/js/money.js?v=353"></script>
-<script src="assets/js/centre-money-core.js?v=353"></script>
-<script src="assets/js/centre-payments-core.js?v=353"></script>
-<script src="assets/js/centre-deposits-core.js?v=353"></script>
-<script src="assets/js/centre-refunds-core.js?v=353"></script>
-<script src="assets/js/centre-late-fees-core.js?v=353"></script>
-<script src="assets/js/centre-money.js?v=353"></script>
-<script src="assets/js/centre-payments.js?v=353"></script>
-<script src="assets/js/centre-deposits.js?v=353"></script>
-<script src="assets/js/centre-refunds.js?v=353"></script>
-<script src="assets/js/centre-late-fees.js?v=353"></script>
+<script src="assets/js/config.js?v=354"></script>
+<script src="assets/js/supabase.js?v=354"></script>
+<script src="assets/js/org-current.js?v=354"></script>
+<script src="assets/js/org-scope.js?v=354"></script>
+<script src="assets/js/app.js?v=354"></script>
+<script src="assets/js/money.js?v=354"></script>
+<script src="assets/js/centre-money-core.js?v=354"></script>
+<script src="assets/js/centre-payments-core.js?v=354"></script>
+<script src="assets/js/centre-deposits-core.js?v=354"></script>
+<script src="assets/js/centre-refunds-core.js?v=354"></script>
+<script src="assets/js/centre-late-fees-core.js?v=354"></script>
+<script src="assets/js/statement-core.js?v=354"></script>
+<script src="assets/js/centre-money.js?v=354"></script>
+<script src="assets/js/centre-payments.js?v=354"></script>
+<script src="assets/js/centre-deposits.js?v=354"></script>
+<script src="assets/js/centre-refunds.js?v=354"></script>
+<script src="assets/js/centre-late-fees.js?v=354"></script>
+<script src="assets/js/statements.js?v=354"></script>
 </body>
 </html>

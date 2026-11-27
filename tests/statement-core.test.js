@@ -211,3 +211,17 @@ test("speed: a generated 5,000-line statement (400 invoices) is parsed, mapped a
   assert.ok(t3 - t1 < 3000, "parse + map + score took " + (t3 - t1) + " ms");
   console.log("  5,000 lines: generate " + (t1 - t0) + " ms, parse+map " + (t2 - t1) + " ms, score " + (t3 - t2) + " ms");
 });
+
+test("a first guess for an unmapped file: the header row, the columns by their words, the date format; the person still checks the preview", () => {
+  G.LAYOUTS.forEach((layout) => {
+    const g = G.generate({ layout, n: 40, seed: 5 });
+    const rows = S.parseCSV(g.text, S.detectDelimiter(g.text)), m = S.guessMapping(rows, S.detectDelimiter(g.text));
+    const r = S.applyMapping(rows, m);
+    assert.deepEqual(S.validateMapping(m), [], layout + " guess is a valid mapping");
+    assert.equal(m.amount_mode, g.mapping.amount_mode, layout + " amount layout");
+    assert.equal(m.date_format, g.mapping.date_format, layout + " date format");
+    assert.equal(m.header_rows, g.mapping.header_rows, layout + " header rows");
+    assert.equal(r.errors.length, 0, layout + " the guess parses every row");
+    assert.deepEqual(r.lines.map((l) => [l.date, l.cents]), g.lines.map((l) => [l.date, l.cents]), layout + " the guess reads dates and amounts correctly");
+  });
+});

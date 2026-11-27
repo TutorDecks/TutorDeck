@@ -1291,6 +1291,23 @@ html[data-theme="dark"] .cm-pay.off .cm-ld{color:var(--muted)}
 html[data-theme="dark"] .cm-tag{background:#282F3C;color:var(--muted)}
 html[data-theme="dark"] .cm-credit{background:rgba(15,118,110,0.152);color:var(--accent-ink)}
 html[data-theme="dark"] .cm-acts.col .btn.quiet{border-color:transparent;background:transparent}
+html[data-theme="dark"] .st-out{color:var(--muted)}
+html[data-theme="dark"] .st-lab{color:var(--ink)}
+html[data-theme="dark"] .st-up input[type=text],
+html[data-theme="dark"] .st-up input[type=number],
+html[data-theme="dark"] .st-up select,
+html[data-theme="dark"] .st-up input[type=file]{border:1px solid var(--line);background:#172235;color:var(--ink)}
+html[data-theme="dark"] .st-chk{color:var(--ink)}
+html[data-theme="dark"] .st-chk input[type=checkbox]{accent-color:var(--accent)}
+html[data-theme="dark"] .st-refs{border:1px solid var(--line);background:#172235}
+html[data-theme="dark"] .st-opt{border-top:1px solid var(--line)}
+html[data-theme="dark"] .st-opt:first-child{border-top:none}
+html[data-theme="dark"] .st-opt input{accent-color:var(--accent)}
+html[data-theme="dark"] .st-tbl-w{border:1px solid var(--line);background:#172235}
+html[data-theme="dark"] .st-tbl{border-collapse:collapse}
+html[data-theme="dark"] .st-tbl th{color:var(--muted);border-bottom:1px solid var(--line)}
+html[data-theme="dark"] .st-tbl td{border-top:1px solid var(--line)}
+html[data-theme="dark"] .ok-note{color:var(--accent-ink)}
 /* from pay.html */
 html[data-theme="dark"] .pv-logo{background:#172235}
 html[data-theme="dark"] .pv-sub{color:var(--muted)}
