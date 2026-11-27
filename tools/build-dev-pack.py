@@ -91,7 +91,7 @@ def main():
     for m in ON_DEV:
         assert m in allm, "run.sh no longer lists " + m
     assert allm[:len(STANDARD)] == STANDARD, "the standard migrations must come first in run.sh: %s" % allm[:len(STANDARD)]
-    new = [m for m in allm if m not in ON_DEV]
+    new = [m for m in allm if m not in ON_DEV and m not in LATER]
     assert new[:2] == ["reassign_link", "payment_fix"], "unexpected pack order: %s" % new
     tables, funcs = [], []
     for m in new:

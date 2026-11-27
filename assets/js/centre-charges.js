@@ -24,7 +24,7 @@
     $("ca-tab-charges").setAttribute("aria-label", "Charges" + (n ? ", " + n + " waiting" : ""));
   }
   function tabs() {
-    $("ca-tabs").querySelectorAll("[data-t]").forEach(function (b) { var on = (b.dataset.t === "charges") === active; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
+    $("ca-tabs").querySelectorAll("[data-t]").forEach(function (b) { if (b.dataset.t === "makeups") return; var on = (b.dataset.t === "charges") === active; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });   // the Make-ups tab (centre-credits.js) manages itself
     $("ca").hidden = active; $("cg").hidden = !active;
     try { var u = new URL(location.href); if (active) u.searchParams.set("tab", "charges"); else u.searchParams.delete("tab"); history.replaceState(null, "", u); } catch (e) {}
   }
@@ -137,7 +137,7 @@
   // ---------------------------------------------------------------- wiring
   function wire() {
     if (wired) return; wired = true;
-    $("ca-tabs").addEventListener("click", function (e) { var b = e.target.closest("[data-t]"); if (!b) return; if (b.dataset.t === "charges") show(); else hide(); });
+    $("ca-tabs").addEventListener("click", function (e) { var b = e.target.closest("[data-t]"); if (!b) return; if (b.dataset.t === "charges") show(); else if (b.dataset.t === "lessons") hide(); });
     $("cg-list").addEventListener("click", function (e) { var b = e.target.closest(".cg-open"); if (b) open(b.dataset.id, b); });
     $("cg-list").addEventListener("change", function (e) {
       var c = e.target.closest("[data-pick]"); if (!c) return;

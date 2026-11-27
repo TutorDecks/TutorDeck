@@ -5,7 +5,9 @@ const fs = require("fs"), path = require("path");
 const ROOT = path.resolve(__dirname, ".."), SC = process.argv[2] || null, BASE = "http://127.0.0.1:8765/";
 const STUB = fs.readFileSync(path.join(ROOT, "tests/supabase-stub-signed-in.js"), "utf8");
 let fails = 0; const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fails++; };
-const SOON = ["f-billing-makeups-allowed", "f-billing-makeups-per_period", "f-billing-makeups-uses_credit"];
+const SOON = ["f-billing-makeups-per_period"];
+const CREDITS = ["f-billing-credits-rule", "f-billing-credits-earn_absences", "f-billing-credits-earn_tutor_cancel", "f-billing-credits-earn_holiday", "f-billing-credit_expiry_days",
+  "f-billing-credits-makeup_price", "f-billing-credits-grant_by", "f-billing-credits-book_by"];
 const OTHER = ["f-billing-model", "f-billing-absences-mode", "f-billing-proration"];
 (async () => {
   const b = await chromium.launch();
@@ -25,8 +27,15 @@ const OTHER = ["f-billing-model", "f-billing-absences-mode", "f-billing-proratio
       ok(!!el && await el.evaluate((e) => e.disabled), vp + ": " + id + " visible and disabled");
     }
     for (const id of OTHER) { const el = await page.$("#" + id); ok(!!el && !(await el.evaluate((e) => e.disabled)), vp + ": " + id + " still editable"); }
-    ok((await page.$$(".og-soon")).length >= 3, vp + ": Coming soon badges on billing step");
-    ok((await page.textContent("#og")).includes("Make-up credits come in a later update; for now a make-up is added as a normal lesson."), vp + ": help text shown");
+    ok((await page.$$(".og-soon")).length >= 1, vp + ": Coming soon badges on billing step");
+    for (const id of CREDITS) { const el = await page.$("#" + id); ok(!!el && !(await el.evaluate((e) => e.disabled)), vp + ": " + id + " is a real, editable setting (T18-4)"); }
+    ok(!(await page.$("#f-billing-makeups-allowed")) && !(await page.$("#f-billing-makeups-uses_credit")), vp + ": the two old make-up toggles are gone");
+    await page.$eval("#f-billing-credits-rule", (e) => { e.value = JSON.stringify("none"); e.dispatchEvent(new Event("change", { bubbles: true })); }); await page.waitForTimeout(300);
+    ok(!(await page.$("#f-billing-credits-earn_absences")) && !(await page.$("#f-billing-credit_expiry_days")), vp + ": choosing No credits hides the options that only matter with credits");
+    await page.$eval("#f-billing-credits-rule", (e) => { e.value = JSON.stringify("one_per_missed"); e.dispatchEvent(new Event("change", { bubbles: true })); }); await page.waitForTimeout(300);
+    ok(!!(await page.$("#f-billing-credits-earn_absences")), vp + ": and choosing credits brings them back");
+    ok((await page.textContent("#og")).includes("A limit on make-ups per month or term comes in a later update."), vp + ": help text shown for the unbuilt limit");
+    ok(!(await page.textContent("#og")).includes("Make-up credits come in a later update"), vp + ": the old credits-come-later promise is gone");
     ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), vp + ": no sideways scroll");
     ok(errs.length === 0, vp + ": no page errors " + errs.join("|"));
     if (SC) await page.screenshot({ path: path.join(SC, "wizard-billing-" + vp + ".png"), fullPage: true });

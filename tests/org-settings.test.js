@@ -9,6 +9,8 @@ const MONEY = fs.readFileSync(require.resolve("../db/migration_money_settings.sq
 const field = (path) => S.STEPS.flatMap((s) => s.fields).find((f) => f.path === path);
 const MOVES = fs.readFileSync(require.resolve("../db/migration_tutor_moves.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
 const OWN = fs.readFileSync(require.resolve("../db/migration_tutor_own_lessons.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
+const MOVES = fs.readFileSync(require.resolve("../db/migration_tutor_moves.sql"), "utf8");
+const CREDITS = fs.readFileSync(require.resolve("../db/migration_makeup_credits.sql"), "utf8");   // T18 step 4: the validator that knows the make-up credit options   // T6 step 2: the validator that knows the tutor-editing options
 const PAYOUT_SQL = fs.readFileSync(require.resolve("../db/migration_payout_permission.sql"), "utf8");
 
 test("defaults are valid once named, for both presets", () => {
@@ -84,15 +86,16 @@ test("stored older settings gain new keys without losing values", () => {
   assert.deepEqual(s.payments.modes, ["manual_paynow"]);
 });
 
-test("settings nothing reads yet are marked soon, with help text (T18a)", () => {
+test("settings nothing reads yet are marked soon, with help text (T18a, updated by T18 step 4)", () => {
   const fields = {};
   S.STEPS.forEach((st) => st.fields.forEach((f) => { fields[f.path] = f; }));
-  const credit = "Make-up credits come in a later update; for now a make-up is added as a normal lesson.";
-  for (const p of ["billing.makeups.allowed", "billing.makeups.per_period", "billing.makeups.uses_credit",
-    "billing.low_balance_credits", "billing.credit_expiry_days"]) {
-    assert.equal(fields[p].soon, true, p + " must be soon");
-    assert.equal(fields[p].help, credit, p);
-  }
+  // still unbuilt: prepaid-package warnings and the per-period limit (the make-up credit options themselves are built: see the T18-4 tests below)
+  assert.equal(fields["billing.low_balance_credits"].soon, true);
+  assert.equal(fields["billing.low_balance_credits"].help, "Warnings and limits for prepaid packages come in a later update.");
+  assert.equal(fields["billing.makeups.per_period"].soon, true);
+  assert.match(fields["billing.makeups.per_period"].help, /later update/);
+  // the two old toggles are replaced by the credit options and are no longer offered
+  assert.ok(!fields["billing.makeups.allowed"] && !fields["billing.makeups.uses_credit"], "the old makeup toggles are gone from the form");
   // built in T3 step 7: staff_generate_lessons skips whole-centre holidays when this is on (SQL tests: staff_slots_test.sql), so it is no longer "soon"
   assert.ok(!fields["calendar.skip_holidays"].soon);
   assert.match(fields["calendar.skip_holidays"].help, /Create lessons/);
@@ -432,4 +435,58 @@ test("email options: they apply today (not from the next billing cycle) and old 
   assert.equal(S.effectiveFrom(a, b, "2026-11-23"), "2026-11-23");
   const old = S.withDefaults({ schema_version: 1, preset: "centre", profile: { trading_name: "Old" }, invoicing: { grouping: "family", delivery: { email: false, share_link: true }, reminders: { enabled: false, schedule: [-3, 0, 7] } } });
   assert.equal(old.email.mode, "off"); assert.equal(old.email.daily_cap, 200); assert.deepEqual(S.validate(old), []);
+});
+
+// ---- T18 step 4: make-up credits (db/migration_makeup_credits.sql, tests/sql/makeup_credits_test.sql)
+test("T18-4: every make-up credit choice has the same values in the form and in the database, with a default that is one of them", () => {
+  const sqlVals = (key) => CREDITS.match(new RegExp("\\{" + key + "\\}' not in \\(([^)]*)\\)"))[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1)).sort();
+  const want = { "rule": ["none", "one_per_missed"], "earn_absences": ["all_missed", "none", "notice_and_late", "notice_only"], "earn_tutor_cancel": ["automatic", "staff_decide"],
+    "grant_by": ["manage_timetable", "owner"], "book_by": ["manage_timetable", "owner"], "makeup_price": ["free", "if_missed_not_charged"] };
+  for (const [k, vals] of Object.entries(want)) {
+    const path = "billing.credits." + k, f = field(path);
+    assert.deepEqual(f.options.map((o) => o[0]).sort(), sqlVals("billing,credits," + k), path + " matches the database");
+    assert.deepEqual(f.options.map((o) => o[0]).sort(), vals, path);
+    assert.ok(f.options.some((o) => o[0] === S.get(S.defaults("centre"), path)), path + " default is one of the options");
+    assert.ok(!f.soon && !(f.soonOptions || []).length, path + " is built: nothing 'coming soon' in it");
+  }
+  assert.ok(CREDITS.includes("'{billing,credits,earn_holiday}'") || CREDITS.includes("{billing,credits,earn_holiday}"), "earn_holiday is checked in the migration");
+  assert.equal(typeof S.get(S.defaults("centre"), "billing.credits.earn_holiday"), "boolean");
+  assert.equal(field("billing.credits.earn_holiday").type, "toggle"); assert.ok(!field("billing.credits.earn_holiday").soon);
+});
+
+test("T18-4: the defaults are the owner's decisions: one missed lesson = one credit, notice only, tutor cancel is a staff decision, holidays no, never expires, free make-up", () => {
+  const d = S.defaults("centre");
+  assert.deepEqual(d.billing.credits, { rule: "one_per_missed", earn_absences: "notice_only", earn_tutor_cancel: "staff_decide", earn_holiday: false, grant_by: "manage_timetable", book_by: "manage_timetable", makeup_price: "free" });
+  assert.equal(d.billing.credit_expiry_days, 0, "credits never expire by default");
+  assert.deepEqual(S.validate(Object.assign(S.defaults("centre"), { profile: Object.assign({}, d.profile, { trading_name: "T" }) })), []);
+});
+
+test("T18-4: credit expiry has the same limits in the form and in the database, and is built (not 'soon')", () => {
+  const m = CREDITS.match(/\{billing,credit_expiry_days\}[^\n]*\n[^\n]*between (\d+) and (\d+)/);
+  assert.ok(m, "the limits are in the migration"); assert.deepEqual([+m[1], +m[2]], [0, 3650]);
+  const f = field("billing.credit_expiry_days");
+  assert.ok(!f.soon, "built"); assert.equal(f.type, "days");
+  assert.match(f.help, /last day/);
+});
+
+test("T18-4: the credit options appear only while credits are on, and the tutor never has an option", () => {
+  const on = S.defaults("centre"), off = S.defaults("centre"); off.billing.credits.rule = "none";
+  for (const k of ["earn_absences", "earn_tutor_cancel", "earn_holiday", "makeup_price", "grant_by", "book_by"]) {
+    const f = field("billing.credits." + k);
+    assert.equal(f.show(on), true, k + " shown when credits are on"); assert.equal(f.show(off), false, k + " hidden when credits are off");
+  }
+  assert.equal(field("billing.credit_expiry_days").show(off), false);
+  assert.equal(field("billing.credits.rule").show, undefined, "the rule itself is always shown");
+  for (const k of ["grant_by", "book_by"]) assert.ok(!field("billing.credits." + k).options.some((o) => /tutor/i.test(o[0])), "no tutor value in " + k);
+  assert.match(field("billing.credits.book_by").help, /Tutors never/);
+  // a centre that saved before this existed gets the new keys filled in, not an error
+  const old = S.defaults("centre"); delete old.billing.credits;
+  const filled = S.withDefaults(old, "centre"); assert.equal(filled.billing.credits.rule, "one_per_missed");
+});
+
+test("T18-4: the copy never promises what is not built and never shows a price", () => {
+  for (const k of ["rule", "earn_absences", "earn_tutor_cancel", "earn_holiday", "makeup_price", "grant_by", "book_by"]) {
+    const f = field("billing.credits." + k), text = [f.label, f.help || ""].concat((f.options || []).map((o) => o[1])).join(" ");
+    assert.doesNotMatch(text, /coming soon|later update|S\$/i, k);
+  }
 });

@@ -23,8 +23,8 @@
   ];
 
   function o(v, l) { return [v, l]; }
-  // Nothing in the app reads these settings yet (T18 plan, 2026-11-24): shown as "coming soon" so the wizard promises nothing it does not do.
-  var CREDITS_SOON = "Make-up credits come in a later update; for now a make-up is added as a normal lesson.";
+  // Make-up credits are built (T18 step 4, db/migration_makeup_credits.sql). What is still unbuilt is shown as "coming soon" so the wizard promises nothing it does not do.
+  var CREDITS_SOON = "Warnings and limits for prepaid packages come in a later update.";
   // Centre money (T4, steps S0-S8): the options exist from S0 so owners can see what is coming; nothing reads them until their step ships.
   var DEPOSIT_HELP = "A refundable deposit is money you hold for the family, not income. It is invoiced separately, once, with a student's first invoice. When a student leaves, it is refunded, kept against unpaid invoices or kept by the centre, always approved and recorded step by step. A top-up, and using it as the final month's fee, come in a later update.";
   var LATE_HELP = "When a lesson invoice is still unpaid after its grace period, TutorDeck suggests a late fee. A person approves or waives each one (a reason is needed to waive); nothing is added to a family’s bill on its own. An approved fee is its own small invoice. Adding it as a line on the family’s next invoice comes in a later update.";
@@ -79,17 +79,43 @@
         show: function (s) { return s.billing.model === "pay_per_lesson"; } },
       { path: "billing.low_balance_credits", label: "Warn parents when credits fall to", type: "number", soon: true, help: CREDITS_SOON,
         show: function (s) { return s.billing.model === "prepaid_packages"; } },
-      { path: "billing.credit_expiry_days", label: "Credits expire after (days, 0 = never)", type: "days", soon: true, help: CREDITS_SOON,
-        show: function (s) { return s.billing.model === "prepaid_packages"; } },
       { path: "billing.fee_plans_note", label: "Fee plans (per lesson / month / term, by level, subject, class type or duration)", type: "note", soon: true,
         help: "You'll set up fee plans with your classes." },
       { path: "billing.absences.mode", label: "Absent lessons", type: "select", options: [
         o("charged", "Charged"), o("not_charged", "Not charged"), o("charged_unless_notice", "Charged unless notice was given")] },
       { path: "billing.absences.notice_hours", label: "Notice needed (hours before)", type: "number",
         show: function (s) { return s.billing.absences.mode === "charged_unless_notice"; } },
-      { path: "billing.makeups.allowed", label: "Makeup lessons allowed", type: "toggle", soon: true, help: CREDITS_SOON },
-      { path: "billing.makeups.per_period", label: "Makeups per period", type: "number", soon: true, help: CREDITS_SOON, show: function (s) { return s.billing.makeups.allowed; } },
-      { path: "billing.makeups.uses_credit", label: "A makeup uses a credit", type: "toggle", soon: true, help: CREDITS_SOON, show: function (s) { return s.billing.makeups.allowed; } },
+      { path: "billing.makeups.per_period", label: "Limit make-ups per period", type: "number", soon: true, help: "A limit on make-ups per month or term comes in a later update." },
+      { path: "billing.credits.rule", label: "Make-up credits", type: "select", options: [
+        o("none", "No credits"), o("one_per_missed", "1 missed lesson = 1 credit")],
+        help: "No credits: a make-up is added as an ordinary lesson and billed like any lesson. 1 missed lesson = 1 credit: the family earns one make-up credit for a missed lesson that the options below say to credit, the make-up uses that credit, and it is never billed twice. Staff book the make-up lesson from the Owed list under Timetable; marking it uses the credit up. Postponing a lesson never uses a credit: it is still the same lesson." },
+      { path: "billing.credits.earn_absences", label: "A credit is earned when a lesson is marked", type: "select", options: [
+        o("none", "Never (staff grant by hand)"),
+        o("notice_only", "Cancelled in time"),
+        o("notice_and_late", "Cancelled in time or late"),
+        o("all_missed", "Cancelled in time, late or absent")],
+        help: "“Cancelled in time” means the family gave notice. Staff can always grant a credit by hand, with a reason.", show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.credits.earn_tutor_cancel", label: "When a tutor cancels a lesson", type: "select", options: [
+        o("staff_decide", "No credit by itself"),
+        o("automatic", "A credit automatically")],
+        help: "Staff decide: they can grant a credit by hand for a tutor’s cancel.",
+        show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.credits.earn_holiday", label: "A lesson cancelled for a centre holiday earns a credit", type: "toggle",
+        help: "Applies to lessons cancelled with “Cancel lessons on this holiday” on the Timetable. Centres that skip holidays when creating lessons have nothing to credit.",
+        show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.credit_expiry_days", label: "Credits expire after (days, 0 = never)", type: "days",
+        help: "Counted from the day the credit is earned; the credit can still be used on its last day. A credit with a make-up already booked never expires.",
+        show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.credits.makeup_price", label: "The make-up lesson is billed", type: "select", options: [
+        o("free", "Never billed"),
+        o("if_missed_not_charged", "Billed only if the missed lesson was not charged")],
+        help: "Never billed: the missed lesson was already billed or waived. Otherwise the make-up is billed at the normal price, and only when the missed lesson was not charged: a make-up is never billed on top of a charged lesson.", show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.credits.grant_by", label: "Who can grant or revoke a credit by hand", type: "select", options: [
+        o("manage_timetable", "Owner and timetable staff"), o("owner", "Owner only")],
+        show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.credits.book_by", label: "Who can book or remove a make-up lesson", type: "select", options: [
+        o("manage_timetable", "Owner and timetable staff"), o("owner", "Owner only")],
+        help: "Tutors never see or change credits.", show: function (s) { return s.billing.credits.rule !== "none"; } },
       { path: "billing.proration", label: "Joining or leaving mid-period", type: "select", options: [
         o("by_remaining", "Prorate by remaining lessons"), o("full", "Charge the full period"), o("skip", "Skip the partial period")] },
       { path: "billing.sibling_discount.type", label: "Sibling discount (2nd child onwards)", type: "select", options: [
@@ -301,6 +327,7 @@
         invoice_prefix: "INV", next_invoice_number: 1, reply_to_email: "" },
       calendar: { skip_holidays: true },
       billing: { starts_from: "", model: "postpaid_lessons", fixed_period: "month", pay_per_lesson_grouping: "lesson", low_balance_credits: 2, credit_expiry_days: 0,
+        credits: { rule: "one_per_missed", earn_absences: "notice_only", earn_tutor_cancel: "staff_decide", earn_holiday: false, grant_by: "manage_timetable", book_by: "manage_timetable", makeup_price: "free" },
         absences: { mode: "charged_unless_notice", notice_hours: 24 }, makeups: { allowed: true, per_period: 2, uses_credit: false },
         proration: "by_remaining", sibling_discount: { type: "none", percent_bp: 1000, fixed_cents: 500 }, adhoc_discounts: true,
         one_off_fees: { registration_cents: 0, deposit_cents: 0, materials_cents: 0 }, trials: { charged: false },
