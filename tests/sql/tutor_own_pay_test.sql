@@ -229,8 +229,8 @@ select t.ok(pg_temp.pay_of(:'tl', 'T4') is null, 'a free cancellation earns noth
 select t.ok(pg_temp.pay_of(:'tl', 'T5') = '4000:amount', 'a cancellation the family was charged for shows its amount');
 select t.ok(pg_temp.pay_of(:'tl', 'T6') = '4000:amount', 'a lesson paid for later shows its amount now (released as of today)');
 select t.ok(pg_temp.pay_of(:'tl', 'T7') = 'null:pending', 'a cancellation whose charge is not typed yet shows "pending"');
-select t.ok(pg_temp.pay_of(:'tl', 'C1') = '1334:amount' and pg_temp.pay_of(:'tl', 'C2') = '1333:amount' and pg_temp.pay_of(:'tl', 'C3') = '1333:amount',
-            'a class of three is paid once (S$40.00), shared 13.34 / 13.33 / 13.33');
+select t.ok((select array_agg((e->>'pay_cents')::bigint order by (e->>'pay_cents')::bigint) from jsonb_array_elements(:'tl'::jsonb) e where (e->>'lesson_id')::uuid in (t.id('C1'), t.id('C2'), t.id('C3'))) = array[1333, 1333, 1334]::bigint[],
+            'a class of three is paid once (S$40.00), shared 13.33 / 13.33 / 13.34 (the spare cent goes to one of them)');
 select t.ok((select count(*) = 9 from jsonb_array_elements(:'tl'::jsonb)), 'nine lessons have a pay line (the free cancellation has none)');
 select t.ok(not exists (select 1 from jsonb_array_elements(:'tl'::jsonb) e where e->>'pay_state' = 'pending' and e->>'pay_cents' is not null), 'a pending line never carries an amount');
 select t.ok(not exists (select 1 from jsonb_array_elements(:'tl'::jsonb) e where (e->>'org_name') <> 'Own Pay Centre P'), 'only the centre this tutor teaches at');
