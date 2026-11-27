@@ -14,6 +14,26 @@ window.TL = (function () {
     return '<svg class="i" width="' + z + '" height="' + z + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
            'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || "") + '</svg>';
   }
+  function payOn() { try { var o = JSON.parse(store.get("payview") || "null"); return !!(o && o.v === "on" && o.at > Date.now() - 12 * 3600e3); } catch (e) { return false; } }
+  function setPayView(on) { try { store.set("payview", JSON.stringify({ v: on ? "on" : "off", at: Date.now() })); } catch (e) {} }
+  // Ask the database which of my centres show me my pay (tutor_my_pay_modes). Only for logins that teach at a centre; any doubt = no menu entry.
+  async function detectPay(force) {
+    var mode = roleMode(), centreTutor = false;
+    try { var o = org(); centreTutor = !!(o && o.kind === "centre" && o.role === "tutor"); } catch (e) {}
+    if (mode !== "tutor-only" && mode !== "both" && !centreTutor) return false;
+    try {
+      if (!force) { var c = JSON.parse(store.get("payview") || "null"); if (c && c.at > Date.now() - 12 * 3600e3) return c.v === "on"; }
+      var r = await window.sb.rpc("tutor_my_pay_modes");
+      if (r.error) return false;                                      // not installed here yet, or not a centre tutor: no entry, nothing breaks
+      var on = (r.data || []).some(function (x) { return x.pay_view === "monthly_total" || x.pay_view === "per_lesson_and_total"; });
+      setPayView(on); return on;
+    } catch (e) { return false; }
+  }
+  // Secondary destinations: sidebar footer on desktop, "More" sheet on phones.
+  var EXTRA = [
+    { id: "materials", label: "Materials", href: "https://mugcornersg.com", ic: "materials", ext: true, hint: "Materials on MugCorner (opens in a new tab)" },
+    { id: "settings",  label: "Settings",  href: "settings",  ic: "settings" }
+  ];
   // A menu entry whose screen isn't built yet (T3 centre tabs): a visible "soon" pill, and the same words for screen readers. The link still goes
   // to a real page that says "Coming next", never a dead end.
   function soonTag(g) { return g && g.soon ? '<em class="soon-pill" aria-hidden="true">soon</em><span class="sr-only"> (coming next)</span>' : ""; }
@@ -75,7 +95,7 @@ window.TL = (function () {
   // Build sidebar + topbar around the page's <div id="view">
   function mountShell(active, email, title, sub) {
     var pageId = active;   // the page's own id (the menu may show a centre's items instead, T12c)
-    var cur = org(), mn = MN.build(roleMode(), cur, OC ? OC.centreTabs(cur) : []), G = mn.groups;   // what each login sees: assets/js/menus.js (UX1)
+    var cur = org(), mn = MN.build(roleMode(), cur, OC ? OC.centreTabs(cur) : [], payOn()), G = mn.groups;   // what each login sees: assets/js/menus.js (UX1)
     var extras = mn.extras.filter(function (n) { return !n.ownerOnly || isOwner; });
     if (mn.kind === "centre") active = centreActive(active, G, cur);   // T12c: a centre has its own menu
     var grp = groupOf(active, G);
@@ -293,7 +313,7 @@ window.TL = (function () {
   // owner/staff logins, not for a tutor under a centre). Everything else, Settings included, sends them to My lessons.
   // Returns the address to go to, or null to stay. Only a CONFIRMED "tutor-only" ever redirects: "solo", "both", null and
   // anything unexpected stay put, so no solo tutor can be moved by a doubt or an error.
-  var TUTOR_ONLY_PAGES = ["tutor", "tutor-schedule", "tutor-settings"];   // T24c: their own profile and password page; /settings stays closed
+  var TUTOR_ONLY_PAGES = ["tutor", "tutor-schedule", "tutor-settings", "mypay"];   // T24c: their own profile and password page; /settings stays closed. (T4 S7b) Your pay says plainly when the centre doesn't show pay
   function tutorOnlyRedirect(active, mode) {
     if (mode !== "tutor-only") return null;
     if (!active || TUTOR_ONLY_PAGES.indexOf(active) >= 0) return null;
@@ -700,6 +720,7 @@ window.TL = (function () {
                  tutor: ["My lessons", "Your classes and attendance"],
                  "tutor-schedule": ["Schedule", "Your week and weekly slots"],
                  "tutor-settings": ["Settings", "Your profile and password"],   // UX1: the menu says Settings, so does the page
+                 mypay: ["Your pay", "What you have earned at your centre"],
                  exams: ["Exams", "Upcoming assessments"],
                  invoices: ["Invoices", "Saved invoices"],
                  materials: ["Teaching materials", "Your resource library"],
@@ -732,6 +753,7 @@ window.TL = (function () {
     try { await claimInvites(); } catch (e) { /* nothing to claim */ }
     try { await detectRole(); } catch (e) { /* keep the usual menu */ }
     try { await detectOrgs(); } catch (e) { /* solo organisation, as always */ }
+    try { await detectPay(); } catch (e) { /* no Your pay entry */ }          // (T4 S7b) one query about every 12 hours, only for logins that teach at a centre
     // A tutor-only login who types a solo page's address (students, ledger, planner …) goes to My lessons, like Home does.
     // The decision only reads the role we just settled; tutorOnlyRedirect() never fires on a doubt, and never for "tutor" itself.
     var goTo = tutorOnlyRedirect(active, roleMode());
@@ -1319,7 +1341,7 @@ window.TL = (function () {
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell, coach: coach,
-           store: store, org: org, orgs: orgList, scope: scope, orgFields: orgFields, orgId: orgId, roleMode: roleMode, setRole: setRole, detectRole: detectRole, tutorOnlyRedirect: tutorOnlyRedirect, uid: function () { return UID; }, plural: plural,
+           store: store, org: org, orgs: orgList, scope: scope, orgFields: orgFields, orgId: orgId, roleMode: roleMode, setRole: setRole, detectRole: detectRole, tutorOnlyRedirect: tutorOnlyRedirect, detectPay: detectPay, setPayView: setPayView, payOn: payOn, uid: function () { return UID; }, plural: plural,
            confirm: tlConfirm, alert: tlAlert, prompt: tlPrompt, freeLimit: tlFreeLimit,
            guide: { on: GUIDE, card: guideCard, formHint: guideFormHint, finish: setOnboarded, onboarded: onboarded },
            sgd: sgd, isClient: isClient, setClient: setClient, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,

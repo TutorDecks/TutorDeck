@@ -219,6 +219,23 @@
     });
     load().then(jumpTo);
     refreshMfa();
+    combineSetup().catch(function(){});
+  }
+  // (T4 S7b) "Include my centre earnings in my totals": a personal tick, kept per user on this device (TL.store), off by default. Only shown to a tutor who
+  // also teaches at a centre. When none of their centres shows tutors their own pay it is greyed out with the reason. The centre never learns this choice.
+  async function combineSetup() {
+    var card = $("combine-card"), PC = window.TutorPayCore;
+    if (!card || !PC || TL.roleMode() !== "both") return;
+    var r = await window.sb.rpc("tutor_my_pay_modes");
+    if (r.error) return;
+    var a = PC.combineAvailability(r.data || []);
+    if (!a.shown) return;
+    card.style.display = "";
+    var box = $("combine-pay"); box.checked = TL.store.get("combine_pay") === "1"; box.disabled = !a.enabled;
+    $("combine-note").textContent = a.enabled
+      ? "Shows your centre pay on Home next to your own students, as an estimate. It never goes into your ledger, invoices or reminders."
+      : a.reason;
+    box.addEventListener("change", function () { TL.store.set("combine_pay", box.checked ? "1" : "0"); TL.toast(box.checked ? "Centre earnings added to Home" : "Centre earnings removed from Home"); });
   }
   var checkedMsg = false;
   // settings#paid / settings#messages (from Home's Get paid faster card): scroll there and open the right part.

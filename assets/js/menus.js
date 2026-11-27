@@ -29,6 +29,7 @@
     settings: '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
     materials:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
     user:     '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
+    banknote: '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',   // (T4 S7b) Your pay
     signout:  '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
     // UX1: the pictures that used to be borrowed from another page
     lessons:  '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',          // My lessons (clipboard with lines)
@@ -57,6 +58,11 @@
   // The ONE centre entry a "both" login sees in their solo organisation: My lessons, with its Schedule as a sub-tab on those two pages.
   var BOTH_CENTRE_EXTRA = { id: "tutor", label: "My lessons", href: "tutor", ic: "lessons", also: ["tutor-schedule"],
     pages: [ { id: "tutor", label: "My lessons", href: "tutor" }, { id: "tutor-schedule", label: "Schedule", href: "tutor-schedule" } ] };
+  // (T4 S7b) "Your pay": only for a login that teaches at a centre whose settings let tutors see their own pay (app.js remembers that for 12 hours: detectPay()).
+  // Its own icon (a banknote), distinct from Money's wallet. A solo tutor with no centre never gets it.
+  var PAY_GROUP = { id: "mypay", label: "Your pay", ic: "banknote", pages: [ { id: "mypay", label: "Your pay", href: "my-pay" } ] };
+  var PAY_EXTRA = { id: "mypay", label: "Your pay", href: "my-pay", ic: "banknote" };
+  function tutorGroups(pay) { return pay ? TUTOR_GROUPS.concat([PAY_GROUP]) : TUTOR_GROUPS; }
   var TUTOR_MENU_SETTINGS = { id: "tutor-settings", label: "Settings", href: "tutor-settings", ic: "settings" };   // a centre tutor's own profile and password
   var EXTRA = [
     { id: "materials", label: "Materials", href: "https://mugcornersg.com", ic: "materials", ext: true, hint: "Materials on MugCorner (opens in a new tab)" },
@@ -69,12 +75,13 @@
 
   // → { groups, extras, kind } for this login in this organisation.
   //   mode: "solo" | "both" | "tutor-only" (TL.roleMode(); null = solo)    org: TL.org() ({ id, kind, role })
+  //   pay: true when this login may see their own pay at a centre (adds Your pay)
   //   tabs: the centre owner / staff tabs for this org (OrgCurrent.centreTabs(org)), each { id, label, ic, soon, tab, page, href }
-  function build(mode, org, tabs) {
+  function build(mode, org, tabs, pay) {
     var centre = !!(org && org.kind === "centre" && org.id);
-    if (mode === "tutor-only") return { kind: "tutor", groups: TUTOR_GROUPS, extras: [TUTOR_MENU_SETTINGS] };
+    if (mode === "tutor-only") return { kind: "tutor", groups: tutorGroups(pay), extras: [TUTOR_MENU_SETTINGS] };
     if (centre) {
-      if (org.role === "tutor") return { kind: "tutor", groups: TUTOR_GROUPS, extras: [TUTOR_MENU_SETTINGS] };
+      if (org.role === "tutor") return { kind: "tutor", groups: tutorGroups(pay), extras: [TUTOR_MENU_SETTINGS] };
       var G = (tabs || []).map(function (t) { return { id: t.id, label: t.label, ic: t.ic, soon: t.soon, tab: t.tab, page: t.page, pages: [ { id: t.id, label: t.label, href: t.href } ] }; });
       if (!G.length) G = CENTRE_GROUPS;
       return { kind: "centre", groups: G, extras: [
@@ -82,7 +89,7 @@
         { id: "orglist", label: "Your centres", href: "org", ic: "centres" },
         EXTRA[1] ] };
     }
-    return { kind: "solo", groups: GROUPS, extras: mode === "both" ? [BOTH_CENTRE_EXTRA].concat(EXTRA) : EXTRA };
+    return { kind: "solo", groups: GROUPS, extras: mode === "both" ? [BOTH_CENTRE_EXTRA].concat(pay ? [PAY_EXTRA] : [], EXTRA) : EXTRA };
   }
 
   // Every destination a menu shows (bottom bar + More sheet + the More button and Sign out), as [{ id, label, ic }], for the tests and the browser check.

@@ -143,12 +143,11 @@ test("T4 S0: every new yes/no and number has the same limits in the form and in 
 test("T4 S0/S4/S6: trial, percentage-pay and the unbuilt deposit options are 'coming soon' until their step ships (honesty)", () => {
   const soonPaths = ["billing.trials.charged",
     "billing.deposit.top_up",
-    "billing.deposit.set_off_unpaid", "billing.deposit.final_month",
-    "tutor_pay.tutor_visibility"];
+    "billing.deposit.set_off_unpaid", "billing.deposit.final_month"];
   for (const p of soonPaths) assert.equal(field(p).soon, true, p + " must be soon");
-  // T4 S7: tutor rates, the pay list, percentage pay, held-until-paid and adjustments are built; bank-file payout and tutors seeing their own pay are not
+  // T4 S7: tutor rates, the pay list, percentage pay, held-until-paid and adjustments are built; bank-file payout is not (tutors seeing their own pay: S7b, below)
   for (const p of ["tutor_pay.mode", "tutor_pay.payable_when", "tutor_pay.rate_model", "tutor_pay.percent_base", "tutor_pay.part_payments", "tutor_pay.cancelled_lessons",
-    "tutor_pay.group_count", "tutor_pay.rates_note", "tutor_pay.adjustments", "tutor_pay.cycle.cutoff_day", "tutor_pay.cycle.pay_day"]) assert.ok(!field(p).soon, p + " is built in S7");
+    "tutor_pay.group_count", "tutor_pay.rates_note", "tutor_pay.adjustments", "tutor_pay.cycle.cutoff_day", "tutor_pay.cycle.pay_day", "tutor_pay.tutors_see_own_pay"]) assert.ok(!field(p).soon, p + " is built in S7 / S7b");
   for (const k of ["mode", "rate_model", "part_payments"]) assert.ok(!(field("tutor_pay." + k).soonOptions || []).length, "tutor_pay." + k + " has no unbuilt option left");
   assert.deepEqual(field("tutor_pay.payout_method").soonOptions, ["bank_file"], "only the manual list is built; the bank file waits for the owner's bank");
   assert.ok(field("billing.deposit.due").soonOptions.includes("before_first_lesson"));
@@ -525,4 +524,35 @@ test("T3.10: staff add past lessons: lessons.backfill_allowed_days has the same 
   for (const v of [0, 1, 31, 366]) { const s = ok(); s.lessons.backfill_allowed_days = v; assert.deepEqual(S.validate(s), [], "value " + v); }
   assert.equal(S.withDefaults({ schema_version: 1, preset: "centre", profile: { trading_name: "Old" }, lessons: {} }).lessons.backfill_allowed_days, 31, "settings saved before this load with 31");
   assert.match(PAST, /Days staff may add past lessons must be 0-366/, "the database says the same words");
+});
+// ---------------------------------------------------------------------------------------------------- T4 S7b: tutors see their own pay
+const OWNPAY = fs.readFileSync(require.resolve("../db/migration_tutor_own_pay.sql"), "utf8");
+test("T4 S7b: tutor_pay.tutors_see_own_pay has the same three values in the form and in db/migration_tutor_own_pay.sql, and defaults to each lesson and total", () => {
+  const m = OWNPAY.match(/\{tutor_pay,tutors_see_own_pay\}' not in \(([^)]*)\)/);
+  assert.ok(m, "checked in the migration");
+  const sql = m[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1)).sort();
+  assert.deepEqual(field("tutor_pay.tutors_see_own_pay").options.map((o) => o[0]).sort(), sql);
+  assert.deepEqual(sql, ["monthly_total", "off", "per_lesson_and_total"]);
+  assert.equal(S.get(S.defaults("centre"), "tutor_pay.tutors_see_own_pay"), "per_lesson_and_total", "owner's default");
+  assert.equal(field("tutor_pay.tutors_see_own_pay").soon, undefined, "built, not 'soon'");
+  assert.ok(!(field("tutor_pay.tutors_see_own_pay").soonOptions || []).length);
+  assert.equal(S.get(S.defaults("centre"), "tutor_pay.tutor_visibility"), undefined, "the old 'soon' tutor_visibility choice is gone");
+  assert.ok(!S.STEPS.flatMap((s) => s.fields).some((f) => f.path === "tutor_pay.tutor_visibility"));
+});
+test("T4 S7b: the choice is only offered when pay is worked out in full, and saves cleanly", () => {
+  const f = field("tutor_pay.tutors_see_own_pay"), s = S.defaults("centre"); s.profile.trading_name = "X";
+  s.tutor_pay.mode = "report"; assert.equal(f.show(s), false);
+  s.tutor_pay.mode = "off"; assert.equal(f.show(s), false);
+  s.tutor_pay.mode = "full"; assert.equal(f.show(s), true);
+  for (const v of ["off", "monthly_total", "per_lesson_and_total"]) { s.tutor_pay.tutors_see_own_pay = v; assert.deepEqual(S.validate(s), [], v); }
+  assert.ok(/never the family's fee/.test(f.help) && /pending/.test(f.help), "the help says what a tutor never sees");
+});
+test("T4 S7b: changing who sees their own pay takes effect today (a process rule), other pay changes still wait for the next cycle", () => {
+  const a = S.defaults("centre"); a.profile.trading_name = "X";
+  const b = JSON.parse(JSON.stringify(a)); b.tutor_pay.tutors_see_own_pay = "off";
+  assert.equal(S.effectiveFrom(a, b, "2026-11-26"), "2026-11-26");
+  const c = JSON.parse(JSON.stringify(a)); c.tutor_pay.payable_when = "taught";
+  assert.equal(S.effectiveFrom(a, c, "2026-11-26"), "2026-12-01");
+  const d = JSON.parse(JSON.stringify(b)); d.tutor_pay.payable_when = "taught";
+  assert.equal(S.effectiveFrom(a, d, "2026-11-26"), "2026-12-01", "both changed: the money change still waits");
 });

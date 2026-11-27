@@ -178,6 +178,14 @@ $P -f db/migration_past_lessons_down.sql
 if [ "$FDEFS_BEFORE" != "$(fdefs)" ]; then echo "FAIL: undoing past_lessons did not put every function back exactly"; exit 1; fi
 echo "PASS undoing past_lessons puts every function back exactly"
 $P -f db/migration_past_lessons.sql                         # and again: the shipped state
+FDEFS_BEFORE=$(fdefs)
+$P -f db/migration_tutor_own_pay.sql
+$P -f db/migration_tutor_own_pay.sql                        # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_own_pay_test.sql
+$P -f db/migration_tutor_own_pay_down.sql
+if [ "$FDEFS_BEFORE" != "$(fdefs)" ]; then echo "FAIL: undoing tutor_own_pay did not put every function back exactly"; exit 1; fi
+echo "PASS undoing tutor_own_pay puts every function back exactly"
+$P -f db/migration_tutor_own_pay.sql                        # and again: the shipped state
 $P -f db/migration_centre_billing_method.sql                # the export reads the billing-method and billing-start columns (the chain above had undone them)
 $P -f db/migration_centre_billing_start.sql
 $P -f db/migration_org_export.sql
@@ -187,10 +195,10 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_export_perf_test.sql
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=full -f tests/sql/bundle6_chain_test.sql   # the settings check and the invoice run carry EVERY rule of the chain
 # undo in reverse, twice each (safe to run twice), then the whole set again, then undo again: undo + re-apply are proven on the shipped state
 for round in 1 2; do
-  for m in org_export past_lessons tutor_link_propose makeup_credits invoice_email statement_matching centre_tutor_pay import; do $P -f db/migration_${m}_down.sql; $P -f db/migration_${m}_down.sql; done
+  for m in org_export tutor_own_pay past_lessons tutor_link_propose makeup_credits invoice_email statement_matching centre_tutor_pay import; do $P -f db/migration_${m}_down.sql; $P -f db/migration_${m}_down.sql; done
   psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=undone -f tests/sql/bundle6_chain_test.sql
   if [ "$round" = 1 ]; then
-    for m in import centre_tutor_pay statement_matching invoice_email makeup_credits tutor_link_propose past_lessons; do $P -f db/migration_${m}.sql; done
+    for m in import centre_tutor_pay statement_matching invoice_email makeup_credits tutor_link_propose past_lessons tutor_own_pay; do $P -f db/migration_${m}.sql; done
     $P -f db/migration_org_export.sql
     psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=full -f tests/sql/bundle6_chain_test.sql
   fi

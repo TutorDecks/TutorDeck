@@ -25,6 +25,9 @@ begin
     if refused <> r.must then raise exception 'FAIL (% stage): "%" refused=% expected=%', stage, r.label, refused, r.must; end if;
     n := n + 1;
   end loop;
+  refused := false;
+  begin perform org_validate_settings(null::uuid, jsonb_set(base, '{tutor_pay,tutors_see_own_pay}', '"zzz"')); exception when others then refused := true; end;
+  if refused <> (stage = 'full') then raise exception 'FAIL (% stage): tutors_see_own_pay rule refused=%', stage, refused; end if;
   -- the organisation-aware wrapper still calls the 1-argument check (statement matching adds its own rules to it)
   refused := false;
   begin perform org_validate_settings(null::uuid, jsonb_set(base, '{payments,statement}', '{"auto_confirm":"zzz"}')); exception when others then refused := true; end;

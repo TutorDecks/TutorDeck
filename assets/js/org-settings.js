@@ -316,8 +316,10 @@
       { path: "tutor_pay.cycle.pay_day", label: "Pay day", type: "number", show: function (s) { return s.tutor_pay.mode === "full"; } },
       { path: "tutor_pay.payout_method", label: "Paying tutors", type: "select", options: [o("manual_list", "A list for manual transfers"), o("bank_file", "Bulk payment file for your bank")],
         soonOptions: ["bank_file"], show: function (s) { return s.tutor_pay.mode === "full"; } },
-      { path: "tutor_pay.tutor_visibility", label: "Tutors see", type: "select", soon: true, options: [o("running", "Running earnings during the month"), o("closed_only", "Only closed pay statements")],
-        help: "For now tutors never see rates or pay in TutorDeck: only you and staff you allow can. " + PAY_SOON, show: function (s) { return s.tutor_pay.mode !== "off"; } },
+      { path: "tutor_pay.tutors_see_own_pay", label: "Tutors can see their own pay", type: "select", options: [
+        o("per_lesson_and_total", "Each lesson and the month's total"), o("monthly_total", "The month's total only"), o("off", "No, tutors don't see pay")],
+        help: "A tutor sees only their own pay, marked as an estimate until you confirm the pay run: never the family's fee, the rate, the percentage, the invoice or what families have paid. When pay is held until the parent has paid, the lesson shows as pending, with no amount and no reason. Bonuses and deductions show as one line each, with the label you wrote.",
+        show: function (s) { return s.tutor_pay.mode === "full"; } },
       { path: "tutor_pay.employment_note", label: "", type: "note",
         help: "Each tutor is an employee or a freelancer (set when you add them). Employees may need itemised payslips and CPF; please confirm your obligations with your accountant." }
     ]},
@@ -351,7 +353,7 @@
         min_notice_hours: 24, max_changes_per_month: 0, request_expiry_days: 14, notify_family: "list_for_admin", attendance_by: "tutor", attendance_window_days: 14, backfill_allowed_days: 31, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
         missed_remarks_reminders: true, replacement_tutors: true, auto_assign_tutors: true, tutors_see_parent_contact: false },
       tutor_pay: { mode: "report", payable_when: "parent_paid", rate_model: "per_hour", percent_base: "billed_after_discounts", part_payments: "after_full", cancelled_lessons: "pay_if_charged", group_count: "attended", adjustments: true,
-        cycle: { cutoff_day: 31, pay_day: 7 }, payout_method: "manual_list", tutor_visibility: "closed_only" },
+        cycle: { cutoff_day: 31, pay_day: 7 }, payout_method: "manual_list", tutors_see_own_pay: "per_lesson_and_total" },
       data: {}
     };
     if (preset === "solo") {
@@ -480,13 +482,19 @@
   // Billing, invoicing, payments and pay changes apply from the next billing cycle (1st of next month);
   // everything else applies today. Issued invoices are never rewritten either way.
   var CYCLE_SECTIONS = ["billing", "invoicing", "payments", "tutor_pay"];
+  // Exception: who may see their own pay is a process rule, read as of TODAY by the database (tutor_my_pay_*), so it takes effect at once.
+  function cycleView(sec, k) {
+    if (!sec) return sec;
+    if (k !== "tutor_pay") return sec;
+    var c = JSON.parse(JSON.stringify(sec)); delete c.tutors_see_own_pay; return c;
+  }
   function nextCycle(todayISO) {
     var y = +todayISO.slice(0, 4), m = +todayISO.slice(5, 7);
     m += 1; if (m > 12) { m = 1; y += 1; }
     return y + "-" + (m < 10 ? "0" : "") + m + "-01";
   }
   function effectiveFrom(before, after, todayISO) {
-    var changed = CYCLE_SECTIONS.some(function (k) { return JSON.stringify(before && before[k]) !== JSON.stringify(after[k]); });
+    var changed = CYCLE_SECTIONS.some(function (k) { return JSON.stringify(cycleView(before && before[k], k)) !== JSON.stringify(cycleView(after[k], k)); });
     return changed ? nextCycle(todayISO) : todayISO;
   }
   // What to save. `latest` = the newest saved VERSION (what the form shows, pending next-cycle changes included), `inForce` = what applies today,
