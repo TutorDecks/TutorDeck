@@ -194,7 +194,7 @@ test("schedule: the badge and the small facts say what the database flagged, and
 test("schedule: the note about changes, the weekly slots and the plain error words", () => {
   assert.strictEqual(T.editNote("admin_only"), "Your centre handles changes: ask an admin.");
   assert.strictEqual(T.editNote(undefined), "Your centre handles changes: ask an admin.");
-  assert.ok(/coming soon/.test(T.editNote("tutors_propose")));
+  assert.ok(/not switched on/.test(T.editNote("tutors_propose")), "T6.4: tutors_propose with nothing switched on says so (it is built, so never 'coming soon')");
   assert.ok(/ask an admin/.test(T.editNote("tutors_own")), "the old unbuilt key falls back to the safe note");
   assert.strictEqual(T.weekdayName(0), "Monday"); assert.strictEqual(T.weekdayName(6), "Sunday"); assert.strictEqual(T.weekdayName(9), "");
   const rows = [
@@ -324,7 +324,7 @@ test("T6.3 the note, the badge and the slot rows with the new abilities", () => 
   assert.match(T.editNote("tutors_direct", o({ can_generate: true, min_notice_hours: 0 })), /^You can create your lessons from them\. Your centre is told/);
   assert.match(T.editNote("tutors_direct", {}), /not switched on/);
   assert.match(T.editNote("admin_only", o({ can_one_off: true, can_slots: true, can_generate: true })), /ask an admin/i, "admin_only offers nothing, whatever else arrives");
-  assert.match(T.editNote("tutors_propose", o({ can_one_off: true })), /coming soon/);
+  assert.match(T.editNote("tutors_propose", o({ can_one_off: true })), /^At your centre you ask and an admin approves: nothing changes until they do\. You can ask to add a one-off lesson\. A change must be at least 24 hours/);
   assert.deepStrictEqual(T.scheduleChip({ awaiting_centre: true }), { text: "To confirm", tone: "muted" });
   assert.deepStrictEqual(T.scheduleChip({ awaiting_centre: true, cancelled: true }), { text: "Cancelled", tone: "muted" }, "a cancelled lesson says cancelled first");
   assert.strictEqual(T.scheduleChip({}), null);
@@ -340,4 +340,33 @@ test("T6.3 the note, the badge and the slot rows with the new abilities", () => 
   assert.strictEqual(T.studentOptions([{ org_id: "o1", student_id: "s1", name: "A" }, { org_id: "o2", student_id: "s2", name: "B" }]).length, 2); assert.deepStrictEqual(T.studentOptions(null), []);
   const say = JSON.stringify([T.editNote("tutors_direct", o({ can_postpone: true, can_cancel: true, can_one_off: true, can_slots: true, can_generate: true, changes_left: 3 })), T.scheduleChip({ awaiting_centre: true }), T.AWAITING_NOTE]);
   assert.ok(!MONEY.test(say), "no money word in anything the Schedule says: " + say);
+});
+
+// ---- T6 steps 5-6: the online link and requests (tutors_propose)
+test("T6.4: tutors_propose note: ask, wait for approval, the notice, what is left (waiting requests count)", () => {
+  const o = (x) => Object.assign({ min_notice_hours: 24 }, x);
+  const n = T.editNote("tutors_propose", o({ can_postpone: true, can_cancel: true, can_one_off: true, can_slots: true, can_generate: true, can_link: true, changes_left: 1 }));
+  assert.match(n, /^At your centre you ask and an admin approves: nothing changes until they do\. You can ask to move or cancel your own lessons: tap a lesson\. You can also ask to add a one-off lesson, change your weekly slots, create your lessons or set the online link\./);
+  assert.match(n, /at least 24 hours before the lesson starts/);
+  assert.match(n, /You can ask for 1 more change this month \(waiting requests count\)\.$/);
+  assert.match(T.editNote("tutors_propose", o({ can_postpone: true, min_notice_hours: 1 })), /at least 1 hour before/);
+  assert.doesNotMatch(T.editNote("tutors_propose", o({ can_postpone: true, min_notice_hours: 0 })), /at least/);
+  assert.match(T.editNote("tutors_propose", {}), /not switched on/);
+  assert.match(T.editNote("tutors_direct", o({ can_postpone: true })), /Your centre is told about every change/, "direct is unchanged");
+});
+test("T6.4: a lesson with a waiting request says so first; slots carry their waiting request", () => {
+  assert.deepStrictEqual(T.scheduleChip({ pending_request: { request_id: "r", kind: "cancel" }, cancelled: false }), { text: "Waiting for approval", tone: "warn" });
+  assert.deepStrictEqual(T.scheduleChip({ pending_request: null, postponed: true }), { text: "Moved", tone: "muted" });
+  const rows = [{ slot_id: "s1", session_key: null, org_id: "o", weekday: 1, start_time: "16:00:00", end_time: "17:00:00", student_id: "a", student_name: "Ann", can_change: true, pending_request: "r1", pending_kind: "stop_slot" }];
+  const l = T.slotList(rows); assert.strictEqual(l[0].pending_request, "r1"); assert.strictEqual(l[0].pending_kind, "stop_slot");
+  assert.strictEqual(T.slotList([{ slot_id: "s2", weekday: 0, start_time: "10:00:00", student_id: "b", student_name: "Ben" }])[0].pending_request, null);
+});
+test("T6.4: plain words for the new refusals (never the raw code)", () => {
+  for (const [code, re] of [["ALREADY_PENDING", /already asked/], ["ALREADY_DECIDED", /already answered/], ["NOTHING_TO_DO", /no new lessons/], ["BAD_LINK", /https:\/\//], ["NO_CHANGE", /already like that/]]) {
+    assert.match(T.ownErrorText({ message: code + ": whatever the database said" }), re, code);
+  }
+  assert.match(T.changeErrorText({ message: "ALREADY_PENDING: you have already asked" }), /already asked for this/);
+  assert.match(T.changeErrorText({ message: "ALREADY_DECIDED: an admin" }), /already answered/);
+  assert.doesNotMatch(T.ownErrorText({ message: "BAD_LINK: the link must start" }), /BAD_LINK/);
+  assert.match(T.ownErrorText({ message: "WHATEVER_NEW: x" }), /couldn't save that just now/);
 });

@@ -1137,6 +1137,13 @@ html[data-theme="dark"] .ch-chg-t{color:var(--ink)}
 html[data-theme="dark"] .ch-chg-d{color:var(--muted)}
 html[data-theme="dark"] .ch-chip{background:rgba(180,83,9,0.228);color:#F4985F}
 html[data-theme="dark"] .ch-ago{color:var(--muted)}
+html[data-theme="dark"] .ch-req-t{color:var(--ink)}
+html[data-theme="dark"] .ch-req-d{color:var(--ink)}
+html[data-theme="dark"] .ch-req-m{color:var(--muted)}
+html[data-theme="dark"] .ch-chip.quiet{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+html[data-theme="dark"] .ch-req-l{color:var(--ink)}
+html[data-theme="dark"] .ch-req-ta{border:1.5px solid var(--line);background:var(--paper,#172235);color:var(--ink)}
+html[data-theme="dark"] .ch-more{color:var(--accent-ink)}
 /* from centre-students.html */
 html[data-theme="dark"] .cs-search{border:1px solid var(--line);background:#172235;color:var(--ink)}
 html[data-theme="dark"] .cs-search:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(15,118,110,0.342)}

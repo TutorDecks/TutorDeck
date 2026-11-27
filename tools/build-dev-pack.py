@@ -22,6 +22,7 @@ BRANCH = {
     "centre_billing_method": "t31a-centre-invoice-billing", "centre_billing_start": "t36-billing-start", "tutor_profile": "t24c-1-profile",
     "tutor_payout": "t24c-2-payout", "payout_permission": "t24c-3-payout", "tutor_moves": "t6-2-tutor-moves",
     "tutor_own_lessons": "t6-3-tutor-own-lessons",
+    "tutor_link_propose": "t6-4-link-propose",
 }
 WHAT = {
     "staff_home": "centre Home numbers", "staff_students": "centre students, households, tutor links", "staff_attendance": "centre attendance + guard",
@@ -33,6 +34,7 @@ WHAT = {
     "tutor_profile": "tutor's own profile", "tutor_payout": "tutor payout details (masked, audited)", "payout_permission": "payout permission + centre list/reveal",
     "tutor_moves": "tutors move, put back and cancel their own lessons (centre option)",
     "tutor_own_lessons": "tutors add their own lessons, weekly slots and Create lessons (centre option)",
+    "tutor_link_propose": "the online lesson link, and tutors who ask (tutors_propose): requests staff approve or decline",
 }
 
 

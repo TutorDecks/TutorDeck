@@ -24,7 +24,7 @@ function override(cfg) {
     var iso = function (n) { var d = new Date(); d.setDate(d.getDate() + n); var p = function (x) { return (x < 10 ? "0" : "") + x; }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); };
     var L = function (id, off, o) { return Object.assign({ lesson_id: id, org_id: "o2", org_name: "Test Tuition", student_id: "s" + id, student_name: "Pupil " + id, student_level: "P5", parent_contact: null,
       lesson_date: iso(off), start_time: "16:00:00", end_time: "17:00:00", minutes: 60, subject: "Math", trial: false, attendance: null, status: "scheduled", cancelled: false,
-      postponed: false, covering: false, online_link: null, holiday: null, can_postpone: false, can_revert: false, can_cancel: false, change_block: null, class_size: 0, awaiting_centre: false, added_by_you: false }, o || {}); };
+      postponed: false, covering: false, online_link: null, lesson_link: null, student_link: null, pending_request: null, holiday: null, can_postpone: false, can_revert: false, can_cancel: false, change_block: null, class_size: 0, awaiting_centre: false, added_by_you: false }, o || {}); };
     var lessons = (cfg.lessons || []).map(function (x) { return L(x[0], x[1], x[2]); });
     var origRpc = c.rpc.bind(c), origFrom = c.from.bind(c);
     c.rpc = function (n, a) {
@@ -35,11 +35,12 @@ function override(cfg) {
         var inr = lessons.filter(function (l) { return l.lesson_date >= a.p_from && l.lesson_date <= a.p_to; }).sort(function (x, y) { return x.lesson_date < y.lesson_date ? -1 : x.lesson_date > y.lesson_date ? 1 : x.start_time < y.start_time ? -1 : 0; });
         var hol = (cfg.holidays || []).map(function (h) { return { org_id: "o2", name: h[2], starts_on: iso(h[0]), ends_on: iso(h[1]) }; }).filter(function (h) { return h.starts_on <= a.p_to && h.ends_on >= a.p_from; });
         return Promise.resolve({ data: { today: iso(0), from: a.p_from, to: a.p_to, orgs: [{ org_id: "o2", name: "Test Tuition", today: iso(0), timetable_editing: cfg.editing || "admin_only", can_edit: !!(cfg.canPostpone || cfg.canCancel), can_postpone: !!cfg.canPostpone, can_cancel: !!cfg.canCancel,
-          can_one_off: !!cfg.canOneOff, can_slots: !!cfg.canSlots, can_generate: !!cfg.canGenerate,
+          can_one_off: !!cfg.canOneOff, proposes: !!cfg.proposes, can_link: !!cfg.canLink, requests_pending: (cfg.requests || []).filter(function (q) { return q.status === "pending"; }).length, can_slots: !!cfg.canSlots, can_generate: !!cfg.canGenerate,
           min_notice_hours: 24, max_changes_per_month: cfg.changesLeft == null ? 0 : 5, changes_left: cfg.changesLeft == null ? null : cfg.changesLeft }], lessons: inr, holidays: hol }, error: null });
       }
       if (n === "tutor_postpone_lesson" || n === "tutor_revert_lesson" || n === "tutor_cancel_lesson") {
         if (cfg.changeError) return Promise.resolve({ data: null, error: { message: cfg.changeError } });
+        if (cfg.proposes) return Promise.resolve({ data: { requested: true, request_id: "rqnew", kind: "x", status: "pending" }, error: null });
         return new Promise(function (res) { setTimeout(function () { res({ data: { lesson_id: a.p_lesson, lessons: 1, what: n === "tutor_cancel_lesson" ? "cancelled" : n === "tutor_revert_lesson" ? "reverted" : "moved",
           lesson_date: a.p_date || iso(2), start_time: (a.p_start || "15:00") + ":00", end_time: "16:00:00", cancelled: n === "tutor_cancel_lesson" }, error: null }); }, 150); });
       }
@@ -47,12 +48,19 @@ function override(cfg) {
       if (n === "tutor_my_students") return Promise.resolve({ data: cfg.students || [], error: null });
       if (n === "tutor_add_lesson" || n === "tutor_save_slot" || n === "tutor_stop_slot" || n === "tutor_generate_lessons") {
         if (cfg.ownError) return Promise.resolve({ data: null, error: { message: cfg.ownError } });
+        if (cfg.proposes) return Promise.resolve({ data: { requested: true, request_id: "rqnew", kind: "x", status: "pending" }, error: null });
         return new Promise(function (res) { setTimeout(function () { res({ error: null, data:
           n === "tutor_add_lesson" ? { lesson_id: "new1", lesson_date: a.p_date, start_time: a.p_start + ":00", end_time: a.p_end + ":00", awaiting_centre: !!cfg.awaiting }
           : n === "tutor_save_slot" ? { slot_id: a.p_slot || "slnew", added: !a.p_slot, lessons_left: a.p_slot ? 2 : 0, awaiting_centre: !!cfg.awaiting }
           : n === "tutor_stop_slot" ? { stopped: 1, lessons_left: 2 }
           : { from: a.p_from, to: a.p_to, created: 7, skipped: 3, holidays: 1, ended: 0, too_soon: 1, not_assigned: 0, awaiting_centre: cfg.awaiting ? 2 : 0, slots: 2 } }); }, 150); });
       }
+      if (n === "tutor_my_requests") return cfg.requestsError ? Promise.resolve({ data: null, error: { message: "boom" } }) : Promise.resolve({ data: { today: iso(0), rows: cfg.requests || [] }, error: null });
+      if (n === "tutor_set_link") {
+        if (cfg.linkError) return Promise.resolve({ data: null, error: { message: cfg.linkError } });
+        return Promise.resolve({ data: cfg.proposes ? { requested: true, request_id: "rqlink", kind: "link", status: "pending" } : { changed: true, scope: a.p_lesson ? "lesson" : "student", online_link: a.p_link || null }, error: null });
+      }
+      if (n === "tutor_cancel_request") return Promise.resolve({ data: { request_id: a.p_request, status: "cancelled", already: false }, error: null });
       if (n === "tutor_my_lessons") return Promise.resolve({ data: [], error: null });
       return origRpc(n, a);
     };
@@ -135,9 +143,10 @@ const MONEY = /(S\$|\$\s?\d|\bprice\b|\brate\b|\bpaid\b|\bamount\b|\bcompensatio
     await page.click("#sc-today"); await page.waitForTimeout(500);
     ok((await page.textContent("#sc-title")).startsWith("This week"), "Today goes back to this week");
     await ctx.close(); }
-  // ---------- C. a centre whose setting is not built yet only changes the note
-  { const { ctx, page } = await open(b, "phone", "light", Object.assign({}, CFG, { editing: "tutors_propose" }), "tutor-schedule");
-    ok(/coming soon/.test(await page.textContent("#sc-note")) && (await page.$$("[data-page='tutor-schedule'] input, [data-page='tutor-schedule'] textarea, [data-page='tutor-schedule'] select")).length === 0, "a centre where tutors ask and an admin approves (not built): a 'coming soon' note, still read-only"); await ctx.close(); }
+  // ---------- C. a centre where tutors ask, with nothing switched on: a plain note, still read-only
+  { const { ctx, page } = await open(b, "phone", "light", Object.assign({}, CFG, { editing: "tutors_propose", proposes: true }), "tutor-schedule");
+    ok(/not switched on requests/.test(await page.textContent("#sc-note")) && !/coming soon/.test(await page.textContent("#sc-note")) && (await page.$$("[data-page='tutor-schedule'] input, [data-page='tutor-schedule'] textarea, [data-page='tutor-schedule'] select")).length === 0, "a centre where tutors ask but nothing is switched on: a plain note (never 'coming soon'), still read-only");
+    ok(/You have not asked for anything yet/.test(await page.textContent("#sc-reqs")) && !(await page.$("#sc-reqs-h[hidden]")), "and the My requests list says nothing has been asked yet"); await ctx.close(); }
   // ---------- F. T6 step 2: a centre that lets its tutors change lessons (tutors_direct)
   const DIRECT = Object.assign({}, CFG, { editing: "tutors_direct", canPostpone: true, canCancel: true, changesLeft: 2,
     lessons: [["a", mon + 8, { start_time: "16:00:00", can_postpone: true, can_cancel: true }], ["r", mon + 8, { start_time: "18:00:00", postponed: true, can_postpone: true, can_revert: true, can_cancel: true, student_name: "Moved pupil" }],
@@ -320,6 +329,111 @@ const MONEY = /(S\$|\$\s?\d|\bprice\b|\brate\b|\bpaid\b|\bamount\b|\bcompensatio
   { const { ctx, page } = await open(b, "desktop", "light", OWN, "tutor-schedule");
     ok(await page.isVisible("#sc-add") && (await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)), "desktop: the buttons show, no sideways scroll");
     await page.click("#sc-add"); await page.waitForTimeout(300); ok(await page.isVisible("#ad-stu"), "desktop: the form opens in the side panel"); await ctx.close(); }
+  // ---------- H. T6 steps 5-6: a centre where tutors ASK (tutors_propose), and the online link
+  const ago = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString(); };
+  const PROPOSE = Object.assign({}, CFG, { editing: "tutors_propose", proposes: true, canPostpone: true, canCancel: true, canOneOff: true, canSlots: true, canGenerate: true, canLink: true, changesLeft: 2,
+    students: [{ org_id: "o2", org_name: "Test Tuition", student_id: "st1", name: "Aiden", level: "P5", subject: "Maths", awaiting_centre: false, online_link: null }],
+    lessons: [["a", mon + 8, { start_time: "16:00:00", can_postpone: true, can_cancel: true }],
+              ["w", mon + 8, { start_time: "18:00:00", can_postpone: true, can_cancel: true, student_name: "Waiting pupil", pending_request: { request_id: "rq-wait", kind: "cancel" } }],
+              ["x", mon + 9, { start_time: "16:00:00", cancelled: true, status: "cancelled", student_name: "Cancelled pupil" }]],
+    requests: [
+      { request_id: "rq-wait", org_id: "o2", org_name: "Test Tuition", kind: "cancel", status: "pending", created_at: ago(-2), expires_at: ago(12), reason: "Family trip", student_name: "Waiting pupil", lesson_id: "w", lesson_date: new Date(Date.now() + (mon + 8) * 864e5).toISOString().slice(0, 10), start_time: "18:00:00", end_time: "19:00:00" },
+      { request_id: "rq-dec", org_id: "o2", org_name: "Test Tuition", kind: "postpone", status: "declined", created_at: ago(-6), expires_at: ago(8), decided_at: ago(-5), reason: "Need a free evening", decision_reason: "We need that lesson to go ahead", student_name: "Declined pupil", new_date: "2030-01-04", new_start: "17:00:00" },
+      { request_id: "rq-nlp", org_id: "o2", org_name: "Test Tuition", kind: "add_lesson", status: "no_longer_possible", created_at: ago(-9), decided_at: ago(-8), decision_reason: "It is now too close to the lesson: your centre's notice time has passed", student_name: "Late pupil", new_date: "2030-01-05", new_start: "14:00:00", new_end: "15:00:00" },
+      { request_id: "rq-ok", org_id: "o2", org_name: "Test Tuition", kind: "link", status: "approved", created_at: ago(-4), decided_at: ago(-3), student_name: "Linked pupil", link: "https://meet.example.com/ok", link_scope: "student" }] });
+  for (const theme of ["light", "dark"]) {
+    const { ctx, page, errs } = await open(b, "phone", theme, PROPOSE, "tutor-schedule"); await goNext(page);
+    const tag = "propose/" + theme;
+    const note = await page.textContent("#sc-note");
+    ok(/you ask and an admin approves: nothing changes until they do/.test(note) && /ask to move or cancel/.test(note) && /set the online link/.test(note) && /2 more changes this month \(waiting requests count\)/.test(note), tag + ": the note explains asking: " + note.slice(0, 90) + "…");
+    const chips = await page.$$eval(".tt-chip", (e) => e.map((x) => x.textContent.trim()));
+    ok(chips.includes("Waiting for approval") && chips.includes("Cancelled"), tag + ": a lesson with a waiting request shows 'Waiting for approval' (" + chips.join(",") + ")");
+    ok(!(await page.$("#sc-reqs-h[hidden]")) && (await page.$$("#sc-reqs .sc-tap")).length === 4, tag + ": My requests lists the four requests");
+    const reqText = await page.textContent("#sc-reqs");
+    ok(/Waiting for an admin/.test(reqText) && /Declined/.test(reqText) && /No longer possible/.test(reqText) && /Approved/.test(reqText) && /Runs out in/.test(reqText), tag + ": each request has its status in plain words");
+    ok(!MONEY.test(await page.evaluate(() => document.body.innerText)), tag + ": no money word anywhere on the page");
+    // a lesson you can ask about
+    await page.click('.tt-row[data-id="a"]'); await page.waitForTimeout(300);
+    let body = await page.textContent("#ts-body");
+    ok(/Ask to move/.test(body) && /Ask to cancel lesson/.test(body) && /Ask to set the link of this lesson/.test(body) && /Ask to set Pupil a.s usual link/.test(body), tag + ": the buttons say 'Ask to …'");
+    await page.click('[data-act="move"]'); await page.waitForTimeout(250);
+    body = await page.textContent("#ts-body");
+    ok(/Ask to move this lesson/.test(body) && /Nothing changes until they approve it/.test(body) && /Send request/.test(body), tag + ": the form says it is a request (button: Send request)");
+    await page.fill("#ts-date", await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().slice(0, 10); })); await page.fill("#ts-start", "17:00"); await page.fill("#ts-reason", "Tutor is away");
+    await page.click("#ts-go"); await page.waitForTimeout(500);
+    const sent = await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_postpone_lesson").map((c) => c[1]));
+    ok(sent.length === 1 && sent[0].p_lesson === "a" && sent[0].p_reason === "Tutor is away" && /^17:00/.test(sent[0].p_start), tag + ": 'Send request' calls the same function with the same arguments: " + JSON.stringify(sent[0]));
+    ok(!(await page.isVisible("#tt-sheet.on")) && /Request sent\. Nothing changes until an admin approves it/.test(await page.textContent("body")), tag + ": the sheet closes and says the request was sent, and nothing changed");
+    // a lesson with a waiting request: no 'Ask' buttons, a way to take it back
+    await page.click('.tt-row[data-id="w"]'); await page.waitForTimeout(300);
+    body = await page.textContent("#ts-body");
+    ok(/Your request/.test(body) && /Cancel the lesson/.test(body) && /waiting for an admin/.test(body) && /Take my request back/.test(body) && !/Ask to move/.test(body) && !(await page.$("[data-act]")), tag + ": a lesson with a waiting request shows it and offers only 'Take my request back'");
+    if (SC && theme === "light") await page.screenshot({ path: path.join(SC, "tutor-schedule-propose-waiting-sheet.png") });
+    await axeCheck(page, tag + " waiting sheet");
+    await page.click('[data-do="req-cancel"]'); await page.waitForTimeout(500);
+    const cc = await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_cancel_request").map((c) => c[1]));
+    ok(cc.length === 1 && cc[0].p_request === "rq-wait", tag + ": taking it back calls tutor_cancel_request with its id");
+    ok(!(await page.isVisible("#tt-sheet.on")) && /Request taken back\. Nothing was changed/.test(await page.textContent("body")), tag + ": and says nothing was changed");
+    // the request list: a declined one shows the reason
+    await page.click('#sc-reqs [data-req="rq-dec"]'); await page.waitForTimeout(300);
+    body = await page.textContent("#ts-body");
+    ok(/Declined: We need that lesson to go ahead/.test(body) && /Need a free evening/.test(body) && !(await page.$('[data-do="req-cancel"]')), tag + ": a declined request shows the admin's reason and no 'take back' button");
+    await page.keyboard.press("Escape"); await page.waitForTimeout(200);
+    await page.click('#sc-reqs [data-req="rq-nlp"]'); await page.waitForTimeout(300);
+    ok(/Couldn't be done: it is now too close to the lesson/.test(await page.textContent("#ts-body")), tag + ": a 'no longer possible' request says why in plain words");
+    await page.keyboard.press("Escape"); await page.waitForTimeout(200);
+    // the link
+    await page.click('.tt-row[data-id="a"]'); await page.waitForTimeout(250);
+    await page.click('[data-do="link-lesson"]'); await page.waitForTimeout(250);
+    ok(/Online link for this lesson/.test(await page.textContent("#ts-title")) && /Send request/.test(await page.textContent("#ts-body")), tag + ": the link form is a request too");
+    await page.fill("#lk-url", "http://meet.example.com/x"); await page.click("#ts-do"); await page.waitForTimeout(250);
+    ok(/https:\/\//.test(await page.textContent("#ts-msg")) && (await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_set_link").length)) === 0, tag + ": an http:// link is refused on the page before anything is sent");
+    await page.fill("#lk-url", "javascript:alert(1)"); await page.click("#ts-do"); await page.waitForTimeout(150);
+    ok((await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_set_link").length)) === 0, tag + ": javascript: is refused on the page");
+    await page.fill("#lk-url", "https://meet.example.com/room-7"); await page.click("#ts-do"); await page.waitForTimeout(400);
+    const lk = await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_set_link").map((c) => c[1]));
+    ok(lk.length === 1 && lk[0].p_lesson === "a" && lk[0].p_student === null && lk[0].p_link === "https://meet.example.com/room-7", tag + ": a good link is sent for the lesson: " + JSON.stringify(lk[0]));
+    await page.click('.tt-row[data-id="a"]'); await page.waitForTimeout(250);
+    await page.click('[data-do="link-student"]'); await page.waitForTimeout(250);
+    await page.fill("#lk-url", "https://meet.example.com/usual"); await page.click("#ts-do"); await page.waitForTimeout(400);
+    const lk2 = await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_set_link").map((c) => c[1]));
+    ok(lk2.length === 2 && lk2[1].p_student === "sa" && lk2[1].p_lesson === null, tag + ": the student's usual link is sent for the student: " + JSON.stringify(lk2[1]));
+    // a cancelled lesson has no link button
+    await page.click('.tt-row[data-id="x"]'); await page.waitForTimeout(250);
+    ok(!(await page.$('[data-do="link-lesson"]')), tag + ": a cancelled lesson has no link button");
+    await page.keyboard.press("Escape"); await page.waitForTimeout(200);
+    // add a lesson, a slot and create lessons are requests too
+    await page.click("#sc-add"); await page.waitForTimeout(500);
+    ok(/Send request/.test(await page.textContent("#ts-do")) && /Nothing changes until they approve it/.test(await page.textContent("#ts-body")), tag + ": Add a lesson is a request (Send request)");
+    await page.selectOption("#ad-stu", "st1"); await page.fill("#ad-date", await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 20); return d.toISOString().slice(0, 10); })); await page.fill("#ad-start", "15:00"); await page.fill("#ad-end", "16:00");
+    await page.click("#ts-do"); await page.waitForTimeout(500);
+    ok(/Request sent/.test(await page.textContent("body")) && !/Lesson added for/.test(await page.textContent("body")), tag + ": adding a lesson says 'Request sent', not 'Lesson added'");
+    await page.click("#sc-generate"); await page.waitForTimeout(300);
+    ok(/Send request/.test(await page.textContent("#ts-do")), tag + ": Create lessons is a request (Send request)");
+    await page.click("#ts-do"); await page.waitForTimeout(500);
+    ok(/Request sent/.test(await page.textContent("body")) && !(await page.isVisible("#tt-sheet.on")), tag + ": Create lessons says 'Request sent'");
+    ok(errs.length === 0, tag + ": no script or console errors" + (errs.length ? " " + errs.join("|") : ""));
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), tag + ": no sideways scroll at 390px");
+    if (SC) await page.screenshot({ path: path.join(SC, `tutor-schedule-propose-${theme}.png`), fullPage: true });
+    await axeCheck(page, tag + " page");
+    await ctx.close();
+  }
+  { // the same page when the requests list can't be read (older database): the rest still works
+    const { ctx, page, errs } = await open(b, "phone", "light", Object.assign({}, PROPOSE, { requestsError: true }), "tutor-schedule"); await goNext(page);
+    ok((await page.$$("#sc-reqs .sc-tap")).length === 0 && (await page.$$(".tt-row")).length >= 2 && errs.length === 0, "the schedule still works when the requests list can't be loaded");
+    await ctx.close(); }
+  { // a refusal from the database is shown in plain words, never raw
+    const { ctx, page } = await open(b, "phone", "light", Object.assign({}, PROPOSE, { changeError: "ALREADY_PENDING: you have already asked for this and an admin hasn't answered yet. Take that request back first if you want to change it" }), "tutor-schedule"); await goNext(page);
+    await page.click('.tt-row[data-id="a"]'); await page.waitForTimeout(250); await page.click('[data-act="cancel"]'); await page.fill("#ts-reason", "A good reason"); await page.click("#ts-go"); await page.waitForTimeout(400);
+    ok(/You have already asked for this/.test(await page.textContent("#ts-msg")) && !/ALREADY_PENDING/.test(await page.textContent("#ts-msg")), "ALREADY_PENDING is shown in plain words");
+    await ctx.close(); }
+  { // at a centre that acts directly, with the link switch on: a link is saved at once
+    const { ctx, page } = await open(b, "phone", "light", Object.assign({}, DIRECT, { canLink: true }), "tutor-schedule"); await goNext(page);
+    await page.click('.tt-row[data-id="a"]'); await page.waitForTimeout(250);
+    ok(/Set the link of this lesson/.test(await page.textContent("#ts-body")) && !/Ask to/.test(await page.textContent("#ts-body")), "direct centre: 'Set the link of this lesson' (no 'Ask to')");
+    await page.click('[data-do="link-lesson"]'); await page.fill("#lk-url", "https://meet.example.com/direct"); await page.click("#ts-do"); await page.waitForTimeout(400);
+    ok(/Link saved\./.test(await page.textContent("body")) && !/Request sent/.test(await page.textContent("body")), "direct centre: the link is saved at once");
+    await ctx.close(); }
   // ---------- D. errors and empty states
   { const { ctx, page } = await open(b, "phone", "light", { notFound: true }, "tutor-schedule");
     ok(/for tutors at a centre/.test(await page.textContent("#sc-week")) && !/NOT_FOUND/.test(await page.evaluate(() => document.body.innerText)), "someone who isn't a centre tutor: a plain message, never the raw code"); await ctx.close(); }

@@ -171,6 +171,7 @@
   }
   // The badge on a schedule row (one word) and the small facts under the name. Nothing here says anything about money.
   function scheduleChip(l) {
+    if (l.pending_request) return { text: "Waiting for approval", tone: "warn" };           // T6 step 6: I asked, an admin hasn't answered yet
     if (l.cancelled) return { text: "Cancelled", tone: "muted" };
     if (l.attendance === "attended") return { text: "Attended", tone: "ok" };
     if (l.attendance === "absent") return { text: "Absent", tone: "muted" };
@@ -190,10 +191,27 @@
     return f.filter(Boolean);
   }
   // The note under the week, in plain words, for what THIS centre lets a tutor do. `org` is the centre's entry of tutor_my_schedule (may be missing).
-  // admin_only = ask an admin. tutors_direct = tap a lesson, with the centre's notice and what is left of the month's changes. tutors_propose is not built yet.
+  // admin_only = ask an admin. tutors_direct = tap a lesson, with the centre's notice and what is left of the month's changes. tutors_propose = the same taps, but each one is a request.
   function editNote(editing, org) {
     var e = editing || "admin_only", o = org || {};
     var more = [];
+    if (e === "tutors_propose") {                                              // T6 step 6: the same buttons, but each one sends a request
+      var ask = [];
+      if (o.can_postpone) ask.push("move"); if (o.can_cancel) ask.push("cancel");
+      var extra = [];
+      if (o.can_one_off) extra.push("add a one-off lesson");
+      if (o.can_slots) extra.push("change your weekly slots");
+      if (o.can_generate) extra.push("create your lessons");
+      if (o.can_link) extra.push("set the online link");
+      if (!ask.length && !extra.length) return "Your centre has not switched on requests by tutors yet. Ask an admin to change a lesson.";
+      var n = o.min_notice_hours == null ? 24 : o.min_notice_hours;
+      var t = "At your centre you ask and an admin approves: nothing changes until they do. " +
+              (ask.length ? "You can ask to " + ask.join(" or ") + " your own lessons: tap a lesson. " : "") +
+              (extra.length ? (ask.length ? "You can also ask to " : "You can ask to ") + extra.join(", ").replace(/, ([^,]*)$/, " or $1") + ". " : "") +
+              (n > 0 ? "A change must be at least " + n + " hour" + (n === 1 ? "" : "s") + " before the lesson starts. " : "");
+      if (o.changes_left != null) t += "You can ask for " + o.changes_left + " more change" + (o.changes_left === 1 ? "" : "s") + " this month (waiting requests count).";
+      return t.trim();
+    }
     if (e === "tutors_direct") {
       if (o.can_one_off) more.push("add a one-off lesson");
       if (o.can_slots) more.push("keep your own weekly slots");
@@ -211,7 +229,6 @@
       return t;
     }
     if (e === "tutors_direct") return "Your centre has not switched on changes by tutors yet. Ask an admin to change a lesson.";
-    if (e === "tutors_propose") return "At your centre tutors ask for changes and an admin approves them. That is coming soon. For now, ask an admin.";
     return "Your centre handles changes: ask an admin.";
   }
   // The refusals of the three change functions. Most say it in fixed words; four carry a detail the database knows (the hours, the number, the holiday, the
@@ -232,6 +249,8 @@
     BAD_DATE: "Please pick a date and a start time that are still to come, within the next year.",
     BAD_TIME: "That start time would run past midnight. Please pick an earlier one.",
     NO_CHANGE: "That lesson is already at that time.",
+    ALREADY_PENDING: "You have already asked for this and an admin hasn't answered yet. Take that request back first if you want to change it.",
+    ALREADY_DECIDED: "An admin has already answered that request. Please refresh.",
     GROUP_NOT_YOURS: "That lesson is part of a class that includes lessons that aren't yours. Please ask an admin."
   };
   var CHANGE_DETAIL = { TOO_LATE: 1, LIMIT: 1, HOLIDAY: 1, CLASH: 1 };
@@ -269,7 +288,7 @@
     (rows || []).forEach(function (r) {
       var k = r.session_key || r.slot_id;
       if (!by[k]) { by[k] = { key: k, slot_id: r.slot_id, org_id: r.org_id, weekday: r.weekday, start_time: r.start_time, end_time: r.end_time, subject: r.subject, org_name: r.org_name, students: [],
-                              can_change: !!r.can_change, is_group: !!r.is_group, awaiting_centre: !!r.awaiting_centre }; out.push(by[k]); }
+                              can_change: !!r.can_change, is_group: !!r.is_group, awaiting_centre: !!r.awaiting_centre, pending_request: r.pending_request || null, pending_kind: r.pending_kind || null }; out.push(by[k]); }
       by[k].students.push({ id: r.student_id, name: r.student_name, level: r.student_level });
     });
     return out.sort(function (a, b) { return a.weekday - b.weekday || (a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : 0); });
@@ -301,6 +320,13 @@
     SLOT_CLASH: "That student already has a weekly lesson at that time.",
     TUTOR_CLASH: "You already teach someone at that time every week. Please pick another time.",
     GROUP_CLASS: "This is a group class. Please ask an admin to change it.",
+    ALREADY_PENDING: "You have already asked for this and an admin hasn't answered yet. Take that request back first if you want to change it.",
+    ALREADY_DECIDED: "An admin has already answered that request. Please refresh.",
+    NOTHING_TO_DO: "There are no new lessons to create in those dates.",
+    NO_CHANGE: "It is already like that.",
+    BAD_LINK: "Please paste a link that starts with https:// and has no spaces (500 characters at most).",
+    CANCELLED: "That lesson was cancelled.",
+    PAST: "That lesson is over, so its link can't be changed.",
     BAD_RANGE: "Please pick an end day from today up to 62 days ahead."
   };
   var OWN_DETAIL = { LIMIT: 1, STUDENT_ENDED: 1, BAD_DATE: 1, BAD_TIME: 1, TOO_LONG: 1, TOO_LATE: 1, HOLIDAY: 1, ALREADY_THERE: 1, CLASH: 1, SLOT_CLASH: 1, TUTOR_CLASH: 1, BAD_RANGE: 1 };

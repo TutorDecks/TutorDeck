@@ -35,7 +35,71 @@
     }).join("") + '</div><p class="ch-note">' + esc(tcc.homeNote(ch.tell_family)) + '</p>';
   }
 
-  function home(h, changes) {
+  // T6 step 6: what tutors ask for at a centre where "tutors ask, an admin approves". staff_schedule_requests(org) (needs manage_timetable) carries no money.
+  var RC = window.TutorRequestsCore, orgId = null, busyReq = false, st = { h: null, changes: null, rq: null };
+  function reqCard(r, today, canDecide) {
+    var st = RC.status(r, true), nowTxt = RC.now(r), pending = r.status === "pending";
+    return '<div class="card ch-req" data-req="' + esc(r.request_id) + '"><div class="ch-req-top"><span class="ch-req-t">' + esc(RC.headline(r, true)) + '</span><span class="ch-chip ' + (pending ? "" : "quiet") + '">' + esc(st.text) + '</span></div>' +
+      '<div class="ch-req-d">' + esc(RC.ask(r)) + '</div>' + (nowTxt ? '<div class="ch-req-d">' + esc(nowTxt) + '</div>' : '') +
+      (r.reason ? '<div class="ch-req-d">“' + esc(r.reason) + '”</div>' : '') +
+      '<div class="ch-req-d ch-req-m">' + esc(RC.asked(r, today) + (pending ? " · " + RC.expires(r, today) : "")) + '</div>' +
+      (pending && canDecide ? '<div class="ch-req-a"><button type="button" class="btn btn-primary" data-approve="' + esc(r.request_id) + '">Approve</button><button type="button" class="btn" data-decline="' + esc(r.request_id) + '">Decline</button></div>'
+                            : '<div class="ch-req-d">' + esc(RC.staffOutcome(r)) + '</div>') +
+      '<div class="msg err ch-req-msg" role="alert" aria-live="assertive"></div></div>';
+  }
+  function waitingBlock(rq, h, all) {
+    var rows = ((rq && rq.rows) || []).filter(function (r) { return r.status === "pending"; }), n = rows.length;
+    if (!n && !all) return "";
+    var shown = all ? rows : rows.slice(0, 5), can = rq && rq.can_decide;
+    return '<div class="ch-h">Waiting for you' + (n ? ' · ' + n : '') + '</div>' +
+      (n ? shown.map(function (r) { return reqCard(r, rq.today, can); }).join("") + (!all && n > shown.length ? '<a class="ch-more" href="centre?id=' + encodeURIComponent(h.org_id) + '&tab=requests">See all ' + n + ' requests</a>' :
+            (!all ? '<a class="ch-more" href="centre?id=' + encodeURIComponent(h.org_id) + '&tab=requests">Open the requests list</a>' : '')) + '<p class="ch-note">' + esc(RC.homeNote(n)) + '</p>'
+         : '<div class="card panel"><p class="ch-note" style="margin:0">' + esc(RC.homeNote(0)) + '</p></div>');
+  }
+  function requestsPage(h, rq) {
+    var answered = ((rq && rq.rows) || []).filter(function (r) { return r.status !== "pending"; });
+    $("ch").innerHTML = '<p class="ch-date"><a href="centre?id=' + encodeURIComponent(h.org_id) + '">← Home</a> · Requests · ' + esc(h.org_name) + '</p>' + waitingBlock(rq, h, true) +
+      '<div class="ch-h">Answered in the last 60 days</div>' + (answered.length ? answered.map(function (r) { return reqCard(r, rq.today, false); }).join("") :
+        '<div class="card panel"><p class="ch-note" style="margin:0">Nothing has been answered yet.</p></div>');
+  }
+  async function loadRq(status) {
+    try { var r = await window.sb.rpc("staff_schedule_requests", { p_org: orgId, p_status: status || "pending" }); return !r.error && r.data ? r.data : null; } catch (e) { return null; }
+  }
+  async function refreshRequests(page) {
+    var rq = await loadRq(page ? "all" : "pending"); st.rq = rq;
+    if (page) requestsPage(st.h, rq || { rows: [], today: st.h.today, can_decide: false }); else home(st.h, st.changes, rq);
+  }
+  function cardOf(id) { return document.querySelector('.ch-req[data-req="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]'); }
+  async function decide(id, decision, reason) {
+    if (busyReq) return; busyReq = true;
+    var card = cardOf(id), msg = card && card.querySelector(".ch-req-msg"); if (card) card.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+    var r; try { r = await window.sb.rpc("staff_decide_request", { p_request: id, p_decision: decision, p_reason: reason || null }); } catch (e) { r = { error: e }; }
+    busyReq = false;
+    if (r.error) { if (msg) msg.textContent = RC.decideErrorText(r.error); if (card) card.querySelectorAll("button").forEach(function (b) { b.disabled = false; }); return; }
+    var d = r.data || {};
+    TL.toast(decision === "decline" && d.status === "declined" && !d.already ? "Declined. The tutor will see your reason." : RC.approveResult(d));
+    var page = /[?&]tab=requests\b/.test(location.search);
+    if (decision === "approve" && d.status === "approved" && !d.already && st.h.can.timetable) { try { var cr = await window.sb.rpc("staff_tutor_changes", { p_org: orgId }); if (!cr.error && cr.data) st.changes = cr.data; } catch (e) {} }
+    refreshRequests(page);
+  }
+  function declineForm(id) {
+    var card = cardOf(id), a = card && card.querySelector(".ch-req-a"); if (!a) return;
+    a.outerHTML = '<div class="ch-req-a ch-req-form"><label class="ch-req-l" for="dr-' + esc(id) + '">Why? The tutor reads this</label><textarea class="ch-req-ta" id="dr-' + esc(id) + '" maxlength="300" rows="2"></textarea>' +
+      '<div class="ch-req-fb"><button type="button" class="btn btn-primary" data-decline-go="' + esc(id) + '">Send decline</button><button type="button" class="btn" data-decline-no="' + esc(id) + '">Back</button></div></div>';
+    var t = document.getElementById("dr-" + id); if (t) t.focus();
+  }
+  function wire() {
+    $("ch").addEventListener("click", function (e) {
+      var t = e.target.closest("[data-approve],[data-decline],[data-decline-go],[data-decline-no]"); if (!t) return;
+      if (t.hasAttribute("data-approve")) decide(t.getAttribute("data-approve"), "approve");
+      else if (t.hasAttribute("data-decline")) declineForm(t.getAttribute("data-decline"));
+      else if (t.hasAttribute("data-decline-no")) refreshRequests(/[?&]tab=requests\b/.test(location.search));
+      else { var id = t.getAttribute("data-decline-go"), why = ((document.getElementById("dr-" + id) || {}).value || "").trim(), m = cardOf(id).querySelector(".ch-req-msg");
+             if (why.length < 3) { m.textContent = RC.decideErrorText({ message: "REASON_REQUIRED" }); return; } decide(id, "decline", why); }
+    });
+  }
+
+  function home(h, changes, rq) {
     var tt = h.can.timetable, out = [];
     out.push('<p class="ch-date">' + esc(new Date(h.today + "T00:00:00").toLocaleDateString("en-SG", { weekday: "long", day: "numeric", month: "long" })) + ' · ' + esc(h.org_name) + '</p>');
     if (tt) {
@@ -50,6 +114,7 @@
     } else if (h.can.charges) {
       out.push('<div class="ch-h">Needs attention</div><div class="ch-grid">' + tile(h.pending_charges, plural(h.pending_charges, "charge to confirm", "charges to confirm"), true, "centre-attendance?id=" + encodeURIComponent(h.org_id) + "&tab=charges") + '</div>');
     }
+    if (tt && RC) { var wb = waitingBlock(rq, h, false); if (wb) out.push(wb); }
     if (tt) { var cb = changesBlock(changes, h); if (cb) out.push(cb); }
     var more = (h.can.students ? tile(h.students_active, plural(h.students_active, "active student", "active students")) : "") +
                (tt ? tile(h.trials_this_month, plural(h.trials_this_month, "trial lesson this month", "trial lessons this month"), false, "centre-attendance?id=" + encodeURIComponent(h.org_id) + "&f=trial&view=month") : "");
@@ -93,10 +158,14 @@
     if (tab === "money" && h.can.charges) { location.replace("centre-money?id=" + encodeURIComponent(id)); return; }   // (T4 S2) the invoice run; "charges" = may issue invoices
     if (tab === "students" && h.can.students) { location.replace("centre-students?id=" + encodeURIComponent(id)); return; }   // (T3 step 2) an old link or bookmark
     if (tab === "attendance" && (h.can.timetable || h.can.charges)) { location.replace("centre-attendance?id=" + encodeURIComponent(id)); return; }   // (T3 step 3) an old link or bookmark
+    orgId = id; st.h = h; wire();
+    if (tab === "requests" && h.can.timetable && RC) { var rqa = await loadRq("all"); st.rq = rqa; return requestsPage(h, rqa || { rows: [], today: h.today, can_decide: false }); }
     if (tab) return soon(h, tab);
     var changes = null;                                                                // the Tutor changes list; if it can't be read the Home simply has none
     if (h.can.timetable) { try { var cr = await window.sb.rpc("staff_tutor_changes", { p_org: id }); if (!cr.error && cr.data) changes = cr.data; } catch (e) { changes = null; } }
-    home(h, changes);
+    var rq = null; if (h.can.timetable && RC) rq = await loadRq("pending");          // "Waiting for you": nothing shows if the request functions aren't there yet
+    st.changes = changes; st.rq = rq;
+    home(h, changes, rq);
   }
   TL.requireAuth("centre", init);
 })();
