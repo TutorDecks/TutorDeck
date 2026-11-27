@@ -23,231 +23,304 @@
   ];
 
   function o(v, l) { return [v, l]; }
-  // Nothing in the app reads these settings yet (T18 plan, 2026-11-24): shown as "coming soon" so the wizard promises nothing it does not do.
-  var CREDITS_SOON = "Make-up credits come in a later update; for now a make-up is added as a normal lesson.";
+  // Make-up credits are built (T18 step 4, db/migration_makeup_credits.sql). What is still unbuilt is shown as "coming soon" so the wizard promises nothing it does not do.
+  var CREDITS_SOON = "Warnings and limits for prepaid packages come in a later update.";
   // Centre money (T4, steps S0-S8): the options exist from S0 so owners can see what is coming; nothing reads them until their step ships.
   var DEPOSIT_HELP = "A refundable deposit is money you hold for the family, not income. It is invoiced separately, once, with a student's first invoice. When a student leaves, it is refunded, kept against unpaid invoices or kept by the centre, always approved and recorded step by step. A top-up, and using it as the final month's fee, come in a later update.";
   var LATE_HELP = "When a lesson invoice is still unpaid after its grace period, TutorDeck suggests a late fee. A person approves or waives each one (a reason is needed to waive); nothing is added to a family’s bill on its own. An approved fee is its own small invoice. Adding it as a line on the family’s next invoice comes in a later update.";
-  var PAY_SOON = "Percentage pay and pay runs come in a later update.";
-  var TUTOR_EDIT_SOON = "Coming in a later update; until then only an admin does this.";
+  var PAY_SOON = "Showing tutors their own pay comes in a later update.";
+  function emailOn(s) { return !!s.email && s.email.mode !== "off"; }                                              // the email options matter only when email is on
+  function remindersOn(s) { return emailOn(s) && !!s.email.reminders && s.email.reminders.enabled; }
+  function depOn(s) { return s.billing.deposit.mode !== "none"; }                                // deposit details matter only when there is a deposit
+  function lfOn(s) { return !!s.billing.late_fee.enabled; }                                        // late-fee details matter only when late fees are on
+  function tutorsAsk(s) { return s.lessons.timetable_editing === "tutors_propose"; }              // only the “Tutors ask” centres have requests
   function tutorsChange(s) { return s.lessons.timetable_editing !== "admin_only"; }          // the switches and limits matter only when tutors may change lessons
   var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
   // Field: { path, label, type, options?, help?, soon?, show?(s) }
-  // types: text, email, color, toggle, select, number, money (cents), percent (bp), days, list (number list),
+  // types: text, email, color, date (YYYY-MM-DD or empty), toggle, select, number, money (cents), percent (bp), days, list (number list),
   //        note (a paragraph), group (a sub-heading; no value)
   // groupOnly: true / groupOnlyOptions: [...] = only for centres that run group classes (hidden when lessons.class_type is one_to_one)
   var STEPS = [
     { id: "profile", n: 1, title: "Organisation profile", fields: [
-      { path: "profile.legal_name", label: "Legal name", type: "text" },
-      { path: "profile.trading_name", label: "Trading name", type: "text", required: true },
-      { path: "profile.uen", label: "UEN", type: "text" },
-      { path: "profile.address", label: "Address", type: "text" },
-      { path: "profile.logo_path", label: "Logo", type: "text", soon: true, help: "Logo upload comes with branded invoices." },
-      { path: "profile.brand_color", label: "Brand colour (invoices and your pages)", type: "color" },
-      { path: "profile.gst_registered", label: "GST registered", type: "toggle" },
-      { path: "profile.gst_number", label: "GST registration number", type: "text", show: function (s) { return s.profile.gst_registered; } },
-      { path: "profile.gst_rate_bp", label: "GST rate", type: "percent", show: function (s) { return s.profile.gst_registered; } },
-      { path: "profile.gst_inclusive", label: "Prices are entered", type: "select", options: [o(false, "Excluding GST"), o(true, "Including GST")],
+      { path: "profile.legal_name", keywords: ["company", "registered name", "business name"], keywords: ["company", "registered name", "business name"], label: "Legal name", type: "text" },
+      { path: "profile.trading_name", keywords: ["business name", "centre name", "company name"], keywords: ["business name", "centre name", "company name"], label: "Trading name", type: "text", required: true },
+      { path: "profile.uen", keywords: ["business registration", "acra", "company number"], keywords: ["business registration", "acra", "company number"], label: "UEN", type: "text" },
+      { path: "profile.address", keywords: ["location", "premises"], keywords: ["location", "premises"], label: "Address", type: "text" },
+      { path: "profile.logo_path", keywords: ["image", "branding", "picture"], keywords: ["image", "branding", "picture"], label: "Logo", type: "text", soon: true, help: "Logo upload comes with branded invoices." },
+      { path: "profile.brand_color", keywords: ["colour", "color", "theme", "branding"], keywords: ["colour", "color", "theme", "branding"], label: "Brand colour (invoices and your pages)", type: "color" },
+      { path: "profile.gst_registered", keywords: ["tax", "vat", "gst"], keywords: ["tax", "vat", "gst"], label: "GST registered", type: "toggle" },
+      { path: "profile.gst_number", keywords: ["tax number", "registration number"], parent: ["profile.gst_registered"], keywords: ["tax number", "registration number"], parent: ["profile.gst_registered"], label: "GST registration number", type: "text", show: function (s) { return s.profile.gst_registered; } },
+      { path: "profile.gst_rate_bp", keywords: ["tax rate", "9%"], parent: ["profile.gst_registered"], keywords: ["tax rate", "9%"], parent: ["profile.gst_registered"], label: "GST rate", type: "percent", show: function (s) { return s.profile.gst_registered; } },
+      { path: "profile.gst_inclusive", keywords: ["tax inclusive", "prices include gst", "exclusive"], parent: ["profile.gst_registered"], keywords: ["tax inclusive", "prices include gst", "exclusive"], parent: ["profile.gst_registered"], label: "Prices are entered", type: "select", options: [o(false, "Excluding GST"), o(true, "Including GST")],
         show: function (s) { return s.profile.gst_registered; } },
-      { path: "profile.timezone", label: "Timezone", type: "select", options: [o("Asia/Singapore", "Singapore (GMT+8)")] },
-      { path: "profile.currency", label: "Currency", type: "select", options: [o("SGD", "SGD")] },
-      { path: "profile.invoice_prefix", label: "Invoice number prefix", type: "text" },
-      { path: "profile.next_invoice_number", label: "Next invoice number", type: "number",
+      { path: "profile.timezone", keywords: ["time zone", "clock", "singapore time"], keywords: ["time zone", "clock", "singapore time"], label: "Timezone", type: "select", options: [o("Asia/Singapore", "Singapore (GMT+8)")] },
+      { path: "profile.currency", keywords: ["money", "dollars", "sgd"], keywords: ["money", "dollars", "sgd"], label: "Currency", type: "select", options: [o("SGD", "SGD")] },
+      { path: "profile.invoice_prefix", keywords: ["numbering", "invoice number", "inv"], keywords: ["numbering", "invoice number", "inv"], label: "Invoice number prefix", type: "text" },
+      { path: "profile.next_invoice_number", keywords: ["numbering", "opening number", "start number", "sequence"], keywords: ["numbering", "opening number", "start number", "sequence"], label: "Next invoice number", type: "number",
         help: "Used when centre invoicing launches: set it to carry on from your old invoice sheet. Invoices are numbered in one unbroken series, so it can only be set before your first invoice." },
-      { path: "profile.reply_to_email", label: "Reply-to email for parent emails", type: "email" },
-      { path: "lessons.class_type", label: "Classes you run", type: "select", options: [
+      { path: "profile.reply_to_email", keywords: ["email address", "contact email", "replies"], keywords: ["email address", "contact email", "replies"], label: "Reply-to email for parent emails", type: "email" },
+      { path: "lessons.class_type", keywords: ["group", "one to one", "1-to-1", "private", "class size"], keywords: ["group", "one to one", "1-to-1", "private", "class size"], label: "Classes you run", type: "select", options: [
         o("one_to_one", "1-to-1 lessons only"), o("group", "Group classes only"), o("both", "Both 1-to-1 and group")],
         help: "1-to-1 centres don't see options that only apply to group classes." }
     ]},
     { id: "calendar", n: 2, title: "Branches, rooms and calendar", custom: "calendar", fields: [
-      { path: "calendar.skip_holidays", label: "Don't generate lessons on centre holidays", type: "toggle", help: "Applies when you press “Create lessons” on the Timetable. Lessons already created are not removed." }
+      { path: "calendar.skip_holidays", keywords: ["public holiday", "school holiday", "term break", "closed days", "generate lessons"], keywords: ["public holiday", "school holiday", "term break", "closed days", "generate lessons"], label: "Don't generate lessons on centre holidays", type: "toggle", help: "Applies when you press “Create lessons” on the Timetable. Lessons already created are not removed." }
     ]},
     { id: "users", n: 3, title: "Users and permissions", custom: "users", fields: [] },
     { id: "billing", n: 4, title: "How lessons are billed", fields: [
-      { path: "billing.model", label: "Default billing model", type: "select", options: [
+      { path: "billing.starts_from", label: "Billing starts from", type: "date",
+        help: "Lessons dated before this day are never put on an invoice. Use it when you move to TutorDeck part-way through a month: leave it empty to bill every lesson." },
+      { path: "billing.model", keywords: ["prepaid", "postpaid", "package", "monthly fee", "term fee", "pay per lesson", "how to charge"], label: "Default billing model", type: "select", options: [
         o("prepaid_packages", "Prepaid packages — parents buy lessons in advance"),
         o("fixed_in_advance", "Fixed fee in advance — per month or term, before it starts"),
         o("postpaid_lessons", "Postpaid — after the month, for lessons held"),
         o("pay_per_lesson", "Pay per lesson — an invoice per lesson or week")] },
-      { path: "billing.fixed_period", label: "Fixed fee period", type: "select", options: [o("month", "Per month"), o("term", "Per term")],
+      { path: "billing.fixed_period", keywords: ["monthly", "termly"], parent: ["billing.model"], keywords: ["monthly", "termly"], parent: ["billing.model"], label: "Fixed fee period", type: "select", options: [o("month", "Per month"), o("term", "Per term")],
         show: function (s) { return s.billing.model === "fixed_in_advance"; } },
-      { path: "billing.pay_per_lesson_grouping", label: "Invoice", type: "select", options: [o("lesson", "Every lesson"), o("week", "Every week")],
+      { path: "billing.pay_per_lesson_grouping", keywords: ["weekly", "each lesson"], parent: ["billing.model"], keywords: ["weekly", "each lesson"], parent: ["billing.model"], label: "Invoice", type: "select", options: [o("lesson", "Every lesson"), o("week", "Every week")],
         show: function (s) { return s.billing.model === "pay_per_lesson"; } },
-      { path: "billing.low_balance_credits", label: "Warn parents when credits fall to", type: "number", soon: true, help: CREDITS_SOON,
+      { path: "billing.low_balance_credits", keywords: ["credits", "packages", "warning"], parent: ["billing.model"], keywords: ["credits", "packages", "warning"], parent: ["billing.model"], label: "Warn parents when credits fall to", type: "number", soon: true, help: CREDITS_SOON,
         show: function (s) { return s.billing.model === "prepaid_packages"; } },
-      { path: "billing.credit_expiry_days", label: "Credits expire after (days, 0 = never)", type: "days", soon: true, help: CREDITS_SOON,
-        show: function (s) { return s.billing.model === "prepaid_packages"; } },
-      { path: "billing.fee_plans_note", label: "Fee plans (per lesson / month / term, by level, subject, class type or duration)", type: "note", soon: true,
+      { path: "billing.fee_plans_note", keywords: ["rates", "price list", "fees by level", "subject rates"], label: "Fee plans (per lesson / month / term, by level, subject, class type or duration)", type: "note", soon: true,
         help: "You'll set up fee plans with your classes." },
-      { path: "billing.absences.mode", label: "Absent lessons", type: "select", options: [
+      { path: "billing.absences.mode", keywords: ["no show", "missed lesson", "absent", "cancelled", "late cancellation", "charge"], keywords: ["no show", "missed lesson", "absent", "cancelled", "late cancellation", "charge"], label: "Absent lessons", type: "select", options: [
         o("charged", "Charged"), o("not_charged", "Not charged"), o("charged_unless_notice", "Charged unless notice was given")] },
-      { path: "billing.absences.notice_hours", label: "Notice needed (hours before)", type: "number",
+      { path: "billing.absences.notice_hours", keywords: ["notice period", "cancellation notice"], parent: ["billing.absences.mode"], keywords: ["notice period", "cancellation notice"], parent: ["billing.absences.mode"], label: "Notice needed (hours before)", type: "number",
         show: function (s) { return s.billing.absences.mode === "charged_unless_notice"; } },
-      { path: "billing.makeups.allowed", label: "Makeup lessons allowed", type: "toggle", soon: true, help: CREDITS_SOON },
-      { path: "billing.makeups.per_period", label: "Makeups per period", type: "number", soon: true, help: CREDITS_SOON, show: function (s) { return s.billing.makeups.allowed; } },
-      { path: "billing.makeups.uses_credit", label: "A makeup uses a credit", type: "toggle", soon: true, help: CREDITS_SOON, show: function (s) { return s.billing.makeups.allowed; } },
-      { path: "billing.proration", label: "Joining or leaving mid-period", type: "select", options: [
+      { path: "billing.makeups.per_period", keywords: ["make-up", "make up"], parent: ["billing.makeups.allowed"], label: "Limit make-ups per period", type: "number", soon: true, help: "A limit on make-ups per month or term comes in a later update." },
+      { path: "billing.credits.rule", label: "Make-up credits", type: "select", options: [
+        o("none", "No credits"), o("one_per_missed", "1 missed lesson = 1 credit")],
+        help: "No credits: a make-up is added as an ordinary lesson and billed like any lesson. 1 missed lesson = 1 credit: the family earns one make-up credit for a missed lesson that the options below say to credit, the make-up uses that credit, and it is never billed twice. Staff book the make-up lesson from the Owed list under Timetable; marking it uses the credit up. Postponing a lesson never uses a credit: it is still the same lesson." },
+      { path: "billing.credits.earn_absences", parent: ["billing.credits.rule"], label: "A credit is earned when a lesson is marked", type: "select", options: [
+        o("none", "Never (staff grant by hand)"),
+        o("notice_only", "Cancelled in time"),
+        o("notice_and_late", "Cancelled in time or late"),
+        o("all_missed", "Cancelled in time, late or absent")],
+        help: "“Cancelled in time” means the family gave notice. Staff can always grant a credit by hand, with a reason.", show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.credits.earn_tutor_cancel", parent: ["billing.credits.rule"], label: "When a tutor cancels a lesson", type: "select", options: [
+        o("staff_decide", "No credit by itself"),
+        o("automatic", "A credit automatically")],
+        help: "Staff decide: they can grant a credit by hand for a tutor’s cancel.",
+        show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.credits.earn_holiday", parent: ["billing.credits.rule"], label: "A lesson cancelled for a centre holiday earns a credit", type: "toggle",
+        help: "Applies to lessons cancelled with “Cancel lessons on this holiday” on the Timetable. Centres that skip holidays when creating lessons have nothing to credit.",
+        show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.credit_expiry_days", keywords: ["credits", "expire", "expiry", "validity"], parent: ["billing.credits.rule"], label: "Credits expire after (days, 0 = never)", type: "days",
+        help: "Counted from the day the credit is earned; the credit can still be used on its last day. A credit with a make-up already booked never expires.",
+        show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.credits.makeup_price", parent: ["billing.credits.rule"], label: "The make-up lesson is billed", type: "select", options: [
+        o("free", "Never billed"),
+        o("if_missed_not_charged", "Billed only if the missed lesson was not charged")],
+        help: "Never billed: the missed lesson was already billed or waived. Otherwise the make-up is billed at the normal price, and only when the missed lesson was not charged: a make-up is never billed on top of a charged lesson.", show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.credits.grant_by", parent: ["billing.credits.rule"], label: "Who can grant or revoke a credit by hand", type: "select", options: [
+        o("manage_timetable", "Owner and timetable staff"), o("owner", "Owner only")],
+        show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.credits.book_by", parent: ["billing.credits.rule"], label: "Who can book or remove a make-up lesson", type: "select", options: [
+        o("manage_timetable", "Owner and timetable staff"), o("owner", "Owner only")],
+        help: "Tutors never see or change credits.", show: function (s) { return s.billing.credits.rule !== "none"; } },
+      { path: "billing.proration", keywords: ["mid month", "pro rata", "prorate", "join", "leave", "partial month", "start late"], label: "Joining or leaving mid-period", type: "select", options: [
         o("by_remaining", "Prorate by remaining lessons"), o("full", "Charge the full period"), o("skip", "Skip the partial period")] },
-      { path: "billing.sibling_discount.type", label: "Sibling discount (2nd child onwards)", type: "select", options: [
+      { path: "billing.sibling_discount.type", keywords: ["family discount", "brother", "sister", "siblings"], keywords: ["family discount", "brother", "sister", "siblings"], label: "Sibling discount (2nd child onwards)", type: "select", options: [
         o("none", "None"), o("percent", "Percentage"), o("fixed", "Fixed amount per lesson")] },
-      { path: "billing.sibling_discount.percent_bp", label: "Discount", type: "percent", show: function (s) { return s.billing.sibling_discount.type === "percent"; } },
-      { path: "billing.sibling_discount.fixed_cents", label: "Discount", type: "money", show: function (s) { return s.billing.sibling_discount.type === "fixed"; } },
-      { path: "billing.adhoc_discounts", label: "Allow one-off discounts (with a reason)", type: "toggle" },
-      { path: "billing.one_off_fees.registration_cents", label: "Registration fee", type: "money" },
-      { path: "billing.one_off_fees.materials_cents", label: "Materials fee", type: "money" },
-      { path: "billing.trials.charged", label: "Charge for trial lessons", type: "toggle", soon: true,
+      { path: "billing.sibling_discount.percent_bp", keywords: ["family discount", "siblings"], parent: ["billing.sibling_discount.type"], keywords: ["family discount", "siblings"], parent: ["billing.sibling_discount.type"], label: "Discount", type: "percent", show: function (s) { return s.billing.sibling_discount.type === "percent"; } },
+      { path: "billing.sibling_discount.fixed_cents", keywords: ["family discount", "siblings"], parent: ["billing.sibling_discount.type"], keywords: ["family discount", "siblings"], parent: ["billing.sibling_discount.type"], label: "Discount", type: "money", show: function (s) { return s.billing.sibling_discount.type === "fixed"; } },
+      { path: "billing.adhoc_discounts", keywords: ["one-off discount", "special discount", "waive", "reduce price"], keywords: ["one-off discount", "special discount", "waive", "reduce price"], label: "Allow one-off discounts (with a reason)", type: "toggle" },
+      { path: "billing.one_off_fees.registration_cents", keywords: ["admission", "enrolment", "enrollment", "joining fee", "sign up fee"], keywords: ["admission", "enrolment", "enrollment", "joining fee", "sign up fee"], label: "Registration fee", type: "money" },
+      { path: "billing.one_off_fees.materials_cents", keywords: ["books", "textbook", "material", "worksheets"], keywords: ["books", "textbook", "material", "worksheets"], label: "Materials fee", type: "money" },
+      { path: "billing.trials.charged", keywords: ["free lesson", "trial lesson", "try out", "first lesson free"], keywords: ["free lesson", "trial lesson", "try out", "first lesson free"], label: "Charge for trial lessons", type: "toggle", soon: true,
         help: "Off means trial lessons are free. Charging trials comes with centre invoicing." },
-      { type: "group", label: "Refundable deposit", help: DEPOSIT_HELP },
-      { path: "billing.deposit.mode", label: "Deposit", type: "select", options: [
+      { type: "group", label: "Refundable deposit", keywords: ["deposit", "security deposit", "bond"], help: DEPOSIT_HELP },
+      { path: "billing.deposit.mode", keywords: ["refundable", "security deposit", "bond", "hold money"], keywords: ["refundable", "security deposit", "bond", "hold money"], label: "Deposit", type: "select", options: [
         o("none", "No deposit"), o("fixed", "A fixed amount"), o("percent_first_month", "A percentage of the first month's fee")] },
-      { path: "billing.one_off_fees.deposit_cents", label: "Deposit amount", type: "money",
+      { path: "billing.one_off_fees.deposit_cents", keywords: ["refundable", "security deposit"], parent: ["billing.deposit.mode"], keywords: ["refundable", "security deposit"], parent: ["billing.deposit.mode"], label: "Deposit amount", type: "money",
         show: function (s) { return s.billing.deposit.mode === "fixed"; } },
-      { path: "billing.deposit.percent_bp", label: "Deposit as a share of the first month's fee", type: "percent",
+      { path: "billing.deposit.percent_bp", keywords: ["refundable", "security deposit"], parent: ["billing.deposit.mode"], keywords: ["refundable", "security deposit"], parent: ["billing.deposit.mode"], label: "Deposit as a share of the first month's fee", type: "percent",
         show: function (s) { return s.billing.deposit.mode === "percent_first_month"; },
         help: "For example 50% of the first month's lesson fee. The amount is worked out once, with the first invoice, and then stays fixed." },
-      { path: "billing.deposit.taxable", label: "Charge GST on the deposit when it is received", type: "toggle",
+      { path: "billing.deposit.taxable", keywords: ["gst", "tax", "refundable"], parent: ["billing.deposit.mode"], keywords: ["gst", "tax", "refundable"], parent: ["billing.deposit.mode"], label: "Charge GST on the deposit when it is received", type: "toggle", show: depOn,
         help: "Normally off: a refundable deposit is held for the family and is not income. Ask your accountant." },
-      { path: "billing.deposit.due", label: "Deposit is invoiced", type: "select", options: [
+      { path: "billing.deposit.due", keywords: ["when to charge", "first invoice"], parent: ["billing.deposit.mode"], keywords: ["when to charge", "first invoice"], parent: ["billing.deposit.mode"], label: "Deposit is invoiced", type: "select", show: depOn, options: [
         o("with_first_invoice", "Together with the first lesson invoice"), o("before_first_lesson", "Before the first lesson")],
         soonOptions: ["before_first_lesson"] },
-      { path: "billing.deposit.waived_by", label: "A deposit can be waived by", type: "select", options: [
+      { path: "billing.deposit.waived_by", keywords: ["waive", "exempt", "skip deposit"], parent: ["billing.deposit.mode"], keywords: ["waive", "exempt", "skip deposit"], parent: ["billing.deposit.mode"], label: "A deposit can be waived by", type: "select", show: depOn, options: [
         o("owner", "The owner"), o("issue_invoices", "Staff who issue invoices"), o("nobody", "Nobody")],
         help: "Waiving always needs a reason." },
-      { path: "billing.deposit.top_up", label: "Ask for a top-up when the required deposit goes up", type: "toggle", soon: true,
+      { path: "billing.deposit.top_up", keywords: ["increase", "fee rise", "returning student"], parent: ["billing.deposit.mode"], keywords: ["increase", "fee rise", "returning student"], parent: ["billing.deposit.mode"], label: "Ask for a top-up when the required deposit goes up", type: "toggle", show: depOn, soon: true,
         help: "For example a returning student, or a fee increase." },
-      { path: "billing.deposit.release", label: "When a student leaves, TutorDeck suggests", type: "select", options: [
+      { path: "billing.deposit.release", keywords: ["refund", "student leaves", "give back", "return deposit", "forfeit"], parent: ["billing.deposit.mode"], keywords: ["refund", "student leaves", "give back", "return deposit", "forfeit"], parent: ["billing.deposit.mode"], label: "When a student leaves, TutorDeck suggests", type: "select", show: depOn, options: [
         o("refund_full", "Refunding the whole deposit"), o("refund_less_unpaid", "Keeping it against any unpaid invoices, refunding the rest"), o("admin_decides", "Nothing, an admin decides")],
         help: "Only a suggestion: staff can change the amounts, and the refund still needs approval. A deposit that carried GST is refunded, never kept against invoices." },
-      { path: "billing.deposit.forfeit_notice_days", label: "Notice needed to get the deposit back (days, 0 = none needed)", type: "days",
+      { path: "billing.deposit.forfeit_notice_days", keywords: ["notice", "forfeit", "keep deposit", "leaving"], parent: ["billing.deposit.mode"], keywords: ["notice", "forfeit", "keep deposit", "leaving"], parent: ["billing.deposit.mode"], label: "Notice needed to get the deposit back (days, 0 = none needed)", type: "days", show: depOn,
         help: "Leaving with less notice suggests keeping the deposit. An admin always confirms." },
-      { path: "billing.deposit.set_off_unpaid", label: "Staff may use the deposit to cover unpaid fees", type: "toggle", soon: true },
-      { path: "billing.deposit.final_month", label: "Family may use the deposit as the final month's fee", type: "toggle", soon: true },
-      { path: "billing.deposit.refund_approved_by", label: "Refunds are approved by", type: "select", options: [
+      { path: "billing.deposit.set_off_unpaid", keywords: ["offset", "cover unpaid", "owed", "arrears"], parent: ["billing.deposit.mode"], keywords: ["offset", "cover unpaid", "owed", "arrears"], parent: ["billing.deposit.mode"], label: "Staff may use the deposit to cover unpaid fees", type: "toggle", show: depOn, soon: true },
+      { path: "billing.deposit.final_month", keywords: ["last month", "offset"], parent: ["billing.deposit.mode"], keywords: ["last month", "offset"], parent: ["billing.deposit.mode"], label: "Family may use the deposit as the final month's fee", type: "toggle", show: depOn, soon: true },
+      { path: "billing.deposit.refund_approved_by", keywords: ["approve refund", "four eyes", "two people", "second approver", "who approves", "credit refund"], keywords: ["approve refund", "four eyes", "two people", "second approver", "who approves", "credit refund"], label: "Refunds are approved by", type: "select", options: [
         o("owner", "The owner"), o("staff", "Any staff member who handles that kind of refund"), o("four_eyes", "Someone other than the person who asked")],
         help: "Deposit refunds are handled by the owner and staff who issue invoices; refunds of family credit by the owner and staff who record payments. A refund is paid and recorded only after it is approved. “Someone other than the person who asked” needs a second approver: it can be chosen only while the centre has the owner, a staff member who issues invoices and a staff member who records payments, all switched on. If one of them is later removed, switched off or loses that permission, TutorDeck changes this back to “The owner” and tells the owner." },
-      { type: "group", label: "Late fees", help: LATE_HELP },
-      { path: "billing.late_fee.enabled", label: "Late fee", type: "toggle" },
-      { path: "billing.late_fee.repeat", label: "How often", type: "select", options: [
+      { type: "group", label: "Late fees", keywords: ["late fee", "overdue", "penalty", "unpaid", "fine"], help: LATE_HELP },
+      { path: "billing.late_fee.enabled", keywords: ["overdue", "penalty", "unpaid", "fine", "charge for late payment", "late payment"], keywords: ["overdue", "penalty", "unpaid", "fine", "charge for late payment", "late payment"], label: "Late fee", type: "toggle" },
+      { path: "billing.late_fee.repeat", keywords: ["overdue", "penalty", "recurring", "monthly", "once"], parent: ["billing.late_fee.enabled"], keywords: ["overdue", "penalty", "recurring", "monthly", "once"], parent: ["billing.late_fee.enabled"], label: "How often", type: "select", show: lfOn, options: [
         o("none", "Never"), o("once", "Once per invoice"), o("monthly", "Every month the invoice stays unpaid")] },
-      { path: "billing.late_fee.type", label: "Late fee is", type: "select", options: [
+      { path: "billing.late_fee.type", keywords: ["overdue", "penalty", "percentage", "flat fee"], parent: ["billing.late_fee.enabled"], keywords: ["overdue", "penalty", "percentage", "flat fee"], parent: ["billing.late_fee.enabled"], label: "Late fee is", type: "select", show: lfOn, options: [
         o("fixed", "A fixed amount"), o("percent", "A percentage of what is still unpaid")] },
-      { path: "billing.late_fee.amount_cents", label: "Late fee amount", type: "money" },
-      { path: "billing.late_fee.percent_bp", label: "Late fee percentage", type: "percent" },
-      { path: "billing.late_fee.after_days", label: "Grace period after the due date (days)", type: "days",
+      { path: "billing.late_fee.amount_cents", keywords: ["overdue", "penalty", "fine", "flat fee"], parent: ["billing.late_fee.enabled", "billing.late_fee.type"], keywords: ["overdue", "penalty", "fine", "flat fee"], parent: ["billing.late_fee.enabled", "billing.late_fee.type"], label: "Late fee amount", type: "money", show: function (s) { return lfOn(s) && s.billing.late_fee.type !== "percent"; } },
+      { path: "billing.late_fee.percent_bp", keywords: ["overdue", "penalty", "interest"], parent: ["billing.late_fee.enabled", "billing.late_fee.type"], keywords: ["overdue", "penalty", "interest"], parent: ["billing.late_fee.enabled", "billing.late_fee.type"], label: "Late fee percentage", type: "percent", show: function (s) { return lfOn(s) && s.billing.late_fee.type === "percent"; } },
+      { path: "billing.late_fee.after_days", keywords: ["overdue", "grace", "days late", "buffer"], parent: ["billing.late_fee.enabled"], keywords: ["overdue", "grace", "days late", "buffer"], parent: ["billing.late_fee.enabled"], label: "Grace period after the due date (days)", type: "days", show: lfOn,
         help: "Paying on the due date, or within this many days after it, is on time." },
-      { path: "billing.late_fee.cap_cents", label: "Most late fees one invoice can collect (0 = no limit)", type: "money" },
-      { path: "billing.late_fee.show_as", label: "A late fee is added as", type: "select", options: [
+      { path: "billing.late_fee.cap_cents", keywords: ["overdue", "maximum", "limit", "ceiling"], parent: ["billing.late_fee.enabled"], keywords: ["overdue", "maximum", "limit", "ceiling"], parent: ["billing.late_fee.enabled"], label: "Most late fees one invoice can collect (0 = no limit)", type: "money", show: lfOn },
+      { path: "billing.late_fee.show_as", keywords: ["overdue", "invoice", "separate invoice", "next invoice"], parent: ["billing.late_fee.enabled"], keywords: ["overdue", "invoice", "separate invoice", "next invoice"], parent: ["billing.late_fee.enabled"], label: "A late fee is added as", type: "select", show: lfOn, options: [
         o("next_invoice_line", "A line on the family's next invoice"), o("own_invoice", "Its own small invoice")],
         soonOptions: ["next_invoice_line"] },
-      { path: "billing.late_fee.waived_by", label: "A late fee can be waived by", type: "select", options: [
+      { path: "billing.late_fee.waived_by", keywords: ["overdue", "waive", "cancel late fee", "forgive"], parent: ["billing.late_fee.enabled"], keywords: ["overdue", "waive", "cancel late fee", "forgive"], parent: ["billing.late_fee.enabled"], label: "A late fee can be waived by", type: "select", show: lfOn, options: [
         o("owner", "The owner"), o("issue_invoices", "Staff who issue invoices")],
         help: "TutorDeck suggests late fees; a person applies or waives each one. Make sure your terms for parents mention late fees." }
     ]},
     { id: "invoicing", n: 5, title: "Invoicing", fields: [
-      { path: "invoicing.grouping", label: "One invoice per", type: "select", options: [o("family", "Family (household)"), o("student", "Student")] },
-      { path: "invoicing.generate.mode", label: "Create invoices", type: "select", options: [o("day_of_month", "On a day of the month"), o("days_before", "Some days before each period")] },
-      { path: "invoicing.generate.day", label: "Day of month", type: "number", show: function (s) { return s.invoicing.generate.mode === "day_of_month"; } },
-      { path: "invoicing.generate.days_before", label: "Days before the period", type: "days", show: function (s) { return s.invoicing.generate.mode === "days_before"; } },
-      { path: "invoicing.due_days", label: "Payment due (days after the invoice date)", type: "days" },
-      { path: "invoicing.review_before_sending", label: "Create as drafts for an admin to approve", type: "toggle" },
-      { path: "invoicing.delivery.email", label: "Email parents a secure link", type: "toggle", soon: true },
-      { path: "invoicing.delivery.share_link", label: "Shareable link for WhatsApp", type: "toggle" },
-      { path: "invoicing.whatsapp_template", label: "WhatsApp message for an invoice", type: "textarea",
+      { path: "invoicing.grouping", keywords: ["household", "family invoice", "per student", "combine siblings"], label: "One invoice per", type: "select", options: [o("family", "Family (household)"), o("student", "Student")] },
+      { path: "invoicing.generate.mode", keywords: ["when invoices are made", "schedule", "automatic"], label: "Create invoices", type: "select", options: [o("day_of_month", "On a day of the month"), o("days_before", "Some days before each period")] },
+      { path: "invoicing.generate.day", keywords: ["billing day", "invoice day", "monthly"], parent: ["invoicing.generate.mode"], label: "Day of month", type: "number", show: function (s) { return s.invoicing.generate.mode === "day_of_month"; } },
+      { path: "invoicing.generate.days_before", keywords: ["advance", "early"], parent: ["invoicing.generate.mode"], label: "Days before the period", type: "days", show: function (s) { return s.invoicing.generate.mode === "days_before"; } },
+      { path: "invoicing.due_days", keywords: ["deadline", "payment terms", "due date", "net 7"], label: "Payment due (days after the invoice date)", type: "days" },
+      { path: "invoicing.review_before_sending", keywords: ["draft", "approve", "approval", "check before sending"], label: "Create as drafts for an admin to approve", type: "toggle" },
+      { path: "invoicing.delivery.share_link", keywords: ["whatsapp", "link", "share invoice"], label: "Shareable invoice link (WhatsApp and email)", type: "toggle",
+        help: "A secret link a family opens without logging in. Emailing invoices needs it switched on." },
+      { path: "invoicing.whatsapp_template", keywords: ["message", "text", "wording", "template", "whatsapp", "reminder text"], label: "WhatsApp message for an invoice", type: "textarea",
         help: "Your own wording. {name} {centre} {number} {amount} {due_date} {link} are filled in for each invoice. Leave it as it is to use the standard message." },
-      { path: "invoicing.reminders.enabled", label: "Payment reminders", type: "toggle", soon: true },
-      { path: "invoicing.reminders.schedule", label: "Remind (days from due date, e.g. -3, 0, 7)", type: "list", soon: true,
-        show: function (s) { return s.invoicing.reminders.enabled; } }
+      { path: "email.mode", label: "Email invoices to parents", type: "select", options: [
+        o("off", "Off: I share invoices myself (WhatsApp or the link)"), o("staff_send", "A person sends them (staff who issue invoices press Send)"),
+        o("auto_on_issue", "Automatically, when an invoice is issued")],
+        help: "Emails go to each family’s billing contacts (their first parent or guardian unless you choose others) with a secure link instead of an attachment. Tutors never receive them. Needs the shareable link switched on." },
+      { path: "email.receipts", parent: ["email.mode"], label: "Email a receipt when a payment is recorded", type: "toggle", show: emailOn },
+      { path: "email.late_fee_notice", parent: ["email.mode"], label: "Email a notice when a late fee is added", type: "toggle", show: emailOn },
+      { path: "email.reminders.enabled", parent: ["email.mode"], label: "Email payment reminders for overdue invoices", type: "toggle", show: emailOn,
+        help: "Only invoices issued in the last 120 days are reminded about, and an invoice that gets paid before its reminder goes out is never reminded." },
+      { path: "email.reminders.first_after_days", parent: ["email.reminders.enabled", "email.mode"], label: "First reminder (days after the due date)", type: "days", show: remindersOn },
+      { path: "email.reminders.repeat_days", parent: ["email.reminders.enabled", "email.mode"], label: "Repeat every (days; 0 = one reminder only)", type: "days", show: remindersOn },
+      { path: "email.reminders.max_count", parent: ["email.reminders.enabled", "email.mode"], label: "Most reminders for one invoice", type: "number", show: remindersOn },
+      { path: "email.daily_cap", parent: ["email.mode"], label: "Most emails sent per day", type: "number", show: emailOn,
+        help: "TutorDeck’s email service allows 300 emails a day across all centres, so a long queue is sent over several days. You see “N queued, sends over M days” on the Money > Email screen." },
+      { path: "email.per_hour", parent: ["email.mode"], label: "Most emails sent per hour", type: "number", show: emailOn },
+      { path: "email.wording_note", parent: ["email.mode"], label: "Wording of the emails", type: "note", show: emailOn,
+        help: "Leave a box empty to use our standard wording. You can use " + "{name} {centre} {number} {amount} {due_date} {link} {contact} {paid_on} {days_overdue}" + ". Plain text only; every email also carries your centre’s name and contact." },
+      { path: "email.templates.invoice.subject", parent: ["email.mode"], label: "Invoice email: subject", type: "text", show: emailOn },
+      { path: "email.templates.invoice.body", parent: ["email.mode"], label: "Invoice email: message", type: "textarea", show: emailOn },
+      { path: "email.templates.receipt.subject", parent: ["email.mode"], label: "Receipt email: subject", type: "text", show: emailOn },
+      { path: "email.templates.receipt.body", parent: ["email.mode"], label: "Receipt email: message", type: "textarea", show: emailOn },
+      { path: "email.templates.reminder.subject", parent: ["email.mode"], label: "Reminder email: subject", type: "text", show: emailOn },
+      { path: "email.templates.reminder.body", parent: ["email.mode"], label: "Reminder email: message", type: "textarea", show: emailOn },
+      { path: "email.templates.late_fee.subject", parent: ["email.mode"], label: "Late-fee email: subject", type: "text", show: emailOn },
+      { path: "email.templates.late_fee.body", parent: ["email.mode"], label: "Late-fee email: message", type: "textarea", show: emailOn }
     ]},
     { id: "payments", n: 6, title: "How parents pay", fields: [
-      { path: "payments.modes", label: "Ways to pay", type: "multi", options: [
+      { path: "payments.modes", keywords: ["paynow", "hitpay", "stripe", "bank transfer", "card", "cash", "cheque", "statement"], keywords: ["paynow", "hitpay", "stripe", "bank transfer", "card", "cash", "cheque", "statement"], label: "Ways to pay", type: "multi", options: [
         o("manual_paynow", "Manual PayNow — admin marks invoices paid"),
         o("statement_matching", "Bank statement matching"),
         o("hitpay", "HitPay — your own account, “Pay now” link"),
         o("stripe", "Stripe — your own account, “Pay now” link")],
-        soonOptions: ["statement_matching", "hitpay", "stripe"],
+        soonOptions: ["hitpay", "stripe"],
         help: "Cash, bank transfer and cheque can always be recorded by hand. Money always goes straight to your account." },
-      { path: "payments.paynow.type", label: "PayNow to", type: "select", options: [o("uen", "UEN"), o("mobile", "Mobile number")] },
-      { path: "payments.paynow.id", label: "PayNow UEN or number", type: "text" },
-      { path: "payments.statement_bank", label: "Bank for statement matching", type: "select", soon: true,
-        options: [o("DBS", "DBS"), o("OCBC", "OCBC"), o("UOB", "UOB"), o("custom", "Custom CSV columns")] },
-      { path: "payments.hitpay.paynow", label: "HitPay: PayNow", type: "toggle", soon: true },
-      { path: "payments.hitpay.cards", label: "HitPay: cards (higher fees)", type: "toggle", soon: true },
-      { path: "payments.gateway_fees", label: "Gateway fees", type: "select", options: [o("absorb", "Absorbed by the centre"), o("pass_on", "Passed on as a separate line")] },
-      { path: "payments.partial_payments", label: "Allow partial payments", type: "toggle" },
-      { path: "payments.overpayments", label: "Overpayments", type: "select", options: [o("credit", "Kept as credit for the family"), o("refund", "Refunded manually")] }
+      { path: "payments.paynow.type", keywords: ["qr", "uen", "mobile", "phone"], label: "PayNow to", type: "select", options: [o("uen", "UEN"), o("mobile", "Mobile number")] },
+      { path: "payments.paynow.id", keywords: ["qr", "uen", "mobile number", "phone number", "where parents pay"], label: "PayNow UEN or number", type: "text" },
+      // T34: statement matching is built for the custom column mapping. DBS/POSB, OCBC and UOB stay "coming soon" until each has been checked against a real
+      // export (assets/js/statement-core.js PRESETS are unverified placeholders).
+      { path: "payments.statement_bank", keywords: ["dbs", "ocbc", "uob", "csv", "bank statement"], parent: ["payments.modes"], label: "Bank for statement matching", type: "select",
+        options: [o("DBS", "DBS / POSB"), o("OCBC", "OCBC"), o("UOB", "UOB"), o("custom", "Custom CSV columns")], soonOptions: ["DBS", "OCBC", "UOB"],
+        show: function (s) { return s.payments.modes.indexOf("statement_matching") > -1; },
+        help: "You upload your bank's CSV in Money > Statements and tell TutorDeck which column is which, once. Ready-made layouts for DBS / POSB, OCBC and UOB come after each has been checked against a real file." },
+      { path: "payments.statement.auto_confirm", parent: ["payments.modes"], label: "Matched payments are", type: "select",
+        options: [o("exact_only", "Marked paid automatically when the invoice number and the exact amount match, or a remembered payer pays the exact amount"), o("never", "Never automatic: a person confirms every line")],
+        show: function (s) { return s.payments.modes.indexOf("statement_matching") > -1; },
+        help: "Everything else always waits for a person: a different amount, no invoice number, two possible invoices. Amounts must match to the cent." },
+      { path: "payments.statement.window_before_days", parent: ["payments.modes"], label: "A payment may arrive up to this many days before the invoice date", type: "number",
+        show: function (s) { return s.payments.modes.indexOf("statement_matching") > -1; }, help: "0 to 30 days." },
+      { path: "payments.statement.window_after_days", parent: ["payments.modes"], label: "…and up to this many days after its due date", type: "number",
+        show: function (s) { return s.payments.modes.indexOf("statement_matching") > -1; }, help: "0 to 365 days. A payment outside this window waits for a person." },
+      { path: "payments.hitpay.paynow", keywords: ["gateway", "online payment"], label: "HitPay: PayNow", type: "toggle", soon: true },
+      { path: "payments.hitpay.cards", keywords: ["credit card", "gateway", "fees"], label: "HitPay: cards (higher fees)", type: "toggle", soon: true },
+      { path: "payments.gateway_fees", keywords: ["card fees", "processing fee", "surcharge", "hitpay", "stripe"], label: "Gateway fees", type: "select", options: [o("absorb", "Absorbed by the centre"), o("pass_on", "Passed on as a separate line")] },
+      { path: "payments.partial_payments", keywords: ["instalment", "part payment", "pay in parts", "deposit"], label: "Allow partial payments", type: "toggle" },
+      { path: "payments.overpayments", keywords: ["extra payment", "too much", "credit", "refund"], label: "Overpayments", type: "select", options: [o("credit", "Kept as credit for the family"), o("refund", "Refunded manually")] }
     ]},
     { id: "lessons", n: 7, title: "Tutors and lessons", fields: [
-      { path: "lessons.timetable_editing", label: "Who edits the timetable", type: "select", options: [
+      { path: "lessons.timetable_editing", keywords: ["schedule", "reschedule", "postpone", "change lessons", "tutor permission", "approve changes"], keywords: ["schedule", "reschedule", "postpone", "change lessons", "tutor permission", "approve changes"], label: "Who edits the timetable", type: "select", options: [
         o("admin_only", "Admins only"), o("tutors_direct", "Tutors may change their own lessons (staff are told)"), o("tutors_propose", "Tutors ask, and an admin approves")],
-        soonOptions: ["tutors_propose"],
-        help: "A tutor only ever changes their own lessons for students assigned to them, never one that is marked, paid or invoiced, and never sees a price." },
-      { path: "lessons.tutors_edit.postpone", label: "A tutor may move a lesson (and put it back)", type: "toggle", show: tutorsChange,
+        help: "A tutor only ever changes their own lessons for students assigned to them, never one that is marked, paid or invoiced, and never sees a price. With “Tutors ask”, nothing changes until an admin approves: the request waits under “Waiting for you” on the centre Home." },
+      { path: "lessons.request_expiry_days", parent: ["lessons.timetable_editing"], label: "A request nobody answers runs out after (days, 1-90)", type: "number", show: tutorsAsk,
+        help: "The tutor sees that it ran out and can ask again. Nothing is changed when a request runs out." },
+      { path: "lessons.tutors_edit.postpone", keywords: ["move lesson", "reschedule", "change time"], parent: ["lessons.timetable_editing"], label: "A tutor may move a lesson (and put it back)", type: "toggle", show: tutorsChange,
         help: "The lesson keeps its length and its price. Staff see an amber “changed by tutor” flag for 7 days." },
-      { path: "lessons.tutors_edit.cancel", label: "A tutor may cancel a lesson in advance, at no charge to the family", type: "toggle", show: tutorsChange,
+      { path: "lessons.tutors_edit.cancel", keywords: ["cancel lesson", "in advance", "no charge"], parent: ["lessons.timetable_editing"], keywords: ["cancel lesson", "in advance", "no charge"], parent: ["lessons.timetable_editing"], label: "A tutor may cancel a lesson in advance, at no charge to the family", type: "toggle", show: tutorsChange,
         help: "No make-up credit is created by the tutor's cancel; staff decide that." },
-      { path: "lessons.tutors_edit.weekly_slots", label: "A tutor may add, change or stop their own weekly slots", type: "toggle", soon: true, show: tutorsChange, help: TUTOR_EDIT_SOON },
-      { path: "lessons.tutors_edit.generate", label: "A tutor may create their own lessons from their weekly slots", type: "toggle", soon: true, show: tutorsChange, help: TUTOR_EDIT_SOON },
-      { path: "lessons.tutors_edit.one_off", label: "A tutor may add a one-off lesson", type: "toggle", soon: true, show: tutorsChange, help: TUTOR_EDIT_SOON },
-      { path: "lessons.tutors_edit.link", label: "A tutor may set the online lesson link", type: "toggle", soon: true, show: tutorsChange, help: TUTOR_EDIT_SOON },
-      { path: "lessons.min_notice_hours", label: "A tutor can change a lesson only if it starts in at least (hours, 0-168)", type: "number", show: tutorsChange,
+      { path: "lessons.tutors_edit.weekly_slots", keywords: ["timetable", "recurring", "weekly slot"], parent: ["lessons.timetable_editing"], label: "A tutor may add, change or stop their own weekly slots", type: "toggle", show: tutorsChange,
+        help: "Only for students assigned to them, and never a group class. A new slot copies the student's latest rate; with none, you confirm the price before it can be invoiced." },
+      { path: "lessons.tutors_edit.generate", keywords: ["create lessons", "timetable"], parent: ["lessons.timetable_editing"], label: "A tutor may create their own lessons from their weekly slots", type: "toggle", show: tutorsChange,
+        help: "The same button you have, but only for that tutor's own slots. Pressing it twice makes nothing twice, and holidays are skipped." },
+      { path: "lessons.tutors_edit.one_off", keywords: ["extra lesson", "ad hoc", "single lesson"], parent: ["lessons.timetable_editing"], label: "A tutor may add a one-off lesson", type: "toggle", show: tutorsChange,
+        help: "For one assigned student, never a trial or a group class. The tutor never types a price: it is copied from the student's latest lesson, or you confirm it before invoicing." },
+      { path: "lessons.tutors_edit.link", keywords: ["zoom", "online", "meeting link", "video"], parent: ["lessons.timetable_editing"], label: "A tutor may set the online lesson link", type: "toggle", show: tutorsChange,
+        help: "Their student's default link, or the link of one lesson that is still to come. https:// links only. Admins can always set it. Setting a link does not count toward the monthly limit." },
+      { path: "lessons.min_notice_hours", keywords: ["short notice", "last minute", "lead time"], parent: ["lessons.timetable_editing"], label: "A tutor can change a lesson only if it starts in at least (hours, 0-168)", type: "number", show: tutorsChange,
         help: "For example 24: nothing can be moved or cancelled by a tutor closer to its start than that." },
-      { path: "lessons.max_changes_per_month", label: "Most changes one tutor can make in a month (0 = no limit)", type: "number", show: tutorsChange,
-        help: "A move, a put-back and a cancel each count as one." },
-      { path: "lessons.notify_family", label: "When a tutor changes a lesson", type: "select", show: tutorsChange, options: [
+      { path: "lessons.max_changes_per_month", keywords: ["limit", "cap", "how many changes"], parent: ["lessons.timetable_editing"], label: "Most changes one tutor can make in a month (0 = no limit)", type: "number", show: tutorsChange,
+        help: "A move, a put-back, a cancel, an added lesson and each change to a weekly slot count as one, and so does each request still waiting for an answer. Pressing Create lessons and setting a link do not." },
+      { path: "lessons.notify_family", keywords: ["tell parents", "inform", "email family", "staff list"], parent: ["lessons.timetable_editing"], label: "When a tutor changes a lesson", type: "select", show: tutorsChange, options: [
         o("list_for_admin", "Show staff a list, so they can tell the family"), o("off", "Don't add anything for staff to do")],
         help: "TutorDeck does not email the family yet; sending that email comes with the email provider." },
-      { path: "lessons.attendance_by", label: "Attendance is marked by", type: "select", options: [o("tutor", "The tutor"), o("admin", "An admin")] },
-      { path: "lessons.attendance_window_days", label: "Tutors can mark or change attendance for (days after the lesson)", type: "number",
+      { path: "lessons.attendance_by", keywords: ["roll call", "present", "absent", "marking", "who marks"], keywords: ["roll call", "present", "absent", "marking", "who marks"], label: "Attendance is marked by", type: "select", options: [o("tutor", "The tutor"), o("admin", "An admin")] },
+      { path: "lessons.attendance_window_days", keywords: ["deadline", "mark attendance", "how long", "late marking", "time limit"], keywords: ["deadline", "mark attendance", "how long", "late marking", "time limit"], label: "Tutors can mark or change attendance for (days after the lesson)", type: "number",
         help: "From the lesson's day, for this many days. After that only an admin can." },
-      { path: "lessons.cancellations_marked_by", label: "Cancellations (in time or late) are marked by", type: "select", options: [o("admin", "An admin"), o("tutor", "The tutor")],
+      { path: "lessons.backfill_allowed_days", label: "Staff can add past lessons up to (days back, 0-366; 0 = not allowed)", type: "number",
+        help: "For a student who started before the timetable was set up. Staff give a reason, and lessons marked attended are billed like any other. Once a month's TutorDeck fee is recorded only the owner can add lessons to it." },
+      { path: "lessons.cancellations_marked_by", keywords: ["absent", "late cancellation", "in time", "who cancels"], label: "Cancellations (in time or late) are marked by", type: "select", options: [o("admin", "An admin"), o("tutor", "The tutor")],
         help: "Whether a cancellation counts as late depends on your own cancellation policy, so most centres let an admin decide." },
-      { path: "lessons.compensation_entered_by", label: "For an absent or cancelled lesson, the charge (compensation) is entered by", type: "select", options: [o("admin", "An admin"), o("tutor", "The tutor")],
+      { path: "lessons.compensation_entered_by", keywords: ["charge", "fee for absent", "compensation", "amount to charge", "cancelled lesson"], keywords: ["charge", "fee for absent", "compensation", "amount to charge", "cancelled lesson"], label: "For an absent or cancelled lesson, the charge (compensation) is entered by", type: "select", options: [o("admin", "An admin"), o("tutor", "The tutor")],
         help: "Whoever marks it types the amount to charge, or 0 if the family isn't charged. Most centres keep money with admins." },
-      { path: "lessons.trials_flagged_by", label: "Trial lessons are flagged by", type: "select", options: [o("admin", "An admin"), o("tutor", "The tutor")],
+      { path: "lessons.trials_flagged_by", keywords: ["trial", "free lesson", "new student"], keywords: ["trial", "free lesson", "new student"], label: "Trial lessons are flagged by", type: "select", options: [o("admin", "An admin"), o("tutor", "The tutor")],
         help: "A trial lesson isn't counted as an active student for TutorDeck's fee." },
-      { path: "lessons.remarks.required", label: "Lesson remarks are required", type: "toggle" },
-      { path: "lessons.remarks.deadline_hours", label: "Remarks due within (hours after the lesson)", type: "number" },
-      { path: "lessons.remarks.visibility", label: "Who sees remarks", type: "select", options: [
+      { path: "lessons.remarks.required", keywords: ["feedback", "comments", "report", "notes", "lesson notes", "mandatory"], keywords: ["feedback", "comments", "report", "notes", "lesson notes", "mandatory"], label: "Lesson remarks are required", type: "toggle" },
+      { path: "lessons.remarks.deadline_hours", keywords: ["feedback", "comments", "due", "deadline"], keywords: ["feedback", "comments", "due", "deadline"], label: "Remarks due within (hours after the lesson)", type: "number" },
+      { path: "lessons.remarks.visibility", keywords: ["parents", "feedback", "comments", "share", "report", "who sees"], keywords: ["parents", "feedback", "comments", "share", "report", "who sees"], label: "Who sees remarks", type: "select", options: [
         o("admin_only", "Admins only"), o("parents_auto", "Sent to parents automatically"), o("parents_after_approval", "Sent to parents after admin approval")],
         soonOptions: ["parents_auto", "parents_after_approval"] },
-      { path: "lessons.missed_remarks_reminders", label: "Remind tutors about missing remarks", type: "toggle", soon: true,
+      { path: "lessons.missed_remarks_reminders", keywords: ["overdue remarks", "email tutors", "nag", "feedback reminder"], keywords: ["overdue remarks", "email tutors", "nag", "feedback reminder"], label: "Remind tutors about missing remarks", type: "toggle", soon: true,
         help: "Reminders go by email, which comes with the email provider. Until then the My lessons page shows what's overdue." },
-      { path: "lessons.replacement_tutors", label: "Admins can give one lesson to a replacement tutor", type: "toggle" },
-      { path: "lessons.auto_assign_tutors", label: "A weekly slot with a tutor also adds that tutor to the student's assigned tutors", type: "toggle",
+      { path: "lessons.replacement_tutors", keywords: ["relief", "substitute", "cover", "stand-in", "temporary tutor", "reassign"], keywords: ["relief", "substitute", "cover", "stand-in", "temporary tutor", "reassign"], label: "Admins can give one lesson to a replacement tutor", type: "toggle" },
+      { path: "lessons.auto_assign_tutors", keywords: ["assigned tutor", "automatic", "student's tutors", "link tutor"], keywords: ["assigned tutor", "automatic", "student's tutors", "link tutor"], label: "A weekly slot with a tutor also adds that tutor to the student's assigned tutors", type: "toggle",
         help: "Only ever adds: nobody is taken off. Switch it off to choose assigned tutors by hand on the student's page." },
-      { path: "lessons.tutors_see_parent_contact", label: "Tutors can see parents' contact details", type: "toggle",
+      { path: "lessons.tutors_see_parent_contact", keywords: ["phone number", "privacy", "whatsapp number", "parent details", "contact"], keywords: ["phone number", "privacy", "whatsapp number", "parent details", "contact"], label: "Tutors can see parents' contact details", type: "toggle",
         help: "Tutors always see student names and levels." }
     ]},
     { id: "tutor_pay", n: 8, title: "Tutor pay", fields: [
-      { path: "tutor_pay.mode", label: "Tutor pay", type: "select", options: [o("off", "Off"), o("report", "Lessons-taught report only"), o("full", "Full pay calculation")],
-        soonOptions: ["full"] },
-      { path: "tutor_pay.payable_when", label: "Pay tutors for a lesson", type: "select", options: [
+      { path: "tutor_pay.mode", keywords: ["salary", "wages", "payroll", "commission", "pay run", "payslip", "report"], label: "Tutor pay", type: "select", options: [o("off", "Off"), o("report", "Lessons-taught report only"), o("full", "Full pay calculation")] },
+      { path: "tutor_pay.payable_when", keywords: ["salary", "wages", "parent paid", "payout", "when tutors get paid"], label: "Pay tutors for a lesson", type: "select", options: [
         o("parent_paid", "Only after the parent's payment is received and reconciled"), o("taught", "As soon as it is taught")],
         help: "With the first option, unpaid lessons roll into the next pay period and show as pending. Changing this later is recorded in the audit log." },
-      { path: "tutor_pay.rate_model", label: "Pay rate", type: "select", options: [
+      { path: "tutor_pay.rate_model", keywords: ["salary", "wages", "hourly", "per hour", "per lesson", "commission", "percentage"], parent: ["tutor_pay.mode"], keywords: ["salary", "wages", "hourly", "per hour", "per lesson", "commission", "percentage"], parent: ["tutor_pay.mode"], label: "Pay rate", type: "select", options: [
         o("per_lesson", "Per lesson"), o("per_hour", "Per hour"), o("per_student_lesson", "Per student per lesson"), o("monthly_fixed", "Fixed monthly amount"),
         o("percent_of_fee", "A percentage of the fee the family is billed")],
-        soonOptions: ["percent_of_fee"], groupOnlyOptions: ["per_student_lesson"], show: function (s) { return s.tutor_pay.mode !== "off"; } },
-      { path: "tutor_pay.percent_base", label: "A percentage is worked out on", type: "select", soon: true, options: [
+        groupOnlyOptions: ["per_student_lesson"], show: function (s) { return s.tutor_pay.mode !== "off"; } },
+      { path: "tutor_pay.percent_base", keywords: ["commission", "percentage", "revenue share"], label: "A percentage is worked out on", type: "select", options: [
         o("billed_after_discounts", "The fee billed, after discounts and before GST"), o("list_price", "The list price, before discounts and GST")],
-        help: "Never includes GST, late fees or deposits. " + PAY_SOON },
-      { path: "tutor_pay.part_payments", label: "When the family pays part of an invoice", type: "select", soon: true, options: [
+        help: "Never includes GST, late fees or deposits." },
+      { path: "tutor_pay.part_payments", keywords: ["partial", "commission", "parent part paid"], label: "When the family pays part of an invoice", type: "select", options: [
         o("after_full", "Pay the tutor only once that lesson's line is fully paid"), o("pro_rata", "Pay in proportion to what was paid")],
-        soonOptions: ["pro_rata"], help: PAY_SOON },
-      { path: "tutor_pay.cancelled_lessons", label: "Cancelled lessons with a fixed rate", type: "select", soon: true, options: [
-        o("pay_if_charged", "Pay the tutor only if the family is charged"), o("pay_rate", "Pay the usual rate"), o("pay_nothing", "Pay nothing")], help: PAY_SOON },
-      { path: "tutor_pay.group_count", label: "A per-student rate counts students who were", type: "select", soon: true, groupOnly: true, options: [
-        o("attended", "Present"), o("enrolled", "Enrolled")], help: PAY_SOON },
-      { path: "tutor_pay.rates_note", label: "Rates", type: "note", soon: true,
-        help: "Each tutor has their own rate, and you can set a different rate for one student. A new rate applies from the date you choose; lessons already taught keep the rate they had. " + PAY_SOON },
-      { path: "tutor_pay.adjustments", label: "Bonuses and deductions (with a reason)", type: "toggle", show: function (s) { return s.tutor_pay.mode === "full"; } },
-      { path: "tutor_pay.cycle.cutoff_day", label: "Pay period ends on day", type: "number", show: function (s) { return s.tutor_pay.mode !== "off"; } },
-      { path: "tutor_pay.cycle.pay_day", label: "Pay day", type: "number", show: function (s) { return s.tutor_pay.mode === "full"; } },
-      { path: "tutor_pay.payout_method", label: "Paying tutors", type: "select", options: [o("manual_list", "A list for manual transfers"), o("bank_file", "Bulk payment file for your bank")],
+        help: "Only matters when tutors are paid after the parent's payment is received." },
+      { path: "tutor_pay.cancelled_lessons", keywords: ["absent", "commission", "cancelled"], label: "Cancelled lessons with a fixed rate", type: "select", options: [
+        o("pay_if_charged", "Pay the tutor only if the family is charged"), o("pay_rate", "Pay the usual rate"), o("pay_nothing", "Pay nothing")] },
+      { path: "tutor_pay.group_count", keywords: ["students counted", "group class", "per student"], label: "A per-student rate counts students who were", type: "select", groupOnly: true, options: [
+        o("attended", "Present"), o("enrolled", "Enrolled")] },
+      { path: "tutor_pay.rates_note", keywords: ["salary", "wages", "hourly rate", "tutor rate", "pay rate"], label: "Rates", type: "note",
+        help: "Each tutor has their own rate, and you can set a different rate for one student or level. Set them in Money > Tutor pay. A new rate applies from the date you choose; lessons already taught keep the rate they had." },
+      { path: "tutor_pay.adjustments", keywords: ["bonus", "deduction", "allowance", "penalty"], parent: ["tutor_pay.mode"], label: "Bonuses and deductions (with a reason)", type: "toggle", show: function (s) { return s.tutor_pay.mode === "full"; } },
+      { path: "tutor_pay.cycle.cutoff_day", keywords: ["month end", "pay period", "cut-off", "cutoff"], parent: ["tutor_pay.mode"], label: "Pay period ends on day", type: "number", show: function (s) { return s.tutor_pay.mode !== "off"; } },
+      { path: "tutor_pay.cycle.pay_day", keywords: ["salary day", "payday", "transfer date"], parent: ["tutor_pay.mode"], label: "Pay day", type: "number", show: function (s) { return s.tutor_pay.mode === "full"; } },
+      { path: "tutor_pay.payout_method", keywords: ["bank file", "giro", "transfer", "paynow", "bulk payment"], parent: ["tutor_pay.mode"], label: "Paying tutors", type: "select", options: [o("manual_list", "A list for manual transfers"), o("bank_file", "Bulk payment file for your bank")],
         soonOptions: ["bank_file"], show: function (s) { return s.tutor_pay.mode === "full"; } },
-      { path: "tutor_pay.tutor_visibility", label: "Tutors see", type: "select", options: [o("running", "Running earnings during the month"), o("closed_only", "Only closed pay statements")],
-        show: function (s) { return s.tutor_pay.mode !== "off"; } },
-      { path: "tutor_pay.employment_note", label: "", type: "note",
+      { path: "tutor_pay.tutors_see_own_pay", parent: ["tutor_pay.mode"], label: "Tutors can see their own pay", type: "select", options: [
+        o("per_lesson_and_total", "Each lesson and the month's total"), o("monthly_total", "The month's total only"), o("off", "No, tutors don't see pay")],
+        help: "A tutor sees only their own pay, marked as an estimate until you confirm the pay run: never the family's fee, the rate, the percentage, the invoice or what families have paid. When pay is held until the parent has paid, the lesson shows as pending, with no amount and no reason. Bonuses and deductions show as one line each, with the label you wrote.",
+        show: function (s) { return s.tutor_pay.mode === "full"; } },
+      { path: "tutor_pay.employment_note", keywords: ["employee", "freelancer", "cpf", "payslip", "accountant", "contractor"], label: "", type: "note",
         help: "Each tutor is an employee or a freelancer (set when you add them). Employees may need itemised payslips and CPF; please confirm your obligations with your accountant." }
     ]},
     { id: "import", n: 9, title: "Import data", custom: "import", fields: [] },
@@ -261,7 +334,8 @@
         gst_registered: false, gst_number: "", gst_rate_bp: 900, gst_inclusive: false, timezone: "Asia/Singapore", currency: "SGD",
         invoice_prefix: "INV", next_invoice_number: 1, reply_to_email: "" },
       calendar: { skip_holidays: true },
-      billing: { model: "postpaid_lessons", fixed_period: "month", pay_per_lesson_grouping: "lesson", low_balance_credits: 2, credit_expiry_days: 0,
+      billing: { starts_from: "", model: "postpaid_lessons", fixed_period: "month", pay_per_lesson_grouping: "lesson", low_balance_credits: 2, credit_expiry_days: 0,
+        credits: { rule: "one_per_missed", earn_absences: "notice_only", earn_tutor_cancel: "staff_decide", earn_holiday: false, grant_by: "manage_timetable", book_by: "manage_timetable", makeup_price: "free" },
         absences: { mode: "charged_unless_notice", notice_hours: 24 }, makeups: { allowed: true, per_period: 2, uses_credit: false },
         proration: "by_remaining", sibling_discount: { type: "none", percent_bp: 1000, fixed_cents: 500 }, adhoc_discounts: true,
         one_off_fees: { registration_cents: 0, deposit_cents: 0, materials_cents: 0 }, trials: { charged: false },
@@ -269,15 +343,17 @@
           forfeit_notice_days: 0, set_off_unpaid: false, final_month: false, refund_approved_by: "owner" },
         late_fee: { enabled: false, repeat: "once", type: "fixed", amount_cents: 1000, percent_bp: 500, after_days: 7, cap_cents: 0, show_as: "own_invoice", waived_by: "owner" } },
       invoicing: { grouping: "family", generate: { mode: "day_of_month", day: 1, days_before: 7 }, due_days: 7, review_before_sending: true,
-        delivery: { email: false, share_link: true },
-        whatsapp_template: "Hi {name}, this is {centre}. Invoice {number} for {amount} is due on {due_date}.\nYou can see it and pay by PayNow here: {link}\nThank you!", reminders: { enabled: false, schedule: [-3, 0, 7] } },
-      payments: { modes: ["manual_paynow"], paynow: { type: "uen", id: "" }, statement_bank: "DBS", hitpay: { paynow: true, cards: false },
+        delivery: { share_link: true },
+        whatsapp_template: "Hi {name}, this is {centre}. Invoice {number} for {amount} is due on {due_date}.\nYou can see it and pay by PayNow here: {link}\nThank you!" },
+      email: { mode: "off", receipts: false, late_fee_notice: false, reminders: { enabled: false, first_after_days: 3, repeat_days: 7, max_count: 3 }, daily_cap: 200, per_hour: 60,
+        templates: { invoice: { subject: "", body: "" }, receipt: { subject: "", body: "" }, reminder: { subject: "", body: "" }, late_fee: { subject: "", body: "" } } },
+      payments: { modes: ["manual_paynow"], paynow: { type: "uen", id: "" }, statement_bank: "custom", statement: { auto_confirm: "exact_only", window_before_days: 7, window_after_days: 90 }, hitpay: { paynow: true, cards: false },
         gateway_fees: "absorb", partial_payments: true, overpayments: "credit" },
       lessons: { class_type: "both", timetable_editing: "admin_only", tutors_edit: { postpone: true, cancel: false, weekly_slots: false, generate: false, one_off: false, link: false },
-        min_notice_hours: 24, max_changes_per_month: 0, notify_family: "list_for_admin", attendance_by: "tutor", attendance_window_days: 14, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
+        min_notice_hours: 24, max_changes_per_month: 0, request_expiry_days: 14, notify_family: "list_for_admin", attendance_by: "tutor", attendance_window_days: 14, backfill_allowed_days: 31, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
         missed_remarks_reminders: true, replacement_tutors: true, auto_assign_tutors: true, tutors_see_parent_contact: false },
       tutor_pay: { mode: "report", payable_when: "parent_paid", rate_model: "per_hour", percent_base: "billed_after_discounts", part_payments: "after_full", cancelled_lessons: "pay_if_charged", group_count: "attended", adjustments: true,
-        cycle: { cutoff_day: 31, pay_day: 7 }, payout_method: "manual_list", tutor_visibility: "closed_only" },
+        cycle: { cutoff_day: 31, pay_day: 7 }, payout_method: "manual_list", tutors_see_own_pay: "per_lesson_and_total" },
       data: {}
     };
     if (preset === "solo") {
@@ -344,9 +420,23 @@
     if (p.reply_to_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(p.reply_to_email)) e.push("Reply-to email doesn't look right.");
     if (!/^[A-Za-z0-9-]{1,8}$/.test(p.invoice_prefix || "")) e.push("Invoice prefix: 1–8 letters or numbers.");
     if (!(p.next_invoice_number >= 1)) e.push("Next invoice number must be 1 or more.");
+    var bs = s.billing.starts_from;
+    if (bs != null && bs !== "") {
+      var okDate = typeof bs === "string" && /^\d{4}-\d{2}-\d{2}$/.test(bs) && (function () { var d = new Date(bs + "T00:00:00Z"); return !isNaN(d) && d.toISOString().slice(0, 10) === bs; })();
+      if (!okDate) e.push("Billing starts from: pick a real date.");
+      else if (bs < "2020-01-01" || bs > "2100-01-01") e.push("Billing starts from: the date must be between 2020 and 2100.");
+    }
     if (!Array.isArray(s.payments.modes) || !s.payments.modes.length) e.push("Pick at least one way for parents to pay.");
     var mn = s.lessons.min_notice_hours; if (mn != null && !(Number.isSafeInteger(mn) && mn >= 0 && mn <= 168)) e.push("Notice before a tutor's change must be 0–168 hours.");
     var mc = s.lessons.max_changes_per_month; if (mc != null && !(Number.isSafeInteger(mc) && mc >= 0 && mc <= 500)) e.push("Changes per tutor per month must be 0–500 (0 = no limit).");
+    var st = s.payments.statement;                                                    // T34 (db: org_validate_settings in migration_statement_matching.sql)
+    if (st) {
+      if (st.auto_confirm != null && ["exact_only", "never"].indexOf(st.auto_confirm) < 0) e.push("Pick how matched payments are confirmed.");
+      if (st.window_before_days != null && !(Number.isSafeInteger(st.window_before_days) && st.window_before_days >= 0 && st.window_before_days <= 30)) e.push("The days before the invoice date must be 0–30.");
+      if (st.window_after_days != null && !(Number.isSafeInteger(st.window_after_days) && st.window_after_days >= 0 && st.window_after_days <= 365)) e.push("The days after the due date must be 0–365.");
+    }
+    var rx = s.lessons.request_expiry_days; if (rx != null && !(Number.isSafeInteger(rx) && rx >= 1 && rx <= 90)) e.push("A request must wait 1–90 days for an answer.");
+    var bd = s.lessons.backfill_allowed_days; if (bd != null && !(Number.isSafeInteger(bd) && bd >= 0 && bd <= 366)) e.push("Days staff may add past lessons must be 0–366 (0 = off).");
     var aw = s.lessons.attendance_window_days; if (aw != null && !(Number.isSafeInteger(aw) && aw >= 1 && aw <= 60)) e.push("Attendance window must be 1–60 days.");
     var gd = s.invoicing.generate.day; if (!(gd >= 1 && gd <= 28)) e.push("Invoice day must be 1–28 (so it exists in every month).");
     var cd = s.tutor_pay.cycle; if (!(cd.cutoff_day >= 1 && cd.cutoff_day <= 31) || !(cd.pay_day >= 1 && cd.pay_day <= 31)) e.push("Pay days must be 1–31.");
@@ -362,18 +452,66 @@
       if (lf.after_days != null && !(lf.after_days >= 0 && lf.after_days <= 365)) e.push("Late fee grace period must be 0–365 days.");
     }
     if (tr && tr.charged != null && typeof tr.charged !== "boolean") e.push("Trial lessons charged must be yes or no.");
+    // family emails (T7.3); each rule is repeated in org_validate_settings() in db/migration_invoice_email.sql and the wording rules in assets/js/invoice-email-core.js
+    var em = s.email;
+    if (em) {
+      if (em.mode != null && ["off", "staff_send", "auto_on_issue"].indexOf(em.mode) < 0) e.push("Email invoices to parents: pick an option.");
+      ["receipts", "late_fee_notice"].forEach(function (k) { if (em[k] != null && typeof em[k] !== "boolean") e.push("Email options must be yes or no."); });
+      var rm = em.reminders || {};
+      if (rm.enabled != null && typeof rm.enabled !== "boolean") e.push("Email options must be yes or no.");
+      [["first_after_days", 1, 90, "Send the first reminder 1–90 days after the due date."], ["repeat_days", 0, 90, "Repeat reminders every 0–90 days (0 = only one reminder)."],
+        ["max_count", 1, 10, "Send 1–10 reminders at most."]].forEach(function (r) {
+        if (rm[r[0]] != null && !(Number.isSafeInteger(rm[r[0]]) && rm[r[0]] >= r[1] && rm[r[0]] <= r[2])) e.push(r[3]);
+      });
+      if (em.daily_cap != null && !(Number.isSafeInteger(em.daily_cap) && em.daily_cap >= 1 && em.daily_cap <= 300)) e.push("Emails per day must be 1–300.");
+      if (em.per_hour != null && !(Number.isSafeInteger(em.per_hour) && em.per_hour >= 1 && em.per_hour <= 300)) e.push("Emails per hour must be 1–300.");
+      var tpl = em.templates || {}, FIELDS = ["name", "centre", "number", "amount", "due_date", "link", "contact", "paid_on", "days_overdue"], BAD = new RegExp("\\{(" + FIELDS.join("|") + ")\\}", "g");
+      ["invoice", "receipt", "reminder", "late_fee"].forEach(function (k) {
+        ["subject", "body"].forEach(function (part) {
+          var v = tpl[k] && tpl[k][part]; if (v == null) return;
+          if (typeof v !== "string") { e.push("Email wording must be text."); return; }
+          if (v.length > (part === "subject" ? 120 : 1000)) e.push("The " + k.replace("_", "-") + " email " + part + " is too long (" + (part === "subject" ? 120 : 1000) + " characters at most).");
+          if (/[{}]/.test(v.replace(BAD, ""))) e.push("The " + k.replace("_", "-") + " email " + part + " can only use {name} {centre} {number} {amount} {due_date} {link} {contact} {paid_on} {days_overdue}.");
+        });
+      });
+      if (em.mode && em.mode !== "off" && s.invoicing && s.invoicing.delivery && s.invoicing.delivery.share_link === false) e.push("Emailing invoices needs the shareable invoice link switched on.");
+    }
     return e;
   }
 
   // Billing, invoicing, payments and pay changes apply from the next billing cycle (1st of next month);
   // everything else applies today. Issued invoices are never rewritten either way.
   var CYCLE_SECTIONS = ["billing", "invoicing", "payments", "tutor_pay"];
-  function effectiveFrom(before, after, todayISO) {
-    var changed = CYCLE_SECTIONS.some(function (k) { return JSON.stringify(before && before[k]) !== JSON.stringify(after[k]); });
-    if (!changed) return todayISO;
+  // Exception: who may see their own pay is a process rule, read as of TODAY by the database (tutor_my_pay_*), so it takes effect at once.
+  function cycleView(sec, k) {
+    if (!sec) return sec;
+    if (k !== "tutor_pay") return sec;
+    var c = JSON.parse(JSON.stringify(sec)); delete c.tutors_see_own_pay; return c;
+  }
+  function nextCycle(todayISO) {
     var y = +todayISO.slice(0, 4), m = +todayISO.slice(5, 7);
     m += 1; if (m > 12) { m = 1; y += 1; }
     return y + "-" + (m < 10 ? "0" : "") + m + "-01";
+  }
+  function effectiveFrom(before, after, todayISO) {
+    var changed = CYCLE_SECTIONS.some(function (k) { return JSON.stringify(cycleView(before && before[k], k)) !== JSON.stringify(cycleView(after[k], k)); });
+    return changed ? nextCycle(todayISO) : todayISO;
+  }
+  // What to save. `latest` = the newest saved VERSION (what the form shows, pending next-cycle changes included), `inForce` = what applies today,
+  // `draft` = the form. Billing-type sections only change from the next cycle; everything else changes today. When one save holds both kinds,
+  // it is saved as two versions: today's rules plus the non-billing changes now, then the whole draft from the next cycle.
+  // Returns [{ settings, effective }] in the order to save (empty = nothing to save).
+  function savePlan(latest, inForce, draft, todayISO, inSetup) {
+    if (JSON.stringify(draft) === JSON.stringify(latest)) return [];
+    if (inSetup) return [{ settings: draft, effective: todayISO }];
+    var cur = inForce || latest || {};
+    var cycleDiff = CYCLE_SECTIONS.some(function (k) { return JSON.stringify(cur[k]) !== JSON.stringify(draft[k]); });
+    var otherDiff = Object.keys(draft).some(function (k) { return CYCLE_SECTIONS.indexOf(k) < 0 && JSON.stringify(cur[k]) !== JSON.stringify(draft[k]); });
+    if (!cycleDiff) return [{ settings: draft, effective: todayISO }];
+    if (!otherDiff) return [{ settings: draft, effective: nextCycle(todayISO) }];
+    var now = JSON.parse(JSON.stringify(cur));
+    Object.keys(draft).forEach(function (k) { if (CYCLE_SECTIONS.indexOf(k) < 0) now[k] = JSON.parse(JSON.stringify(draft[k])); });
+    return [{ settings: now, effective: todayISO }, { settings: draft, effective: nextCycle(todayISO) }];
   }
 
 
@@ -405,5 +543,5 @@
   }
 
   return { SCHEMA_VERSION: SCHEMA_VERSION, STAFF_PERMISSIONS: STAFF_PERMISSIONS, STEPS: STEPS, defaults: defaults, withDefaults: withDefaults,
-    get: get, set: set, validate: validate, isVisible: isVisible, visibleOptions: visibleOptions, effectiveFrom: effectiveFrom, display: display, fourEyes: fourEyes, CYCLE_SECTIONS: CYCLE_SECTIONS };
+    get: get, set: set, validate: validate, isVisible: isVisible, visibleOptions: visibleOptions, effectiveFrom: effectiveFrom, savePlan: savePlan, display: display, fourEyes: fourEyes, CYCLE_SECTIONS: CYCLE_SECTIONS };
 });

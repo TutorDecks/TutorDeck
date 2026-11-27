@@ -1,0 +1,16 @@
+kind,input,expected
+payer,"Mr  TAN, Ah-Kow",mr tan ah kow
+payer,LIM MEI LING,lim mei ling
+payer,"lim,  mei  ling!",lim mei ling
+payer,  ,
+payer,GOH & SONS PTE LTD,goh sons pte ltd
+payer,"OH ""AH"" BENG",oh ah beng
+payer,O'Neil-Tan,o neil tan
+ref,INV-12 thanks,inv 12 thanks
+ref,"Acct 123456789012 fees",acct 9012 fees
+ref,acct 12345678 fees,acct 12345678 fees
+ref,"ref 1234567890123 INV-5",ref 0123 inv 5
+mask,123456789012,****9012
+mask,12345678,12345678
+mask,123456789,****6789
+mask,"a 1234 5678 9012 b","a 1234 5678 9012 b"

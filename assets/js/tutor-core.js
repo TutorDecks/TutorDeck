@@ -171,6 +171,7 @@
   }
   // The badge on a schedule row (one word) and the small facts under the name. Nothing here says anything about money.
   function scheduleChip(l) {
+    if (l.pending_request) return { text: "Waiting for approval", tone: "warn" };           // T6 step 6: I asked, an admin hasn't answered yet
     if (l.cancelled) return { text: "Cancelled", tone: "muted" };
     if (l.attendance === "attended") return { text: "Attended", tone: "ok" };
     if (l.attendance === "absent") return { text: "Absent", tone: "muted" };
@@ -178,6 +179,7 @@
     if (l.postponed) return { text: "Moved", tone: "muted" };
     if (l.covering) return { text: "Covering", tone: "muted" };
     if (l.trial) return { text: "Trial", tone: "muted" };
+    if (l.awaiting_centre) return { text: "To confirm", tone: "muted" };
     return null;
   }
   function scheduleFacts(l, withCentre) {
@@ -189,19 +191,44 @@
     return f.filter(Boolean);
   }
   // The note under the week, in plain words, for what THIS centre lets a tutor do. `org` is the centre's entry of tutor_my_schedule (may be missing).
-  // admin_only = ask an admin. tutors_direct = tap a lesson, with the centre's notice and what is left of the month's changes. tutors_propose is not built yet.
+  // admin_only = ask an admin. tutors_direct = tap a lesson, with the centre's notice and what is left of the month's changes. tutors_propose = the same taps, but each one is a request.
   function editNote(editing, org) {
     var e = editing || "admin_only", o = org || {};
-    if (e === "tutors_direct" && (o.can_postpone || o.can_cancel)) {
-      var what = o.can_postpone && o.can_cancel ? "move or cancel" : o.can_postpone ? "move" : "cancel";
+    var more = [];
+    if (e === "tutors_propose") {                                              // T6 step 6: the same buttons, but each one sends a request
+      var ask = [];
+      if (o.can_postpone) ask.push("move"); if (o.can_cancel) ask.push("cancel");
+      var extra = [];
+      if (o.can_one_off) extra.push("add a one-off lesson");
+      if (o.can_slots) extra.push("change your weekly slots");
+      if (o.can_generate) extra.push("create your lessons");
+      if (o.can_link) extra.push("set the online link");
+      if (!ask.length && !extra.length) return "Your centre has not switched on requests by tutors yet. Ask an admin to change a lesson.";
       var n = o.min_notice_hours == null ? 24 : o.min_notice_hours;
-      var t = "You can " + what + " your own lessons: tap a lesson. " + (n > 0 ? "It must be at least " + n + " hour" + (n === 1 ? "" : "s") + " before it starts. " : "") +
+      var t = "At your centre you ask and an admin approves: nothing changes until they do. " +
+              (ask.length ? "You can ask to " + ask.join(" or ") + " your own lessons: tap a lesson. " : "") +
+              (extra.length ? (ask.length ? "You can also ask to " : "You can ask to ") + extra.join(", ").replace(/, ([^,]*)$/, " or $1") + ". " : "") +
+              (n > 0 ? "A change must be at least " + n + " hour" + (n === 1 ? "" : "s") + " before the lesson starts. " : "");
+      if (o.changes_left != null) t += "You can ask for " + o.changes_left + " more change" + (o.changes_left === 1 ? "" : "s") + " this month (waiting requests count).";
+      return t.trim();
+    }
+    if (e === "tutors_direct") {
+      if (o.can_one_off) more.push("add a one-off lesson");
+      if (o.can_slots) more.push("keep your own weekly slots");
+      if (o.can_generate) more.push("create your lessons from them");
+    }
+    if (e === "tutors_direct" && (o.can_postpone || o.can_cancel || more.length)) {
+      var what = o.can_postpone && o.can_cancel ? "move or cancel" : o.can_postpone ? "move" : o.can_cancel ? "cancel" : "";
+      var n = o.min_notice_hours == null ? 24 : o.min_notice_hours;
+      var t = (what ? "You can " + what + " your own lessons: tap a lesson. " : "") +
+              (more.length ? (what ? "You can also " : "You can ") + more.join(", ").replace(/, ([^,]*)$/, " and $1") + ". " : "") +
+              (n > 0 ? "A change must be at least " + n + " hour" + (n === 1 ? "" : "s") + " before it starts. " : "") +
               "Your centre is told about every change.";
+      if (what && !more.length) t = t.replace("A change must", "It must");
       if (o.changes_left != null) t += " You can make " + o.changes_left + " more change" + (o.changes_left === 1 ? "" : "s") + " this month.";
       return t;
     }
     if (e === "tutors_direct") return "Your centre has not switched on changes by tutors yet. Ask an admin to change a lesson.";
-    if (e === "tutors_propose") return "At your centre tutors ask for changes and an admin approves them. That is coming soon. For now, ask an admin.";
     return "Your centre handles changes: ask an admin.";
   }
   // The refusals of the three change functions. Most say it in fixed words; four carry a detail the database knows (the hours, the number, the holiday, the
@@ -222,6 +249,8 @@
     BAD_DATE: "Please pick a date and a start time that are still to come, within the next year.",
     BAD_TIME: "That start time would run past midnight. Please pick an earlier one.",
     NO_CHANGE: "That lesson is already at that time.",
+    ALREADY_PENDING: "You have already asked for this and an admin hasn't answered yet. Take that request back first if you want to change it.",
+    ALREADY_DECIDED: "An admin has already answered that request. Please refresh.",
     GROUP_NOT_YOURS: "That lesson is part of a class that includes lessons that aren't yours. Please ask an admin."
   };
   var CHANGE_DETAIL = { TOO_LATE: 1, LIMIT: 1, HOLIDAY: 1, CLASH: 1 };
@@ -240,7 +269,7 @@
   function blockText(code, org) {
     var n = org && org.min_notice_hours != null ? org.min_notice_hours : 24;
     var t = { TOO_LATE: "It starts in less than " + n + " hour" + (n === 1 ? "" : "s") + ", so only an admin can change it.", PAST: "It has already started.",
-      ALREADY_MARKED: "It is already marked, so only an admin can change it.", CANCELLED: "It was cancelled.", LOCKED: "Your centre has already closed it, so only an admin can change it.", LIMIT: "You have made all the changes your centre allows this month. Ask an admin.", NOT_FOUND: "" };
+      ALREADY_MARKED: "It is already marked, so only an admin can change it.", CANCELLED: "It was cancelled.", LOCKED: "Your centre has already closed it, so only an admin can change it.", LIMIT: "You have made all the changes your centre allows this month. Ask an admin.", NOT_FOUND: "Ask an admin to assign this student to you before you can change this lesson." };
     return t[code] || "";
   }
   // "16:30" + 90 minutes = "18:00"; null when it would pass midnight or the input isn't a time. Used to preview a move (the length never changes).
@@ -258,8 +287,9 @@
     var out = [], by = {};
     (rows || []).forEach(function (r) {
       var k = r.session_key || r.slot_id;
-      if (!by[k]) { by[k] = { key: k, weekday: r.weekday, start_time: r.start_time, end_time: r.end_time, subject: r.subject, org_name: r.org_name, students: [] }; out.push(by[k]); }
-      by[k].students.push({ name: r.student_name, level: r.student_level });
+      if (!by[k]) { by[k] = { key: k, slot_id: r.slot_id, org_id: r.org_id, weekday: r.weekday, start_time: r.start_time, end_time: r.end_time, subject: r.subject, org_name: r.org_name, students: [],
+                              can_change: !!r.can_change, is_group: !!r.is_group, awaiting_centre: !!r.awaiting_centre, pending_request: r.pending_request || null, pending_kind: r.pending_kind || null }; out.push(by[k]); }
+      by[k].students.push({ id: r.student_id, name: r.student_name, level: r.student_level });
     });
     return out.sort(function (a, b) { return a.weekday - b.weekday || (a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : 0); });
   }
@@ -269,7 +299,111 @@
     return "Your schedule isn't available right now. Please try again in a few minutes.";
   }
 
-  return { weekStart: weekStart, weekTitle: weekTitle, scheduleDays: scheduleDays, scheduleChip: scheduleChip, scheduleFacts: scheduleFacts, editNote: editNote,
+
+  // ================= T6 steps 3 and 4: add a lesson, keep my weekly slots, Create lessons. Nothing here asks for, shows or sends anything about money. =================
+  // The refusals of tutor_add_lesson / tutor_save_slot / tutor_stop_slot / tutor_generate_lessons. A fixed sentence for each code; the ones that carry a detail the
+  // database knows (the notice, the holiday, the student) use the database's own plain sentence. Unknown words are never shown raw.
+  var OWN_FIXED = {
+    NOT_FOUND: "That isn't one of your students or slots any more. Please refresh the page.",
+    NOT_ALLOWED: "At your centre the admins change the timetable. Please ask them.",
+    SWITCH_OFF: "Your centre doesn't let tutors do that. Please ask an admin.",
+    LIMIT: "You have made all the changes your centre allows this month. Please ask an admin.",
+    STUDENT_ENDED: "That student's lessons have ended.",
+    BAD_DATE: "Please pick a day and a start time that are still to come, within the next year.",
+    BAD_TIME: "Please pick a start and an end time on the same day. A lesson lasts 15 minutes to 8 hours.",
+    BAD_SLOT: "Please pick a day of the week.",
+    TOO_LONG: "That text is too long. Please shorten it.",
+    TOO_LATE: "That is too soon. Please pick a later time, or ask an admin.",
+    HOLIDAY: "That day is a holiday at your centre. Please pick another day.",
+    ALREADY_THERE: "That student already has a lesson at that time.",
+    CLASH: "You already teach someone at that time. Please pick another time.",
+    SLOT_CLASH: "That student already has a weekly lesson at that time.",
+    TUTOR_CLASH: "You already teach someone at that time every week. Please pick another time.",
+    GROUP_CLASS: "This is a group class. Please ask an admin to change it.",
+    ALREADY_PENDING: "You have already asked for this and an admin hasn't answered yet. Take that request back first if you want to change it.",
+    ALREADY_DECIDED: "An admin has already answered that request. Please refresh.",
+    NOTHING_TO_DO: "There are no new lessons to create in those dates.",
+    NO_CHANGE: "It is already like that.",
+    BAD_LINK: "Please paste a link that starts with https:// and has no spaces (500 characters at most).",
+    CANCELLED: "That lesson was cancelled.",
+    PAST: "That lesson is over, so its link can't be changed.",
+    BAD_RANGE: "Please pick an end day from today up to 62 days ahead."
+  };
+  var OWN_DETAIL = { LIMIT: 1, STUDENT_ENDED: 1, BAD_DATE: 1, BAD_TIME: 1, TOO_LONG: 1, TOO_LATE: 1, HOLIDAY: 1, ALREADY_THERE: 1, CLASH: 1, SLOT_CLASH: 1, TUTOR_CLASH: 1, BAD_RANGE: 1 };
+  function ownErrorText(err) {
+    var msg = String((err && err.message) || ""), m = /^([A-Z_]+)(?::|$)/.exec(msg), c = m ? m[1] : "";
+    if (OWN_DETAIL[c]) {
+      var rest = msg.slice(c.length + 1).trim();
+      if (rest) return rest.charAt(0).toUpperCase() + rest.slice(1) + (/[.!?]$/.test(rest) ? "" : ".");
+    }
+    return OWN_FIXED[c] || "We couldn't save that just now. Please try again.";
+  }
+  function mins(a, b) {
+    var x = /^(\d{1,2}):(\d{2})/.exec(String(a || "")), y = /^(\d{1,2}):(\d{2})/.exec(String(b || ""));
+    return x && y ? (+y[1]) * 60 + (+y[2]) - ((+x[1]) * 60 + (+x[2])) : null;
+  }
+  // The checks the screen does BEFORE asking the database (so a typo never costs a round trip; the database checks everything again).
+  // Returns { error: "plain words" } or { args } named exactly as the function's arguments.
+  function checkTimes(start, end) {
+    var n = mins(start, end);
+    if (n == null) return "Please pick a start and an end time.";
+    if (n <= 0) return "A lesson must end after it starts.";
+    if (n < 15 || n > 480) return "A lesson lasts 15 minutes to 8 hours.";
+    return null;
+  }
+  function addLessonCheck(f, today) {
+    f = f || {};
+    if (!f.student) return { error: "Please choose a student." };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(f.date || ""))) return { error: "Please pick a day." };
+    if (f.date < today) return { error: "That day has already passed." };
+    if (f.date > addDays(today, 365)) return { error: "Please pick a day within the next year." };
+    var te = checkTimes(f.start, f.end); if (te) return { error: te };
+    var subj = String(f.subject || "").trim(), note = String(f.note || "").trim();
+    if (subj.length > 60) return { error: "Please keep the subject under 60 characters." };
+    if (note.length > 300) return { error: "Please keep the note under 300 characters." };
+    return { args: { p_student: f.student, p_date: f.date, p_start: f.start, p_end: f.end, p_subject: subj || null, p_note: note || null } };
+  }
+  function slotCheck(f) {
+    f = f || {};
+    if (!f.slot && !f.student) return { error: "Please choose a student." };
+    var wd = Number(f.weekday);
+    if (f.weekday === "" || f.weekday == null || !(wd >= 0 && wd <= 6) || wd !== Math.floor(wd)) return { error: "Please pick a day of the week." };
+    var te = checkTimes(f.start, f.end); if (te) return { error: te };
+    var subj = String(f.subject || "").trim();
+    if (subj.length > 60) return { error: "Please keep the subject under 60 characters." };
+    return { args: { p_slot: f.slot || null, p_student: f.slot ? null : f.student, p_weekday: wd, p_start: f.start, p_end: f.end, p_subject: subj || null } };
+  }
+  // "Create lessons": from today to the chosen last day, at most 62 days. Default 4 weeks.
+  function generateEnd(today) { return addDays(today, 27); }
+  function generateCheck(f, today) {
+    var to = String((f && f.to) || "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(to)) return { error: "Please pick the last day." };
+    if (to < today) return { error: "The last day can't be in the past." };
+    if (to > addDays(today, 62)) return { error: "Please pick a last day within 62 days from today." };
+    return { args: { p_org: f && f.org, p_from: today, p_to: to } };
+  }
+  // What a press of "Create lessons" did, in plain words (the database's counts). No money word.
+  function generateSummary(r) {
+    r = r || {};
+    var c = r.created || 0, out = [];
+    out.push(c === 0 ? "No new lessons were needed." : c + " new lesson" + (c === 1 ? "" : "s") + " created.");
+    if (r.skipped) out.push(r.skipped + " " + (r.skipped === 1 ? "was" : "were") + " already there.");
+    if (r.holidays) out.push(r.holidays + " holiday day" + (r.holidays === 1 ? " was" : "s were") + " skipped.");
+    if (r.too_soon) out.push(r.too_soon + " " + (r.too_soon === 1 ? "starts" : "start") + " too soon for your centre's notice, or already started, so " + (r.too_soon === 1 ? "was" : "were") + " left out.");
+    if (r.ended) out.push(r.ended + " for students whose lessons have ended " + (r.ended === 1 ? "was" : "were") + " left out.");
+    if (r.not_assigned) out.push(r.not_assigned + " for students not assigned to you " + (r.not_assigned === 1 ? "was" : "were") + " left out.");
+    if (r.awaiting_centre) out.push("Your centre will confirm the details of " + r.awaiting_centre + " of them.");
+    return out.join(" ");
+  }
+  var AWAITING_NOTE = "Your centre will confirm the details of this one.";
+  // the students for the pickers: only those the database listed for me, by name; one centre's students when I belong to several
+  function studentOptions(rows, orgId) {
+    return (rows || []).filter(function (r) { return !orgId || r.org_id === orgId; }).map(function (r) { return { id: r.student_id, org_id: r.org_id, name: r.name, level: r.level || "", subject: r.subject || "", awaiting_centre: !!r.awaiting_centre }; });
+  }
+  function weekdayOptions() { return WD_LONG.map(function (n, i) { return { value: i, label: n }; }); }
+
+  return { ownErrorText: ownErrorText, addLessonCheck: addLessonCheck, slotCheck: slotCheck, generateEnd: generateEnd, generateCheck: generateCheck, generateSummary: generateSummary,
+           studentOptions: studentOptions, weekdayOptions: weekdayOptions, AWAITING_NOTE: AWAITING_NOTE, weekStart: weekStart, weekTitle: weekTitle, scheduleDays: scheduleDays, scheduleChip: scheduleChip, scheduleFacts: scheduleFacts, editNote: editNote,
            weekdayName: weekdayName, rangeLabel: rangeLabel, slotList: slotList, scheduleErrorText: scheduleErrorText, changeErrorText: changeErrorText, blockText: blockText, endTime: endTime, addDays: addDays, dateLabel: dateLabel, timeLabel: timeLabel, timeRange: timeRange, chip: chip, lockReason: lockReason,
            remarksDue: remarksDue, attendanceOptions: attendanceOptions, parseCharge: parseCharge, needsCharge: needsCharge, adminChargeNote: adminChargeNote, group: group, errorText: errorText, changes: changes };
 });

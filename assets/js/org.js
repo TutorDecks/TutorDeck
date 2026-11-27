@@ -13,10 +13,11 @@
   function prettyDate(iso) { return new Date(iso + "T00:00:00").toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" }); }
 
   var st = { mail: null, perms: [], lib: undefined, libBusy: false, org: null, role: null, saved: null, draft: null, step: "profile", members: [], branches: [], rooms: [], terms: [], holidays: [] };
-  var EXTRA_TABS = [["plan", "Plan"], ["audit", "Audit log"]];
+  var EXTRA_TABS = [["plan", "Plan"], ["audit", "Audit log"], ["export", "Data export"]];
   function isOwner() { return st.role === "owner"; }
   // who may email / re-email invites: the owner, or a staff admin with "manage tutors" (the same rule org_invite_mail_reserve() enforces in SQL)
   function canMail() { return st.role === "owner" || (st.role === "staff" && st.perms.indexOf("manage_tutors") >= 0); }
+  function canImport() { return isOwner() && !!st.org && st.org.kind === "centre"; }     // the import page: a centre's owner only
   function setup() { return st.org && st.org.status === "setup"; }
 
   // ------------------------------------------------------------------ entry
@@ -30,12 +31,19 @@
     st.org = r.data;
     var m = await sb().from("memberships").select("role,permissions").eq("org_id", id).eq("user_id", TL.uid()).maybeSingle();
     st.role = m.data && m.data.role; st.perms = (m.data && m.data.permissions) || [];
-    var s = await sb().rpc("org_settings_on", { p_org: id, p_day: "9999-12-31" });   // latest version (incl. ones starting next cycle)
+    // The form shows the newest saved VERSION (pending next-cycle changes included). Not "latest effective date": a version starting next month
+    // would hide a newer one saved today, and the old values were then saved back on top of it.
+    var s = await sb().from("org_settings").select("settings").eq("org_id", id).order("version", { ascending: false }).limit(1);
+    if (s.error || !s.data || !s.data.length) s = { data: (await sb().rpc("org_settings_on", { p_org: id, p_day: "9999-12-31" })).data };
+    else s = { data: s.data[0].settings };
+    var inf = await sb().rpc("org_settings_on", { p_org: id, p_day: todayISO() });
+    st.inForce = inf.data ? S.withDefaults(inf.data, st.org.preset) : null;
     st.saved = S.withDefaults(s.data || {}, st.org.preset);
     st.draft = JSON.parse(JSON.stringify(st.saved));
     var hash = location.hash.slice(1);
     if (setup()) st.step = S.STEPS[Math.max(0, Math.min(9, (st.org.setup_step || 1) - 1))].id;
     if (hash && (S.STEPS.some(function (x) { return x.id === hash; }) || EXTRA_TABS.some(function (x) { return x[0] === hash; }))) st.step = hash;
+    if (st.step === "import" && !canImport()) st.step = "profile";      // a direct link to #import gives non-owners nothing
     await loadSide();
     render();
   }
@@ -93,23 +101,125 @@
 
   // ------------------------------------------------------------------ shell
   function render() {
-    var tabs = S.STEPS.filter(function (x) { return setup() || (x.id !== "review" && x.id !== "import"); });
+    // Import is the owner's page: staff and tutors never see the tab (wizard or Settings). Review is only in the wizard.
+    var tabs = S.STEPS.filter(function (x) { return (x.id !== "import" || canImport()) && (setup() || x.id !== "review"); });
     var cur = S.STEPS.filter(function (x) { return x.id === st.step; })[0];
     var h = '<div><h2 style="font-size:20px;font-weight:800;margin:0">' + esc(st.org.trading_name) + "</h2>" +
       '<p class="og-sub" style="margin:2px 0 0">' + (setup() ? "Setup · step " + (cur ? cur.n : 10) + " of 10" : "Settings") +
-      (isOwner() ? "" : " · view only (the owner changes settings)") + "</p></div>" +
+      (isOwner() ? "" : " · view only (the owner changes settings)") + "</p></div>" + searchHtml() +
       '<div class="og-steps" role="tablist">' + tabs.map(function (x) {
         var done = setup() && x.n < (st.org.setup_step || 1);
         return '<button role="tab" data-step="' + x.id + '" class="' + (st.step === x.id ? "on " : "") + (done ? "done" : "") + '">' + (setup() ? '<span class="n">' + x.n + "</span>" : "") + esc(x.title) + "</button>";
-      }).join("") + (setup() ? "" : EXTRA_TABS.map(function (t) { return '<button role="tab" data-step="' + t[0] + '" class="' + (st.step === t[0] ? "on" : "") + '">' + t[1] + "</button>"; }).join("")) + "</div>" +
+      }).join("") + (setup() ? "" : EXTRA_TABS.filter(function (t) { return t[0] !== "export" || isOwner(); }).map(function (t) { return '<button role="tab" data-step="' + t[0] + '" class="' + (st.step === t[0] ? "on" : "") + '">' + t[1] + "</button>"; }).join("")) + "</div>" +
       '<div id="og-body"></div>';
     $("og").innerHTML = h;
     $("og").querySelectorAll("[data-step]").forEach(function (b) { b.onclick = function () { go(b.getAttribute("data-step")); }; });
+    bindSearch();
     var on = $("og").querySelector(".og-steps .on"); if (on && on.scrollIntoView) on.scrollIntoView({ block: "nearest", inline: "center" });
+    var strip = $("og").querySelector(".og-steps");
+    if (strip) {
+      // the mouse wheel moves a row that is wider than the screen (only while it can still move that way), and the arrow keys walk the tabs
+      strip.addEventListener("wheel", function (e) {
+        if (e.deltaX || !e.deltaY || strip.scrollWidth <= strip.clientWidth) return;
+        var max = strip.scrollWidth - strip.clientWidth;
+        if ((e.deltaY < 0 && strip.scrollLeft <= 0) || (e.deltaY > 0 && strip.scrollLeft >= max - 1)) return;
+        strip.scrollLeft += e.deltaY; e.preventDefault();
+      }, { passive: false });
+      strip.addEventListener("keydown", function (e) {
+        var k = e.key; if (k !== "ArrowRight" && k !== "ArrowLeft" && k !== "Home" && k !== "End") return;
+        var bs = Array.prototype.slice.call(strip.querySelectorAll("button")), i = bs.indexOf(document.activeElement); if (i < 0) return;
+        var j = k === "Home" ? 0 : k === "End" ? bs.length - 1 : Math.max(0, Math.min(bs.length - 1, i + (k === "ArrowRight" ? 1 : -1)));
+        bs[j].focus(); if (bs[j].scrollIntoView) bs[j].scrollIntoView({ block: "nearest", inline: "nearest" }); e.preventDefault();
+      });
+    }
     if (st.step === "plan") return tabPlan();
     if (st.step === "audit") return tabAudit();
+    if (st.step === "export") return tabExport();
     renderStep(cur);
   }
+  // ------------------------------------------------------------------ settings search (T48)
+  // A box above the tabs: type 2+ letters, pick a result, and the screen opens the right tab, scrolls to that setting and lights it up for 2 seconds.
+  // The matching and ranking live in assets/js/settings-search-core.js (unit-tested); this part only draws the list and moves the screen.
+  var SSC = window.SettingsSearchCore, sIdx = null, sIdxSetup = null, sRes = [], sActive = -1;
+  function searchIndex() {
+    if (!SSC) return null;
+    if (!sIdx || sIdxSetup !== !!setup()) { sIdxSetup = !!setup(); sIdx = SSC.createIndex({ steps: S.STEPS, extraTabs: EXTRA_TABS, setup: sIdxSetup, isVisible: S.isVisible, get: S.get, set: S.set, display: S.display }); }
+    return sIdx;
+  }
+  function searchHtml() {
+    if (!SSC) return "";
+    return '<div class="og-search" role="search"><label class="sr-only" for="og-q">Search settings</label>' +
+      '<input id="og-q" type="search" role="combobox" aria-expanded="false" aria-controls="og-res" aria-autocomplete="list" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" placeholder="Search settings (try late fee, deposit, attendance)">' +
+      '<ul id="og-res" class="og-res" role="listbox" aria-label="Matching settings" hidden></ul><div id="og-sr" class="sr-only" aria-live="polite"></div></div>';
+  }
+  function resultHtml(r, i) {
+    var e = r.entry, name = e.kind === "tab" ? e.label + " (tab)" : e.label;
+    var line2 = SSC.trail(e);
+    var tail = r.hidden ? '<span class="og-res-hint">' + esc(r.hidden.action) + "</span>"
+      : (r.value && e.kind === "field" && e.field.type !== "note" ? '<span class="og-res-val">Now: ' + esc(r.value) + "</span>" : "");
+    return '<li id="og-res-' + i + '" role="option" aria-selected="false" data-i="' + i + '"><span class="og-res-name">' + esc(name) +
+      (r.soon ? '<span class="og-soon">Coming soon</span>' : "") + "</span>" + (line2 ? '<span class="og-res-trail">' + esc(line2) + "</span>" : "") + tail + "</li>";
+  }
+  function setActive(i) {
+    var ul = $("og-res"), q = $("og-q"); if (!ul) return;
+    sActive = i;
+    ul.querySelectorAll("li").forEach(function (li, k) { var on = k === i; li.classList.toggle("on", on); li.setAttribute("aria-selected", on ? "true" : "false"); if (on && li.scrollIntoView) li.scrollIntoView({ block: "nearest" }); });
+    if (i >= 0) q.setAttribute("aria-activedescendant", "og-res-" + i); else q.removeAttribute("aria-activedescendant");
+  }
+  function runSearch() {
+    var q = $("og-q"), ul = $("og-res"), ix = searchIndex(); if (!q || !ul || !ix) return;
+    var text = q.value; sRes = SSC.search(ix, text, st.draft, { limit: 8 }); sActive = -1; q.removeAttribute("aria-activedescendant");
+    var typed = text.trim().length >= SSC.MIN_CHARS;
+    ul.innerHTML = sRes.map(resultHtml).join("") || (typed ? '<li class="og-res-none" role="presentation">Nothing matches \u201c' + esc(text.trim()) + "\u201d. Try another word, like \u201cfee\u201d, \u201cinvoice\u201d or \u201cattendance\u201d.</li>" : "");
+    ul.hidden = !typed; q.setAttribute("aria-expanded", typed ? "true" : "false");
+    $("og-sr").textContent = !typed ? "" : sRes.length ? sRes.length + (sRes.length === 1 ? " setting found" : " settings found") : "No settings found";
+  }
+  function clearSearch() { var q = $("og-q"); if (!q) return; q.value = ""; runSearch(); }
+  function bindSearch() {
+    var q = $("og-q"), ul = $("og-res"); if (!q) return;
+    q.addEventListener("input", runSearch);
+    q.addEventListener("focus", function () { if (q.value.trim().length >= SSC.MIN_CHARS) runSearch(); });
+    q.addEventListener("keydown", function (e) {
+      var n = sRes.length;
+      if (e.key === "ArrowDown" && n) { e.preventDefault(); setActive(sActive < n - 1 ? sActive + 1 : 0); }
+      else if (e.key === "ArrowUp" && n) { e.preventDefault(); setActive(sActive > 0 ? sActive - 1 : n - 1); }
+      else if (e.key === "Enter") { e.preventDefault(); if (n) jumpTo(sRes[sActive >= 0 ? sActive : 0], true); }
+      else if (e.key === "Escape") { if (q.value || !ul.hidden) { e.preventDefault(); clearSearch(); } }
+    });
+    ul.addEventListener("mousedown", function (e) { e.preventDefault(); });                 // keep focus in the box while the list is used
+    ul.addEventListener("click", function (e) { var li = e.target.closest("li[data-i]"); if (li) jumpTo(sRes[+li.getAttribute("data-i")], false); });
+    document.addEventListener("click", function (e) { if (!e.target.closest(".og-search")) { var u = $("og-res"); if (u) { u.hidden = true; var qq = $("og-q"); if (qq) qq.setAttribute("aria-expanded", "false"); } } });
+  }
+  // r = a search result. A setting that is hidden right now sends you to the option that shows it (and says so).
+  function jumpTo(r, viaKey) {
+    var ix = searchIndex(), e = r.entry, note = "";
+    if (r.hidden && r.hidden.parentPath && ix.byPath[r.hidden.parentPath]) { e = ix.byPath[r.hidden.parentPath]; note = r.hidden.action + " \u2014 then \u201c" + r.entry.label + "\u201d shows up."; }
+    clearSearch();
+    if (st.step !== e.stepId) { st.step = e.stepId; history.replaceState(null, "", location.pathname + location.search + "#" + e.stepId); render(); }
+    var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var key = e.path || (e.kind === "group" ? "group:" + e.label : null);
+    var el = key ? $("og-body") && $("og-body").querySelector('[data-find="' + key.replace(/"/g, '\\"') + '"]') : null;
+    if (!el && e.kind === "item") el = findItem(e);
+    if (!el) el = $("og-body") && ($("og-body").querySelector(".og-card h2") || $("og-body"));
+    if (el) {
+      if (e.kind !== "tab" && $("og-body")) $("og-body").classList.add("og-pad");               // room under a short tab, so the setting can sit mid-screen, clear of the bottom bar
+      el.scrollIntoView({ block: e.kind === "tab" ? "start" : "center", behavior: reduce ? "auto" : "smooth" });
+      el.classList.remove("og-hit"); void el.offsetWidth; el.classList.add("og-hit");
+      setTimeout(function () { el.classList.remove("og-hit"); }, 2000);
+      if (viaKey) { var c = el.matches("input,select,textarea") ? el : el.querySelector("input,select,textarea"); if (c && !c.disabled && c.type !== "text" && c.type !== "email" && c.tagName !== "TEXTAREA") c.focus({ preventScroll: true }); else if (c && !c.disabled) c.focus({ preventScroll: true }); }
+    }
+    var sr = $("og-sr"); if (sr) sr.textContent = note || "Opened " + e.label;
+    if (note && window.TL && TL.toast) TL.toast(note);
+  }
+  // the hand-built tabs (Branches, Rooms, Terms, Holidays, Invite…) have no data-find: find their heading (or a CSS selector) by the entry's `find`
+  function findItem(e) {
+    var body = $("og-body"), f = e.find || ""; if (!body || !f) return null;
+    if (f.charAt(0) === ".") return body.querySelector(f);
+    var hs = body.querySelectorAll("h3");
+    for (var i = 0; i < hs.length; i++) if (hs[i].textContent.trim().indexOf(f) === 0) return hs[i];
+    return null;
+  }
+
   function go(step) { st.step = step; history.replaceState(null, "", location.pathname + location.search + "#" + step); render(); window.scrollTo(0, 0); }
 
   // ------------------------------------------------------------------ generic step
@@ -124,6 +234,7 @@
     bindFields(step);
     if (step.custom === "calendar") bindCalendar();
     if (step.custom === "users") bindUsers();
+    if (step.custom === "import" && canImport() && window.ImportPage) window.ImportPage.mount($("imp-root"), { orgId: st.org.id, getBillingStart: function () { return S.get(st.draft, "billing.starts_from") || ""; }, goBilling: function () { go("billing"); } });
     if (step.custom === "review") bindReview();
     bindNav(step);
   }
@@ -139,13 +250,14 @@
     var s = st.draft, v = f.path ? S.get(s, f.path) : undefined, id = f.path ? "f-" + f.path.replace(/\./g, "-") : "", lock = !isOwner() || f.soon;
     if (!S.isVisible(f, s)) return "";
     var soon = f.soon ? '<span class="og-soon">Coming soon</span>' : "";
+    var sk = ' data-find="' + esc(f.path || "group:" + f.label) + '"';                       // where the settings search scrolls to and highlights
     var help = f.help ? '<span class="og-help">' + esc(f.help) + "</span>" : "";
-    if (f.type === "group") return '<div class="og-group' + (f.soon ? " og-off" : "") + '"><h3>' + esc(f.label) + soon + "</h3>" + (f.help ? '<span class="og-help">' + esc(f.help) + "</span>" : "") + "</div>";
-    if (f.type === "note") return '<div class="og-note' + (f.soon ? " og-off" : "") + '">' + (f.label ? "<b>" + esc(f.label) + "</b>" + soon + "<br>" : "") + esc(f.help || "") + "</div>";
+    if (f.type === "group") return '<div class="og-group' + (f.soon ? " og-off" : "") + '"' + sk + '><h3>' + esc(f.label) + soon + "</h3>" + (f.help ? '<span class="og-help">' + esc(f.help) + "</span>" : "") + "</div>";
+    if (f.type === "note") return '<div class="og-note' + (f.soon ? " og-off" : "") + '"' + sk + '>' + (f.label ? "<b>" + esc(f.label) + "</b>" + soon + "<br>" : "") + esc(f.help || "") + "</div>";
     if (f.type === "toggle")
-      return '<label class="og-check' + (f.soon ? " og-off" : "") + '"><input type="checkbox" id="' + id + '" data-path="' + f.path + '"' + (v ? " checked" : "") + (lock ? " disabled" : "") + "> <span>" + esc(f.label) + soon + "</span></label>" + help;
+      return '<label class="og-check' + (f.soon ? " og-off" : "") + '"' + sk + '><input type="checkbox" id="' + id + '" data-path="' + f.path + '"' + (v ? " checked" : "") + (lock ? " disabled" : "") + "> <span>" + esc(f.label) + soon + "</span></label>" + help;
     if (f.type === "multi")
-      return '<div class="field"><label>' + esc(f.label) + "</label>" + f.options.map(function (op) {
+      return '<div class="field"' + sk + '><label>' + esc(f.label) + "</label>" + f.options.map(function (op) {
         var so = (f.soonOptions || []).indexOf(op[0]) > -1, on = (v || []).indexOf(op[0]) > -1;
         return '<label class="og-check' + (so ? " og-off" : "") + '"><input type="checkbox" data-multi="' + f.path + '" value="' + esc(op[0]) + '"' + (on ? " checked" : "") + (lock || so ? " disabled" : "") + "> <span>" + esc(op[1]) + (so ? '<span class="og-soon">Coming soon</span>' : "") + "</span></label>";
       }).join("") + "</div>" + help;
@@ -161,13 +273,13 @@
     } else {
       var shown = f.type === "money" ? (v == null ? "" : M.format(v, { symbol: false }).replace(/,/g, "")) : f.type === "percent" ? (v == null ? "" : String(v / 100))
         : f.type === "list" ? (v || []).join(", ") : (v == null ? "" : v);
-      var t = f.type === "email" ? "email" : f.type === "color" ? "color" : (f.type === "number" || f.type === "days") ? "number" : "text";
+      var t = f.type === "email" ? "email" : f.type === "color" ? "color" : f.type === "date" ? "date" : (f.type === "number" || f.type === "days") ? "number" : "text";
       var extra = (f.type === "money" || f.type === "percent") ? ' inputmode="decimal"' : t === "number" ? ' min="0" step="1"' : "";
       input = '<input id="' + id + '" type="' + t + '" data-path="' + f.path + '" data-type="' + f.type + '" value="' + esc(shown) + '"' + extra + (lock ? " disabled" : "") +
         (t === "color" ? ' style="height:44px;padding:4px"' : "") + ">";
     }
     var unit = f.type === "money" ? " (S$)" : f.type === "percent" ? " (%)" : "";
-    return '<div class="field' + (f.soon ? " og-off" : "") + '"><label for="' + id + '">' + esc(f.label) + unit + soon + "</label>" + input + "</div>" + help;
+    return '<div class="field' + (f.soon ? " og-off" : "") + '"' + sk + '><label for="' + id + '">' + esc(f.label) + unit + soon + "</label>" + input + "</div>" + help;
   }
   function readInput(el) {
     var t = el.getAttribute("data-type"), v = el.value.trim();
@@ -221,8 +333,13 @@
       if (S.get(st.draft, "billing.deposit.refund_approved_by") === "four_eyes" && !S.fourEyes(st.members).ready) {
         var fm = $("og-msg"); if (fm) { fm.textContent = S.fourEyes(st.members).reason; fm.className = "msg err"; } return false;
       }
-      var r = await sb().rpc("org_save_settings", { p_org: st.org.id, p_settings: st.draft, p_effective_from: effective });
-      if (r.error) { $("og-msg").textContent = String(r.error.message || "").replace(/^FOUR_EYES_UNAVAILABLE: /, ""); $("og-msg").className = "msg err"; return false; }
+      var plan = S.savePlan(st.saved, st.inForce, st.draft, todayISO(), setup());
+      if (!plan.length) plan = [{ settings: st.draft, effective: effective }];
+      for (var pi = 0; pi < plan.length; pi++) {
+        var r = await sb().rpc("org_save_settings", { p_org: st.org.id, p_settings: plan[pi].settings, p_effective_from: plan[pi].effective });
+        if (r.error) { $("og-msg").textContent = String(r.error.message || "").replace(/^FOUR_EYES_UNAVAILABLE: /, ""); $("og-msg").className = "msg err"; return false; }
+      }
+      if (plan[0].effective <= todayISO()) st.inForce = S.withDefaults(JSON.parse(JSON.stringify(plan[0].settings)), st.org.preset);
       var p = st.draft.profile;     // keep the organisation's own columns in step with the profile
       var u = await sb().from("organisations").update({ trading_name: p.trading_name, legal_name: p.legal_name || null, uen: p.uen || null,
         address: p.address || null, brand_color: p.brand_color || null, reply_to_email: p.reply_to_email || null }).eq("id", st.org.id).select("*").single();
@@ -245,11 +362,11 @@
       if (ok) go(S.STEPS[idx + 1].id);
     };
     if ($("og-save")) $("og-save").onclick = async function () {
-      var eff = S.effectiveFrom(st.saved, st.draft, todayISO());
+      var pl = S.savePlan(st.saved, st.inForce, st.draft, todayISO(), setup()), eff = pl.length ? pl[pl.length - 1].effective : todayISO();
       $("og-save").disabled = true;
       var ok = await saveSettings(eff);
       $("og-save").disabled = false;
-      if (ok) { $("og-msg").textContent = eff === todayISO() ? "Saved ✓" : "Saved ✓ — applies from " + prettyDate(eff) + " (next billing cycle)"; $("og-msg").className = "msg ok"; }
+      if (ok) { $("og-msg").textContent = eff === todayISO() ? "Saved ✓" : pl.length > 1 ? "Saved ✓ — billing changes apply from " + prettyDate(eff) + " (next billing cycle), the rest today" : "Saved ✓ — applies from " + prettyDate(eff) + " (next billing cycle)"; $("og-msg").className = "msg ok"; }
     };
     if ($("og-launch")) $("og-launch").onclick = async function () {
       var e = S.validate(st.draft);
@@ -303,9 +420,10 @@
     return out + (none.length ? '<p class="og-help">' + esc(none.join(" · ")) + ".</p>" : "");
   }
   async function libWrite(fn) {
-    if (st.libBusy) return; st.libBusy = true;
-    try { await fn(); await loadSide(); } catch (e) { TL.alert(e.message || String(e)); try { await loadSide(); } catch (e2) {} }
+    if (st.libBusy) return; st.libBusy = true; var out;
+    try { out = await fn(); await loadSide(); } catch (e) { TL.alert(e.message || String(e)); try { await loadSide(); } catch (e2) {} }
     st.libBusy = false; var y = window.scrollY; renderStep(S.STEPS[1]); window.scrollTo(0, y);
+    return out;
   }
   function bindLibrary() {
     var body = $("og-body");
@@ -315,21 +433,24 @@
         libWrite(async function () {
           var mt = HL.match(st.holidays, h);
           if (cb.checked) {
-            if (mt) return; // already has a row for that day: never double up
-            var r = await sb().from("holidays").insert(Object.assign({ org_id: st.org.id }, HL.toRow(h))); if (r.error) throw r.error;
+            if (mt) return null; // already has a row for that day: never double up
+            var row = HL.toRow(h), r = await sb().from("holidays").insert(Object.assign({ org_id: st.org.id }, row)); if (r.error) throw r.error;
+            return [{ name: row.name, a: row.starts_on, b: row.ends_on }];
           } else if (mt && mt.exact) {
             var d = await sb().from("holidays").delete().eq("id", mt.row.id); if (d.error) throw d.error;
           }
-        });
+          return null;
+        }).then(function (items) { if (items) return offerHolidayCancel(items); });
       };
     });
     body.querySelectorAll("[data-hsel]").forEach(function (b) {
       b.onclick = function () {
         var y = +b.getAttribute("data-hsel");
         libWrite(async function () {
-          await loadSide(); var rows = HL.toTick(st.holidays, st.lib, y); if (!rows.length) return;
+          await loadSide(); var rows = HL.toTick(st.holidays, st.lib, y); if (!rows.length) return null;
           var r = await sb().from("holidays").insert(rows.map(function (x) { return Object.assign({ org_id: st.org.id }, x); })); if (r.error) throw r.error;
-        });
+          return rows.map(function (x) { return { name: x.name, a: x.starts_on, b: x.ends_on }; });
+        }).then(function (items) { if (items) return offerHolidayCancel(items); });
       };
     });
     body.querySelectorAll("[data-hclr]").forEach(function (b) {
@@ -355,22 +476,31 @@
   // (T3.9) After a holiday is added by hand: offer to cancel the lessons already on those days. The database counts first (a dry run), and only
   // lessons nobody has marked, paid or invoiced can be cancelled, with no charge. Anything unexpected (older database, no permission, nothing to
   // cancel) stays silent: the holiday is saved either way.
+  // items = [{name, a, b}]: one question for all of them (a library tick is one holiday, "Select all" is many). The counts are added up first.
   async function offerHolidayCancel(name, a, b) {
-    if (!st.org || st.org.kind !== "centre") return;
-    var args = { p_org: st.org.id, p_from: a, p_to: b, p_name: name };
-    var d = await sb().rpc("staff_holiday_cancel", Object.assign({ p_dry: true }, args));
-    var n = d.data && Number(d.data.cancel) || 0, kept = d.data && Number(d.data.kept) || 0;
-    if (d.error || !n) return;
-    var one = n === 1;
-    var yes = await TL.confirm({ title: "Also cancel " + (one ? "the lesson" : n + " lessons") + " already on " + (a === b ? "that day" : "those days") + "?",
-      message: n + (one ? " lesson is" : " lessons are") + " already planned on the days of " + name + ". They would be cancelled with no charge." +
+    var items = Array.isArray(name) ? name : [{ name: name, a: a, b: b }];
+    if (!st.org || st.org.kind !== "centre" || !items.length) return;
+    var n = 0, kept = 0, hit = [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i], d = await sb().rpc("staff_holiday_cancel", { p_org: st.org.id, p_from: it.a, p_to: it.b, p_name: it.name, p_dry: true });
+      var c = d.data && Number(d.data.cancel) || 0;
+      if (d.error) return;
+      n += c; kept += d.data && Number(d.data.kept) || 0; if (c) hit.push(it);
+    }
+    if (!n) return;
+    var one = n === 1, single = items.length === 1;
+    var yes = await TL.confirm({ title: "Also cancel " + (one ? "the lesson" : n + " lessons") + " already on " + (single && items[0].a === items[0].b ? "that day" : "those days") + "?",
+      message: n + (one ? " lesson is" : " lessons are") + " already planned on the days of " + (single ? items[0].name : "these holidays") + ". They would be cancelled with no charge." +
         (kept ? " " + kept + (kept === 1 ? " lesson stays" : " lessons stay") + " because " + (kept === 1 ? "it is" : "they are") + " marked, paid or invoiced." : "") +
         " Lessons in the past are never changed.", confirmText: "Cancel the lesson" + (one ? "" : "s"), cancelText: "Keep them" });
     if (!yes) return;
-    var r = await sb().rpc("staff_holiday_cancel", Object.assign({ p_dry: false }, args));
-    if (r.error) return TL.alert("The holiday is saved, but the lessons could not be cancelled: " + r.error.message);
-    var c = Number(r.data && r.data.cancel) || 0;
-    TL.toast(c + (c === 1 ? " lesson" : " lessons") + " cancelled with no charge.", "ok");
+    var done = 0;
+    for (var j = 0; j < hit.length; j++) {
+      var r = await sb().rpc("staff_holiday_cancel", { p_org: st.org.id, p_from: hit[j].a, p_to: hit[j].b, p_name: hit[j].name, p_dry: false });
+      if (r.error) return TL.alert("The holiday is saved, but the lessons could not be cancelled: " + r.error.message);
+      done += Number(r.data && r.data.cancel) || 0;
+    }
+    TL.toast(done + (done === 1 ? " lesson" : " lessons") + " cancelled with no charge.", "ok");
   }
   function bindCalendar() {
     var body = $("og-body"); if (st.lib && HL) bindLibrary();
@@ -538,11 +668,11 @@
     box.hidden = false; btn.hidden = true; timer = setTimeout(hide, 30000);   // closes by itself after 30 seconds
   }
 
-  // ------------------------------------------------------------------ step 9: import (coming soon)
+  // ------------------------------------------------------------------ step 9: import (templates, check, import, undo, history: assets/js/import-page.js)
   function importHtml() {
-    return '<div class="og-note og-off"><b>CSV import</b><span class="og-soon">Coming soon</span><br>Templates for tutors, students (level, subjects, class, fee plan), parents and households, and classes. ' +
-      "Every row is checked first and errors are shown line by line; nothing is saved until the whole file passes.</div>" +
-      '<p class="og-sub" style="margin:0">You can skip this step and add people by hand.</p>';
+    if (!canImport()) return '<p class="og-sub" style="margin:0">Only the owner of a centre imports data.</p>';
+    return '<p class="og-sub">Bring in your families, students, tutors and weekly lessons from your own sheets. Every row is checked first and problems are listed line by line. ' +
+      'You can skip this step and add people by hand.</p><div id="imp-root"></div>';
   }
 
   // ------------------------------------------------------------------ step 10: review + test documents
@@ -554,7 +684,7 @@
       });
       if (x.id === "calendar") rows.unshift("<tr><td>Branches / terms / holidays</td><td>" + st.branches.length + " / " + st.terms.length + " / " + st.holidays.length + "</td></tr>");
       if (x.id === "users") rows.push("<tr><td>People</td><td>" + st.members.length + "</td></tr>");
-      if (x.id === "import") rows.push("<tr><td>CSV import</td><td>Coming soon</td></tr>");
+      if (x.id === "import") rows.push("<tr><td>CSV import</td><td>Optional. Also in Settings, Import.</td></tr>");
       return '<div class="og-sum-h"><h3>' + x.n + ". " + esc(x.title) + '</h3><button class="og-link" data-goto="' + x.id + '">Edit</button></div><table class="og-sum"><tbody>' + rows.join("") + "</tbody></table>";
     }).join("");
     return (errs.length ? '<p class="msg err">' + esc(errs.join(" ")) + "</p>" : "") + sum +
@@ -638,6 +768,9 @@
       }).join("") + "</tbody></table>" : '<p class="og-sub" style="margin:0">Your first monthly count appears here after your first full month.</p>');
   }
 
+  // ------------------------------------------------------------------ Data export (T35-E): owner only, everything lives in assets/js/org-export.js
+  function tabExport() { window.OrgExport.render({ el: $("og-body"), org: st.org, isOwner: isOwner(), sb: sb(), members: st.members }); }
+
   // ------------------------------------------------------------------ Audit log
   async function tabAudit() {
     $("og-body").innerHTML = '<section class="card og-card"><h2>Audit log</h2><p class="og-sub">Who changed what: settings, people, students, lessons and invoices. It can’t be edited or deleted.</p><div id="au" class="muted">Loading…</div></section>';
@@ -648,7 +781,7 @@
     var T = { organisations: "Organisation", memberships: "Person", org_settings: "Settings", org_plans: "Plan", support_access_grants: "Support access",
       branches: "Branch", rooms: "Room", terms: "Term", holidays: "Holiday", households: "Family", guardians: "Parent", students: "Student",
       recurring_slots: "Weekly slot", lessons: "Lesson", invoices: "Invoice" };
-    var A = { insert: "added", update: "changed", delete: "removed", migrate: "set up" };
+    var A = { insert: "added", update: "changed", delete: "removed", migrate: "set up", org_export_started: "started a data export", org_export_finished: "finished a data export", org_export_payout_full: "asked for full payout numbers in a data export" };
     function what(a) {
       var x = a.after || a.before || {};
       if (a.table_name === "org_settings") return "version " + x.version + (x.effective_from ? " from " + prettyDate(x.effective_from) : "");

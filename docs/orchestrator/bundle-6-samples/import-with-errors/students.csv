@@ -1,0 +1,9 @@
+student_ref,family_ref,student_name,level,lesson_location,online_link,start_date,notes
+S0001,F9999,Fanah Tan,P4,Online,,2026-02-11,
+S0002,F0002,Midol Bak,S4,Centre,,2026-07-26,
+S0003,F0003,Ianaa Tam,JC2,Online,https://meet.example.test/s3,2025-10-10,
+S0004,F0004,Rales Pek,JC1,Centre,,31/02/2026,
+S0005,F0004,Keral Pek,S2,Online,,2026-08-28,
+S0006,F0005,Kakey Sang,P1,Centre,https://meet.example.test/s6,2026-06-21,
+S0007,F0006,Evleh Cho,JC2,Online,https://meet.example.test/s7,2026-09-21,
+S0008,F0007,Lunil Zhw,S5,Online,,2025-03-13,

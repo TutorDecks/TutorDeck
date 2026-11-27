@@ -8,6 +8,10 @@ const SQL = fs.readFileSync(require.resolve("../db/migration_org_foundation.sql"
 const MONEY = fs.readFileSync(require.resolve("../db/migration_money_settings.sql"), "utf8");   // T4 S0: the replacement validator
 const field = (path) => S.STEPS.flatMap((s) => s.fields).find((f) => f.path === path);
 const MOVES = fs.readFileSync(require.resolve("../db/migration_tutor_moves.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
+const LINKP = fs.readFileSync(require.resolve("../db/migration_tutor_link_propose.sql"), "utf8");   // T6 steps 5-6: the validator that also knows request_expiry_days
+const OWN = fs.readFileSync(require.resolve("../db/migration_tutor_own_lessons.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
+const CREDITS = fs.readFileSync(require.resolve("../db/migration_makeup_credits.sql"), "utf8");   // T18 step 4: the validator that knows the make-up credit options   // T6 step 2: the validator that knows the tutor-editing options
+const PAST = fs.readFileSync(require.resolve("../db/migration_past_lessons.sql"), "utf8");   // T3.10: the validator that knows lessons.backfill_allowed_days
 const PAYOUT_SQL = fs.readFileSync(require.resolve("../db/migration_payout_permission.sql"), "utf8");
 
 test("defaults are valid once named, for both presets", () => {
@@ -83,15 +87,16 @@ test("stored older settings gain new keys without losing values", () => {
   assert.deepEqual(s.payments.modes, ["manual_paynow"]);
 });
 
-test("settings nothing reads yet are marked soon, with help text (T18a)", () => {
+test("settings nothing reads yet are marked soon, with help text (T18a, updated by T18 step 4)", () => {
   const fields = {};
   S.STEPS.forEach((st) => st.fields.forEach((f) => { fields[f.path] = f; }));
-  const credit = "Make-up credits come in a later update; for now a make-up is added as a normal lesson.";
-  for (const p of ["billing.makeups.allowed", "billing.makeups.per_period", "billing.makeups.uses_credit",
-    "billing.low_balance_credits", "billing.credit_expiry_days"]) {
-    assert.equal(fields[p].soon, true, p + " must be soon");
-    assert.equal(fields[p].help, credit, p);
-  }
+  // still unbuilt: prepaid-package warnings and the per-period limit (the make-up credit options themselves are built: see the T18-4 tests below)
+  assert.equal(fields["billing.low_balance_credits"].soon, true);
+  assert.equal(fields["billing.low_balance_credits"].help, "Warnings and limits for prepaid packages come in a later update.");
+  assert.equal(fields["billing.makeups.per_period"].soon, true);
+  assert.match(fields["billing.makeups.per_period"].help, /later update/);
+  // the two old toggles are replaced by the credit options and are no longer offered
+  assert.ok(!fields["billing.makeups.allowed"] && !fields["billing.makeups.uses_credit"], "the old makeup toggles are gone from the form");
   // built in T3 step 7: staff_generate_lessons skips whole-centre holidays when this is on (SQL tests: staff_slots_test.sql), so it is no longer "soon"
   assert.ok(!fields["calendar.skip_holidays"].soon);
   assert.match(fields["calendar.skip_holidays"].help, /Create lessons/);
@@ -138,12 +143,14 @@ test("T4 S0: every new yes/no and number has the same limits in the form and in 
 test("T4 S0/S4/S6: trial, percentage-pay and the unbuilt deposit options are 'coming soon' until their step ships (honesty)", () => {
   const soonPaths = ["billing.trials.charged",
     "billing.deposit.top_up",
-    "billing.deposit.set_off_unpaid", "billing.deposit.final_month",
-    "tutor_pay.percent_base", "tutor_pay.part_payments", "tutor_pay.cancelled_lessons", "tutor_pay.group_count", "tutor_pay.rates_note"];
+    "billing.deposit.set_off_unpaid", "billing.deposit.final_month"];
   for (const p of soonPaths) assert.equal(field(p).soon, true, p + " must be soon");
-  assert.ok(field("tutor_pay.rate_model").soonOptions.includes("percent_of_fee"));
+  // T4 S7: tutor rates, the pay list, percentage pay, held-until-paid and adjustments are built; bank-file payout is not (tutors seeing their own pay: S7b, below)
+  for (const p of ["tutor_pay.mode", "tutor_pay.payable_when", "tutor_pay.rate_model", "tutor_pay.percent_base", "tutor_pay.part_payments", "tutor_pay.cancelled_lessons",
+    "tutor_pay.group_count", "tutor_pay.rates_note", "tutor_pay.adjustments", "tutor_pay.cycle.cutoff_day", "tutor_pay.cycle.pay_day", "tutor_pay.tutors_see_own_pay"]) assert.ok(!field(p).soon, p + " is built in S7 / S7b");
+  for (const k of ["mode", "rate_model", "part_payments"]) assert.ok(!(field("tutor_pay." + k).soonOptions || []).length, "tutor_pay." + k + " has no unbuilt option left");
+  assert.deepEqual(field("tutor_pay.payout_method").soonOptions, ["bank_file"], "only the manual list is built; the bank file waits for the owner's bank");
   assert.ok(field("billing.deposit.due").soonOptions.includes("before_first_lesson"));
-  assert.ok(field("tutor_pay.part_payments").soonOptions.includes("pro_rata"));
   // the sub-headings carry the same badge and say what is missing (the deposit heading is live from S4: it says what is still to come)
   for (const g of S.STEPS.flatMap((s) => s.fields).filter((f) => f.type === "group")) { if (g.label !== "Refundable deposit" && g.label !== "Late fees") assert.equal(g.soon, true, g.label); assert.match(g.help, /later update/); }
   // T4 S6: every late-fee option is built (proposals a person approves or waives); only "a line on the next invoice" is still to come
@@ -253,7 +260,7 @@ test("T6.2: 'who edits the timetable' has the same values in the form and in the
   assert.deepEqual(f.options.map((x) => x[0]).sort(), sqlVals(/\{lessons,timetable_editing\}' not in \(([^)]*)\)/));
   assert.deepEqual(f.options.map((x) => x[0]).sort(), ["admin_only", "tutors_direct", "tutors_propose"]);
   assert.ok(!f.options.some((x) => x[0] === "tutors_own"), "tutors_own is renamed");
-  assert.deepEqual(f.soonOptions, ["tutors_propose"], "only asking-for-approval is still coming soon");
+  assert.ok(!(f.soonOptions || []).length, "T6.4: asking-for-approval is built, so nothing in the list is marked soon");
   assert.equal(S.get(S.defaults("centre"), "lessons.timetable_editing"), "admin_only");
   assert.equal(S.get(S.defaults("solo"), "lessons.timetable_editing"), "admin_only");
 });
@@ -265,19 +272,49 @@ test("T6.2: notify_family has the same values in the form and in the database, d
   assert.ok(!field("lessons.notify_family").soon && !(field("lessons.notify_family").soonOptions || []).length, "the in-app list is built, so nothing here is marked soon");
 });
 
-test("T6.2: the six switches: postpone and cancel are built, the other four are coming soon; every switch is a yes/no in the database", () => {
+test("T6.2: the six switches: all built by T6.4; every switch is a yes/no in the database", () => {
   const sw = ["postpone", "cancel", "weekly_slots", "generate", "one_off", "link"];
   for (const k of sw) {
     assert.ok(MOVES.includes("'{lessons,tutors_edit," + k + "}'"), k + " is validated in the migration");
     assert.equal(typeof S.get(S.defaults(), "lessons.tutors_edit." + k), "boolean", k);
   }
-  for (const k of ["postpone", "cancel"]) assert.ok(!field("lessons.tutors_edit." + k).soon, k + " is built");
-  for (const k of ["weekly_slots", "generate", "one_off", "link"]) assert.equal(field("lessons.tutors_edit." + k).soon, true, k + " must be soon");
+  for (const k of sw) assert.ok(!field("lessons.tutors_edit." + k).soon, k + " is built");
   // the defaults the form starts from are the ones the database assumes for a missing key (postpone on, cancel off)
   assert.equal(S.get(S.defaults(), "lessons.tutors_edit.postpone"), true);
   assert.equal(S.get(S.defaults(), "lessons.tutors_edit.cancel"), false);
   assert.match(MOVES, /tutors_edit,postpone\}'\)::boolean, true\)/);
   assert.match(MOVES, /tutors_edit,cancel\}'\)::boolean, false\)/);
+});
+
+test("T6.3: one_off, weekly_slots and generate are built, off by default in the form AND in the database, and each is a yes/no the validator already checks", () => {
+  for (const k of ["one_off", "weekly_slots", "generate"]) {
+    assert.equal(S.get(S.defaults(), "lessons.tutors_edit." + k), false, k + " starts off in the form");
+    assert.ok(!field("lessons.tutors_edit." + k).soon, k + " is built");
+    assert.ok(MOVES.includes("'{lessons,tutors_edit," + k + "}'"), k + " is validated");
+  }
+  assert.match(OWN, /\(cfg #>> array\['lessons', 'tutors_edit', p_switch\]\)::boolean, false\)/, "a missing switch means off in the database too");
+  for (const k of ["one_off", "weekly_slots", "generate"]) assert.ok(OWN.includes("'" + k + "'"), k + " is read by the new functions");
+  assert.ok(!field("lessons.tutors_edit.link").soon, "T6.4: the online link switch is built");
+  assert.equal(S.get(S.defaults(), "lessons.tutors_edit.link"), false, "and off by default");
+  assert.match(LINKP, /'link'\) then 'set the online lesson link'|when 'link' then 'set the online lesson link'/, "the database knows the link switch");
+  assert.match(LINKP, /p_switch not in \('one_off', 'weekly_slots', 'generate', 'link'\)/, "and reads it like the others");
+});
+
+test("T6.4: request_expiry_days is the same in the form and in the database (1-90, default 14), shown only when tutors ask", () => {
+  assert.equal(S.get(S.defaults(), "lessons.request_expiry_days"), 14);
+  assert.match(LINKP, /\{lessons,request_expiry_days\}/);
+  assert.match(LINKP, /between 1 and 90/);
+  assert.match(LINKP, /request_expiry_days\}'\)::int, 14\)/, "the database default is the form default");
+  const sFor = (mode) => { const s = S.defaults("centre"); s.lessons.timetable_editing = mode; return s; };
+  assert.equal(S.isVisible(field("lessons.request_expiry_days"), sFor("admin_only")), false);
+  assert.equal(S.isVisible(field("lessons.request_expiry_days"), sFor("tutors_direct")), false, "direct centres have no requests");
+  assert.equal(S.isVisible(field("lessons.request_expiry_days"), sFor("tutors_propose")), true);
+  const ok = () => { const s = S.defaults(); s.profile.trading_name = "T"; return s; };
+  for (const v of [0, 91, -1, 1.5]) { const s = ok(); s.lessons.request_expiry_days = v; assert.match(S.validate(s).join(" | "), /A request must wait 1.90 days/, String(v)); }
+  for (const v of [1, 14, 90]) { const s = ok(); s.lessons.request_expiry_days = v; assert.deepEqual(S.validate(s), [], String(v)); }
+  const old = S.withDefaults({ schema_version: 1, preset: "centre", profile: { trading_name: "Old" }, lessons: { timetable_editing: "tutors_propose" } });
+  assert.equal(old.lessons.request_expiry_days, 14, "settings saved before this load with 14 days");
+  assert.ok(!(field("lessons.request_expiry_days").soon), "built, not soon");
 });
 
 test("T6.2: the limits are the same in the form and in the database, and the defaults are the owner's (24 hours, no limit)", () => {
@@ -310,4 +347,212 @@ test("T6.2: the switches and limits show only when tutors may change lessons; se
   assert.equal(old.lessons.timetable_editing, "admin_only"); assert.equal(old.lessons.min_notice_hours, 24); assert.equal(old.lessons.tutors_edit.postpone, true);
   assert.deepEqual(S.validate(old), []);
   assert.equal(S.effectiveFrom(S.defaults(), Object.assign(S.defaults(), { lessons: Object.assign({}, S.defaults().lessons, { timetable_editing: "tutors_direct" }) }), "2026-11-26"), "2026-11-26", "a process rule applies today");
+});
+// ---------------------------------------------------------------- T33 I1: "billing starts from"
+test("billing.starts_from: in the wizard, empty by default, validated like the database", () => {
+  const f = S.STEPS.flatMap((s) => s.fields).find((x) => x.path === "billing.starts_from");
+  assert.ok(f && f.type === "date" && !f.soon, "a real (not 'soon') date field in the billing step");
+  assert.equal(S.STEPS.find((st) => st.fields.includes(f)).id, "billing");
+  assert.equal(S.defaults("centre").billing.starts_from, "");
+  assert.equal(S.defaults("solo").billing.starts_from, "");
+  const mk = (v) => { const s = S.defaults(); s.profile.trading_name = "X"; s.billing.starts_from = v; return S.validate(s); };
+  assert.deepEqual(mk(""), []); assert.deepEqual(mk("2026-12-01"), []); assert.deepEqual(mk("2020-01-01"), []); assert.deepEqual(mk("2100-01-01"), []);
+  for (const bad of ["2026-13-01", "2026-02-30", "01/12/2026", "2026-1-1", "tomorrow", 20261201, "2019-12-31", "2100-01-02"]) assert.ok(mk(bad).some((m) => /Billing starts from/.test(m)), "refused: " + bad);
+  // the database refuses the same values (migration_import.sql, org_validate_settings)
+  const sql = fs.readFileSync(require.resolve("../db/migration_import.sql"), "utf8");
+  assert.match(sql, /\{billing,starts_from\}/); assert.match(sql, /2020-01-01/); assert.match(sql, /2100-01-01/);
+  assert.match(sql, /\^\[0-9\]\{4\}-\[0-9\]\{2\}-\[0-9\]\{2\}\$/);
+});
+test("billing.starts_from is a billing setting: a change applies from the next cycle, never back-dated", () => {
+  const a = S.defaults(); a.profile.trading_name = "X"; const b = JSON.parse(JSON.stringify(a)); b.billing.starts_from = "2026-12-01";
+  assert.equal(S.effectiveFrom(a, b, "2026-11-23"), "2026-12-01");
+  assert.equal(S.display({ type: "date" }, ""), "—"); assert.equal(S.display({ type: "date" }, "2026-12-01"), "2026-12-01");
+});
+test("the migration's settings check keeps every other rule of the original (nothing was loosened)", () => {
+  const sql = fs.readFileSync(require.resolve("../db/migration_import.sql"), "utf8"), orig = SQL;
+  for (const re of [/\{billing,model\}' not in \(([^)]*)\)/, /\{tutor_pay,mode\}' not in \(([^)]*)\)/, /\{tutor_pay,payable_when\}' not in \(([^)]*)\)/, /\{invoicing,grouping\}' not in \(([^)]*)\)/,
+                    /\{lessons,attendance_by\}' not in \(([^)]*)\)/, /\{lessons,cancellations_marked_by\}' not in \(([^)]*)\)/, /\{lessons,compensation_entered_by\}' not in \(([^)]*)\)/, /\{lessons,trials_flagged_by\}' not in \(([^)]*)\)/, /\{payments,modes\}' \?\| array\[([^\]]*)\]/])
+    assert.equal((sql.match(re) || [])[1], (orig.match(re) || [])[1], String(re));
+});
+// ---------------------------------------------------------------------------------------------------- T34: bank statement matching options
+const STMT = fs.readFileSync(require.resolve("../db/migration_statement_matching.sql"), "utf8");
+test("T34: the statement options have the same values and limits in the form and in db/migration_statement_matching.sql", () => {
+  const enumOf = (key) => { const m = STMT.match(new RegExp("\\{" + key + "\\}' not in \\(([^)]*)\\)")); assert.ok(m, key + " is checked in the migration"); return m[1].match(/'([A-Za-z_]+)'/g).map((x) => x.slice(1, -1)).sort(); };
+  assert.deepEqual(field("payments.statement.auto_confirm").options.map((o) => o[0]).sort(), enumOf("payments,statement,auto_confirm"));
+  assert.deepEqual(field("payments.statement_bank").options.map((o) => o[0]).sort(), enumOf("payments,statement_bank"));
+  assert.ok(STMT.includes("between 0 and 30") && STMT.includes("between 0 and 365"), "the two windows have the limits 0-30 and 0-365 in the migration");
+  const d = S.defaults();
+  assert.equal(d.payments.statement.auto_confirm, "exact_only", "default: the plan's recommendation");
+  assert.equal(d.payments.statement.window_before_days, 7); assert.equal(d.payments.statement.window_after_days, 90);
+  assert.equal(d.payments.statement_bank, "custom", "the default bank is the one that works");
+  assert.ok(field("payments.statement.auto_confirm").options.some((o) => o[0] === d.payments.statement.auto_confirm));
+});
+
+test("T34: statement matching is switched on only where it works: custom columns yes, the three banks 'coming soon'", () => {
+  assert.ok(!(field("payments.modes").soonOptions || []).includes("statement_matching"), "matching itself is built");
+  assert.deepEqual(field("payments.statement_bank").soonOptions.sort(), ["DBS", "OCBC", "UOB"]);
+  assert.ok(!field("payments.statement_bank").soon, "the field is live (custom works)");
+  assert.ok(!field("payments.statement_bank").soonOptions.includes(S.defaults().payments.statement_bank), "the default is not a 'coming soon' option");
+  for (const p of ["payments.statement.auto_confirm", "payments.statement.window_before_days", "payments.statement.window_after_days"]) assert.ok(!field(p).soon, p + " is built");
+  const s = S.defaults(); assert.equal(field("payments.statement.auto_confirm").show(s), false, "hidden while matching is not switched on");
+  s.payments.modes = ["manual_paynow", "statement_matching"]; assert.equal(field("payments.statement.auto_confirm").show(s), true);
+});
+
+test("T34: every value of the statement options is accepted and a wrong one refused (the form's twin of org_validate_settings)", () => {
+  const ok = () => { const s = S.defaults(); s.profile.trading_name = "T"; return s; };
+  for (const v of ["exact_only", "never"]) { const s = ok(); s.payments.statement.auto_confirm = v; assert.deepEqual(S.validate(s), [], v); }
+  for (const v of [0, 30]) { const s = ok(); s.payments.statement.window_before_days = v; assert.deepEqual(S.validate(s), [], "before " + v); }
+  for (const v of [0, 365]) { const s = ok(); s.payments.statement.window_after_days = v; assert.deepEqual(S.validate(s), [], "after " + v); }
+  const bad = (mut, want) => { const s = ok(); mut(s); assert.match(S.validate(s).join(" | "), want); };
+  bad((s) => { s.payments.statement.auto_confirm = "always"; }, /Pick how matched payments are confirmed/);
+  bad((s) => { s.payments.statement.window_before_days = 31; }, /0–30/); bad((s) => { s.payments.statement.window_before_days = -1; }, /0–30/);
+  bad((s) => { s.payments.statement.window_after_days = 366; }, /0–365/); bad((s) => { s.payments.statement.window_after_days = 1.5; }, /0–365/);
+  const old = ok(); delete old.payments.statement; assert.deepEqual(S.validate(old), [], "settings saved before this still pass");
+});
+
+// ---------------------------------------------------------------- family emails (T7.3)
+const EMAIL_SQL = fs.readFileSync(require.resolve("../db/migration_invoice_email.sql"), "utf8");
+test("email options: every value of every option is in the wizard and in the database validator", () => {
+  const f = (p) => field(p);
+  assert.deepEqual(f("email.mode").options.map((o) => o[0]).sort(), ["auto_on_issue", "off", "staff_send"]);
+  assert.match(EMAIL_SQL, /s#>>'\{email,mode\}' not in \('off','staff_send','auto_on_issue'\)/);
+  for (const p of ["email.receipts", "email.late_fee_notice", "email.reminders.enabled"]) assert.equal(f(p).type, "toggle", p);
+  for (const p of ["email.reminders.first_after_days", "email.reminders.repeat_days", "email.reminders.max_count", "email.daily_cap", "email.per_hour"]) assert.ok(f(p), p);
+  for (const k of ["invoice", "receipt", "reminder", "late_fee"]) { assert.equal(f("email.templates." + k + ".subject").type, "text"); assert.equal(f("email.templates." + k + ".body").type, "textarea"); }
+  assert.ok(!f("invoicing.delivery.email") && !f("invoicing.reminders.enabled"), "the old 'coming soon' placeholders are gone");
+  for (const p of ["email.mode", "email.receipts", "email.reminders.enabled", "email.daily_cap", "email.templates.invoice.body"]) assert.ok(!f(p).soon, p + " is built, so it is not marked soon");
+});
+test("email options: defaults are OFF, valid, and the other options are hidden until email is switched on", () => {
+  const s = S.defaults("centre"); s.profile.trading_name = "X";
+  assert.equal(s.email.mode, "off"); assert.deepEqual(S.validate(s), []);
+  assert.ok(!S.isVisible(field("email.receipts"), s) && !S.isVisible(field("email.daily_cap"), s) && S.isVisible(field("email.mode"), s));
+  s.email.mode = "staff_send";
+  assert.ok(S.isVisible(field("email.receipts"), s) && S.isVisible(field("email.daily_cap"), s) && !S.isVisible(field("email.reminders.first_after_days"), s));
+  s.email.reminders.enabled = true;
+  assert.ok(S.isVisible(field("email.reminders.first_after_days"), s) && S.isVisible(field("email.reminders.max_count"), s));
+  for (const mode of ["off", "staff_send", "auto_on_issue"]) { const t = S.defaults("centre"); t.profile.trading_name = "X"; t.email.mode = mode; assert.deepEqual(S.validate(t), [], mode); }
+});
+test("email options: the same ranges as the database (both edges), wording rules, and the link requirement", () => {
+  const bad = (mutate) => { const s = S.defaults("centre"); s.profile.trading_name = "X"; s.email.mode = "staff_send"; mutate(s); return S.validate(s).join(" | "); };
+  for (const [path, lo, hi] of [["first_after_days", 1, 90], ["repeat_days", 0, 90], ["max_count", 1, 10]]) {
+    assert.equal(bad((s) => { s.email.reminders[path] = lo; }), "", path + " low edge"); assert.equal(bad((s) => { s.email.reminders[path] = hi; }), "", path + " high edge");
+    assert.notEqual(bad((s) => { s.email.reminders[path] = lo - 1; }), "", path + " below"); assert.notEqual(bad((s) => { s.email.reminders[path] = hi + 1; }), "", path + " above");
+  }
+  for (const p of ["daily_cap", "per_hour"]) { assert.equal(bad((s) => { s.email[p] = 1; }), ""); assert.equal(bad((s) => { s.email[p] = 300; }), ""); assert.notEqual(bad((s) => { s.email[p] = 0; }), ""); assert.notEqual(bad((s) => { s.email[p] = 301; }), ""); }
+  assert.match(bad((s) => { s.email.mode = "sometimes"; }), /pick an option/);
+  assert.match(bad((s) => { s.email.receipts = "yes"; }), /yes or no/);
+  assert.match(bad((s) => { s.email.templates.invoice.body = "Hi {nam}"; }), /can only use/);
+  assert.match(bad((s) => { s.email.templates.receipt.subject = "x".repeat(121); }), /too long/);
+  assert.equal(bad((s) => { s.email.templates.receipt.subject = "x".repeat(120); s.email.templates.reminder.body = "y".repeat(1000); }), "");
+  assert.match(bad((s) => { s.invoicing.delivery.share_link = false; }), /needs the shareable invoice link/);
+  const off = S.defaults("centre"); off.profile.trading_name = "X"; off.invoicing.delivery.share_link = false; assert.deepEqual(S.validate(off), [], "with email off the link may be off");
+  // the database repeats every one of these
+  for (const [p, lo, hi] of [["{email,reminders,first_after_days}", 1, 90], ["{email,reminders,repeat_days}", 0, 90], ["{email,reminders,max_count}", 1, 10], ["{email,daily_cap}", 1, 300], ["{email,per_hour}", 1, 300]])
+    assert.ok(EMAIL_SQL.includes("('" + p + "', " + lo + ", " + hi + ","), p);
+});
+test("email options: they apply today (not from the next billing cycle) and old stored settings gain them", () => {
+  const a = S.defaults("centre"); a.profile.trading_name = "X"; const b = JSON.parse(JSON.stringify(a)); b.email.mode = "auto_on_issue"; b.email.reminders.enabled = true;
+  assert.equal(S.effectiveFrom(a, b, "2026-11-23"), "2026-11-23");
+  const old = S.withDefaults({ schema_version: 1, preset: "centre", profile: { trading_name: "Old" }, invoicing: { grouping: "family", delivery: { email: false, share_link: true }, reminders: { enabled: false, schedule: [-3, 0, 7] } } });
+  assert.equal(old.email.mode, "off"); assert.equal(old.email.daily_cap, 200); assert.deepEqual(S.validate(old), []);
+});
+
+// ---- T18 step 4: make-up credits (db/migration_makeup_credits.sql, tests/sql/makeup_credits_test.sql)
+test("T18-4: every make-up credit choice has the same values in the form and in the database, with a default that is one of them", () => {
+  const sqlVals = (key) => CREDITS.match(new RegExp("\\{" + key + "\\}' not in \\(([^)]*)\\)"))[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1)).sort();
+  const want = { "rule": ["none", "one_per_missed"], "earn_absences": ["all_missed", "none", "notice_and_late", "notice_only"], "earn_tutor_cancel": ["automatic", "staff_decide"],
+    "grant_by": ["manage_timetable", "owner"], "book_by": ["manage_timetable", "owner"], "makeup_price": ["free", "if_missed_not_charged"] };
+  for (const [k, vals] of Object.entries(want)) {
+    const path = "billing.credits." + k, f = field(path);
+    assert.deepEqual(f.options.map((o) => o[0]).sort(), sqlVals("billing,credits," + k), path + " matches the database");
+    assert.deepEqual(f.options.map((o) => o[0]).sort(), vals, path);
+    assert.ok(f.options.some((o) => o[0] === S.get(S.defaults("centre"), path)), path + " default is one of the options");
+    assert.ok(!f.soon && !(f.soonOptions || []).length, path + " is built: nothing 'coming soon' in it");
+  }
+  assert.ok(CREDITS.includes("'{billing,credits,earn_holiday}'") || CREDITS.includes("{billing,credits,earn_holiday}"), "earn_holiday is checked in the migration");
+  assert.equal(typeof S.get(S.defaults("centre"), "billing.credits.earn_holiday"), "boolean");
+  assert.equal(field("billing.credits.earn_holiday").type, "toggle"); assert.ok(!field("billing.credits.earn_holiday").soon);
+});
+
+test("T18-4: the defaults are the owner's decisions: one missed lesson = one credit, notice only, tutor cancel is a staff decision, holidays no, never expires, free make-up", () => {
+  const d = S.defaults("centre");
+  assert.deepEqual(d.billing.credits, { rule: "one_per_missed", earn_absences: "notice_only", earn_tutor_cancel: "staff_decide", earn_holiday: false, grant_by: "manage_timetable", book_by: "manage_timetable", makeup_price: "free" });
+  assert.equal(d.billing.credit_expiry_days, 0, "credits never expire by default");
+  assert.deepEqual(S.validate(Object.assign(S.defaults("centre"), { profile: Object.assign({}, d.profile, { trading_name: "T" }) })), []);
+});
+
+test("T18-4: credit expiry has the same limits in the form and in the database, and is built (not 'soon')", () => {
+  const m = CREDITS.match(/\{billing,credit_expiry_days\}[^\n]*\n[^\n]*between (\d+) and (\d+)/);
+  assert.ok(m, "the limits are in the migration"); assert.deepEqual([+m[1], +m[2]], [0, 3650]);
+  const f = field("billing.credit_expiry_days");
+  assert.ok(!f.soon, "built"); assert.equal(f.type, "days");
+  assert.match(f.help, /last day/);
+});
+
+test("T18-4: the credit options appear only while credits are on, and the tutor never has an option", () => {
+  const on = S.defaults("centre"), off = S.defaults("centre"); off.billing.credits.rule = "none";
+  for (const k of ["earn_absences", "earn_tutor_cancel", "earn_holiday", "makeup_price", "grant_by", "book_by"]) {
+    const f = field("billing.credits." + k);
+    assert.equal(f.show(on), true, k + " shown when credits are on"); assert.equal(f.show(off), false, k + " hidden when credits are off");
+  }
+  assert.equal(field("billing.credit_expiry_days").show(off), false);
+  assert.equal(field("billing.credits.rule").show, undefined, "the rule itself is always shown");
+  for (const k of ["grant_by", "book_by"]) assert.ok(!field("billing.credits." + k).options.some((o) => /tutor/i.test(o[0])), "no tutor value in " + k);
+  assert.match(field("billing.credits.book_by").help, /Tutors never/);
+  // a centre that saved before this existed gets the new keys filled in, not an error
+  const old = S.defaults("centre"); delete old.billing.credits;
+  const filled = S.withDefaults(old, "centre"); assert.equal(filled.billing.credits.rule, "one_per_missed");
+});
+
+test("T18-4: the copy never promises what is not built and never shows a price", () => {
+  for (const k of ["rule", "earn_absences", "earn_tutor_cancel", "earn_holiday", "makeup_price", "grant_by", "book_by"]) {
+    const f = field("billing.credits." + k), text = [f.label, f.help || ""].concat((f.options || []).map((o) => o[1])).join(" ");
+    assert.doesNotMatch(text, /coming soon|later update|S\$/i, k);
+  }
+});
+
+test("T3.10: staff add past lessons: lessons.backfill_allowed_days has the same range in the form and in the database, default 31, 0 = off", () => {
+  const m = PAST.match(/\{lessons,backfill_allowed_days\}'[\s\S]*?\(v#>>'\{\}'\)::bigint between (\d+) and (\d+)/);
+  assert.ok(m, "the range is checked in the migration");
+  assert.deepEqual([+m[1], +m[2]], [0, 366]);
+  assert.match(PAST, /lessons,backfill_allowed_days\}'\)::int, 31\)/, "the plan reads a missing key as 31");
+  assert.equal(S.get(S.defaults(), "lessons.backfill_allowed_days"), 31);
+  const f = field("lessons.backfill_allowed_days");
+  assert.ok(f && f.type === "number" && !f.soon, "it is a built number field, not marked soon");
+  const ok = () => { const s = S.defaults(); s.profile.trading_name = "T"; return s; };
+  for (const v of [-1, 367, 1.5, 1e9]) { const s = ok(); s.lessons.backfill_allowed_days = v; assert.match(S.validate(s).join(" | "), /Days staff may add past lessons/, "value " + v); }
+  for (const v of [0, 1, 31, 366]) { const s = ok(); s.lessons.backfill_allowed_days = v; assert.deepEqual(S.validate(s), [], "value " + v); }
+  assert.equal(S.withDefaults({ schema_version: 1, preset: "centre", profile: { trading_name: "Old" }, lessons: {} }).lessons.backfill_allowed_days, 31, "settings saved before this load with 31");
+  assert.match(PAST, /Days staff may add past lessons must be 0-366/, "the database says the same words");
+});
+// ---------------------------------------------------------------------------------------------------- T4 S7b: tutors see their own pay
+const OWNPAY = fs.readFileSync(require.resolve("../db/migration_tutor_own_pay.sql"), "utf8");
+test("T4 S7b: tutor_pay.tutors_see_own_pay has the same three values in the form and in db/migration_tutor_own_pay.sql, and defaults to each lesson and total", () => {
+  const m = OWNPAY.match(/\{tutor_pay,tutors_see_own_pay\}' not in \(([^)]*)\)/);
+  assert.ok(m, "checked in the migration");
+  const sql = m[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1)).sort();
+  assert.deepEqual(field("tutor_pay.tutors_see_own_pay").options.map((o) => o[0]).sort(), sql);
+  assert.deepEqual(sql, ["monthly_total", "off", "per_lesson_and_total"]);
+  assert.equal(S.get(S.defaults("centre"), "tutor_pay.tutors_see_own_pay"), "per_lesson_and_total", "owner's default");
+  assert.equal(field("tutor_pay.tutors_see_own_pay").soon, undefined, "built, not 'soon'");
+  assert.ok(!(field("tutor_pay.tutors_see_own_pay").soonOptions || []).length);
+  assert.equal(S.get(S.defaults("centre"), "tutor_pay.tutor_visibility"), undefined, "the old 'soon' tutor_visibility choice is gone");
+  assert.ok(!S.STEPS.flatMap((s) => s.fields).some((f) => f.path === "tutor_pay.tutor_visibility"));
+});
+test("T4 S7b: the choice is only offered when pay is worked out in full, and saves cleanly", () => {
+  const f = field("tutor_pay.tutors_see_own_pay"), s = S.defaults("centre"); s.profile.trading_name = "X";
+  s.tutor_pay.mode = "report"; assert.equal(f.show(s), false);
+  s.tutor_pay.mode = "off"; assert.equal(f.show(s), false);
+  s.tutor_pay.mode = "full"; assert.equal(f.show(s), true);
+  for (const v of ["off", "monthly_total", "per_lesson_and_total"]) { s.tutor_pay.tutors_see_own_pay = v; assert.deepEqual(S.validate(s), [], v); }
+  assert.ok(/never the family's fee/.test(f.help) && /pending/.test(f.help), "the help says what a tutor never sees");
+});
+test("T4 S7b: changing who sees their own pay takes effect today (a process rule), other pay changes still wait for the next cycle", () => {
+  const a = S.defaults("centre"); a.profile.trading_name = "X";
+  const b = JSON.parse(JSON.stringify(a)); b.tutor_pay.tutors_see_own_pay = "off";
+  assert.equal(S.effectiveFrom(a, b, "2026-11-26"), "2026-11-26");
+  const c = JSON.parse(JSON.stringify(a)); c.tutor_pay.payable_when = "taught";
+  assert.equal(S.effectiveFrom(a, c, "2026-11-26"), "2026-12-01");
+  const d = JSON.parse(JSON.stringify(b)); d.tutor_pay.payable_when = "taught";
+  assert.equal(S.effectiveFrom(a, d, "2026-11-26"), "2026-12-01", "both changed: the money change still waits");
 });

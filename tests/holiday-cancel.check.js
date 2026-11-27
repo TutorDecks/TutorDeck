@@ -62,5 +62,27 @@ async function run(b, vp, cfg, answer) {
       ok((await page.evaluate(() => window.__ins)).length === 1 && errs.length === 0, vp + ": and the holiday is still saved without errors"); await ctx.close();
     }
   }
+  // B5-FIX E: ticking a Singapore public holiday in the library behaves exactly like adding one by hand
+  for (const vp of ["desktop", "phone"]) {
+    const ctx = await b.newContext(vp === "phone" ? { viewport: { width: 390, height: 844 }, isMobile: true } : { viewport: { width: 1100, height: 900 } });
+    await ctx.route(/^(?!http:\/\/127\.0\.0\.1).*/, (r) => r.abort());
+    const page = await ctx.newPage(), errs = [];
+    page.on("pageerror", (e) => errs.push(e.message));
+    await page.route("**/assets/vendor/supabase-2.118.0.js", (r) => r.fulfill({ body: STUB_PLUS, contentType: "application/javascript" }));
+    await page.addInitScript(override, { cancel: 2, kept: 1 });
+    await page.goto(BASE + "org.html?id=o2#calendar", { waitUntil: "load" }); await page.waitForSelector("[data-hol]");
+    const cb = page.locator('[data-hol="2027-01-01"]'); if (await cb.isChecked()) await page.locator('label:has([data-hol="2027-01-01"])').click();
+    await page.waitForTimeout(600); await page.evaluate(() => { window.__calls = []; window.__ins = []; });
+    await page.locator('label:has([data-hol="2027-01-01"])').click(); await page.waitForTimeout(1200);
+    ok(await page.locator("button", { hasText: "Cancel the lessons" }).count() === 1, vp + ": ticking a library holiday offers to cancel the lessons already on that day");
+    const body = await page.locator("body").innerText();
+    ok(/Also cancel 2 lessons already on that day\?/.test(body) && /1 lesson stays because it is marked, paid or invoiced/.test(body) && /no charge/.test(body), vp + ": same wording and count as a holiday added by hand");
+    ok((await page.evaluate(() => window.__calls)).length === 1 && (await page.evaluate(() => window.__calls[0].p_dry)) === true && (await page.evaluate(() => window.__calls[0].p_from)) === "2027-01-01", vp + ": a dry-run count first, for that day");
+    await page.locator("button", { hasText: "Cancel the lessons" }).click(); await page.waitForTimeout(600);
+    const calls = await page.evaluate(() => window.__calls);
+    ok(calls.length === 2 && calls[1].p_dry === false && /New Year/.test(calls[1].p_name), vp + ": confirming makes the real call");
+    ok(/2 lessons cancelled with no charge/.test(await page.locator("body").innerText()), vp + ": and says how many were cancelled");
+    ok(errs.length === 0, vp + ": no page errors " + errs.join("|")); await ctx.close();
+  }
   await b.close(); console.log(fails ? fails + " FAILED" : "ALL PASSED"); process.exit(fails ? 1 : 0);
 })();

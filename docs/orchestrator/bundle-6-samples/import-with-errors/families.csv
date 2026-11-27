@@ -1,0 +1,10 @@
+family_ref,family_name,guardian_name,relation,phone,email,main
+F0001,Tan family,Evtal Tan,Mother,91000001,guardian1@example.test,Y
+F0002,Bak family,Lunih Bak,Mother,91000002,guardian2@example.test,Y
+F0002,Bak family,Limol Bak,Father,81000003,,N
+F0003,Tam family,Kaloy Tam,Mother,91000004,guardian3@example.test,Y
+F0003,Tam family,Juvil Tam,Father,81000005,,N
+F0004,Pek family,Evris Pek,Mother,91000006,guardian4@example.test,Y
+F0005,Sang family,Famoh Sang,Mother,91000007,guardian5@example.test,Y
+F0006,Cho family,Grrin Cho,Mother,91000008,guardian6@example.test,Y
+F0007,Zhw family,Danis Zhw,Mother,91000009,guardian7@example.test,Y

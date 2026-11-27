@@ -12,6 +12,7 @@ shape() { psql -qAt -d $DB -c "select string_agg(x, E'\n' order by x) from (
   union all select 'trg '||event_object_table||'.'||trigger_name from information_schema.triggers where trigger_schema='public'
   union all select 'fn '||p.oid::regprocedure::text from pg_proc p where pronamespace='public'::regnamespace
   union all select 'con '||conname from pg_constraint where connamespace='public'::regnamespace) s"; }
+fdefs() { psql -qAt -d $DB -c "select md5(string_agg(pg_get_functiondef(p.oid), '' order by p.oid::regprocedure::text)) from pg_proc p where pronamespace='public'::regnamespace and prokind='f'"; }
 psql -qAt -d postgres -c "drop database if exists $DB" -c "create database $DB"
 $P -f tests/sql/supabase_shim.sql
 $P -f db/baseline_2026-11.sql
@@ -134,6 +135,82 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/slot_changes_test.sql
 $P -f db/migration_tutor_moves.sql
 $P -f db/migration_tutor_moves.sql                          # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_moves_test.sql
+$P -f db/migration_b5_fix.sql
+$P -f db/migration_b5_fix.sql                               # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/b5_fix_test.sql
+$P -f db/migration_tutor_own_lessons.sql
+$P -f db/migration_tutor_own_lessons.sql                    # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_own_lessons_test.sql
+# ---- bundle 6 (T44-style assembly, T46): import, tutor pay, statements, invoice email, make-up credits, data export. ORDER MATTERS: three of them replace
+#      org_validate_settings() and two replace centre_invoice_run_rows(); each file carries the cumulative version of the one before it (see CLAUDE.md).
+$P -f db/migration_import.sql
+$P -f db/migration_import.sql                               # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/import_test.sql
+if command -v node >/dev/null 2>&1; then                    # the page's own payload through the database (JS and SQL checks agree)
+  export IMPORT_PAYLOAD_FILE="$(mktemp)"; node tests/fixtures/make-import-payload.js > "$IMPORT_PAYLOAD_FILE"
+  psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/import_payload_test.sql; rm -f "$IMPORT_PAYLOAD_FILE"
+else echo "SKIP import payload test (node not installed)"; fi
+$P -f db/migration_centre_tutor_pay.sql
+$P -f db/migration_centre_tutor_pay.sql                     # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_tutor_pay_test.sql
+$P -f db/migration_statement_matching.sql
+$P -f db/migration_statement_matching.sql                   # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/statement_matching_test.sql
+$P -f db/migration_invoice_email.sql
+$P -f db/migration_invoice_email.sql                        # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/invoice_email_test.sql
+$P -f db/migration_makeup_credits.sql
+$P -f db/migration_makeup_credits.sql                       # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/makeup_credits_test.sql
+FDEFS_BEFORE=$(fdefs)
+$P -f db/migration_tutor_link_propose.sql
+$P -f db/migration_tutor_link_propose.sql                   # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_link_propose_test.sql
+$P -f db/migration_tutor_link_propose_down.sql
+if [ "$FDEFS_BEFORE" != "$(fdefs)" ]; then echo "FAIL: undoing tutor_link_propose did not put every function back exactly"; exit 1; fi
+echo "PASS undoing tutor_link_propose puts every function back exactly"
+$P -f db/migration_tutor_link_propose.sql                   # and again: the shipped state
+FDEFS_BEFORE=$(fdefs)
+$P -f db/migration_past_lessons.sql
+$P -f db/migration_past_lessons.sql                         # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/past_lessons_test.sql
+$P -f db/migration_past_lessons_down.sql
+if [ "$FDEFS_BEFORE" != "$(fdefs)" ]; then echo "FAIL: undoing past_lessons did not put every function back exactly"; exit 1; fi
+echo "PASS undoing past_lessons puts every function back exactly"
+$P -f db/migration_past_lessons.sql                         # and again: the shipped state
+FDEFS_BEFORE=$(fdefs)
+$P -f db/migration_tutor_own_pay.sql
+$P -f db/migration_tutor_own_pay.sql                        # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_own_pay_test.sql
+$P -f db/migration_tutor_own_pay_down.sql
+if [ "$FDEFS_BEFORE" != "$(fdefs)" ]; then echo "FAIL: undoing tutor_own_pay did not put every function back exactly"; exit 1; fi
+echo "PASS undoing tutor_own_pay puts every function back exactly"
+$P -f db/migration_tutor_own_pay.sql                        # and again: the shipped state
+$P -f db/migration_centre_billing_method.sql                # the export reads the billing-method and billing-start columns (the chain above had undone them)
+$P -f db/migration_centre_billing_start.sql
+$P -f db/migration_org_export.sql
+$P -f db/migration_org_export.sql                           # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_export_test.sql
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_export_perf_test.sql
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=full -f tests/sql/bundle6_chain_test.sql   # the settings check and the invoice run carry EVERY rule of the chain
+# undo in reverse, twice each (safe to run twice), then the whole set again, then undo again: undo + re-apply are proven on the shipped state
+for round in 1 2; do
+  for m in org_export tutor_own_pay past_lessons tutor_link_propose makeup_credits invoice_email statement_matching centre_tutor_pay import; do $P -f db/migration_${m}_down.sql; $P -f db/migration_${m}_down.sql; done
+  psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=undone -f tests/sql/bundle6_chain_test.sql
+  if [ "$round" = 1 ]; then
+    for m in import centre_tutor_pay statement_matching invoice_email makeup_credits tutor_link_propose past_lessons tutor_own_pay; do $P -f db/migration_${m}.sql; done
+    $P -f db/migration_org_export.sql
+    psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=full -f tests/sql/bundle6_chain_test.sql
+  fi
+done
+$P -f db/migration_centre_billing_start_down.sql            # (back to how the chain was before the export block)
+$P -f db/migration_centre_billing_method_down.sql
+$P -f db/migration_tutor_own_lessons_down.sql
+$P -f db/migration_tutor_own_lessons.sql                    # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_tutor_own_lessons_down.sql
+$P -f db/migration_b5_fix_down.sql
+$P -f db/migration_b5_fix.sql                               # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_b5_fix_down.sql
 $P -f db/migration_tutor_moves_down.sql
 $P -f db/migration_tutor_moves.sql                          # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_tutor_moves_down.sql
@@ -182,3 +259,4 @@ if [ "$BEFORE" != "$AFTER" ]; then echo "FAIL: undo did not restore the baseline
 echo "PASS undo restores the baseline exactly"
 $P -f db/migration_org_foundation.sql                     # and it can be applied again after an undo
 echo "PASS migration re-applies after undo"
+bash tests/sql/dev_seed_money_test.sh                         # T47: the rich DEV money demo seed on its own throwaway database (builds the chain itself, so it cannot rot)

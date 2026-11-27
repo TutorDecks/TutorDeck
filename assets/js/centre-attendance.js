@@ -228,7 +228,8 @@
     if (q.get("f") === "unmarked" || q.get("f") === "marked" || q.get("f") === "trial") state.status = q.get("f");
     if (q.get("view") === "month") state.view = "month";
     wire(); controls(); load();
-    if (window.CentreCharges) window.CentreCharges.init(id, q.get("tab") === "charges" ? "charges" : "");   // adds the Charges tab only for people who may set charges (issue_invoices)
+    var chargesReady = window.CentreCharges ? window.CentreCharges.init(id, q.get("tab") === "charges" ? "charges" : "") : Promise.resolve(false);   // adds the Charges tab only for people who may set charges (issue_invoices)
+    if (window.CentreCredits) window.CentreCredits.init(id, q.get("tab") === "makeups", chargesReady, q.get("student"));   // T18-4: adds the Make-ups tab (the owed list) for owners and staff of a centre
   }
   TL.requireAuth("centre-attendance", init);
 })();

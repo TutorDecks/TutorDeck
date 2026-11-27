@@ -10,6 +10,7 @@ function loadTL() {
   const win = { document, localStorage: ls, location: { pathname: "/", href: "", replace() {} }, addEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {} }), sb: null };
   win.window = win;
   const ctx = vm.createContext(Object.assign(win, { localStorage: ls, document, console, setTimeout() {}, clearTimeout() {}, navigator: { userAgent: "" } }));
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../assets/js/menus.js"), "utf8"), ctx);   // the menus app.js draws (UX1)
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../assets/js/app.js"), "utf8"), ctx);
   return ctx.TL;
 }
@@ -28,6 +29,15 @@ test("tutor-only logins may stay on My lessons only (no redirect loop); Settings
 test("T6: the read-only Schedule is allowed for tutor-only logins; solo and both are never redirected from it", () => {
   assert.strictEqual(R("tutor-schedule", "tutor-only"), null);
   for (const mode of ["solo", "both", null, undefined, "", "TUTOR-ONLY"]) assert.strictEqual(R("tutor-schedule", mode), null, String(mode));
+});
+test("(S7b) a tutor-only login may open Your pay as well (no redirect loop), and it is the only other page", () => {
+  assert.strictEqual(R("mypay", "tutor-only"), null);
+  for (const mode of ["solo", "both", null]) assert.strictEqual(R("mypay", mode), null);
+});
+test("(S7b) with nothing remembered (or signed out) there is no Your pay menu entry, and setting it never throws", () => {
+  assert.strictEqual(TL.payOn(), false);
+  assert.doesNotThrow(() => TL.setPayView(true));      // the store is per signed-in user: with nobody signed in it keeps nothing, so still no entry
+  assert.strictEqual(TL.payOn(), false);
 });
 test("solo, both and unknown logins are never redirected, on any page", () => {
   for (const mode of ["solo", "both", null, undefined, "", "TUTOR-ONLY", "tutor", "centre", 1, {}])

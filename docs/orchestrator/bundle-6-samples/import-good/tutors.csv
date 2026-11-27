@@ -1,0 +1,4 @@
+tutor_email,tutor_name,phone,subjects,employment,pay_method,pay_amount,pay_from
+matal.kok1@example.test,Matal Kok,92000001,Science;English,employee,per_hour,40.00,2026-12-01
+fakel.zho2@example.test,Fakel Zho,82000002,Mathematics;Chinese,employee,,,
+grvin.yon3@example.test,Grvin Yon,92000003,Chinese;Chemistry,employee,per_lesson,46.00,2026-12-01

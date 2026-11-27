@@ -48,3 +48,36 @@ test("the note under the Home list follows notify_family, and nothing here says 
   const all = JSON.stringify([C.headline(R()), C.headline(R({ what: "cancelled" })), C.detail(R()), C.sheetFact(R(), "2026-11-26"), C.homeNote(true), C.homeNote(false), C.chip(R())]);
   assert.ok(!/\b(rate|price|amount|paid|invoice|invoiced|cents|S\$)\b/i.test(all), all);
 });
+
+// ---- T6 steps 3-4: a lesson ADDED, a weekly slot added / changed / stopped, one line per "Create lessons" press
+const SLOT = (o) => Object.assign({ kind: "slot", slot_id: "s1", what: "added", changed_at: "2026-11-26T08:00:00Z", tutor_name: "Tutor One", student_name: "Kid One", weekday: 1, start_time: "16:00:00", end_time: "17:00:00", subject: "Math", awaiting_centre: false, tell_family: true }, o || {});
+const RUN = (o) => Object.assign({ kind: "run", what: "generated", changed_at: "2026-11-26T08:00:00Z", tutor_name: "Tutor One", created: 11, from_date: "2026-11-27", to_date: "2026-12-24", awaiting_centre: false, tell_family: true }, o || {});
+test("T6.3 an added lesson, a slot and a press are each one plain sentence", () => {
+  assert.equal(C.headline(R({ what: "added" })), "Tutor One added a lesson for Kid One");
+  assert.equal(C.detail(R({ what: "added", lesson_date: "2026-12-04", start_time: "17:00:00", subject: "Math" })), "Fri 4 Dec 5:00 pm · Math");
+  assert.equal(C.detail(R({ what: "added", lesson_date: "2026-12-04", start_time: "17:00:00", subject: null })), "Fri 4 Dec 5:00 pm");
+  assert.equal(C.headline(SLOT()), "Tutor One added a weekly slot for Kid One");
+  assert.equal(C.headline(SLOT({ what: "changed" })), "Tutor One changed the weekly slot of Kid One");
+  assert.equal(C.headline(SLOT({ what: "stopped" })), "Tutor One stopped the weekly slot of Kid One");
+  assert.equal(C.detail(SLOT()), "Every Tuesday 4:00 pm – 5:00 pm");
+  assert.equal(C.detail(SLOT({ weekday: 6, start_time: "10:00:00", end_time: null })), "Every Sunday 10:00 am");
+  assert.equal(C.headline(RUN()), "Tutor One created 11 lessons from their weekly slots");
+  assert.equal(C.headline(RUN({ created: 1 })), "Tutor One created 1 lesson from their weekly slots");
+  assert.equal(C.detail(RUN()), "Lessons from Fri 27 Nov to Thu 24 Dec");
+  assert.equal(C.headline(SLOT({ tutor_name: "Former tutor" })), "Former tutor added a weekly slot for Kid One");
+  assert.deepEqual(C.sheetFact(R({ what: "added", reason: "extra revision" }), "2026-11-26"), ["Added by", "Tutor One, today. “extra revision”"]);
+});
+test("T6.3 only lessons are looked up by lesson id (a slot or a press never lands on a Timetable row)", () => {
+  const m = C.byLesson([R({ lesson_id: "a" }), SLOT({ lesson_id: "x" }), RUN({ lesson_id: "y" }), R({ lesson_id: "b", what: "added" })]);
+  assert.deepEqual(Object.keys(m).sort(), ["a", "b"]);
+});
+test("T6.3 the amber chip says when the centre still has to confirm the price, and nothing else says anything about money", () => {
+  assert.deepEqual(C.confirmChip(R({ awaiting_centre: true })), { text: "Price to confirm", tone: "warn" });
+  assert.equal(C.confirmChip(R({ awaiting_centre: false })), null); assert.equal(C.confirmChip(null), null); assert.equal(C.confirmChip(undefined), null);
+  const all = JSON.stringify([C.headline(R({ what: "added" })), C.headline(SLOT()), C.headline(SLOT({ what: "stopped" })), C.headline(RUN()), C.detail(SLOT()), C.detail(RUN()), C.detail(R({ what: "added" }))]);
+  assert.ok(!/\b(rate|price|amount|paid|invoice|invoiced|cents|S\$)\b/i.test(all), all);
+});
+test("B5-FIX H2: when a lesson changed more than once the newest change (first in the list) is the one its row shows", () => {
+  const m = C.byLesson([R({ lesson_id: "a", what: "cancelled" }), R({ lesson_id: "a", what: "moved" }), R({ lesson_id: "b", what: "moved" })]);
+  assert.equal(m.a.what, "cancelled"); assert.equal(m.b.what, "moved");
+});

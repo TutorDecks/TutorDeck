@@ -1,49 +1,53 @@
-# DEV apply pack — test bundle 5 (T44)
+# DEV apply pack — test bundle 7 (T49)
 
-**For the DEV Supabase project `tuzxsqkfzrjssnpcoale` only. Never LIVE.** Apply it **before** you test bundle 5 on the `dev` preview: the new pages call database functions that DEV does not have yet.
+**For the DEV Supabase project `tuzxsqkfzrjssnpcoale` only. Never LIVE.** Apply it **before** you test bundle 7 on the `dev` preview: the new pages call database functions that DEV does not have yet. It contains **everything bundle 6 needed plus the new bundle-7 migrations** (bundle 6's pack was never applied to DEV, so it was folded in; this file replaces it).
 
-**What DEV must already have:** the seven standard migrations **and bundle 4's pack** (the 20 migrations of `dev-apply-pack` for bundle 4, plus its two demo staff logins). The orchestrator also applied `migration_payment_fix.sql` by hand; this pack repeats it harmlessly (every part is idempotent). This pack creates **no logins** and needs no demo-centre lookup any more.
+**What DEV must already have:** the seven standard migrations, **bundle 4's pack** (20 migrations + two demo staff logins) **and bundle 5's pack** (`reassign_link`, `payment_fix`, `centre_deposits`, `centre_refunds`, `centre_late_fees`, `centre_credit_undo`, `slot_changes`, `tutor_moves`). This pack creates **no logins** and changes no row of data. (`b5_fix` may already have been applied by hand: that is fine, it is repeated harmlessly.)
 
 1. Supabase (DEV project) → SQL Editor → New query.
 2. Paste the **pre-check** (the first block of `dev-apply-pack.sql`, from the top down to the line `-- Safety stop`) and Run. You should see:
-   - 7 `present` lines for the standard migrations and 20 `bundle 4: … present` lines (one per bundle-4 migration, each naming one object only that migration creates; `money_settings` is checked by looking inside the `org_validate_settings` function, because it only replaces it);
+   - 7 `present` lines for the standard migrations, 20 `bundle 4: … present` lines and 8 `bundle 5: … present` lines;
    - `demo logins from bundle 4 (information only) | 7 of 7`;
-   - `NEW OBJECTS ALREADY THERE | N of 91 (…)`: only information. The orchestrator's `payment_fix` already counts, so a DEV that has not had the rest shows a small number (about 17 on the throwaway test); a re-run shows 91;
+   - `NEW OBJECTS ALREADY THERE | N of 177 (…)`: only information. On a DEV that has not had this pack it is a small number (14 on the throwaway test, from `b5_fix` parts already there); a re-run shows 177;
    - `OVERALL | ready`, or `NOT READY - fix the MISSING lines first`.
-3. Paste the **whole** file and Run. The editor runs it as one batch, so it is all-or-nothing: if something fails nothing is kept, and the error line number points into the file; search upwards for the nearest `### PART` line to see which migration it was. A database without the organisation tables (LIVE today) or without bundle 4 is stopped by the safety stop before anything changes.
-4. The last result is the post-check: 91 `present` lines (tables and functions) and `OVERALL | OK - all 91 objects present`.
+3. Paste the **whole** file and Run. The editor runs it as one batch, so it is all-or-nothing: if something fails nothing is kept, and the error line number points into the file; search upwards for the nearest `### PART` line to see which migration it was. A database without the organisation tables (LIVE today) or without bundles 4 and 5 is stopped by the safety stop before anything changes.
+4. The last result is the post-check: 177 `present` lines (tables and functions) and `OVERALL | OK - all 177 objects present`.
 5. Running it again is safe and changes nothing.
+
+The file is about 600 KB (6,700 lines). If the SQL editor is slow to paste, run it in two halves **at a `### PART` line, in order** (parts 1–7, then 8–11); each part is a complete, idempotent migration.
+
+**Separate and optional (already applied to DEV, per its README):** `db/seed_dev_demo_money.sql` (T47, rich money demo data; guide `docs/orchestrator/dev-seed-money.md`). It is **not** in this pack. It needs bundles 4 and 5 and `db/seed_dev_demo.sql`, and refuses on anything but the demo centre. Not for LIVE.
 
 ## What is in it (the order is read from `tests/sql/run.sh` by `tools/build-dev-pack.py`)
 
 | Part | Migration | Branch | Size | What it is |
 |---|---|---|---|---|
-| 1 | reassign_link | b4-fix | 108 lines | reassign keeps the old tutor's link when they still teach the student (B4-FIX) |
-| 2 | payment_fix | b4-fix | 102 lines | "Record payment" fix: `delete … where true` (already on DEV; repeated harmlessly) |
-| 3 | centre_deposits | t4-s4-deposits | 770 lines | refundable deposits: ledger, deposit invoice with the first run, waive, opening balance, opening invoice kind, `students.start_date` |
-| 4 | centre_refunds | t4-s5-refunds | 817 lines | refunds and family credit: request / approve / pay, use credit on an invoice, forfeit rule, GST |
-| 5 | centre_late_fees | t4-s6-late-fees | 380 lines | late-fee proposals (approve / waive, monthly repeat) |
-| 6 | centre_credit_undo | t4-s5b-credit-undo | 368 lines | undo of credit or deposit used on an invoice, four-eyes guard with automatic fall-back, notices |
-| 7 | slot_changes | t3-9-timetable-nav | 474 lines | stop a slot from a day, class members, 26-week lessons, cancel lessons on a holiday, People list |
-| 8 | tutor_moves | t6-2-tutor-moves | 409 lines | tutors move, put back and cancel their own lessons (centre option) + "Tutor changes" list |
+| 1 | b5_fix | b5-fix | 223 lines, 20 KB | bundle 5 fixes: the deposit run follows today's settings and says why a student gets none; staff slots add the tutor on change; class share; tutor-change list |
+| 2 | tutor_own_lessons | t6-3-tutor-own-lessons | 760 lines, 66 KB | tutors add their own one-off lessons and weekly slots, "Create lessons", price pending (centre option); replaces `staff_tutor_changes` and `centre_invoice_run_rows` |
+| 3 | import | t33-i1-stage-a | 610 lines, 57 KB | centre import stage A: dry run, commit, undo, history, "billing starts from" setting; adds `students.online_link` / `start_date`, `recurring_slots.taught_by` |
+| 4 | centre_tutor_pay | t4-s7-tutor-pay | 738 lines, 64 KB | tutor pay: effective-dated rates, monthly pay list, adjustments, payments (owner and staff with *Run tutor pay*) |
+| 5 | statement_matching | t34-m0-matching | 640 lines, 55 KB | bank statement matching: mappings, batches, lines, rules A–D, confirm, undo, payer links |
+| 6 | invoice_email | t7-3-invoice-email | 822 lines, 68 KB | invoice / receipt / reminder emails: queue, append-only send log, caps, bounced addresses, billing contacts |
+| 7 | makeup_credits | t18-4-makeup-credits | 755 lines, 66 KB | make-up credits: earn once, book, unbook, expiry, price rule; replaces `centre_invoice_run_rows` |
+| 8 | tutor_link_propose | t6-4-link-propose | 960 lines, 88 KB | online lesson link and tutors who ask (`tutors_propose`): `schedule_requests`, approve / decline, expiry; `lessons.online_link` |
+| 9 | past_lessons | t3-10-past-lessons | 453 lines, 44 KB | staff add past lessons (backfill), setting `lessons.backfill_allowed_days` |
+| 10 | tutor_own_pay | t4-s7b-own-pay | 185 lines, 16 KB | tutors see their own pay: four read-only functions and the setting `tutor_pay.tutors_see_own_pay` |
+| 11 | org_export | t35-e-export | 286 lines, 27 KB | centre data export (owner only): catalogue of 47 exported tables (new: `schedule_requests`) and 5 excluded ones, paged reads, audit |
 
-Total about 325 KB (3,640 lines). Money settings (`money_settings`) are already on DEV from bundle 4, so there is nothing to add for them; the pre-check proves it.
-
-### Order matters in two places (both are handled)
-- `centre_credit_undo` re-creates `org_create_centre`. Its first version hard-coded the old **S$0.40** fee and would have undone `fee_050` on DEV. **Fixed in this bundle:** it now reads `org_default_centre_plan()` (the S$0.50 default from `fee_050`), so it must come after `fee_050`, which DEV has. Its undo file puts the `fee_050` version back, not the 40c one.
-- `tutor_moves` goes last (it replaces the one-argument `org_validate_settings` that `centre_credit_undo`'s organisation-aware validator calls) and the `slot_changes` People list reads the invite send log from `invites` (already on DEV).
+### Order matters (the settings check is replaced by six files, the invoice run by two)
+- `org_validate_settings(jsonb)` is replaced by **`import`, `invoice_email`, `makeup_credits`, `tutor_link_propose` and `past_lessons`**, and the organisation-aware wrapper `org_validate_settings(uuid, jsonb)` by **`statement_matching` and `tutor_own_pay`**. Each file carries the **cumulative** version of the one before it (the later ones were rewritten while assembling this bundle), so applied in this order nothing is lost; each undo file hands back the previous link. `tests/sql/bundle6_chain_test.sql` proves both ends of the chain, now including the request-expiry and own-pay rules.
+- `centre_invoice_run_rows` is replaced by `tutor_own_lessons` and then by `makeup_credits` (built on the first). `staff_tutor_changes` by `b5_fix`, then `tutor_own_lessons` (whose lesson-based version supersedes the audit-log one).
+- `org_export` goes last; its catalogue lists every table with an organisation column, so a table nobody lists fails the test.
 
 ## How it was tested (throwaway Postgres, never DEV)
-- Database clock: `tests/sql/run.sh` needs `PGTZ=Asia/Singapore` when run between 16:00 and 24:00 UTC (an older money test compares with `current_date`). This applies to every earlier bundle too; it passes without it before 16:00 UTC.
-- `PGTZ=Asia/Singapore bash tests/sql/run.sh`: baseline → all 35 migrations in order, each applied twice with its own test (3,326 PASS lines), then every undo, ending with "undo restores the baseline exactly" and "migration re-applies after undo".
-- **A DEV-equivalent database** (baseline + the 7 standard + all 20 of bundle 4 + `payment_fix` + the whole `db/seed_dev_demo.sql`, i.e. exactly what DEV holds, without `reassign_link`): pre-check said `ready` (7 + 20 present, 7 of 7 logins), the pack ran, the post-check said `OVERALL | OK - all 91 objects present`; the pack ran a **second** time with an identical schema fingerprint (columns, policies, triggers, constraints and the md5 of every function body).
-- The same fingerprint was compared with a fresh database where all 35 migrations were applied once in `run.sh` order: **identical**. So the order on DEV (bundle 4, then this pack) gives the same functions as the tested order.
-- A database with only the seven standard migrations: the pre-check lists 21 MISSING lines and the pack stops at the safety stop with nothing changed.
+- `PGTZ=Asia/Singapore bash tests/sql/run.sh`: baseline → all migrations in order, each applied twice with its own test, each also undone and re-applied (and every undo run twice), the bundle-6/7 set undone in reverse and applied again, the chain test at both states, then every undo of the older chain, ending with "undo restores the baseline exactly" (and the T47 seed test).
+- **A DEV-equivalent database** (`tests/sql/build_chain.sh td_pack_test seed`: baseline + the 7 standard + all 20 of bundle 4 + all 8 of bundle 5 + `db/seed_dev_demo.sql`): the pre-check said `ready` (7 of 7 logins, `14 of 177` new objects there), the whole pack ran in one transaction (`psql -1`), the post-check said `OVERALL | OK - all 177 objects present`, and it ran a **second** time with an identical schema fingerprint (columns, policies, triggers, constraints, indexes, every function's full text and grants).
+- The same fingerprint was compared with a database where the bundle-5 chain was built and then each of the eleven migrations applied once in `run.sh` order: **identical** (`923eba9d…`).
 - `node --test tests/*.test.js` includes `tests/migrations-safeupdate.test.js` and `tests/sql-safeupdate.test.js` (no `DELETE` or `UPDATE` without `WHERE` inside any migration function: the Supabase API layer refuses it with SQLSTATE 21000) and `tests/dev-pack.test.js` (fails when this file is out of date).
 - I did **not** run anything on DEV or LIVE (no tool here reaches project `tuzxsqkfzrjssnpcoale`).
 
 ## Undo (newest first; each `_down` file is in `db/`)
-`tutor_moves`, `slot_changes`, `centre_credit_undo`, `centre_late_fees`, `centre_refunds`, `centre_deposits`, `payment_fix`, `reassign_link`. (`centre_credit_undo_down` drops the notices table; money records are never touched, see the file header.)
+`org_export`, `tutor_own_pay`, `past_lessons` (the lessons it added **stay**), `tutor_link_propose` (**deletes the tutor requests**, the lesson links), `makeup_credits`, `invoice_email`, `statement_matching`, `centre_tutor_pay` (**deletes the pay records**), `import` (imported students, families and lessons **stay**), `tutor_own_lessons`, `b5_fix`. Always strictly newest first.
 
 ## Rebuilding the pack
 `python3 tools/build-dev-pack.py` (and `node --test tests/dev-pack.test.js` fails when the file is out of date).

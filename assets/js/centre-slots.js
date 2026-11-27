@@ -150,11 +150,13 @@
     var r = await window.sb.rpc("staff_pick_students", { p_org: orgId, p_q: q || null, p_limit: 20 });
     if (mine !== pickSeq || !$("pn-pick")) return;
     if (r.error) { box.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:var(--owed)">' + esc(SC.errorText(r.error)) + '</div>'; return; }
-    var inSlot = (form.row.students || []).map(function (s) { return s.id; });
+    // students already in the slot are left out, except those who are LEAVING on a day to come: they are listed with "leaves <day>" so they can stay
+    var leaving = {}, inSlot = [];
+    (form.row.students || []).forEach(function (s) { if (s.stops_on) leaving[s.id] = s.stops_on; else inSlot.push(s.id); });
     var list = (r.data || []).filter(function (s) { return inSlot.indexOf(s.id) < 0; });
     list.forEach(function (s) { names[s.id] = s.name; });
     box.innerHTML = list.length ? list.map(function (s) {
-      return '<button type="button" data-pst="' + esc(s.id) + '" aria-pressed="' + (pn.student === s.id) + '"><span>' + esc(s.name) + '</span><span class="lv">' + esc(s.level || "") + '</span></button>';
+      return '<button type="button" data-pst="' + esc(s.id) + '" aria-pressed="' + (pn.student === s.id) + '"><span>' + esc(s.name) + '</span><span class="lv">' + (leaving[s.id] ? 'leaves ' + esc(fmtDay(leaving[s.id])) + ' · keep in class' : esc(s.level || "")) + '</span></button>';
     }).join("") : '<div style="padding:10px 12px;font-size:13px;color:var(--muted)">No student found.</div>';
   }
   async function panelGo() {

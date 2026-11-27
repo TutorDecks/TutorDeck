@@ -112,9 +112,19 @@
   }
   function genLabel(days) { return days > 0 ? "Create lessons for the next " + weeksText(days) : "Create lessons"; }
   function savedText(res, mode) {
-    if (mode === "add") { var n = Number(res && res.added) || 1; return (n > 1 ? "Weekly slot added for " + n + " students" : "Weekly slot added") + assignedNote(res && res.assigned); }
+    if (mode === "add") { var n = Number(res && res.added) || 1; return (n > 1 ? "Weekly slot added for " + n + " students" : "Weekly slot added") + assignNote(res); }
     var left = Number(res && res.lessons_left) || 0;
-    return "Weekly slot changed" + (left ? ". " + plural(left, "lesson", "lessons") + " already created keep the old time and tutor." : "");
+    return "Weekly slot changed" + (left ? ". " + plural(left, "lesson", "lessons") + " already created keep the old time and tutor." : "") + assignNote(res);
+  }
+  // (B5-FIX) every save with a tutor says what happened to the student's assigned tutors: added, already there, or switched off in settings
+  function assignNote(res) {
+    var a = res && res.assign, list = res && res.assigned;
+    if (!a || !a.state) return assignedNote(list);
+    if (a.state === "added") return assignedNote(list);
+    var tut = a.tutor_name || "The tutor";
+    if (a.state === "already") return ". " + tut + " is already one of the " + (Number(a.already) === 1 ? "student’s" : "students’") + " assigned tutors.";
+    if (a.state === "off") return ". " + tut + " was not added to the student’s assigned tutors, because that option is switched off in settings.";
+    return "";
   }
   // (T3.9) "Tutor One was added to Kid 1's assigned tutors." / "Tutor One was added to 2 students' assigned tutors."
   function assignedNote(list) {
@@ -148,6 +158,7 @@
     res = res || {};
     if (action === "add") {
       var n = Number(res.would_create) || 0;
+      if (res.returned) return name + " stays in the class: the planned leaving day is cancelled. " + (n ? plural(n, "lesson", "lessons") + " will be made again for them." : "No lessons need to be made again.");
       return res.already ? name + " is already in this slot." : name + " joins from " + day + ". " + (n ? plural(n, "lesson", "lessons") + " will be created for them." : "No lessons are made yet. Press Create lessons later.");
     }
     var free = Number(res.removable) || 0, kept = Number(res.kept) || 0;
@@ -157,6 +168,7 @@
   function memberDone(action, res, name) {
     res = res || {};
     if (action === "add") {
+      if (res.returned) return name + " stays in the class. " + plural(Number(res.created) || 0, "lesson", "lessons") + " made again";
       if (res.already) return name + " is already in this slot";
       return name + " added to the slot. " + plural(Number(res.created) || 0, "lesson", "lessons") + " created" + assignedNote(res.assigned);
     }
@@ -226,7 +238,7 @@
   function isMissing(err) { return CA.isMissing(err); }
 
   return { MAX_DAYS: MAX_DAYS, genRange: genRange, genLabel: genLabel, weeksText: weeksText, addDays: addDays, isoDays: isoDays, assignedNote: assignedNote,
-           stopPreview: stopPreview, stoppedFromText: stoppedFromText, memberPreview: memberPreview, memberDone: memberDone, memberTag: memberTag, holidayCancelText: holidayCancelText,
+           stopPreview: stopPreview, stoppedFromText: stoppedFromText, memberPreview: memberPreview, memberDone: memberDone, memberTag: memberTag, holidayCancelText: holidayCancelText, assignNote: assignNote,
            DAYS: DAYS, DAY_SHORT: DAY_SHORT, MAX_STUDENTS: MAX_STUDENTS, PAGE_SIZE: PAGE_SIZE, hm: hm, minutesBetween: minutesBetween, isoWeekday: isoWeekday,
            validate: validate, saveArgs: saveArgs, rateText: rateText, studentsText: studentsText, kindText: kindText, tutorLine: tutorLine, timeText: timeText,
            byDay: byDay, countText: countText, emptyText: emptyText, generateMessage: generateMessage, savedText: savedText, stoppedText: stoppedText,

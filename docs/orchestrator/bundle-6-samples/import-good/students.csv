@@ -1,0 +1,9 @@
+student_ref,family_ref,student_name,level,lesson_location,online_link,start_date,notes
+S0001,F0001,Juran Ban,JC2,Online,,2026-05-12,
+S0002,F0002,Nokeh Zho,JC2,Online,https://meet.example.test/s2,2025-03-24,
+S0003,F0003,Betas Baw,P3,Online,https://meet.example.test/s3,2025-03-09,
+S0004,F0004,Hamoa Ngn,P6,Centre,https://meet.example.test/s4,2025-06-20,
+S0005,F0005,Ninal Yom,S2,Centre,,2025-03-15,
+S0006,F0006,Beriy Bam,JC1,Centre,https://meet.example.test/s6,2026-01-11,
+S0007,F0006,Haloa Bam,P3,Online,https://meet.example.test/s7,2026-06-15,
+S0008,F0007,Ramo Zho,JC1,Online,https://meet.example.test/s8,2026-06-27,Prefers mornings

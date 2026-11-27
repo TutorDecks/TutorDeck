@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Settings · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=354">
+<link rel="stylesheet" href="assets/css/app.css?v=357">
 <script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   .field textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
@@ -19,6 +19,9 @@
   /* ---- v179 redesign ---- */
   .set-wrap{max-width:680px;display:flex;flex-direction:column;gap:14px}
   .set-card{padding:20px 22px;border-radius:16px}
+  .combine-row{display:flex;align-items:center;gap:12px;min-height:44px;margin-top:10px;font-size:15px;font-weight:600;color:var(--ink);cursor:pointer}
+  .combine-row input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+  .combine-row input:disabled + span{color:var(--muted)}
   .set-card h2{font-size:17px;font-weight:800;margin:0 0 2px}
   .set-sub{font-size:13.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
   .set-card .field:last-child{margin-bottom:0}
@@ -47,7 +50,7 @@
   }
   .set-card .field .fhint{margin-bottom:12px}
 </style>
-<link rel="stylesheet" href="assets/css/dark.css?v=354">
+<link rel="stylesheet" href="assets/css/dark.css?v=357">
 </head>
 <body>
 <div id="view">
@@ -203,6 +206,13 @@
     <div class="msg" id="plan-msg" style="margin-top:10px;text-align:left"></div>
   </section>
 
+  <!-- (T4 S7b) only for a tutor who also teaches at a centre: a personal choice kept on this account, never sent to the centre -->
+  <section class="card set-card" id="combine-card" style="display:none">
+    <h2>Centre earnings</h2>
+    <label class="combine-row" for="combine-pay"><input type="checkbox" id="combine-pay"><span>Include my centre earnings in my totals</span></label>
+    <p class="muted" id="combine-note" style="font-size:13.5px;margin:8px 0 0"></p>
+  </section>
+
   <section class="card set-card" id="centre">
     <h2>Run a tuition centre?</h2>
     <p class="muted" style="font-size:13.5px;margin-bottom:14px">Set up a centre (beta): staff and tutor logins with their own permissions,
@@ -223,13 +233,15 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=354"></script>
-<script src="assets/js/supabase.js?v=354"></script>
-<script src="assets/js/org-current.js?v=354"></script>
-<script src="assets/js/org-scope.js?v=354"></script>
-<script src="assets/js/app.js?v=354"></script>
-<script src="assets/js/paynow.js?v=354"></script>
-<script src="assets/js/settings.js?v=354"></script>
-<script src="assets/js/plan.js?v=354"></script>
+<script src="assets/js/config.js?v=357"></script>
+<script src="assets/js/supabase.js?v=357"></script>
+<script src="assets/js/menus.js?v=357"></script>
+<script src="assets/js/org-current.js?v=357"></script>
+<script src="assets/js/org-scope.js?v=357"></script>
+<script src="assets/js/app.js?v=357"></script>
+<script src="assets/js/paynow.js?v=357"></script>
+<script src="assets/js/tutor-pay-core.js?v=357"></script>
+<script src="assets/js/settings.js?v=357"></script>
+<script src="assets/js/plan.js?v=357"></script>
 </body>
 </html>

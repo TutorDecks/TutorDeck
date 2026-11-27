@@ -5,21 +5,37 @@
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
-  var TC = window.TutorCore, rows = [], byId = {}, today = "", current = null, picked = null, opener = null, manyOrgs = false, chargeText = "";
+  var TC = window.TutorCore, PC = window.TutorPayCore, payBy = {}, payMonth = [], rows = [], byId = {}, today = "", current = null, picked = null, opener = null, manyOrgs = false, chargeText = "";
 
   function say(t, err) { var m = $("ts-msg"); m.textContent = t || ""; m.className = "msg" + (t ? (err ? " err" : " ok") : ""); }
 
   function row(l) {
     var c = TC.chip(l, today), t = TC.timeLabel(l.start_time).split(" ");
     var sub = [l.student_level, l.subject, manyOrgs ? l.org_name : null].filter(Boolean).join(" · ");
+    var pw = PC && PC.lessonPay(payBy[l.lesson_id]);       // (S7b) your own pay for this lesson, only when your centre shows it
     return '<button type="button" class="tt-row" data-id="' + esc(l.lesson_id) + '">' +
       '<span class="tt-time"><b>' + esc(t[0] || "") + '</b><small>' + esc(t[1] || "") + '</small></span>' +
-      '<span class="tt-main"><span class="tt-name">' + esc(l.student_name) + '</span><span class="tt-sub">' + esc(sub || "Lesson") + '</span></span>' +
+      '<span class="tt-main"><span class="tt-name">' + esc(l.student_name) + '</span><span class="tt-sub">' + esc(sub || "Lesson") + '</span>' +
+      (pw ? '<span class="tt-pay' + (pw.pending ? ' pending' : '') + '">' + (pw.pending ? 'Pay pending' : esc(pw.text) + ' est.') + '</span>' : '') + '</span>' +
       '<span class="tt-chip ' + c.tone + '">' + esc(c.text) + '</span>' +
       '<svg class="tt-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>';
   }
 
+  // (S7b) "Your pay": one line per centre that shows this tutor their own pay. Never a rate, a fee or a family's payment.
+  function renderPay() {
+    var box = $("tt-pay"); if (!box) return;
+    var lines = PC ? PC.summaryLines(payMonth) : [];
+    if (!lines.length) { box.innerHTML = ""; box.style.display = "none"; return; }
+    box.style.display = "";
+    box.innerHTML = lines.map(function (x) {
+      return '<a class="tt-paycard" href="my-pay"><span class="tt-pc-l">Your pay' + (lines.length > 1 || manyOrgs ? ' · ' + esc(x.org) : '') + ' <small>' + esc(x.period) + '</small></span>' +
+        '<span class="tt-pc-v">' + esc(x.total) + '</span>' +
+        '<span class="tt-pc-n">' + esc(PC.estimateNote(x.final)) + (x.pending ? ' · ' + esc(PC.pendingWord(x.pending)) : '') + '</span></a>';
+    }).join("");
+  }
+
   function render() {
+    renderPay();
     var groups = TC.group(rows, today), toMark = rows.filter(function (l) { return l.lesson_date < today && l.can_mark && !l.attendance && l.status !== "cancelled"; }).length;
     var todayN = rows.filter(function (l) { return l.lesson_date === today && l.status !== "cancelled"; }).length;
     $("tt-sum").innerHTML = rows.length
@@ -48,6 +64,7 @@
     html += '<div class="tt-facts">' +
       (l.subject || l.student_level ? '<div><span>Class</span><span>' + esc([l.student_level, l.subject].filter(Boolean).join(" · ")) + '</span></div>' : '') +
       (manyOrgs ? '<div><span>Centre</span><span>' + esc(l.org_name) + '</span></div>' : '') +
+      (function () { var w = PC && PC.lessonPay(payBy[l.lesson_id]); return w ? '<div><span>Your pay</span><span>' + (w.pending ? 'Pending' : esc(w.text) + ' <small style="color:var(--muted)">estimate</small>') + '</span></div>' : ''; })() +
       (l.parent_contact ? '<div><span>Parent</span><span><a href="tel:' + esc(String(l.parent_contact).replace(/[^\d+]/g, "")) + '">' + esc(l.parent_contact) + '</a></span></div>' : '') +
       (/^https:\/\/\S+$/.test(l.online_link || "") ? '<div><span>Online link</span><span><a href="' + esc(l.online_link) + '" target="_blank" rel="noopener noreferrer">Join the lesson</a></span></div>' : '') +
       (l.trial && !l.can_flag_trial ? '<div><span>Trial</span><span>This is a trial lesson</span></div>' : '') +
@@ -120,6 +137,14 @@
       $("tt-lists").innerHTML = '<div class="card"><div class="tt-empty">Your lessons aren’t available right now. Please try again in a few minutes.</div></div>';
       return;
     }
+    // (S7b) the tutor's own pay, if their centre shows it. Any problem (not installed yet, switched off, not a centre tutor) = simply no pay line.
+    payBy = {}; payMonth = [];
+    try {
+      var pm = await window.sb.rpc("tutor_my_pay_month");
+      if (!pm.error) payMonth = pm.data || [];
+      if (PC && PC.anyPerLesson(payMonth)) { var pl = await window.sb.rpc("tutor_my_pay", { p_from: TC.addDays(today, -14), p_to: TC.addDays(today, 7) }); if (!pl.error) payBy = PC.byLesson(pl.data); }
+      if (!pm.error && TL.setPayView) TL.setPayView(payMonth.length > 0);
+    } catch (e) { payBy = {}; payMonth = []; }
     rows = r.data || []; byId = {};
     try {                                                    // the student's online lesson link (T3 step 7); a database without it just shows no link
       var lk = await window.sb.rpc("tutor_lesson_links", { p_from: TC.addDays(today, -14), p_to: TC.addDays(today, 7) }), links = {};

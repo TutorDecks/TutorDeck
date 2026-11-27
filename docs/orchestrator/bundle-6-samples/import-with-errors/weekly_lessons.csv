@@ -1,0 +1,13 @@
+student_ref,tutor_email,day,start,end,subject,level,family_rate_per_hour
+S0001,beviy.ngk2@example.test,Sat,12:00,14:00,English,,57.00
+S0001,beviy.ngk2@example.test,Sat,17:00,18:00,Science,P4,67.50
+S0002,jotal.chw3@example.test,Sun,16:30,18:00,Chinese,S4,77.00
+S0002,jotal.chw3@example.test,Thu,15:30,17:00,Physics,S4,87.00
+S0003,jotal.chw3@example.test,Wed,18:30,19:30,Science,,50.50
+S0003,jotal.chw3@example.test,Sat,14:30,16:30,English,,94.50
+S0004,jotal.chw3@example.test,Thu,18:30,19:30,Chemistry,,72.00
+S0004,lirah.tan1@example.test,Tue,17:00,19:00,Chinese,,69.00
+S0005,lirah.tan1@example.test,Sun,10:00,12:00,Chinese,S2,58.00
+S0006,lirah.tan1@example.test,Sun,16:00,17:30,Biology,P1,76.00
+S0007,lirah.tan1@example.test,Mon,19:00,20:00,Biology,JC2,51.00
+S0008,lirah.tan1@example.test,Thu,15:00,17:00,Chemistry,S5,77.50

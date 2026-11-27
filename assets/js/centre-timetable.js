@@ -73,6 +73,7 @@
   }
   function draw(res) {
     lastRes = res; today = res.today;
+    $("tt-past").hidden = !(res.can_edit && window.CentrePastLessons);
     var r = TT.range(state.view, state.anchor);
     drawTutors(res.tutors); drawStudents(res.students, res.students_more); drawBranches(res.branches);
     controls();
@@ -139,10 +140,37 @@
       '<a class="btn" href="centre-attendance?id=' + encodeURIComponent(orgId) + '&date=' + esc(r.lesson_date) + '&view=day">Open in Attendance</a>' +
       '<button type="button" class="btn" id="tt-onlyst">Show only ' + esc(r.student_name) + '</button>' +
       (r.tutor_id ? '<button type="button" class="btn" id="tt-onlytu">Show only ' + esc(r.tutor_name || "this tutor") + '</button>' : '') +
-      (ra.label ? '<button type="button" class="btn btn-primary" id="tt-reassign">' + esc(ra.label) + '</button>' : '') + '</div>' +
+      (ra.label ? '<button type="button" class="btn btn-primary" id="tt-reassign">' + esc(ra.label) + '</button>' : '') +
+      (lastRes.can_edit && !r.cancelled && window.TutorRequestsCore ? '<button type="button" class="btn" id="tt-link">' + (r.lesson_link ? 'Change this lesson’s link' : 'Set a link for this lesson') + '</button>' : '') + '</div>' +
       (ra.note ? '<p class="tt-ro" id="tt-ranote">' + esc(ra.note) + '</p>' : '') +
       '<p class="tt-ro">To change the day, time or tutor of every lesson in a weekly slot, use <b>Weekly slots</b>. Moving a lesson to another day is coming next.</p>';
     $("tt-sb").innerHTML = html; openSheet(trigger);
+  }
+
+  // ---------------------------------------------------------------- the online link of ONE lesson (T6 step 5; staff may always; not money)
+  // staff_set_lesson_link: https:// only, no spaces, 500 characters at most; empty = the student's usual link applies again (that one is set on the Students page).
+  var lkBusy = false;
+  function openLinkForm() {
+    var r = cur; if (!r) return;
+    $("tt-sb").innerHTML = '<form class="sl-form" id="tt-lf" novalidate><div class="tt-h">Online link of this lesson</div>' +
+      '<p class="tt-note" style="margin:0 0 12px">' + esc(r.student_name) + ' · ' + esc(TT.dayLabel(r.lesson_date, today)) + ' · ' + esc(TT.timeRange(r)) + '</p>' +
+      '<div class="field"><label for="tt-lk">Link</label><input id="tt-lk" type="url" inputmode="url" maxlength="500" placeholder="https://" autocomplete="off" value="' + esc(r.lesson_link || "") + '">' +
+      '<div class="sl-err" id="tt-lk-err" role="alert" hidden></div></div>' +
+      '<p class="tt-note" style="margin:0 0 8px">Only this lesson. Leave it empty to use ' + esc(r.student_name) + '’s usual link. The tutor sees it on the lesson.</p>' +
+      '<div class="sl-acts"><button class="btn btn-primary" type="submit" id="tt-ls">Save link</button><button class="btn" type="button" id="tt-lb">Back</button></div></form>';
+    $("tt-lk").focus();
+  }
+  async function saveLink(e) {
+    if (e) e.preventDefault();
+    var r = cur, RCc = window.TutorRequestsCore; if (!r || lkBusy || !RCc) return;
+    var c = RCc.linkCheck($("tt-lk").value), er = $("tt-lk-err"); er.hidden = true;
+    if (c.error) { er.textContent = c.error; er.hidden = false; return; }
+    lkBusy = true; $("tt-ls").disabled = true;
+    var res = await window.sb.rpc("staff_set_lesson_link", { p_org: orgId, p_lesson: r.lesson_id, p_link: c.link || null });
+    lkBusy = false; $("tt-ls").disabled = false;
+    if (res.error) { er.textContent = /BAD_LINK/.test(res.error.message || "") ? RCc.linkCheck("x").error : /NOT_ALLOWED/.test(res.error.message || "") ? "Your account can’t change the timetable at this centre." : "We couldn’t save that just now. Please try again."; er.hidden = false; return; }
+    r.lesson_link = (res.data && res.data.lesson_link) || null; r.online_link = (res.data && res.data.online_link) || null;
+    TL.toast(c.link ? "Link saved" : "Link removed", "ok"); open(r.lesson_id);
   }
 
   // ---------------------------------------------------------------- Reassign or cover (one lesson)
@@ -216,6 +244,8 @@
     $("tt-prev").addEventListener("click", function () { go(TT.shift(state.view, state.anchor || today, -1)); });
     $("tt-next").addEventListener("click", function () { go(TT.shift(state.view, state.anchor || today, 1)); });
     $("tt-today").addEventListener("click", function () { go(today || localToday()); });
+    var openPast = function (e) { window.CentrePastLessons.open(orgId, { onDone: function () { stale = true; if (mode === "lessons") { stale = false; load(); } } }, e.currentTarget); };
+    $("tt-past").addEventListener("click", openPast); $("sl-past").addEventListener("click", openPast);
     $("tt-view").addEventListener("click", function (e) {
       var b = e.target.closest("[data-v]"); if (!b || b.dataset.v === state.view) return;
       var t = today || localToday();
@@ -237,9 +267,11 @@
       if (e.target.id === "tt-onlyst") { var s = cur.student_id; closeSheet(); pick({ student: s }); }
       if (e.target.id === "tt-onlytu") { var t = cur.tutor_id; closeSheet(); pick({ tutor: t }); }
       if (e.target.closest("#tt-reassign")) openReassign();
+      if (e.target.closest("#tt-link")) openLinkForm();
+      if (e.target.id === "tt-lb") open(cur.lesson_id);
       if (e.target.id === "tt-rb") open(cur.lesson_id);
     });
-    $("tt-sb").addEventListener("submit", reSave);
+    $("tt-sb").addEventListener("submit", function (e) { if (e.target.id === "tt-lf") saveLink(e); else reSave(e); });
     $("tt-sb").addEventListener("change", function (e) {
       if (e.target.name === "tt-rm") { var on = e.target.value === "reassign"; if ($("tt-rlw")) { $("tt-rlw").hidden = !on; if (!on && $("tt-rl")) $("tt-rl").checked = false; } }
     });

@@ -9,7 +9,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); 
 const SOON_IDS = ["f-billing-deposit-top_up", "f-billing-deposit-set_off_unpaid",
   "f-billing-deposit-final_month", "f-billing-trials-charged"];
 // T4 S6: every late-fee option is built (editable); only the "a line on the family's next invoice" placement is still to come
-const LATE_IDS = ["f-billing-late_fee-enabled", "f-billing-late_fee-repeat", "f-billing-late_fee-type", "f-billing-late_fee-amount_cents", "f-billing-late_fee-percent_bp",
+const LATE_IDS = ["f-billing-late_fee-enabled", "f-billing-late_fee-repeat", "f-billing-late_fee-type", "f-billing-late_fee-amount_cents",
   "f-billing-late_fee-after_days", "f-billing-late_fee-cap_cents", "f-billing-late_fee-show_as", "f-billing-late_fee-waived_by"];
 (async () => {
   const b = await chromium.launch(process.env.PW_EXE ? { executablePath: process.env.PW_EXE } : {});
@@ -21,6 +21,15 @@ const LATE_IDS = ["f-billing-late_fee-enabled", "f-billing-late_fee-repeat", "f-
     await page.route("**/assets/vendor/supabase-2.118.0.js", (r) => r.fulfill({ body: STUB, contentType: "application/javascript" }));
     await page.goto(BASE + "org.html?id=o2#billing", { waitUntil: "load" }); await page.waitForTimeout(1300);
     if (vp === "dark") { await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark")); await page.waitForTimeout(200); }
+    // B5-FIX D: the details of a deposit / late fee show only once it is switched on, and only the field that applies
+    ok(!(await page.$("#f-billing-late_fee-repeat")) && !(await page.$("#f-billing-deposit-top_up")), vp + ": no late-fee or deposit details while both are off");
+    await page.selectOption("#f-billing-deposit-mode", '"fixed"'); await page.waitForTimeout(150);
+    await page.check("#f-billing-late_fee-enabled"); await page.waitForTimeout(150);
+    ok(!!(await page.$("#f-billing-late_fee-amount_cents")) && !(await page.$("#f-billing-late_fee-percent_bp")), vp + ": late fee 'a fixed amount' shows only the S$ amount");
+    await page.selectOption("#f-billing-late_fee-type", '"percent"'); await page.waitForTimeout(150);
+    ok(!(await page.$("#f-billing-late_fee-amount_cents")) && !!(await page.$("#f-billing-late_fee-percent_bp")), vp + ": 'a percentage' shows only the percentage");
+    await page.selectOption("#f-billing-late_fee-type", '"fixed"'); await page.waitForTimeout(150);
+    ok(!!(await page.$("#f-billing-deposit-top_up")) && !!(await page.$("#f-billing-deposit-forfeit_notice_days")) && !!(await page.$("#f-billing-one_off_fees-deposit_cents")) && !(await page.$("#f-billing-deposit-percent_bp")), vp + ": a fixed deposit shows its S$ amount and its details, not the percentage");
     const og = await page.textContent("#og");
     for (const id of SOON_IDS) { const el = await page.$("#" + id); ok(!!el && await el.evaluate((e) => e.disabled), vp + ": " + id + " shown and disabled"); }
     for (const id of LATE_IDS) { const el = await page.$("#" + id); ok(!!el && await el.evaluate((e) => !e.disabled), vp + ": " + id + " is built, so it is editable"); }
@@ -30,7 +39,7 @@ const LATE_IDS = ["f-billing-late_fee-enabled", "f-billing-late_fee-repeat", "f-
     ok(og.includes("always approved and recorded step by step") && og.includes("comes in a later update") && og.includes("A person approves or waives each one"), vp + ": help says what is built and what is missing");
     for (const id of ["f-billing-deposit-mode", "f-billing-deposit-taxable", "f-billing-deposit-due", "f-billing-deposit-waived_by", "f-billing-deposit-release", "f-billing-deposit-forfeit_notice_days", "f-billing-deposit-refund_approved_by"]) ok(await page.$eval("#" + id, (e) => !e.disabled), vp + ": " + id + " is editable now (S4/S5)");
     const nSoon = (await page.$$(".og-soon")).length;
-    ok(nSoon >= 10, vp + ": Coming soon badges (" + nSoon + ")");
+    ok(nSoon >= 5, vp + ": Coming soon badges still shown (" + nSoon + "; it was 10+ before tutor pay, credits and the tutor switches were built)");
     ok(await page.$eval("#f-billing-sibling_discount-type", (e) => !e.disabled), vp + ": sibling discount still editable");
     ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), vp + ": no sideways scroll");
     if (SC) await page.screenshot({ path: path.join(SC, "money-billing-" + vp + ".png"), fullPage: true });
@@ -47,7 +56,7 @@ const LATE_IDS = ["f-billing-late_fee-enabled", "f-billing-late_fee-repeat", "f-
     ok(!!(await page.$("#f-tutor_pay-group_count")), vp + ": group-only field shown for 'both'");
     const opts = await page.$$eval("#f-tutor_pay-rate_model option", (o) => o.map((x) => [x.textContent, x.disabled]));
     ok(opts.some(([t]) => /per student/i.test(t)), vp + ": per-student rate offered for 'both'");
-    ok(opts.some(([t, d]) => /percentage/i.test(t) && d && /coming soon/i.test(t)), vp + ": percentage rate is marked coming soon");
+    ok(opts.some(([t, d]) => /percentage/i.test(t) && !d && !/coming soon/i.test(t)), vp + ": percentage rate is built (T4 S7): offered and not marked coming soon");
     if (SC) await page.screenshot({ path: path.join(SC, "money-pay-both-" + vp + ".png"), fullPage: true });
     await page.click("[data-step=profile]"); await page.waitForTimeout(300);
     await page.selectOption("#f-lessons-class_type", "\"one_to_one\""); await page.waitForTimeout(300);

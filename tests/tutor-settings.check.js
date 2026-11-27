@@ -186,7 +186,7 @@ const centreTutor = (n) => ({ role: { memberships: [{ role: "tutor", status: "ac
     await page.click("a.tt-set"); await page.waitForTimeout(800); ok(/\/tutor-settings$/.test(page.url()), "the link opens it"); await ctx.close(); }
   { const { ctx, page } = await open(b, "phone", "light", centreTutor(4), "home");
     const sheet = await page.$$eval("#tl-sheet a", (e) => e.map((x) => x.textContent.trim().replace(/\s+/g, " ")));
-    ok(sheet.some((s) => /My tutor profile/.test(s)) && /My lessons/.test(sheet[0]), "'both' login finds the profile link in More: " + sheet.join(" | ")); await ctx.close(); }
+    ok(!sheet.some((s) => /My tutor profile/.test(s)) && /My lessons/.test(sheet[0]) && sheet.filter((s) => /^Settings/.test(s)).length === 1, "UX1: a 'both' login in their solo organisation has ONE centre entry (My lessons) and the solo Settings in More, no 'My tutor profile': " + sheet.join(" | ")); await ctx.close(); }
   { const { ctx, page } = await open(b, "desktop", "light", { role: { memberships: [{ org_id: "o1", user_id: "u1", role: "owner", status: "active", organisations: { id: "o1", kind: "solo", trading_name: "Mei" } }] }, profiles: [] }, "home");
     const nav = await page.$$eval(".tn-links a", (e) => e.map((x) => x.textContent.trim()));
     ok(nav.join(",") === "Home,Schedule,Students,Money" && !/tutor/.test(page.url()), "a plain solo login is unchanged"); await ctx.close(); }

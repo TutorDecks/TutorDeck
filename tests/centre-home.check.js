@@ -19,6 +19,13 @@ function override(cfg) {
     var from = c.from.bind(c), rpc = c.rpc.bind(c);
     c.rpc = function (n, a) { window.__calls = window.__calls || []; window.__calls.push([n, a]);
       if (n === "staff_tutor_changes") return Promise.resolve(cfg.changesError ? { data: null, error: { message: "NOT_ALLOWED: no" } } : { data: cfg.changes || null, error: null });
+      if (n === "staff_schedule_requests") { if (cfg.requestsError) return Promise.resolve({ data: null, error: { message: "boom" } });
+        var list = (cfg.requests || []).filter(function (r) { return a.p_status === "all" || r.status === "pending"; });
+        return Promise.resolve({ data: { today: cfg.requestsToday, pending: (cfg.requests || []).filter(function (r) { return r.status === "pending"; }).length, can_decide: cfg.canDecide !== false, status: a.p_status, rows: list }, error: null }); }
+      if (n === "staff_decide_request") { if (cfg.decideError) return Promise.resolve({ data: null, error: { message: cfg.decideError } });
+        var q = (cfg.requests || []).filter(function (r) { return r.request_id === a.p_request; })[0];
+        if (q && a.p_decision === "approve") q.status = cfg.approveStatus || "approved"; if (q && a.p_decision === "decline") { q.status = "declined"; q.decision_reason = a.p_reason; }
+        return Promise.resolve({ data: { request_id: a.p_request, status: q ? q.status : "approved", already: false, reason: "The lesson has been marked since the request was made" }, error: null }); }
       if (n === "staff_home") return Promise.resolve(cfg.home.error ? { data: null, error: cfg.home.error } : { data: cfg.home, error: null }); return rpc(n, a); };
     c.from = function (t) {
       if (t === "students") {
@@ -95,7 +102,6 @@ const tabs = (page, phone) => page.locator(phone ? ".tabbar a" : ".tn-links a").
     const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, changes: CH }, { phone: true, dark });
     await page.goto(BASE + "centre?id=c1"); await page.waitForSelector("#ch-changes");
     const t = (await page.locator("#ch").innerText()).replace(/\s+/g, " ");
-    if (process.env.DBG) console.log(t);
     ok(/Tutor changes/i.test(t) && /Tutor One moved Aiden Tan/.test(t) && /Tutor Two cancelled Bea Lim/.test(t) && /Tutor One put Cal Ong back to the usual time/.test(t), tag + "the three changes are listed in plain words");
     ok(await page.locator(".ch-chip", { hasText: "Tell the family" }).count() === 3 && /today/.test(t) && /2 days ago/.test(t), tag + "each says to tell the family, and how long ago");
     ok(/has a clash/.test(t) && /\(cancelled\)/.test(t), tag + "the reason and the cancelled lesson are shown");
@@ -108,6 +114,18 @@ const tabs = (page, phone) => page.locator(phone ? ".tabbar a" : ".tn-links a").
   { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, changes: Object.assign({}, CH, { tell_family: false, rows: CH.rows.map((r) => Object.assign({}, r, { tell_family: false })) }) }, { phone: true });
     await page.goto(BASE + "centre?id=c1"); await page.waitForSelector("#ch-changes");
     ok(await page.locator(".ch-chip").count() === 0 && /listed for your information/.test(await page.locator("#ch").innerText()), "notify_family off: the list is still there, but nothing says to tell the family"); await ctx.close(); }
+  // T6 steps 3-4: a lesson a tutor ADDED, a weekly slot, and one line per "Create lessons" press
+  { const rows = [row("n1", "added", "Tutor One", "Aiden Tan", { kind: "lesson", awaiting_centre: true, from_date: null, from_start: null, reason: null }),
+                  { kind: "slot", slot_id: "sl1", what: "added", changed_at: new Date().toISOString(), tutor_id: "m1", tutor_name: "Tutor One", student_id: "s1", student_name: "Aiden Tan", subject: "Math", weekday: 1, start_time: "16:00:00", end_time: "17:00:00", awaiting_centre: false, tell_family: true },
+                  { kind: "run", what: "generated", changed_at: new Date().toISOString(), tutor_id: "m2", tutor_name: "Tutor Two", created: 11, from_date: D(0), to_date: D(27), awaiting_centre: false, tell_family: true }];
+    const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, changes: { today: TODAY, days: 7, tell_family: true, rows } }, { phone: true });
+    await page.goto(BASE + "centre?id=c1"); await page.waitForSelector("#ch-changes");
+    const t = (await page.locator("#ch-changes").innerText()).replace(/\s+/g, " ");
+    ok(/Tutor One added a lesson for Aiden Tan/.test(t) && /Tutor One added a weekly slot for Aiden Tan/.test(t) && /Tutor Two created 11 lessons from their weekly slots/.test(t) && /Every Tuesday 4:00 pm – 5:00 pm/.test(t), "tutor changes: an added lesson, a slot and a press are each one plain line");
+    ok(await page.locator(".ch-chip", { hasText: "Price to confirm" }).count() === 1 && await page.locator(".ch-chip", { hasText: "Tell the family" }).count() === 2, "only the lesson whose details the centre must confirm says 'Price to confirm'; a press has no 'tell the family' (the lessons it made are the tutor's own slots)");
+    const hrefs = await page.locator("#ch-changes a").evaluateAll((e) => e.map((x) => x.getAttribute("href")));
+    ok(hrefs[0].includes("&date=" + D(3) + "&view=day") && hrefs[1].endsWith("&view=next14") && hrefs[2].endsWith("&view=next14") && hrefs.every((h) => !/undefined|null/.test(h)), "a lesson opens its day; a slot and a press open the next two weeks: " + hrefs.join(" "));
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1) && errs.length === 0, "no sideways scroll at 390px, no console errors " + errs.join("|")); await ctx.close(); }
   { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, changes: { today: TODAY, days: 7, tell_family: true, rows: [] } }, { phone: true });
     await page.goto(BASE + "centre?id=c1"); await page.waitForSelector(".ch-tile");
     ok(await page.locator("#ch-changes").count() === 0 && !/Tutor changes/.test(await page.locator("#ch").innerText()), "no changes: no 'Tutor changes' section at all"); await ctx.close(); }
@@ -139,6 +157,52 @@ const tabs = (page, phone) => page.locator(phone ? ".tabbar a" : ".tn-links a").
   { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner")], home: FULL });
     await page.goto(BASE + "centre"); await page.waitForTimeout(1500); ok(/\/home/.test(page.url()), "a solo login opening the centre page goes Home (" + page.url() + ")");
     await page.waitForSelector(".topnav"); ok((await tabs(page)).includes("Dashboard") || (await tabs(page)).includes("Home"), "solo menu unchanged"); await ctx.close(); }
+  // T6 step 6: "Waiting for you" on Home and the Requests list (staff_schedule_requests / staff_decide_request), phone width, light and dark
+  const RQ = (id, o) => Object.assign({ request_id: id, kind: "postpone", status: "pending", tutor_name: "Tutor One", student_name: "Aiden Tan", subject: "Math", lesson_date: D(5), start_time: "16:00:00", end_time: "17:00:00",
+    new_date: D(9), new_start: "17:00:00", reason: "Away that day", created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 12 * 864e5).toISOString(), can_decide: true }, o || {});
+  const REQS = () => [RQ("q1"), RQ("q2", { kind: "cancel", student_name: "Bea Lim", reason: "Family trip" }), RQ("q3", { kind: "link", student_name: "Cal Ong", link: "https://meet.example.com/x", link_scope: "student", reason: null }),
+    RQ("q4", { status: "approved", decided_by_name: "Staff Sam", student_name: "Dee Koh" }), RQ("q5", { status: "declined", decided_by_name: "Staff Sam", decision_reason: "We need it", student_name: "Eve Ng" })];
+  for (const dark of [false, true]) {
+    const tag = "requests " + (dark ? "dark" : "light") + ": ";
+    const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, requests: REQS(), requestsToday: TODAY }, { phone: true, dark });
+    await page.goto(BASE + "centre?id=c1"); await page.waitForSelector(".ch-req");
+    let t = (await page.locator("#ch").innerText()).replace(/\s+/g, " ");
+    ok(/Waiting for you · 3/i.test(t) && /Tutor One asks to move Aiden Tan/.test(t) && /Move to /.test(t) && /Tutor One asks to cancel Bea Lim/.test(t) && /Set the online link for this student/.test(t) && /Away that day/.test(t), tag + "Home shows the three waiting requests in plain words");
+    ok(await page.locator(".ch-req").count() === 3 && !/Dee Koh|Eve Ng/.test(t), tag + "answered ones are not on Home");
+    ok(await page.locator("[data-approve]").count() === 3 && await page.locator("[data-decline]").count() === 3, tag + "each has Approve and Decline");
+    ok(!/S\$|\$\d|price|\brate\b|\bpaid\b/i.test(t), tag + "no money on the list");
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), tag + "no sideways scroll at 390px");
+    if (SC) await page.screenshot({ path: path.join(SC, "requests-home-" + (dark ? "dark" : "light") + ".png"), fullPage: true });
+    // decline needs a reason
+    await page.locator('[data-decline="q1"]').click();
+    await page.locator('[data-decline-go="q1"]').click();
+    ok(/say why/i.test(await page.locator('.ch-req[data-req="q1"] .ch-req-msg').innerText()) && !(await page.evaluate(() => (window.__calls || []).some((c) => c[0] === "staff_decide_request"))), tag + "declining without a reason is refused on the page");
+    await page.locator("#dr-q1").fill("We need that lesson to go ahead"); await page.locator('[data-decline-go="q1"]').click(); await page.waitForTimeout(500);
+    const dec = await page.evaluate(() => window.__calls.filter((c) => c[0] === "staff_decide_request").map((c) => c[1]));
+    ok(dec.length === 1 && dec[0].p_request === "q1" && dec[0].p_decision === "decline" && dec[0].p_reason === "We need that lesson to go ahead", tag + "decline sends the reason: " + JSON.stringify(dec[0]));
+    ok(await page.locator(".ch-req").count() === 2 && /Declined\. The tutor will see your reason/.test(await page.locator("body").innerText()), tag + "the declined one leaves the list and the toast says so");
+    await page.locator('[data-approve="q2"]').click(); await page.waitForTimeout(500);
+    const ap = await page.evaluate(() => window.__calls.filter((c) => c[0] === "staff_decide_request").map((c) => c[1]));
+    ok(ap.length === 2 && ap[1].p_decision === "approve" && ap[1].p_reason === null && await page.locator(".ch-req").count() === 1 && /Approved\. The change has been made/.test(await page.locator("body").innerText()), tag + "approve sends one call and says the change was made");
+    // the full list
+    await page.goto(BASE + "centre?id=c1&tab=requests"); await page.waitForSelector(".ch-req");
+    t = (await page.locator("#ch").innerText()).replace(/\s+/g, " ");
+    ok(/Waiting for you/i.test(t) && /Answered in the last 60 days/i.test(t) && /Approved by Staff Sam/.test(t) && /Declined by Staff Sam: We need it/.test(t), tag + "the Requests list shows waiting and answered, with who answered");
+    ok(errs.length === 0, tag + "no console errors " + errs.join("|")); await ctx.close();
+  }
+  { // an approval that can no longer be done says why; a stale answer is plain
+    const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, requests: REQS(), requestsToday: TODAY, approveStatus: "no_longer_possible" }, { phone: true });
+    await page.goto(BASE + "centre?id=c1"); await page.waitForSelector(".ch-req"); await page.locator('[data-approve="q1"]').click(); await page.waitForTimeout(500);
+    ok(/This can.t be done any more: the lesson has been marked since the request was made\. Nothing was changed/.test(await page.locator("body").innerText()), "approve that no longer applies: says why and that nothing was changed"); await ctx.close(); }
+  { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, requests: REQS(), requestsToday: TODAY, decideError: "ALREADY_DECIDED: this request has already been approved" }, { phone: true });
+    await page.goto(BASE + "centre?id=c1"); await page.waitForSelector(".ch-req"); await page.locator('[data-approve="q1"]').click(); await page.waitForTimeout(400);
+    ok(/already answered/.test(await page.locator('.ch-req[data-req="q1"] .ch-req-msg').innerText()) && !/ALREADY_DECIDED/.test(await page.locator("#ch").innerText()), "ALREADY_DECIDED is shown in plain words, and the buttons come back"); await ctx.close(); }
+  { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, requests: [], requestsToday: TODAY }, { phone: true });
+    await page.goto(BASE + "centre?id=c1"); await page.waitForSelector(".ch-tile");
+    ok(await page.locator(".ch-req").count() === 0 && !/Waiting for you/.test(await page.locator("#ch").innerText()), "no requests: Home shows no empty 'Waiting for you' block"); await ctx.close(); }
+  { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, requestsError: true }, { phone: true });
+    await page.goto(BASE + "centre?id=c1"); await page.waitForSelector(".ch-tile");
+    ok(await page.locator(".ch-req").count() === 0, "if the requests can't be read (older database) Home still works"); await ctx.close(); }
   await browser.close();
   console.log(fails ? fails + " FAILED" : "all passed"); process.exit(fails ? 1 : 0);
 })();

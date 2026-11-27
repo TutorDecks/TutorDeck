@@ -8,9 +8,10 @@ tests/sql/run.sh applies them, plus the demo staff logins and a read-only pre-ch
 The order is READ FROM tests/sql/run.sh so the pack can never drift from what the tests prove.
 DEV already has (do not list here): the migrations in ON_DEV below. Everything else in run.sh goes into the pack.
 
-Bundle 5 (T44): DEV already has the seven standard migrations AND bundle 4's pack (the twenty migrations listed in BUNDLE4 below, plus its two demo
-staff logins). Not on DEV yet and therefore in this pack: reassign_link and payment_fix (the B4-FIX pair; payment_fix was applied on DEV by hand, the
-pack repeats it harmlessly: every part is idempotent), then deposits, refunds, late fees, credit undo, slot changes, tutor moves."""
+Bundle 7 (T49): DEV already has the seven standard migrations, bundle 4's pack (BUNDLE4 below, plus its two demo staff logins) AND bundle 5's pack
+(BUNDLE5 below). Not on DEV yet and therefore in this pack: b5_fix, tutor_own_lessons, import (stage A), centre_tutor_pay, statement_matching, invoice_email,
+makeup_credits, tutor_link_propose, past_lessons, tutor_own_pay and org_export, in the order tests/sql/run.sh proves (five of them replace org_validate_settings (the one-argument check, or the organisation-aware wrapper) and two replace centre_invoice_run_rows,
+each file carrying the cumulative version of the one before it, so the order is not free)."""
 import os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -19,7 +20,9 @@ STANDARD = ["org_foundation", "billing", "attendance", "tutor_access", "org_dele
 BUNDLE4 = ["staff_home", "staff_students", "staff_attendance", "staff_charges", "staff_trials", "staff_timetable", "staff_slots", "staff_reassign",
            "tutor_schedule", "money_settings", "centre_money", "centre_invoice_run", "centre_payments", "invites", "fee_050", "centre_billing_method",
            "centre_billing_start", "tutor_profile", "tutor_payout", "payout_permission"]
-ON_DEV = STANDARD + BUNDLE4
+BUNDLE5 = ["reassign_link", "payment_fix", "centre_deposits", "centre_refunds", "centre_late_fees", "centre_credit_undo", "slot_changes", "tutor_moves"]
+ON_DEV = STANDARD + BUNDLE4 + BUNDLE5
+LATER = set()                      # nothing is held back for a later bundle
 
 # which branch each file came from (for the headers only)
 BRANCH = {
@@ -30,7 +33,9 @@ BRANCH = {
     "centre_billing_method": "t31a-centre-invoice-billing", "centre_billing_start": "t36-billing-start", "tutor_profile": "t24c-1-profile",
     "tutor_payout": "t24c-2-payout", "payout_permission": "t24c-3-payout", "slot_changes": "t3-9-timetable-nav",
     "reassign_link": "b4-fix", "payment_fix": "b4-fix",
-    "tutor_moves": "t6-2-tutor-moves", "centre_deposits": "t4-s4-deposits", "centre_refunds": "t4-s5-refunds", "centre_late_fees": "t4-s6-late-fees",
+    "tutor_moves": "t6-2-tutor-moves", "tutor_own_lessons": "t6-3-tutor-own-lessons", "tutor_link_propose": "t6-4-link-propose", "tutor_own_pay": "t4-s7b-own-pay", "past_lessons": "t3-10-past-lessons", "b5_fix": "b5-fix", "import": "t33-i1-stage-a", "centre_tutor_pay": "t4-s7-tutor-pay",
+    "statement_matching": "t34-m0-matching", "invoice_email": "t7-3-invoice-email", "makeup_credits": "t18-4-makeup-credits", "org_export": "t35-e-export",
+    "centre_deposits": "t4-s4-deposits", "centre_refunds": "t4-s5-refunds", "centre_late_fees": "t4-s6-late-fees",
     "centre_credit_undo": "t4-s5b-credit-undo",
 }
 WHAT = {
@@ -44,8 +49,16 @@ WHAT = {
     "reassign_link": "reassign keeps the old tutor's link when they still teach the student", "payment_fix": "Record payment fix (DELETE without WHERE refused by Supabase)",
     "slot_changes": "slot stop dates, class members, 26-week lessons, holiday cancel, People list",
     "tutor_moves": "tutors move, put back and cancel their own lessons (centre option)",
+    "b5_fix": "follow-up fixes to bundle 5: deposit run, settings page, class share, tutor changes list",
+    "tutor_link_propose": "the online lesson link, and tutors who ask (tutors_propose): requests staff approve or decline",
+    "tutor_own_lessons": "tutors add their own one-off lessons and weekly slots, Create lessons, price pending (centre option)",
+    "import": "centre import stage A: dry run, commit, undo, history, billing-start setting", "centre_tutor_pay": "tutor pay: rates, monthly pay list, adjustments, payments (owner / staff only)",
+    "statement_matching": "bank statement matching: upload, rules, review queue, confirm, undo", "invoice_email": "invoice / receipt / reminder emails: queue, send log, caps, bounces",
+    "makeup_credits": "make-up credits: owed list, booking, expiry, invoice skip", "org_export": "centre data export (owner only): catalogue, paged reads, audit",
     "centre_deposits": "refundable deposits: ledger, deposit invoice, waive, opening balance", "centre_refunds": "refunds + family credit (request, approve, pay, apply)",
     "centre_late_fees": "late fee proposals (approve / waive, monthly repeat)", "centre_credit_undo": "undo of applied credit / deposit, four-eyes guard, notices",
+    "tutor_own_pay": "tutors see their own pay: monthly total or per lesson, if the centre allows it (tutor_pay.tutors_see_own_pay)",
+    "past_lessons": "staff add past lessons (backfill), centre setting lessons.backfill_allowed_days",
 }
 
 
@@ -53,7 +66,7 @@ def order():
     seen = []
     for line in open(os.path.join(ROOT, "tests/sql/run.sh")):
         m = re.match(r"\$P -f db/migration_([a-z0-9_]+)\.sql\b", line)
-        if m and not m.group(1).endswith("_down") and m.group(1) not in seen:
+        if m and not m.group(1).endswith("_down") and m.group(1) not in seen and m.group(1) not in LATER:
             seen.append(m.group(1))
     return seen
 
@@ -70,7 +83,9 @@ def names(sql):
 
 
 # migrations that only REPLACE existing functions create nothing new: the pre-check looks inside the function body instead
-PROBE = {"money_settings": "exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='org_validate_settings' and pronargs=1 and prosrc like '%rate_model%')"}
+PROBE = {"reassign_link": "exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='staff_reassign_lesson' and prosrc like '%links_kept%')",
+         "payment_fix": "exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='centre_record_payment' and prosrc like '%where true%')",
+         "money_settings": "exists (select 1 from pg_proc where pronamespace='public'::regnamespace and proname='org_validate_settings' and pronargs=1 and prosrc like '%rate_model%')"}
 
 
 def key_object(m, allm):
@@ -90,8 +105,8 @@ def main():
     for m in ON_DEV:
         assert m in allm, "run.sh no longer lists " + m
     assert allm[:len(STANDARD)] == STANDARD, "the standard migrations must come first in run.sh: %s" % allm[:len(STANDARD)]
-    new = [m for m in allm if m not in ON_DEV]
-    assert new[:2] == ["reassign_link", "payment_fix"], "unexpected pack order: %s" % new
+    new = [m for m in allm if m not in ON_DEV and m not in LATER]
+    assert new == ["b5_fix", "tutor_own_lessons", "import", "centre_tutor_pay", "statement_matching", "invoice_email", "makeup_credits", "tutor_link_propose", "past_lessons", "tutor_own_pay", "org_export"], "unexpected pack order: %s" % new
     tables, funcs = [], []
     for m in new:
         t, f = names(read("db/migration_%s.sql" % m))
@@ -120,30 +135,37 @@ def main():
         ("org_separation (org_same_org_guard)", exists_sql("function", "org_same_org_guard")),
     ]
     b4_checks = [("bundle 4: %s (%s)" % (m, k[1] if k[0] == "probe" and False else (k[0] + " " + k[1] if k[0] != "probe" else "function body")), exists_sql(*k)) for m, k in keys]
+    keys5 = []
+    for m in BUNDLE5:
+        k = key_object(m, allm) or ("probe", PROBE.get(m))
+        assert k[1], "no key object (and no PROBE) for " + m
+        keys5.append((m, k))
+    b5_checks = [("bundle 5: %s (%s)" % (m, (k[0] + " " + k[1]) if k[0] != "probe" else "function body"), exists_sql(*k)) for m, k in keys5]
+    b4_checks = b4_checks + b5_checks
 
     o = []
     w = o.append
     w("""-- =====================================================================================================
--- TutorDeck — DEV APPLY PACK, test bundle 5 (task T44).   PASTE INTO THE SUPABASE SQL EDITOR OF THE **DEV** PROJECT ONLY (tuzxsqkfzrjssnpcoale).
+-- TutorDeck — DEV APPLY PACK, test bundle 7 (task T49).   PASTE INTO THE SUPABASE SQL EDITOR OF THE **DEV** PROJECT ONLY (tuzxsqkfzrjssnpcoale).
 -- NEVER run on LIVE (rnjvswkejbrhbaytutai). (On LIVE the pre-check below also stops the pack: LIVE has no organisation tables yet.)
 -- GENERATED by tools/build-dev-pack.py from tests/sql/run.sh: do not edit by hand; re-run the script.
 -- =====================================================================================================
--- DEV already has the seven standard migrations and bundle 4's pack (see the pre-check). This pack adds, in dependency order (the same order
+-- DEV already has the seven standard migrations, bundle 4's pack and bundle 5's pack (see the pre-check). This pack adds, in dependency order (the same order
 -- tests/sql/run.sh proves; every part is idempotent: run it twice, the second changes nothing):""")
     for k, m in enumerate(new, 1):
         w("--   PART %-2d %-24s %-30s db/migration_%s.sql  (%s)" % (k, m, "claude/" + BRANCH[m], m, WHAT[m]))
-    w("""-- Needs on DEV first: the seven standard migrations (%s) and every migration of bundle 4 (%s).
+    w("""-- Needs on DEV first: the seven standard migrations (%s) every migration of bundle 4 (%s) and every migration of bundle 5 (%s).
 --
 -- TRANSACTIONS: the Supabase SQL editor runs everything you paste as ONE batch, so the pack is all-or-nothing in practice: if any
 -- statement fails, nothing from this paste is kept and the error shows the failing line. The pack has no BEGIN/COMMIT of its own.
 -- It changes no existing row of real data (it is made for DEV, which holds dummy data only).
 -- The result you see is the LAST query (the post-check). To see the pre-check alone, run just the first block.
 -- =====================================================================================================
-""" % (", ".join(STANDARD), ", ".join(BUNDLE4)))
+""" % (", ".join(STANDARD), ", ".join(BUNDLE4), ", ".join(BUNDLE5)))
 
     # ---------------- pre-check
     w("-- ####################################### PRE-CHECK (read-only) #######################################")
-    w("-- 'ready' = the seven standard migrations and all of bundle 4 are present. 'NEW OBJECTS ALREADY THERE' only says how much of THIS pack DEV already has:")
+    w("-- 'ready' = the seven standard migrations, all of bundle 4 and all of bundle 5 are present. 'NEW OBJECTS ALREADY THERE' only says how much of THIS pack DEV already has:")
     w("-- parts already applied are fine, the pack is safe to re-run (DEV already has payment_fix: it is repeated harmlessly).")
     w("-- The demo logins line is information only: the logins come from bundle 4's pack, this pack creates none.")
     rows = ",\n".join("  ('%s', %s)" % (label.replace("'", "''"), cond) for label, cond in std_checks + b4_checks)
@@ -161,20 +183,20 @@ select 'PRE-CHECK', 'NEW OBJECTS ALREADY THERE', ((
 union all
 select 'PRE-CHECK', 'OVERALL', case when
     ALL_OK
-  then 'ready' else 'NOT READY - fix the MISSING lines first (apply the standard migrations and bundle 4''s pack: docs/orchestrator/dev-apply-pack.md of bundle 4)' end;
+  then 'ready' else 'NOT READY - fix the MISSING lines first (apply the standard migrations, then bundle 4''s and bundle 5''s packs, before this one)' end;
 """.replace("ALL_OK", "\n    and ".join("(" + c + ")" for _, c in std_checks + b4_checks)).replace("NEW_T", ",".join("('%s')" % x for x in tables)).replace("NEW_F", ",".join("('%s')" % x for x in funcs))
    .replace("NEW_N", str(len(tables) + len(funcs))).replace("ROWS_HERE", rows))
 
     # ---------------- guard (stops the whole paste on a database that is not DEV-shaped)
     w("""-- Safety stop: this whole paste fails here, before changing anything, on a database that does not have the organisation tables
--- (that is what LIVE looks like today) or that lacks bundle 4 (the parts below build on it).
+-- (that is what LIVE looks like today) or that lacks bundles 4 and 5 (the parts below build on them).
 do $$
 begin
   if to_regclass('public.organisations') is null or to_regclass('public.memberships') is null then
-    raise exception 'STOP: this database has no organisation tables. The pack is for the DEV project only, after the seven standard migrations and bundle 4.';
+    raise exception 'STOP: this database has no organisation tables. The pack is for the DEV project only, after the seven standard migrations, bundle 4 and bundle 5.';
   end if;
   if not (GUARD_COND) then
-    raise exception 'STOP: bundle 4 is not (fully) on this database. Apply bundle 4''s pack first (see the PRE-CHECK MISSING lines).';
+    raise exception 'STOP: bundle 4 or bundle 5 is not (fully) on this database. Apply their packs first (see the PRE-CHECK MISSING lines).';
   end if;
 end $$;
 """.replace("GUARD_COND", "\n    and ".join("(" + c + ")" for _, c in b4_checks)))
