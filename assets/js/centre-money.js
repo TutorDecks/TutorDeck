@@ -8,6 +8,7 @@
 // S4 adds a third tab, Deposits (assets/js/centre-deposits.js, window.CentreDeposits), and a "Refundable deposits" section in the run's preview.
 // S5 adds a fourth tab, Refunds (assets/js/centre-refunds.js, window.CentreRefunds): deposit refunds, family-credit refunds and using credit on an invoice.
 // S6 adds a fifth tab, Late fees (assets/js/centre-late-fees.js, window.CentreLateFees): "Late fees waiting for you" to approve or waive.
+// T7.3 adds a sixth tab, Email (assets/js/centre-email.js, window.CentreEmail): the queue and log of emails to families, bounced addresses, the reminder schedule.
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
@@ -132,7 +133,7 @@
     prev = pv.data; today = pv.data.today; invs = (ls.data && ls.data.rows) || []; numb = nb.error ? null : nb.data;
     draw(); syncUrl();
   }
-  function syncUrl() { try { history.replaceState(null, "", location.pathname + "?" + (tab === "inv" ? "id=" + encodeURIComponent(orgId) + "&tab=invoices" : tab === "dep" ? "id=" + encodeURIComponent(orgId) + "&tab=deposits" : tab === "ref" ? "id=" + encodeURIComponent(orgId) + "&tab=refunds" : tab === "late" ? "id=" + encodeURIComponent(orgId) + "&tab=latefees" : CM.toQuery(orgId, month))); } catch (e) {} }
+  function syncUrl() { try { history.replaceState(null, "", location.pathname + "?" + (tab === "inv" ? "id=" + encodeURIComponent(orgId) + "&tab=invoices" : tab === "dep" ? "id=" + encodeURIComponent(orgId) + "&tab=deposits" : tab === "ref" ? "id=" + encodeURIComponent(orgId) + "&tab=refunds" : tab === "late" ? "id=" + encodeURIComponent(orgId) + "&tab=latefees" : tab === "mail" ? "id=" + encodeURIComponent(orgId) + "&tab=email" : CM.toQuery(orgId, month))); } catch (e) {} }
 
   // ---------------------------------------------------------------- actions
   async function act(fn) {
@@ -228,13 +229,13 @@
   }
 
   // ---------------------------------------------------------------- tabs
-  var TABS = ["run", "inv", "dep", "ref", "late"];
+  var TABS = ["run", "inv", "dep", "ref", "late", "mail"];
   function setTab(name, focus) {
     tab = TABS.indexOf(name) > -1 ? name : "run";
     var run = tab === "run";
     TABS.forEach(function (t) { var on = t === tab, b = $("cm-tab-" + t); $("cm-" + t).hidden = !on; b.setAttribute("aria-selected", on ? "true" : "false"); b.tabIndex = on ? 0 : -1; });
     if (focus) $("cm-tab-" + tab).focus();
-    var SUBS = { run: "Invoice run", inv: "Invoices & payments", dep: "Deposits", ref: "Refunds", late: "Late fees" };
+    var SUBS = { run: "Invoice run", inv: "Invoices & payments", dep: "Deposits", ref: "Refunds", late: "Late fees", mail: "Family email" };
     var subEl = document.querySelector(".topbar .sub"); if (subEl) subEl.textContent = SUBS[tab];   // the subtitle names the tab that is open
     say("");
     if (run && !ranRun) { ranRun = true; load(); } else if (run) syncUrl();
@@ -242,6 +243,7 @@
     if (tab === "dep") { if (window.CentreDeposits) window.CentreDeposits.show(); syncUrl(); }
     if (tab === "ref") { if (window.CentreRefunds) window.CentreRefunds.show(); syncUrl(); }
     if (tab === "late") { if (window.CentreLateFees) window.CentreLateFees.show(); syncUrl(); }
+    if (tab === "mail") { if (window.CentreEmail) window.CentreEmail.show(); syncUrl(); }
   }
 
   // ---------------------------------------------------------------- wiring
@@ -251,6 +253,7 @@
     $("cm-tab-dep").addEventListener("click", function () { setTab("dep"); });
     $("cm-tab-ref").addEventListener("click", function () { setTab("ref"); });
     $("cm-tab-late").addEventListener("click", function () { setTab("late"); });
+    $("cm-tab-mail").addEventListener("click", function () { setTab("mail"); });
     $("cm").querySelector(".cm-tabs").addEventListener("keydown", function (e) {
       if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); setTab(TABS[(TABS.indexOf(tab) + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length], true); }
     });
@@ -291,10 +294,11 @@
     orgId = id;
     var st = CM.fromQuery(location.search); urlMonth = !!st.month;
     month = st.month || CM.defaultMonth(localToday(), "postpaid_lessons");
-    tab = q.get("tab") === "invoices" ? "inv" : q.get("tab") === "deposits" ? "dep" : q.get("tab") === "refunds" ? "ref" : q.get("tab") === "latefees" ? "late" : "run";
+    tab = q.get("tab") === "invoices" ? "inv" : q.get("tab") === "deposits" ? "dep" : q.get("tab") === "refunds" ? "ref" : q.get("tab") === "latefees" ? "late" : q.get("tab") === "email" ? "mail" : "run";
     wire(); nav();
     setTab(tab);
     notices();
+    if (window.CentreEmail) window.CentreEmail.prefetch();                                              // whether the invoice sheet shows "Email invoice"
   }
   // what the Invoices tab (assets/js/centre-payments.js) shares with this page: the side sheet, the message line, the run's own refresh
   window.CentreMoneyUI = {

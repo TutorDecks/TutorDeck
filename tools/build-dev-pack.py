@@ -20,6 +20,7 @@ BUNDLE4 = ["staff_home", "staff_students", "staff_attendance", "staff_charges", 
            "tutor_schedule", "money_settings", "centre_money", "centre_invoice_run", "centre_payments", "invites", "fee_050", "centre_billing_method",
            "centre_billing_start", "tutor_profile", "tutor_payout", "payout_permission"]
 ON_DEV = STANDARD + BUNDLE4
+LATER = {"invoice_email"}          # built after bundle 5 (T7.3): a later bundle's pack will carry it, not this one
 
 # which branch each file came from (for the headers only)
 BRANCH = {
@@ -53,7 +54,7 @@ def order():
     seen = []
     for line in open(os.path.join(ROOT, "tests/sql/run.sh")):
         m = re.match(r"\$P -f db/migration_([a-z0-9_]+)\.sql\b", line)
-        if m and not m.group(1).endswith("_down") and m.group(1) not in seen:
+        if m and not m.group(1).endswith("_down") and m.group(1) not in seen and m.group(1) not in LATER:
             seen.append(m.group(1))
     return seen
 

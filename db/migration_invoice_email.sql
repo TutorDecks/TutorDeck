@@ -771,6 +771,15 @@ language sql stable security definer set search_path = public as $$
         + (select count(*) from org_invite_mail_log where status = 'sent' and sent_at > now() - interval '24 hours'))::int
 $$;
 
+-- the centres the daily job has to look at: email switched on, or something still waiting in the queue
+create or replace function public.email_active_orgs() returns table(org_id uuid)
+language sql stable security definer set search_path = public as $$
+  select o.id from organisations o
+   where o.kind = 'centre' and o.status = 'active'
+     and (email_org_cfg(o.id, (now() at time zone o.timezone)::date)->>'mode' <> 'off' or exists (select 1 from email_queue q where q.org_id = o.id and q.status = 'queued'))
+   order by o.id
+$$;
+
 -- ---------------------------------------------------------------------------------------------------
 -- 9. who may call what
 -- ---------------------------------------------------------------------------------------------------
@@ -795,7 +804,7 @@ begin
   end loop;
   -- the server only
   foreach f in array array['email_plan_reminders(uuid,boolean)', 'email_claim(uuid,int,int)', 'email_complete(uuid,text,text,text,text,int)', 'email_mark_bounce(text,text)',
-    'email_platform_sent_24h()'] loop
+    'email_platform_sent_24h()', 'email_active_orgs()'] loop
     execute format('revoke all on function public.%s from public, anon, authenticated', f);
     execute format('grant execute on function public.%s to service_role', f);
   end loop;

@@ -751,3 +751,8 @@ select t.ok((select count(*) = 0 from email_queue q where q::text ~ 'example\.te
 select t.ok((select count(*) = 0 from audit_log where (table_name in ('email_queue', 'email_send_log') and action in ('insert', 'update', 'delete')) or (action like 'email\_%' and (before::text ~ '@' or after::text ~ '@'))), 'the audit log has no address and no per-message rows (only the one summary line per action)');
 select t.ok((select count(*) >= 1 from information_schema.triggers where trigger_name = 'email_on_invoice_issued' and event_object_table = 'centre_invoices')
             and (select count(*) >= 1 from information_schema.triggers where trigger_name = 'email_on_payment' and event_object_table = 'centre_payments'), 'both automatic triggers are in place');
+-- the daily job only looks at ACTIVE centres that use email (or still have something queued)
+update organisations set status = 'active' where id in (t.id('A'), t.id('R'), t.id('D'));
+select t.ok(t.id('A') in (select org_id from email_active_orgs()) and t.id('R') in (select org_id from email_active_orgs()) and t.id('D') not in (select org_id from email_active_orgs())
+            and t.id('SOLO') not in (select org_id from email_active_orgs()), 'email_active_orgs: centres with email on are listed; a centre with email off and an empty queue, and a solo organisation, are not');
+select pg_temp.refused(:'o1', 'select * from email_active_orgs()', 'permission denied', 'a browser can''t list the centres either');

@@ -172,11 +172,36 @@
   function kindText(k, n) { return (KIND_TEXT[k] || k) + (k === "reminder" && n ? " " + n : ""); }
   var STATUS_TEXT = { queued: "Queued", sending: "Sending", sent: "Sent", failed: "Failed", cancelled: "Cancelled", skipped: "Not sent" };
   var RESULT_TEXT = { sent: "Sent", retry: "Will retry", failed: "Failed", bounced: "Bounced", blocked_preview: "Test site", skipped: "Not sent", cancelled: "Cancelled" };
+  // what a database error says, in plain words (the functions raise "NOT_ALLOWED: ...", "BAD_VALUE: ..." with the sentence after the colon)
+  var CODED = /^(NOT_ALLOWED|BAD_VALUE|TOO_LONG): ([\s\S]*)$/;
+  function isMissing(err) { var m = String((err && err.message) || err || ""); return /Could not find the function|PGRST202|42883|does not exist/i.test(m); }
+  function errorText(err) {
+    var m = String((err && err.message) || err || ""), c = CODED.exec(m);
+    if (c) return c[2].charAt(0).toUpperCase() + c[2].slice(1) + (/[.!?]$/.test(c[2]) ? "" : ".");
+    if (/NOT_FOUND/.test(m)) return "That isn’t available any more. Refresh the page and try again.";
+    if (isMissing(err)) return "Family email isn’t switched on in this database yet (db/migration_invoice_email.sql).";
+    if (/permission denied/i.test(m)) return "Your account isn’t allowed to do that at this centre.";
+    return "Something went wrong. Refresh the page and try again; if it happens again, tell TutorDeck.";
+  }
+  // what the server's "send now" answer means, in words (counts only)
+  function sentLine(r) {
+    if (!r) return "";
+    if (r.stopped === "off") return "Email is switched off.";
+    var bits = [];
+    if (r.sent) bits.push(plural(r.sent, "email", "emails") + " sent");
+    if (r.retried) bits.push(r.retried + " will be tried again");
+    if (r.invalid) bits.push(plural(r.invalid, "address", "addresses") + " not valid");
+    if (r.failed) bits.push(r.failed + " failed");
+    if (r.blocked) bits.push(r.blocked + " not sent (test site)");
+    if (r.stopped === "platform_cap") bits.push("TutorDeck’s email limit for today is reached, so the rest waits for tomorrow");
+    else if (/^brevo_/.test(r.stopped || "")) bits.push("the email service refused us; this is on TutorDeck’s side and the messages will be tried again");
+    return bits.length ? bits.join(" · ") + "." : "Nothing was due to be sent right now.";
+  }
   // how much room the whole platform has left today (Brevo's free plan)
   function platformRoom(sent24h, cap) { return Math.max((cap == null ? PLATFORM_DAILY_CAP : cap) - (Number(sent24h) || 0), 0); }
 
   return { KINDS: KINDS, MODES: MODES, FIELDS: FIELDS, FIELD_HELP: FIELD_HELP, LIMITS: LIMITS, DEFAULTS: DEFAULTS, TEMPLATES: TEMPLATES, RETRY_MINUTES: RETRY_MINUTES, MAX_ATTEMPTS: MAX_ATTEMPTS,
     PLATFORM_DAILY_CAP: PLATFORM_DAILY_CAP, validEmail: validEmail, maskEmail: maskEmail, money: money, dateText: dateText, addDays: addDays, checkTemplates: checkTemplates, fill: fill,
     fieldsFor: fieldsFor, compose: compose, classifyBrevo: classifyBrevo, retryDelayMinutes: retryDelayMinutes, reminderDates: reminderDates, reminderLine: reminderLine,
-    queueLine: queueLine, reasonText: reasonText, kindText: kindText, STATUS_TEXT: STATUS_TEXT, RESULT_TEXT: RESULT_TEXT, platformRoom: platformRoom, esc: esc, plural: plural };
+    queueLine: queueLine, reasonText: reasonText, kindText: kindText, STATUS_TEXT: STATUS_TEXT, RESULT_TEXT: RESULT_TEXT, platformRoom: platformRoom, esc: esc, plural: plural, errorText: errorText, isMissing: isMissing, sentLine: sentLine };
 });

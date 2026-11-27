@@ -12,7 +12,7 @@ begin
   foreach f in array array['email_queue_status(uuid)', 'email_enqueue(uuid,uuid[],boolean)', 'email_enqueue_unsent(uuid,date)', 'email_queue_list(uuid,text,int,int)',
     'email_queue_cancel(uuid,uuid[])', 'email_log_list(uuid,int,bigint)', 'email_household_contacts(uuid,uuid)', 'email_set_billing_contacts(uuid,uuid,uuid[])',
     'email_clear_bad(uuid,uuid)', 'email_bad_list(uuid)', 'email_reminder_preview(uuid)', 'email_plan_reminders(uuid,boolean)', 'email_claim(uuid,int,int)',
-    'email_complete(uuid,text,text,text,text,int)', 'email_mark_bounce(text,text)', 'email_platform_sent_24h()', 'email_enqueue_rows(uuid,text,uuid,uuid,uuid,uuid,boolean,int)',
+    'email_complete(uuid,text,text,text,text,int)', 'email_mark_bounce(text,text)', 'email_platform_sent_24h()', 'email_active_orgs()', 'email_enqueue_rows(uuid,text,uuid,uuid,uuid,uuid,boolean,int)',
     'email_on_invoice_issued()', 'email_on_payment()', 'email_share_token(uuid,uuid,date)', 'email_invoice_state(uuid,uuid,date)', 'email_today(uuid)', 'email_org_cfg(uuid,date)',
     'email_cfg(jsonb)', 'email_mask(text)', 'email_valid(text)', 'email_log_guard()', 'email_queue_guard()', 'guardians_email_reset()'] loop
     execute format('drop function if exists public.%s', f);
