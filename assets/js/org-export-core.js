@@ -112,6 +112,48 @@
       ["id", C.id], ["invoice_id", "The overdue invoice."], ["month_no", "Which month overdue."], ["fee_date", "Date of the fee."], ["status", "Proposed, charged or waived."], ["fee_cents", "Fee, in cents."],
       ["base_cents", "Amount the fee was worked out on, in cents."], ["rule", "The rule applied (structured text)."], ["household_id", "The family."], ["student_id", "The student."],
       ["document_id", "The invoice the fee was put on."], ["decided_by", C.who("Who decided")], ["decided_at", "When (UTC)."], ["reason", "Reason."], ["created_at", C.created]]],
+    ["tutor_pay_rates", "tutor_pay_rates.csv", "Tutor pay rates", "What each tutor is paid, with the date each rate took effect. A rate for one student or level overrides the tutor's usual rate.", [
+      ["id", C.id], ["membership_id", "The tutor (people_tutors_and_staff.csv id)."], ["student_id", "The student, when the rate is for one student only."], ["level", "The level, when the rate is for one level only."],
+      ["method", "per_lesson, per_hour, per_student_lesson, monthly_fixed, percent_of_fee, none (not paid) or inherit (use the usual rate)."], ["amount_cents", "Rate, in cents (blank for a percentage)."], ["percent_bp", "Percentage, in hundredths of a percent (blank for an amount)."],
+      ["effective_from", "Date the rate took effect."], ["reason", "Why it changed."], ["created_by", C.who("Who set it")], ["created_at", C.created]]],
+    ["tutor_pay_payments", "tutor_pay_payments.csv", "Tutor pay: payments made", "Each payment recorded to a tutor, and each reversal of one.", [
+      ["id", C.id], ["kind", "payment or reversal."], ["reverses_payment_id", "The payment this reverses."], ["membership_id", "The tutor (people_tutors_and_staff.csv id)."], ["tutor_name", "The tutor's name when it was paid."],
+      ["period_from", "First day of the pay period."], ["period_to", "Last day of the pay period."], ["amount_cents", "Amount, in cents."], ["paid_on", "Date paid."], ["method", "How it was paid."],
+      ["reference", "Reference."], ["note", "Note."], ["recorded_by", C.who("Who recorded it")], ["created_at", C.created]]],
+    ["tutor_pay_adjustments", "tutor_pay_adjustments.csv", "Tutor pay: bonuses and deductions", "Bonuses and deductions added to a tutor's pay, each with its reason.", [
+      ["id", C.id], ["membership_id", "The tutor (people_tutors_and_staff.csv id)."], ["kind", "bonus or deduction."], ["amount_cents", "Amount, in cents."], ["effective_on", "The pay-period date it counts in."],
+      ["reason", "Reason."], ["created_by", C.who("Who added it")], ["created_at", C.created]]],
+    ["makeup_credits", "makeup_credits.csv", "Make-up credits", "Make-up lessons owed to students: why each was earned, when it expires and whether it has been used.", [
+      ["id", C.id], ["student_id", "The student."], ["source", "absence, tutor_cancel, holiday or manual."], ["source_lesson_id", "The missed lesson (lessons.csv id)."], ["reason", "Reason."], ["earned_on", "Date earned."],
+      ["expires_on", "Date it expires, if it does."], ["status", "open, booked, used, expired or revoked."], ["created_by", C.who("Who granted it")], ["created_at", C.created]]],
+    ["makeup_credit_events", "makeup_credit_history.csv", "Make-up credit history", "Each step of a make-up credit: earned, booked, un-booked, used, expired, revoked.", [
+      ["id", "Number of the entry."], ["credit_id", "The credit (makeup_credits.csv id)."], ["kind", "earned, booked, returned, used, expired or revoked."], ["lesson_id", "The make-up lesson, when there is one."], ["actor", C.who("Who did it")],
+      ["reason", "Reason."], ["at", "When (UTC)."]]],
+    ["import_batches", "imports.csv", "Imports", "Each time data was brought in from your own sheets, with counts and whether it was undone.", [
+      ["id", C.id], ["created_by", C.who("Who imported")], ["created_at", C.created], ["stage", "Which part of the import this was."], ["status", "committed, partly_undone or undone."], ["counts", "How many rows of each kind were created or skipped (structured text)."],
+      ["undo_until", "Last moment it could be undone (UTC)."], ["undone_at", "When it was undone (UTC), if it was."], ["undo_report", "What the undo did (structured text)."]]],
+    ["statement_mappings", "statement_column_mappings.csv", "Bank statement column settings", "How the columns of your bank's statement file were read.", [
+      ["id", C.id], ["name", "Name of the mapping."], ["version", "Version number."], ["mapping", "The column settings (structured text)."], ["created_by", C.who("Who saved it")], ["created_at", C.created]]],
+    ["statement_batches", "statement_uploads.csv", "Bank statement uploads", "Each bank statement file you uploaded, with how many lines were new, duplicates, matched automatically or left to review.", [
+      ["id", C.id], ["account_label", "The account label."], ["mapping_id", "The column settings used."], ["date_from", "First date in the file."], ["date_to", "Last date in the file."], ["n_lines", "Lines in the file."],
+      ["n_new", "New lines."], ["n_duplicate", "Lines seen before."], ["n_skipped", "Lines skipped (not money in)."], ["n_auto", "Lines matched automatically."], ["n_review", "Lines left to review."],
+      ["imported_by", C.who("Who uploaded it")], ["imported_at", "When (UTC)."]]],
+    ["statement_lines", "statement_lines_unresolved.csv", "Bank statement lines still to review", "Lines of an uploaded statement that are not yet matched or set aside. A line is deleted from TutorDeck once it is resolved, or after 60 days.", [
+      ["id", C.id], ["batch_id", "The upload (statement_uploads.csv id)."], ["row_no", "Row number in the file."], ["line_date", "Date of the line."], ["cents", "Amount, in cents."], ["ref_text", "Reference text (digits masked)."],
+      ["payer_text", "Payer name as the bank shows it."], ["bank_ref", "Bank reference (digits masked)."], ["reason", "Why it needs a person to look."], ["created_at", C.created]]],
+    ["statement_matches", "statement_matches.csv", "Bank statement matches", "Each statement line that became a payment (or was set aside), who confirmed it and whether it was undone.", [
+      ["id", C.id], ["batch_id", "The upload."], ["line_date", "Date of the line."], ["cents", "Amount, in cents."], ["kind", "invoice (became a payment) or ignored (set aside)."], ["rule", "The matching rule: invoice_no, payer_link, amount_only, household_total or manual."], ["household_id", "The family."],
+      ["payment_id", "The payment recorded (payments.csv id)."], ["auto", "True if confirmed automatically."], ["confirmed_by", C.who("Who confirmed it")], ["confirmed_at", "When (UTC)."],
+      ["reversed_at", "When it was undone (UTC)."], ["reversed_by", C.who("Who undid it")], ["reverse_reason", "Why it was undone."]]],
+    ["statement_payer_links", "statement_payer_names.csv", "Remembered payer names", "Names that appear on your bank statement and the family each was matched to.", [
+      ["id", C.id], ["payer_key", "The payer name, simplified for matching."], ["household_id", "The family."], ["times_used", "How often it was used."], ["last_used", "Date last used."], ["created_at", C.created]]],
+    ["email_queue", "emails_queued.csv", "Emails to families: queue", "Each email to a family that was asked for, waiting, sent, held or stopped.", [
+      ["id", C.id], ["kind", "invoice, receipt, reminder or late-fee notice."], ["invoice_id", "The invoice."], ["payment_id", "The payment (for a receipt)."], ["household_id", "The family."], ["guardian_id", "The parent or guardian."],
+      ["reminder_no", "Which reminder this is."], ["status", "queued, sending, sent, failed, cancelled or skipped."], ["reason", "Why it was skipped or failed."], ["attempts", "Send attempts."], ["not_before", "Not sent before (UTC)."],
+      ["requested_by", C.who("Who asked for it")], ["requested_at", "When (UTC)."], ["updated_at", "Last change (UTC)."]]],
+    ["email_send_log", "emails_sent_log.csv", "Emails to families: send log", "Every attempt to send an email to a family, with the result. The address is masked.", [
+      ["id", "Number of the entry."], ["queue_id", "The queued email (emails_queued.csv id)."], ["kind", "What kind of email."], ["invoice_id", "The invoice."], ["guardian_id", "The parent or guardian."],
+      ["to_masked", "The address, masked."], ["template", "Wording used."], ["result", "sent, retry, failed, bounced, blocked_preview, skipped or cancelled."], ["attempt", "Attempt number."], ["by_user", C.who("Who triggered it")], ["at", "When (UTC)."]]],
     ["org_counters", "invoice_number_counters.csv", "Invoice number counters", "The next number for invoices and credit notes.", [
       ["series", "invoice or credit_note."], ["next_number", "The next number to be used."], ["locked", "True once a number has been issued."], ["created_at", C.created]]],
     ["org_invite_mail_log", "invitation_emails_sent.csv", "Invitation emails sent", "When invitation emails were sent to tutors and staff, and whether they were delivered.", [
@@ -139,6 +181,8 @@
   var EXCLUDED = [
     { tbl: "centre_invoice_share", title: "Invoice share links", reason: "Invoice share links. Anyone holding one link can read that invoice, so the links are never put in a file." },
     { tbl: "org_notifications", title: "In-app notices", reason: "In-app notices addressed to individual users. They are not business records and name login accounts." },
+    { tbl: "import_items", title: "Import bookkeeping", reason: "The import's own bookkeeping (which row each imported line created, and a fingerprint of it) so that an import can be undone. Every row it points to is in its own file; the batch summaries are in import_batches.csv." },
+    { tbl: "statement_fingerprints", title: "Statement fingerprints", reason: "Scrambled fingerprints of bank-statement lines, kept only so the same statement line is never matched twice. They hold no readable data; the matches themselves are in statement_matches.csv." },
     { tbl: "org_subscriptions", title: "Billing-provider record", reason: "TutorDeck's billing-provider record for the centre (Stripe customer and subscription ids). You can see these in your own Stripe account; the fee history is in the plan and monthly fee files." }
   ];
   var NEVER = [

@@ -655,7 +655,7 @@ delete from memberships where invited_email = 'gone@tutors.test';
 select t.ok((select count(*) = 1 from tutor_pay_rates where membership_id is null and amount_cents = 100), 'deleting a tutor''s membership keeps their rate rows (membership cleared, nothing else changes)');
 
 -- ================================================================== 14. tutors never see rates, fees or pay through ANY function they may call
-select t.ok(not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname ~ '^tutor_my_(pay|rates)'), 'there is no tutor-facing pay or rate function (the plan''s tutor_my_pay / tutor_my_rates are deliberately not built)');
+select t.ok(not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname ~ '^tutor_my_(pay|rates)(_|$)'), 'there is no tutor-facing pay or rate function (the plan''s tutor_my_pay / tutor_my_rates are deliberately not built)');
 select t.ok(not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname ~ '^tutor_pay_' and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute'))),
             'the internal tutor_pay_* trigger and helper functions can''t be called from a browser at all');
 select t.ok(not exists (
@@ -665,8 +665,8 @@ select t.ok(not exists (
 select t.ok((select count(*) from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('tutor_my_lessons', 'tutor_mark_attendance')) = 2, 'the grep really looked at the two tutor functions');
 select t.ok((select pg_get_function_result(p.oid) from pg_proc p where p.proname = 'centre_tutor_pay_list') = 'jsonb', 'the pay functions return jsonb to staff only (their gate refuses tutors)');
 -- what tutor_my_lessons actually returns for a tutor of this centre carries no money keys
-select t.ok(not exists (select 1 from information_schema.routines r where r.routine_schema = 'public' and r.routine_name like 'tutor\_my\_%' and r.routine_name not in ('tutor_my_lessons')),
-            'no other tutor_my_* function exists');
+select t.ok(not exists (select 1 from information_schema.routines r where r.routine_schema = 'public' and r.routine_name like 'tutor\_my\_%' and r.routine_name not in ('tutor_my_lessons', 'tutor_my_payout', 'tutor_my_profile', 'tutor_my_schedule', 'tutor_my_slots', 'tutor_my_students')),
+            'no other tutor_my_* function exists (the six above are the tutor screens built in earlier steps, each with its own test that it carries no money; none is a pay or rate function)');
 
 -- ================================================================== 15. audit
 select t.ok((select count(*) >= 10 from audit_log where org_id = t.id('P') and action = 'centre_tutor_rate_set'), 'every rate change has a summary line in the audit log');

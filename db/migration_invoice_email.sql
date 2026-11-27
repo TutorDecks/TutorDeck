@@ -141,7 +141,7 @@ revoke all on function public.guardians_email_reset() from public, anon, authent
 -- 3. the settings validator (the tutor_moves one, plus the email options)
 -- ---------------------------------------------------------------------------------------------------
 create or replace function public.org_validate_settings(s jsonb) returns void language plpgsql immutable set search_path = public as $$
-declare k text; v jsonb; r record; tp text;
+declare k text; v jsonb; r record; bs text; tp text;
 begin
   if coalesce((s->>'schema_version')::int, 0) <> 1 then raise exception 'Unknown settings schema_version'; end if;
   foreach k in array array['profile','calendar','billing','invoicing','payments','lessons','tutor_pay','data'] loop
@@ -220,6 +220,17 @@ begin
          then (v#>>'{}')::bigint between r.lo and r.hi else false end) then
       raise exception '%', r.msg; end if;
   end loop;
+  -- billing starts from: empty, or a real date between 2020-01-01 and 2100-01-01
+  if s#>'{billing,starts_from}' is not null and jsonb_typeof(s#>'{billing,starts_from}') <> 'null' then
+    if jsonb_typeof(s#>'{billing,starts_from}') <> 'string' then raise exception 'Billing start must be a date'; end if;
+    bs := s#>>'{billing,starts_from}';
+    if bs <> '' then
+      if bs !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then raise exception 'Billing start must be a date (YYYY-MM-DD)'; end if;
+      begin perform make_date(substr(bs,1,4)::int, substr(bs,6,2)::int, substr(bs,9,2)::int);
+      exception when others then raise exception 'Billing start must be a real date'; end;
+      if bs < '2020-01-01' or bs > '2100-01-01' then raise exception 'Billing start must be between 2020 and 2100'; end if;
+    end if;
+  end if;
   -- T7.3 (invoice, receipt and reminder emails to families). Every key is optional; a key that is present must be right. assets/js/org-settings.js has the labels and
   -- defaults and assets/js/invoice-email-core.js the placeholder list (tests/org-settings.test.js and tests/invoice-email-core.test.js compare them with this).
   if s#>'{email}' is not null and jsonb_typeof(s#>'{email}') not in ('object','null') then raise exception 'Email settings are malformed'; end if;

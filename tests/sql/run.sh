@@ -137,6 +137,46 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_moves_test.sql
 $P -f db/migration_tutor_own_lessons.sql
 $P -f db/migration_tutor_own_lessons.sql                    # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_own_lessons_test.sql
+# ---- bundle 6 (T44-style assembly, T46): import, tutor pay, statements, invoice email, make-up credits, data export. ORDER MATTERS: three of them replace
+#      org_validate_settings() and two replace centre_invoice_run_rows(); each file carries the cumulative version of the one before it (see CLAUDE.md).
+$P -f db/migration_import.sql
+$P -f db/migration_import.sql                               # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/import_test.sql
+if command -v node >/dev/null 2>&1; then                    # the page's own payload through the database (JS and SQL checks agree)
+  export IMPORT_PAYLOAD_FILE="$(mktemp)"; node tests/fixtures/make-import-payload.js > "$IMPORT_PAYLOAD_FILE"
+  psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/import_payload_test.sql; rm -f "$IMPORT_PAYLOAD_FILE"
+else echo "SKIP import payload test (node not installed)"; fi
+$P -f db/migration_centre_tutor_pay.sql
+$P -f db/migration_centre_tutor_pay.sql                     # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_tutor_pay_test.sql
+$P -f db/migration_statement_matching.sql
+$P -f db/migration_statement_matching.sql                   # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/statement_matching_test.sql
+$P -f db/migration_invoice_email.sql
+$P -f db/migration_invoice_email.sql                        # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/invoice_email_test.sql
+$P -f db/migration_makeup_credits.sql
+$P -f db/migration_makeup_credits.sql                       # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/makeup_credits_test.sql
+$P -f db/migration_centre_billing_method.sql                # the export reads the billing-method and billing-start columns (the chain above had undone them)
+$P -f db/migration_centre_billing_start.sql
+$P -f db/migration_org_export.sql
+$P -f db/migration_org_export.sql                           # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_export_test.sql
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_export_perf_test.sql
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=full -f tests/sql/bundle6_chain_test.sql   # the settings check and the invoice run carry EVERY rule of the chain
+# undo in reverse, twice each (safe to run twice), then the whole set again, then undo again: undo + re-apply are proven on the shipped state
+for round in 1 2; do
+  for m in org_export makeup_credits invoice_email statement_matching centre_tutor_pay import; do $P -f db/migration_${m}_down.sql; $P -f db/migration_${m}_down.sql; done
+  psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=undone -f tests/sql/bundle6_chain_test.sql
+  if [ "$round" = 1 ]; then
+    for m in import centre_tutor_pay statement_matching invoice_email makeup_credits; do $P -f db/migration_${m}.sql; done
+    $P -f db/migration_org_export.sql
+    psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=full -f tests/sql/bundle6_chain_test.sql
+  fi
+done
+$P -f db/migration_centre_billing_start_down.sql            # (back to how the chain was before the export block)
+$P -f db/migration_centre_billing_method_down.sql
 $P -f db/migration_tutor_own_lessons_down.sql
 $P -f db/migration_tutor_own_lessons.sql                    # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_tutor_own_lessons_down.sql

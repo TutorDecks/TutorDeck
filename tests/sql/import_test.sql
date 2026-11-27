@@ -465,7 +465,7 @@ select t.ok((select bool_and(confdeltype = 'c') from pg_constraint where conreli
 select t.ok(not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name in ('import_batches', 'import_items') and column_name ~* 'name|email|phone|note|cell|value|text'),
             'no import table has a column that could hold a name, email, phone or cell value');
 select t.ok(not exists (select 1 from audit_log where action like 'import\_%' and after::text ~* 'Tan|Lee|Ava|Ben|example\.test|Ethan|Emma'), 'no audit row of an import or undo holds a name');
-select t.ok(not exists (select 1 from information_schema.tables where table_schema = 'public' and table_name ~* 'mail|queue|outbox|notification'), 'no outbound mail or queue table exists for an import to write to');
+select t.ok(not exists (select 1 from information_schema.tables where table_schema = 'public' and table_name ~* 'mail|queue|outbox|notification' and table_name not in ('org_notifications', 'org_invite_mail_log')), 'no outbound mail or queue table exists for an import to write to (the owner-notice list and the invite send log, from earlier bundles, are the only ones)');
 select t.ok((select count(*) from memberships where org_id = t.id('imp') and role = 'tutor' and status = 'invited' and user_id is null) >= 1, 'imported tutors are invitations (no login created)');
 
 -- ===================================================================== 15. speed: 400 students, 200 tutors, about 600 guardians, 1,640 weekly lessons

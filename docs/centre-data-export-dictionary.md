@@ -19,6 +19,8 @@ Format: one UTF-8 CSV per table (with a byte-order mark so Excel reads names cor
 - Payout account numbers and holder names, unless the owner ticked "include full payout numbers" (masked as •••••1234 otherwise).
 - **Invoice share links** (`centre_invoice_share`): Invoice share links. Anyone holding one link can read that invoice, so the links are never put in a file.
 - **In-app notices** (`org_notifications`): In-app notices addressed to individual users. They are not business records and name login accounts.
+- **Import bookkeeping** (`import_items`): The import's own bookkeeping (which row each imported line created, and a fingerprint of it) so that an import can be undone. Every row it points to is in its own file; the batch summaries are in import_batches.csv.
+- **Statement fingerprints** (`statement_fingerprints`): Scrambled fingerprints of bank-statement lines, kept only so the same statement line is never matched twice. They hold no readable data; the matches themselves are in statement_matches.csv.
 - **Billing-provider record** (`org_subscriptions`): TutorDeck's billing-provider record for the centre (Stripe customer and subscription ids). You can see these in your own Stripe account; the fee history is in the plan and monthly fee files.
 
 ## Files
@@ -50,6 +52,19 @@ Format: one UTF-8 CSV per table (with a byte-order mark so Excel reads names cor
 | `refunds.csv` | `centre_refunds` | Refunds |
 | `refund_events.csv` | `centre_refund_events` | Refund history |
 | `late_fees.csv` | `centre_late_fees` | Late fees |
+| `tutor_pay_rates.csv` | `tutor_pay_rates` | Tutor pay rates |
+| `tutor_pay_payments.csv` | `tutor_pay_payments` | Tutor pay: payments made |
+| `tutor_pay_adjustments.csv` | `tutor_pay_adjustments` | Tutor pay: bonuses and deductions |
+| `makeup_credits.csv` | `makeup_credits` | Make-up credits |
+| `makeup_credit_history.csv` | `makeup_credit_events` | Make-up credit history |
+| `imports.csv` | `import_batches` | Imports |
+| `statement_column_mappings.csv` | `statement_mappings` | Bank statement column settings |
+| `statement_uploads.csv` | `statement_batches` | Bank statement uploads |
+| `statement_lines_unresolved.csv` | `statement_lines` | Bank statement lines still to review |
+| `statement_matches.csv` | `statement_matches` | Bank statement matches |
+| `statement_payer_names.csv` | `statement_payer_links` | Remembered payer names |
+| `emails_queued.csv` | `email_queue` | Emails to families: queue |
+| `emails_sent_log.csv` | `email_send_log` | Emails to families: send log |
 | `invoice_number_counters.csv` | `org_counters` | Invoice number counters |
 | `invitation_emails_sent.csv` | `org_invite_mail_log` | Invitation emails sent |
 | `materials.csv` | `materials` | Teaching materials (list only) |
@@ -559,6 +574,233 @@ Late fees proposed, charged or waived.
 | `decided_at` | When (UTC). |
 | `reason` | Reason. |
 | `created_at` | When the row was created (UTC). |
+
+## `tutor_pay_rates.csv` — Tutor pay rates
+
+What each tutor is paid, with the date each rate took effect. A rate for one student or level overrides the tutor's usual rate.
+
+| Column | Meaning |
+|---|---|
+| `id` | Unique id of this row. Other files point at it (for example a lesson's student_id is a student's id), so you can join files in a spreadsheet. |
+| `membership_id` | The tutor (people_tutors_and_staff.csv id). |
+| `student_id` | The student, when the rate is for one student only. |
+| `level` | The level, when the rate is for one level only. |
+| `method` | per_lesson, per_hour, per_student_lesson, monthly_fixed, percent_of_fee, none (not paid) or inherit (use the usual rate). |
+| `amount_cents` | Rate, in cents (blank for a percentage). |
+| `amount_dollars` | The same amount in dollars (`amount_cents ÷ 100`). |
+| `percent_bp` | Percentage, in hundredths of a percent (blank for an amount). |
+| `effective_from` | Date the rate took effect. |
+| `reason` | Why it changed. |
+| `created_by` | Who set it (the person's name; "Former member" if they have since left the centre). |
+| `created_at` | When the row was created (UTC). |
+
+## `tutor_pay_payments.csv` — Tutor pay: payments made
+
+Each payment recorded to a tutor, and each reversal of one.
+
+| Column | Meaning |
+|---|---|
+| `id` | Unique id of this row. Other files point at it (for example a lesson's student_id is a student's id), so you can join files in a spreadsheet. |
+| `kind` | payment or reversal. |
+| `reverses_payment_id` | The payment this reverses. |
+| `membership_id` | The tutor (people_tutors_and_staff.csv id). |
+| `tutor_name` | The tutor's name when it was paid. |
+| `period_from` | First day of the pay period. |
+| `period_to` | Last day of the pay period. |
+| `amount_cents` | Amount, in cents. |
+| `amount_dollars` | The same amount in dollars (`amount_cents ÷ 100`). |
+| `paid_on` | Date paid. |
+| `method` | How it was paid. |
+| `reference` | Reference. |
+| `note` | Note. |
+| `recorded_by` | Who recorded it (the person's name; "Former member" if they have since left the centre). |
+| `created_at` | When the row was created (UTC). |
+
+## `tutor_pay_adjustments.csv` — Tutor pay: bonuses and deductions
+
+Bonuses and deductions added to a tutor's pay, each with its reason.
+
+| Column | Meaning |
+|---|---|
+| `id` | Unique id of this row. Other files point at it (for example a lesson's student_id is a student's id), so you can join files in a spreadsheet. |
+| `membership_id` | The tutor (people_tutors_and_staff.csv id). |
+| `kind` | bonus or deduction. |
+| `amount_cents` | Amount, in cents. |
+| `amount_dollars` | The same amount in dollars (`amount_cents ÷ 100`). |
+| `effective_on` | The pay-period date it counts in. |
+| `reason` | Reason. |
+| `created_by` | Who added it (the person's name; "Former member" if they have since left the centre). |
+| `created_at` | When the row was created (UTC). |
+
+## `makeup_credits.csv` — Make-up credits
+
+Make-up lessons owed to students: why each was earned, when it expires and whether it has been used.
+
+| Column | Meaning |
+|---|---|
+| `id` | Unique id of this row. Other files point at it (for example a lesson's student_id is a student's id), so you can join files in a spreadsheet. |
+| `student_id` | The student. |
+| `source` | absence, tutor_cancel, holiday or manual. |
+| `source_lesson_id` | The missed lesson (lessons.csv id). |
+| `reason` | Reason. |
+| `earned_on` | Date earned. |
+| `expires_on` | Date it expires, if it does. |
+| `status` | open, booked, used, expired or revoked. |
+| `created_by` | Who granted it (the person's name; "Former member" if they have since left the centre). |
+| `created_at` | When the row was created (UTC). |
+
+## `makeup_credit_history.csv` — Make-up credit history
+
+Each step of a make-up credit: earned, booked, un-booked, used, expired, revoked.
+
+| Column | Meaning |
+|---|---|
+| `id` | Number of the entry. |
+| `credit_id` | The credit (makeup_credits.csv id). |
+| `kind` | earned, booked, returned, used, expired or revoked. |
+| `lesson_id` | The make-up lesson, when there is one. |
+| `actor` | Who did it (the person's name; "Former member" if they have since left the centre). |
+| `reason` | Reason. |
+| `at` | When (UTC). |
+
+## `imports.csv` — Imports
+
+Each time data was brought in from your own sheets, with counts and whether it was undone.
+
+| Column | Meaning |
+|---|---|
+| `id` | Unique id of this row. Other files point at it (for example a lesson's student_id is a student's id), so you can join files in a spreadsheet. |
+| `created_by` | Who imported (the person's name; "Former member" if they have since left the centre). |
+| `created_at` | When the row was created (UTC). |
+| `stage` | Which part of the import this was. |
+| `status` | committed, partly_undone or undone. |
+| `counts` | How many rows of each kind were created or skipped (structured text). |
+| `undo_until` | Last moment it could be undone (UTC). |
+| `undone_at` | When it was undone (UTC), if it was. |
+| `undo_report` | What the undo did (structured text). |
+
+## `statement_column_mappings.csv` — Bank statement column settings
+
+How the columns of your bank's statement file were read.
+
+| Column | Meaning |
+|---|---|
+| `id` | Unique id of this row. Other files point at it (for example a lesson's student_id is a student's id), so you can join files in a spreadsheet. |
+| `name` | Name of the mapping. |
+| `version` | Version number. |
+| `mapping` | The column settings (structured text). |
+| `created_by` | Who saved it (the person's name; "Former member" if they have since left the centre). |
+| `created_at` | When the row was created (UTC). |
+
+## `statement_uploads.csv` — Bank statement uploads
+
+Each bank statement file you uploaded, with how many lines were new, duplicates, matched automatically or left to review.
+
+| Column | Meaning |
+|---|---|
+| `id` | Unique id of this row. Other files point at it (for example a lesson's student_id is a student's id), so you can join files in a spreadsheet. |
+| `account_label` | The account label. |
+| `mapping_id` | The column settings used. |
+| `date_from` | First date in the file. |
+| `date_to` | Last date in the file. |
+| `n_lines` | Lines in the file. |
+| `n_new` | New lines. |
+| `n_duplicate` | Lines seen before. |
+| `n_skipped` | Lines skipped (not money in). |
+| `n_auto` | Lines matched automatically. |
+| `n_review` | Lines left to review. |
+| `imported_by` | Who uploaded it (the person's name; "Former member" if they have since left the centre). |
+| `imported_at` | When (UTC). |
+
+## `statement_lines_unresolved.csv` — Bank statement lines still to review
+
+Lines of an uploaded statement that are not yet matched or set aside. A line is deleted from TutorDeck once it is resolved, or after 60 days.
+
+| Column | Meaning |
+|---|---|
+| `id` | Unique id of this row. Other files point at it (for example a lesson's student_id is a student's id), so you can join files in a spreadsheet. |
+| `batch_id` | The upload (statement_uploads.csv id). |
+| `row_no` | Row number in the file. |
+| `line_date` | Date of the line. |
+| `cents` | Amount, in cents. |
+| `ref_text` | Reference text (digits masked). |
+| `payer_text` | Payer name as the bank shows it. |
+| `bank_ref` | Bank reference (digits masked). |
+| `reason` | Why it needs a person to look. |
+| `created_at` | When the row was created (UTC). |
+
+## `statement_matches.csv` — Bank statement matches
+
+Each statement line that became a payment (or was set aside), who confirmed it and whether it was undone.
+
+| Column | Meaning |
+|---|---|
+| `id` | Unique id of this row. Other files point at it (for example a lesson's student_id is a student's id), so you can join files in a spreadsheet. |
+| `batch_id` | The upload. |
+| `line_date` | Date of the line. |
+| `cents` | Amount, in cents. |
+| `kind` | invoice (became a payment) or ignored (set aside). |
+| `rule` | The matching rule: invoice_no, payer_link, amount_only, household_total or manual. |
+| `household_id` | The family. |
+| `payment_id` | The payment recorded (payments.csv id). |
+| `auto` | True if confirmed automatically. |
+| `confirmed_by` | Who confirmed it (the person's name; "Former member" if they have since left the centre). |
+| `confirmed_at` | When (UTC). |
+| `reversed_at` | When it was undone (UTC). |
+| `reversed_by` | Who undid it (the person's name; "Former member" if they have since left the centre). |
+| `reverse_reason` | Why it was undone. |
+
+## `statement_payer_names.csv` — Remembered payer names
+
+Names that appear on your bank statement and the family each was matched to.
+
+| Column | Meaning |
+|---|---|
+| `id` | Unique id of this row. Other files point at it (for example a lesson's student_id is a student's id), so you can join files in a spreadsheet. |
+| `payer_key` | The payer name, simplified for matching. |
+| `household_id` | The family. |
+| `times_used` | How often it was used. |
+| `last_used` | Date last used. |
+| `created_at` | When the row was created (UTC). |
+
+## `emails_queued.csv` — Emails to families: queue
+
+Each email to a family that was asked for, waiting, sent, held or stopped.
+
+| Column | Meaning |
+|---|---|
+| `id` | Unique id of this row. Other files point at it (for example a lesson's student_id is a student's id), so you can join files in a spreadsheet. |
+| `kind` | invoice, receipt, reminder or late-fee notice. |
+| `invoice_id` | The invoice. |
+| `payment_id` | The payment (for a receipt). |
+| `household_id` | The family. |
+| `guardian_id` | The parent or guardian. |
+| `reminder_no` | Which reminder this is. |
+| `status` | queued, sending, sent, failed, cancelled or skipped. |
+| `reason` | Why it was skipped or failed. |
+| `attempts` | Send attempts. |
+| `not_before` | Not sent before (UTC). |
+| `requested_by` | Who asked for it (the person's name; "Former member" if they have since left the centre). |
+| `requested_at` | When (UTC). |
+| `updated_at` | Last change (UTC). |
+
+## `emails_sent_log.csv` — Emails to families: send log
+
+Every attempt to send an email to a family, with the result. The address is masked.
+
+| Column | Meaning |
+|---|---|
+| `id` | Number of the entry. |
+| `queue_id` | The queued email (emails_queued.csv id). |
+| `kind` | What kind of email. |
+| `invoice_id` | The invoice. |
+| `guardian_id` | The parent or guardian. |
+| `to_masked` | The address, masked. |
+| `template` | Wording used. |
+| `result` | sent, retry, failed, bounced, blocked_preview, skipped or cancelled. |
+| `attempt` | Attempt number. |
+| `by_user` | Who triggered it (the person's name; "Former member" if they have since left the centre). |
+| `at` | When (UTC). |
 
 ## `invoice_number_counters.csv` — Invoice number counters
 
