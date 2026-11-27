@@ -9,7 +9,6 @@ const MONEY = fs.readFileSync(require.resolve("../db/migration_money_settings.sq
 const field = (path) => S.STEPS.flatMap((s) => s.fields).find((f) => f.path === path);
 const MOVES = fs.readFileSync(require.resolve("../db/migration_tutor_moves.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
 const OWN = fs.readFileSync(require.resolve("../db/migration_tutor_own_lessons.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
-const MOVES = fs.readFileSync(require.resolve("../db/migration_tutor_moves.sql"), "utf8");
 const CREDITS = fs.readFileSync(require.resolve("../db/migration_makeup_credits.sql"), "utf8");   // T18 step 4: the validator that knows the make-up credit options   // T6 step 2: the validator that knows the tutor-editing options
 const PAYOUT_SQL = fs.readFileSync(require.resolve("../db/migration_payout_permission.sql"), "utf8");
 
@@ -329,6 +328,7 @@ test("T6.2: the switches and limits show only when tutors may change lessons; se
   assert.equal(old.lessons.timetable_editing, "admin_only"); assert.equal(old.lessons.min_notice_hours, 24); assert.equal(old.lessons.tutors_edit.postpone, true);
   assert.deepEqual(S.validate(old), []);
   assert.equal(S.effectiveFrom(S.defaults(), Object.assign(S.defaults(), { lessons: Object.assign({}, S.defaults().lessons, { timetable_editing: "tutors_direct" }) }), "2026-11-26"), "2026-11-26", "a process rule applies today");
+});
 // ---------------------------------------------------------------- T33 I1: "billing starts from"
 test("billing.starts_from: in the wizard, empty by default, validated like the database", () => {
   const f = S.STEPS.flatMap((s) => s.fields).find((x) => x.path === "billing.starts_from");
@@ -354,6 +354,7 @@ test("the migration's settings check keeps every other rule of the original (not
   for (const re of [/\{billing,model\}' not in \(([^)]*)\)/, /\{tutor_pay,mode\}' not in \(([^)]*)\)/, /\{tutor_pay,payable_when\}' not in \(([^)]*)\)/, /\{invoicing,grouping\}' not in \(([^)]*)\)/,
                     /\{lessons,attendance_by\}' not in \(([^)]*)\)/, /\{lessons,cancellations_marked_by\}' not in \(([^)]*)\)/, /\{lessons,compensation_entered_by\}' not in \(([^)]*)\)/, /\{lessons,trials_flagged_by\}' not in \(([^)]*)\)/, /\{payments,modes\}' \?\| array\[([^\]]*)\]/])
     assert.equal((sql.match(re) || [])[1], (orig.match(re) || [])[1], String(re));
+});
 // ---------------------------------------------------------------------------------------------------- T34: bank statement matching options
 const STMT = fs.readFileSync(require.resolve("../db/migration_statement_matching.sql"), "utf8");
 test("T34: the statement options have the same values and limits in the form and in db/migration_statement_matching.sql", () => {
