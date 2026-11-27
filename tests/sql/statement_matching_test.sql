@@ -137,6 +137,19 @@ select pg_temp.inv('I10', t.id('c1'), :'o1', :'h6', :'s6', 3000);
 select pg_temp.inv('X1', t.id('c2'), :'o2', :'hx', :'sx', 1000);
 select t.ok(pg_temp.num('I1') <> pg_temp.num('I2') and pg_temp.num('I1') like 'SMT-%', 'invoices are numbered SMT-n');
 
+-- ===================================================================== 0. the normalisation helpers agree with the browser (the same vectors file as tests/statement-core.test.js)
+create temp table vec(kind text, input text, expected text);
+\copy vec from 'tests/statement-vectors.csv' csv header
+select t.ok((select count(*) from vec) >= 12, 'the shared vectors file was read');
+select t.ok(not exists (select 1 from vec where kind = 'payer' and stmt_norm_payer(input) is distinct from coalesce(expected, '')), 'stmt_norm_payer = the browser for every payer vector');
+select t.ok(not exists (select 1 from vec where kind = 'ref' and stmt_norm_ref(input) is distinct from coalesce(expected, '')), 'stmt_norm_ref = the browser for every reference vector');
+select t.ok(not exists (select 1 from vec where kind = 'mask' and stmt_mask_digits(input) is distinct from coalesce(expected, '')), 'stmt_mask_digits = the browser for every mask vector');
+select t.ok('inv 12' ~ stmt_number_pattern('INV-12') and 'inv12' ~ stmt_number_pattern('INV-12') and 'paid inv.12 thanks' ~ stmt_number_pattern('INV-12') and not ('inv-123' ~ stmt_number_pattern('INV-12'))
+  and not ('inv-1' ~ stmt_number_pattern('INV-12')) and not ('xinv-12' ~ stmt_number_pattern('INV-12')), 'the invoice-number pattern is the browser one');
+select t.ok(stmt_fp('00000000-0000-0000-0000-000000000001', ' Main ', date '2026-11-01', 100, 'a b', 'X1') = stmt_fp('00000000-0000-0000-0000-000000000001', 'main', date '2026-11-01', 100, 'a b', 'x1'), 'a fingerprint ignores case and spacing of the label and bank reference');
+select t.ok(stmt_fp('00000000-0000-0000-0000-000000000001', 'main', date '2026-11-01', 100, 'a b', 'x1') <> stmt_fp('00000000-0000-0000-0000-000000000002', 'main', date '2026-11-01', 100, 'a b', 'x1'), 'two centres never share a fingerprint');
+select t.ok(stmt_subsets(array[gen_random_uuid(), gen_random_uuid(), gen_random_uuid()], array[2500::bigint, 1500, 4000], 4000)->>'count' = '2', 'subset search counts every combination (4000 = 2500+1500 and = 4000)');
+
 -- ===================================================================== 1. settings: every value
 create function pg_temp.accepts(doc jsonb, msg text) returns void language plpgsql as $$
 begin perform org_validate_settings(null::uuid, doc); raise notice 'PASS accepted: %', msg; exception when others then raise exception 'FAIL: % was refused (%)', msg, sqlerrm; end $$;
