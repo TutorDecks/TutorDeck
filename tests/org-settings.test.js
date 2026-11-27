@@ -139,11 +139,14 @@ test("T4 S0/S4/S6: trial, percentage-pay and the unbuilt deposit options are 'co
   const soonPaths = ["billing.trials.charged",
     "billing.deposit.top_up",
     "billing.deposit.set_off_unpaid", "billing.deposit.final_month",
-    "tutor_pay.percent_base", "tutor_pay.part_payments", "tutor_pay.cancelled_lessons", "tutor_pay.group_count", "tutor_pay.rates_note"];
+    "tutor_pay.tutor_visibility"];
   for (const p of soonPaths) assert.equal(field(p).soon, true, p + " must be soon");
-  assert.ok(field("tutor_pay.rate_model").soonOptions.includes("percent_of_fee"));
+  // T4 S7: tutor rates, the pay list, percentage pay, held-until-paid and adjustments are built; bank-file payout and tutors seeing their own pay are not
+  for (const p of ["tutor_pay.mode", "tutor_pay.payable_when", "tutor_pay.rate_model", "tutor_pay.percent_base", "tutor_pay.part_payments", "tutor_pay.cancelled_lessons",
+    "tutor_pay.group_count", "tutor_pay.rates_note", "tutor_pay.adjustments", "tutor_pay.cycle.cutoff_day", "tutor_pay.cycle.pay_day"]) assert.ok(!field(p).soon, p + " is built in S7");
+  for (const k of ["mode", "rate_model", "part_payments"]) assert.ok(!(field("tutor_pay." + k).soonOptions || []).length, "tutor_pay." + k + " has no unbuilt option left");
+  assert.deepEqual(field("tutor_pay.payout_method").soonOptions, ["bank_file"], "only the manual list is built; the bank file waits for the owner's bank");
   assert.ok(field("billing.deposit.due").soonOptions.includes("before_first_lesson"));
-  assert.ok(field("tutor_pay.part_payments").soonOptions.includes("pro_rata"));
   // the sub-headings carry the same badge and say what is missing (the deposit heading is live from S4: it says what is still to come)
   for (const g of S.STEPS.flatMap((s) => s.fields).filter((f) => f.type === "group")) { if (g.label !== "Refundable deposit" && g.label !== "Late fees") assert.equal(g.soon, true, g.label); assert.match(g.help, /later update/); }
   // T4 S6: every late-fee option is built (proposals a person approves or waives); only "a line on the next invoice" is still to come

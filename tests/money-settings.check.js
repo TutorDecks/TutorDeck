@@ -47,7 +47,7 @@ const LATE_IDS = ["f-billing-late_fee-enabled", "f-billing-late_fee-repeat", "f-
     ok(!!(await page.$("#f-tutor_pay-group_count")), vp + ": group-only field shown for 'both'");
     const opts = await page.$$eval("#f-tutor_pay-rate_model option", (o) => o.map((x) => [x.textContent, x.disabled]));
     ok(opts.some(([t]) => /per student/i.test(t)), vp + ": per-student rate offered for 'both'");
-    ok(opts.some(([t, d]) => /percentage/i.test(t) && d && /coming soon/i.test(t)), vp + ": percentage rate is marked coming soon");
+    ok(opts.some(([t, d]) => /percentage/i.test(t) && !d && !/coming soon/i.test(t)), vp + ": percentage rate is built (T4 S7): offered and not marked coming soon");
     if (SC) await page.screenshot({ path: path.join(SC, "money-pay-both-" + vp + ".png"), fullPage: true });
     await page.click("[data-step=profile]"); await page.waitForTimeout(300);
     await page.selectOption("#f-lessons-class_type", "\"one_to_one\""); await page.waitForTimeout(300);

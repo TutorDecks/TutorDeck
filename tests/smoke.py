@@ -20,7 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TESTS = os.path.join(ROOT, "tests")
 PORT = int(os.environ.get("SMOKE_PORT", "8765"))
 BASE = "http://127.0.0.1:%d/" % PORT
-APP = ["home", "calendar", "planner", "ledger", "invoices", "insights", "students", "student", "exams", "settings", "org", "tutor", "tutor-schedule", "centre", "centre-students", "centre-attendance", "centre-timetable", "centre-money", "centre-money?tab=deposits", "centre-people", "tutor-settings", "org-import", "org-wizard-import"]
+APP = ["home", "calendar", "planner", "ledger", "invoices", "insights", "students", "student", "exams", "settings", "org", "tutor", "tutor-schedule", "centre", "centre-students", "centre-attendance", "centre-timetable", "centre-money", "centre-money?tab=deposits", "centre-people", "centre-tutor-pay", "tutor-settings", "org-import", "org-wizard-import"]
 # pages that are the same file opened another way (name → address)
 ALIAS = {"org-import": "org?id=o3#import", "org-wizard-import": "org?id=o2#import"}
 PUBLIC = ["index", "login", "privacy", "terms", "changelog", "reset", "confirmed", "pay"]
