@@ -30,7 +30,13 @@
     st.org = r.data;
     var m = await sb().from("memberships").select("role,permissions").eq("org_id", id).eq("user_id", TL.uid()).maybeSingle();
     st.role = m.data && m.data.role; st.perms = (m.data && m.data.permissions) || [];
-    var s = await sb().rpc("org_settings_on", { p_org: id, p_day: "9999-12-31" });   // latest version (incl. ones starting next cycle)
+    // The form shows the newest saved VERSION (pending next-cycle changes included). Not "latest effective date": a version starting next month
+    // would hide a newer one saved today, and the old values were then saved back on top of it.
+    var s = await sb().from("org_settings").select("settings").eq("org_id", id).order("version", { ascending: false }).limit(1);
+    if (s.error || !s.data || !s.data.length) s = { data: (await sb().rpc("org_settings_on", { p_org: id, p_day: "9999-12-31" })).data };
+    else s = { data: s.data[0].settings };
+    var inf = await sb().rpc("org_settings_on", { p_org: id, p_day: todayISO() });
+    st.inForce = inf.data ? S.withDefaults(inf.data, st.org.preset) : null;
     st.saved = S.withDefaults(s.data || {}, st.org.preset);
     st.draft = JSON.parse(JSON.stringify(st.saved));
     var hash = location.hash.slice(1);
@@ -106,6 +112,22 @@
     $("og").innerHTML = h;
     $("og").querySelectorAll("[data-step]").forEach(function (b) { b.onclick = function () { go(b.getAttribute("data-step")); }; });
     var on = $("og").querySelector(".og-steps .on"); if (on && on.scrollIntoView) on.scrollIntoView({ block: "nearest", inline: "center" });
+    var strip = $("og").querySelector(".og-steps");
+    if (strip) {
+      // the mouse wheel moves a row that is wider than the screen (only while it can still move that way), and the arrow keys walk the tabs
+      strip.addEventListener("wheel", function (e) {
+        if (e.deltaX || !e.deltaY || strip.scrollWidth <= strip.clientWidth) return;
+        var max = strip.scrollWidth - strip.clientWidth;
+        if ((e.deltaY < 0 && strip.scrollLeft <= 0) || (e.deltaY > 0 && strip.scrollLeft >= max - 1)) return;
+        strip.scrollLeft += e.deltaY; e.preventDefault();
+      }, { passive: false });
+      strip.addEventListener("keydown", function (e) {
+        var k = e.key; if (k !== "ArrowRight" && k !== "ArrowLeft" && k !== "Home" && k !== "End") return;
+        var bs = Array.prototype.slice.call(strip.querySelectorAll("button")), i = bs.indexOf(document.activeElement); if (i < 0) return;
+        var j = k === "Home" ? 0 : k === "End" ? bs.length - 1 : Math.max(0, Math.min(bs.length - 1, i + (k === "ArrowRight" ? 1 : -1)));
+        bs[j].focus(); if (bs[j].scrollIntoView) bs[j].scrollIntoView({ block: "nearest", inline: "nearest" }); e.preventDefault();
+      });
+    }
     if (st.step === "plan") return tabPlan();
     if (st.step === "audit") return tabAudit();
     renderStep(cur);
@@ -221,8 +243,13 @@
       if (S.get(st.draft, "billing.deposit.refund_approved_by") === "four_eyes" && !S.fourEyes(st.members).ready) {
         var fm = $("og-msg"); if (fm) { fm.textContent = S.fourEyes(st.members).reason; fm.className = "msg err"; } return false;
       }
-      var r = await sb().rpc("org_save_settings", { p_org: st.org.id, p_settings: st.draft, p_effective_from: effective });
-      if (r.error) { $("og-msg").textContent = String(r.error.message || "").replace(/^FOUR_EYES_UNAVAILABLE: /, ""); $("og-msg").className = "msg err"; return false; }
+      var plan = S.savePlan(st.saved, st.inForce, st.draft, todayISO(), setup());
+      if (!plan.length) plan = [{ settings: st.draft, effective: effective }];
+      for (var pi = 0; pi < plan.length; pi++) {
+        var r = await sb().rpc("org_save_settings", { p_org: st.org.id, p_settings: plan[pi].settings, p_effective_from: plan[pi].effective });
+        if (r.error) { $("og-msg").textContent = String(r.error.message || "").replace(/^FOUR_EYES_UNAVAILABLE: /, ""); $("og-msg").className = "msg err"; return false; }
+      }
+      if (plan[0].effective <= todayISO()) st.inForce = S.withDefaults(JSON.parse(JSON.stringify(plan[0].settings)), st.org.preset);
       var p = st.draft.profile;     // keep the organisation's own columns in step with the profile
       var u = await sb().from("organisations").update({ trading_name: p.trading_name, legal_name: p.legal_name || null, uen: p.uen || null,
         address: p.address || null, brand_color: p.brand_color || null, reply_to_email: p.reply_to_email || null }).eq("id", st.org.id).select("*").single();
@@ -245,11 +272,11 @@
       if (ok) go(S.STEPS[idx + 1].id);
     };
     if ($("og-save")) $("og-save").onclick = async function () {
-      var eff = S.effectiveFrom(st.saved, st.draft, todayISO());
+      var pl = S.savePlan(st.saved, st.inForce, st.draft, todayISO(), setup()), eff = pl.length ? pl[pl.length - 1].effective : todayISO();
       $("og-save").disabled = true;
       var ok = await saveSettings(eff);
       $("og-save").disabled = false;
-      if (ok) { $("og-msg").textContent = eff === todayISO() ? "Saved ✓" : "Saved ✓ — applies from " + prettyDate(eff) + " (next billing cycle)"; $("og-msg").className = "msg ok"; }
+      if (ok) { $("og-msg").textContent = eff === todayISO() ? "Saved ✓" : pl.length > 1 ? "Saved ✓ — billing changes apply from " + prettyDate(eff) + " (next billing cycle), the rest today" : "Saved ✓ — applies from " + prettyDate(eff) + " (next billing cycle)"; $("og-msg").className = "msg ok"; }
     };
     if ($("og-launch")) $("og-launch").onclick = async function () {
       var e = S.validate(st.draft);
@@ -303,9 +330,10 @@
     return out + (none.length ? '<p class="og-help">' + esc(none.join(" · ")) + ".</p>" : "");
   }
   async function libWrite(fn) {
-    if (st.libBusy) return; st.libBusy = true;
-    try { await fn(); await loadSide(); } catch (e) { TL.alert(e.message || String(e)); try { await loadSide(); } catch (e2) {} }
+    if (st.libBusy) return; st.libBusy = true; var out;
+    try { out = await fn(); await loadSide(); } catch (e) { TL.alert(e.message || String(e)); try { await loadSide(); } catch (e2) {} }
     st.libBusy = false; var y = window.scrollY; renderStep(S.STEPS[1]); window.scrollTo(0, y);
+    return out;
   }
   function bindLibrary() {
     var body = $("og-body");
@@ -315,21 +343,24 @@
         libWrite(async function () {
           var mt = HL.match(st.holidays, h);
           if (cb.checked) {
-            if (mt) return; // already has a row for that day: never double up
-            var r = await sb().from("holidays").insert(Object.assign({ org_id: st.org.id }, HL.toRow(h))); if (r.error) throw r.error;
+            if (mt) return null; // already has a row for that day: never double up
+            var row = HL.toRow(h), r = await sb().from("holidays").insert(Object.assign({ org_id: st.org.id }, row)); if (r.error) throw r.error;
+            return [{ name: row.name, a: row.starts_on, b: row.ends_on }];
           } else if (mt && mt.exact) {
             var d = await sb().from("holidays").delete().eq("id", mt.row.id); if (d.error) throw d.error;
           }
-        });
+          return null;
+        }).then(function (items) { if (items) return offerHolidayCancel(items); });
       };
     });
     body.querySelectorAll("[data-hsel]").forEach(function (b) {
       b.onclick = function () {
         var y = +b.getAttribute("data-hsel");
         libWrite(async function () {
-          await loadSide(); var rows = HL.toTick(st.holidays, st.lib, y); if (!rows.length) return;
+          await loadSide(); var rows = HL.toTick(st.holidays, st.lib, y); if (!rows.length) return null;
           var r = await sb().from("holidays").insert(rows.map(function (x) { return Object.assign({ org_id: st.org.id }, x); })); if (r.error) throw r.error;
-        });
+          return rows.map(function (x) { return { name: x.name, a: x.starts_on, b: x.ends_on }; });
+        }).then(function (items) { if (items) return offerHolidayCancel(items); });
       };
     });
     body.querySelectorAll("[data-hclr]").forEach(function (b) {
@@ -355,22 +386,31 @@
   // (T3.9) After a holiday is added by hand: offer to cancel the lessons already on those days. The database counts first (a dry run), and only
   // lessons nobody has marked, paid or invoiced can be cancelled, with no charge. Anything unexpected (older database, no permission, nothing to
   // cancel) stays silent: the holiday is saved either way.
+  // items = [{name, a, b}]: one question for all of them (a library tick is one holiday, "Select all" is many). The counts are added up first.
   async function offerHolidayCancel(name, a, b) {
-    if (!st.org || st.org.kind !== "centre") return;
-    var args = { p_org: st.org.id, p_from: a, p_to: b, p_name: name };
-    var d = await sb().rpc("staff_holiday_cancel", Object.assign({ p_dry: true }, args));
-    var n = d.data && Number(d.data.cancel) || 0, kept = d.data && Number(d.data.kept) || 0;
-    if (d.error || !n) return;
-    var one = n === 1;
-    var yes = await TL.confirm({ title: "Also cancel " + (one ? "the lesson" : n + " lessons") + " already on " + (a === b ? "that day" : "those days") + "?",
-      message: n + (one ? " lesson is" : " lessons are") + " already planned on the days of " + name + ". They would be cancelled with no charge." +
+    var items = Array.isArray(name) ? name : [{ name: name, a: a, b: b }];
+    if (!st.org || st.org.kind !== "centre" || !items.length) return;
+    var n = 0, kept = 0, hit = [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i], d = await sb().rpc("staff_holiday_cancel", { p_org: st.org.id, p_from: it.a, p_to: it.b, p_name: it.name, p_dry: true });
+      var c = d.data && Number(d.data.cancel) || 0;
+      if (d.error) return;
+      n += c; kept += d.data && Number(d.data.kept) || 0; if (c) hit.push(it);
+    }
+    if (!n) return;
+    var one = n === 1, single = items.length === 1;
+    var yes = await TL.confirm({ title: "Also cancel " + (one ? "the lesson" : n + " lessons") + " already on " + (single && items[0].a === items[0].b ? "that day" : "those days") + "?",
+      message: n + (one ? " lesson is" : " lessons are") + " already planned on the days of " + (single ? items[0].name : "these holidays") + ". They would be cancelled with no charge." +
         (kept ? " " + kept + (kept === 1 ? " lesson stays" : " lessons stay") + " because " + (kept === 1 ? "it is" : "they are") + " marked, paid or invoiced." : "") +
         " Lessons in the past are never changed.", confirmText: "Cancel the lesson" + (one ? "" : "s"), cancelText: "Keep them" });
     if (!yes) return;
-    var r = await sb().rpc("staff_holiday_cancel", Object.assign({ p_dry: false }, args));
-    if (r.error) return TL.alert("The holiday is saved, but the lessons could not be cancelled: " + r.error.message);
-    var c = Number(r.data && r.data.cancel) || 0;
-    TL.toast(c + (c === 1 ? " lesson" : " lessons") + " cancelled with no charge.", "ok");
+    var done = 0;
+    for (var j = 0; j < hit.length; j++) {
+      var r = await sb().rpc("staff_holiday_cancel", { p_org: st.org.id, p_from: hit[j].a, p_to: hit[j].b, p_name: hit[j].name, p_dry: false });
+      if (r.error) return TL.alert("The holiday is saved, but the lessons could not be cancelled: " + r.error.message);
+      done += Number(r.data && r.data.cancel) || 0;
+    }
+    TL.toast(done + (done === 1 ? " lesson" : " lessons") + " cancelled with no charge.", "ok");
   }
   function bindCalendar() {
     var body = $("og-body"); if (st.lib && HL) bindLibrary();

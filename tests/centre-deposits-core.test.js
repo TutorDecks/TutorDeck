@@ -121,3 +121,9 @@ test("refusals in plain words", () => {
   assert.match(CD.errorText({ message: "boom" }), /Something went wrong/);
   assert.equal(CD.isMissing({ code: "PGRST202" }), true);
 });
+
+test("B5-FIX A: the run explains why a student gets no deposit, in plain words", () => {
+  assert.equal(CD.whyLine({ reason: "has no lesson ready to invoice yet, only trial lessons or lessons not marked yet." }), "This student has no lesson ready to invoice yet, only trial lessons or lessons not marked yet.");
+  assert.equal(CD.whyLine({ reason: "already has a draft invoice from an earlier run." }), "This student already has a draft invoice from an earlier run.");
+  assert.equal(CD.whyLine({}), "No deposit is raised.");
+});

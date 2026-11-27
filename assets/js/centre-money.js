@@ -52,13 +52,16 @@
       }).join("") + '</div></section>';
   }
   function depositsHtml(p) {
-    var d = p.deposits || [], note = CD.runDepositNote(p);
-    if (!d.length && !note) return "";
+    var d = p.deposits || [], note = CD.runDepositNote(p), why = p.deposit_why || [];
+    if (!d.length && !note && !why.length) return "";
     return '<section class="cm-sec" aria-labelledby="cm-h-dep"><h2 class="cm-h" id="cm-h-dep">Refundable deposits' + (d.length ? ' <span class="cm-n">' + d.length + '</span>' : '') + '</h2>' +
       (note ? '<p class="cm-note err">' + esc(note) + '</p>' : '<p class="cm-note">Each one is its own invoice, raised once with the student’s first invoice. The money is held for the family, not counted as income.</p>') +
       (d.length ? '<div class="card cm-list">' + d.map(function (x) {
         return '<div class="cm-row"><span class="cm-main"><span class="cm-name">' + esc(x.name) + '</span><span class="cm-sub">' + esc(CD.previewLine(x)) + (x.taxable ? ' · taxable' : '') + '</span></span>' +
           '<span class="cm-amt">' + esc(CM.money(x.amount_cents)) + '</span></div>';
+      }).join("") + '</div>' : '') +
+      (why.length ? '<p class="cm-note" id="cm-dep-why-h">No deposit is raised for:</p><div class="card cm-list" id="cm-dep-why">' + why.map(function (x) {
+        return '<div class="cm-row"><span class="cm-main"><span class="cm-name">' + esc(x.name) + '</span><span class="cm-sub">' + esc(CD.whyLine(x)) + '</span></span></div>';
       }).join("") + '</div>' : '') + '</section>';
   }
   function invoicesHtml() {
@@ -129,7 +132,17 @@
     if (!urlMonth && pv.data.model === "fixed_in_advance" && !load.switched) {              // a fixed fee billed in advance: the coming month is the one to invoice
       load.switched = true; var nm = CM.defaultMonth(pv.data.today || localToday(), "fixed_in_advance"); if (nm !== month) { month = nm; return load(); }
     }
-    prev = pv.data; today = pv.data.today; invs = (ls.data && ls.data.rows) || []; numb = nb.error ? null : nb.data;
+    prev = pv.data; today = pv.data.today;
+    // why a student in the run gets no deposit, in plain words (an older database has no such function: then the run just shows what it has)
+    prev.deposit_why = [];
+    if (pv.data.built !== false) {
+      try {
+        var wy = await window.sb.rpc("centre_deposit_run_why", { p_org: orgId, p_period: month });
+        if (mine !== seq) return;
+        if (!wy.error && wy.data) { prev.deposit_why = wy.data.rows || []; if (wy.data.note) prev.deposit_note = wy.data.note; }
+      } catch (e) {}
+    }
+    invs = (ls.data && ls.data.rows) || []; numb = nb.error ? null : nb.data;
     draw(); syncUrl();
   }
   function syncUrl() { try { history.replaceState(null, "", location.pathname + "?" + (tab === "inv" ? "id=" + encodeURIComponent(orgId) + "&tab=invoices" : tab === "dep" ? "id=" + encodeURIComponent(orgId) + "&tab=deposits" : tab === "ref" ? "id=" + encodeURIComponent(orgId) + "&tab=refunds" : tab === "late" ? "id=" + encodeURIComponent(orgId) + "&tab=latefees" : CM.toQuery(orgId, month))); } catch (e) {} }

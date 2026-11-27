@@ -48,3 +48,8 @@ test("the note under the Home list follows notify_family, and nothing here says 
   const all = JSON.stringify([C.headline(R()), C.headline(R({ what: "cancelled" })), C.detail(R()), C.sheetFact(R(), "2026-11-26"), C.homeNote(true), C.homeNote(false), C.chip(R())]);
   assert.ok(!/\b(rate|price|amount|paid|invoice|invoiced|cents|S\$)\b/i.test(all), all);
 });
+
+test("B5-FIX H2: when a lesson changed more than once the newest change (first in the list) is the one its row shows", () => {
+  const m = C.byLesson([R({ lesson_id: "a", what: "cancelled" }), R({ lesson_id: "a", what: "moved" }), R({ lesson_id: "b", what: "moved" })]);
+  assert.equal(m.a.what, "cancelled"); assert.equal(m.b.what, "moved");
+});

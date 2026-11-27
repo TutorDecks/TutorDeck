@@ -30,6 +30,8 @@
   var LATE_HELP = "When a lesson invoice is still unpaid after its grace period, TutorDeck suggests a late fee. A person approves or waives each one (a reason is needed to waive); nothing is added to a family’s bill on its own. An approved fee is its own small invoice. Adding it as a line on the family’s next invoice comes in a later update.";
   var PAY_SOON = "Percentage pay and pay runs come in a later update.";
   var TUTOR_EDIT_SOON = "Coming in a later update; until then only an admin does this.";
+  function depOn(s) { return s.billing.deposit.mode !== "none"; }                                // deposit details matter only when there is a deposit
+  function lfOn(s) { return !!s.billing.late_fee.enabled; }                                        // late-fee details matter only when late fees are on
   function tutorsChange(s) { return s.lessons.timetable_editing !== "admin_only"; }          // the switches and limits matter only when tutors may change lessons
   var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
   // Field: { path, label, type, options?, help?, soon?, show?(s) }
@@ -105,41 +107,41 @@
       { path: "billing.deposit.percent_bp", label: "Deposit as a share of the first month's fee", type: "percent",
         show: function (s) { return s.billing.deposit.mode === "percent_first_month"; },
         help: "For example 50% of the first month's lesson fee. The amount is worked out once, with the first invoice, and then stays fixed." },
-      { path: "billing.deposit.taxable", label: "Charge GST on the deposit when it is received", type: "toggle",
+      { path: "billing.deposit.taxable", label: "Charge GST on the deposit when it is received", type: "toggle", show: depOn,
         help: "Normally off: a refundable deposit is held for the family and is not income. Ask your accountant." },
-      { path: "billing.deposit.due", label: "Deposit is invoiced", type: "select", options: [
+      { path: "billing.deposit.due", label: "Deposit is invoiced", type: "select", show: depOn, options: [
         o("with_first_invoice", "Together with the first lesson invoice"), o("before_first_lesson", "Before the first lesson")],
         soonOptions: ["before_first_lesson"] },
-      { path: "billing.deposit.waived_by", label: "A deposit can be waived by", type: "select", options: [
+      { path: "billing.deposit.waived_by", label: "A deposit can be waived by", type: "select", show: depOn, options: [
         o("owner", "The owner"), o("issue_invoices", "Staff who issue invoices"), o("nobody", "Nobody")],
         help: "Waiving always needs a reason." },
-      { path: "billing.deposit.top_up", label: "Ask for a top-up when the required deposit goes up", type: "toggle", soon: true,
+      { path: "billing.deposit.top_up", label: "Ask for a top-up when the required deposit goes up", type: "toggle", show: depOn, soon: true,
         help: "For example a returning student, or a fee increase." },
-      { path: "billing.deposit.release", label: "When a student leaves, TutorDeck suggests", type: "select", options: [
+      { path: "billing.deposit.release", label: "When a student leaves, TutorDeck suggests", type: "select", show: depOn, options: [
         o("refund_full", "Refunding the whole deposit"), o("refund_less_unpaid", "Keeping it against any unpaid invoices, refunding the rest"), o("admin_decides", "Nothing, an admin decides")],
         help: "Only a suggestion: staff can change the amounts, and the refund still needs approval. A deposit that carried GST is refunded, never kept against invoices." },
-      { path: "billing.deposit.forfeit_notice_days", label: "Notice needed to get the deposit back (days, 0 = none needed)", type: "days",
+      { path: "billing.deposit.forfeit_notice_days", label: "Notice needed to get the deposit back (days, 0 = none needed)", type: "days", show: depOn,
         help: "Leaving with less notice suggests keeping the deposit. An admin always confirms." },
-      { path: "billing.deposit.set_off_unpaid", label: "Staff may use the deposit to cover unpaid fees", type: "toggle", soon: true },
-      { path: "billing.deposit.final_month", label: "Family may use the deposit as the final month's fee", type: "toggle", soon: true },
+      { path: "billing.deposit.set_off_unpaid", label: "Staff may use the deposit to cover unpaid fees", type: "toggle", show: depOn, soon: true },
+      { path: "billing.deposit.final_month", label: "Family may use the deposit as the final month's fee", type: "toggle", show: depOn, soon: true },
       { path: "billing.deposit.refund_approved_by", label: "Refunds are approved by", type: "select", options: [
         o("owner", "The owner"), o("staff", "Any staff member who handles that kind of refund"), o("four_eyes", "Someone other than the person who asked")],
         help: "Deposit refunds are handled by the owner and staff who issue invoices; refunds of family credit by the owner and staff who record payments. A refund is paid and recorded only after it is approved. “Someone other than the person who asked” needs a second approver: it can be chosen only while the centre has the owner, a staff member who issues invoices and a staff member who records payments, all switched on. If one of them is later removed, switched off or loses that permission, TutorDeck changes this back to “The owner” and tells the owner." },
       { type: "group", label: "Late fees", help: LATE_HELP },
       { path: "billing.late_fee.enabled", label: "Late fee", type: "toggle" },
-      { path: "billing.late_fee.repeat", label: "How often", type: "select", options: [
+      { path: "billing.late_fee.repeat", label: "How often", type: "select", show: lfOn, options: [
         o("none", "Never"), o("once", "Once per invoice"), o("monthly", "Every month the invoice stays unpaid")] },
-      { path: "billing.late_fee.type", label: "Late fee is", type: "select", options: [
+      { path: "billing.late_fee.type", label: "Late fee is", type: "select", show: lfOn, options: [
         o("fixed", "A fixed amount"), o("percent", "A percentage of what is still unpaid")] },
-      { path: "billing.late_fee.amount_cents", label: "Late fee amount", type: "money" },
-      { path: "billing.late_fee.percent_bp", label: "Late fee percentage", type: "percent" },
-      { path: "billing.late_fee.after_days", label: "Grace period after the due date (days)", type: "days",
+      { path: "billing.late_fee.amount_cents", label: "Late fee amount", type: "money", show: function (s) { return lfOn(s) && s.billing.late_fee.type !== "percent"; } },
+      { path: "billing.late_fee.percent_bp", label: "Late fee percentage", type: "percent", show: function (s) { return lfOn(s) && s.billing.late_fee.type === "percent"; } },
+      { path: "billing.late_fee.after_days", label: "Grace period after the due date (days)", type: "days", show: lfOn,
         help: "Paying on the due date, or within this many days after it, is on time." },
-      { path: "billing.late_fee.cap_cents", label: "Most late fees one invoice can collect (0 = no limit)", type: "money" },
-      { path: "billing.late_fee.show_as", label: "A late fee is added as", type: "select", options: [
+      { path: "billing.late_fee.cap_cents", label: "Most late fees one invoice can collect (0 = no limit)", type: "money", show: lfOn },
+      { path: "billing.late_fee.show_as", label: "A late fee is added as", type: "select", show: lfOn, options: [
         o("next_invoice_line", "A line on the family's next invoice"), o("own_invoice", "Its own small invoice")],
         soonOptions: ["next_invoice_line"] },
-      { path: "billing.late_fee.waived_by", label: "A late fee can be waived by", type: "select", options: [
+      { path: "billing.late_fee.waived_by", label: "A late fee can be waived by", type: "select", show: lfOn, options: [
         o("owner", "The owner"), o("issue_invoices", "Staff who issue invoices")],
         help: "TutorDeck suggests late fees; a person applies or waives each one. Make sure your terms for parents mention late fees." }
     ]},
@@ -368,12 +370,30 @@
   // Billing, invoicing, payments and pay changes apply from the next billing cycle (1st of next month);
   // everything else applies today. Issued invoices are never rewritten either way.
   var CYCLE_SECTIONS = ["billing", "invoicing", "payments", "tutor_pay"];
-  function effectiveFrom(before, after, todayISO) {
-    var changed = CYCLE_SECTIONS.some(function (k) { return JSON.stringify(before && before[k]) !== JSON.stringify(after[k]); });
-    if (!changed) return todayISO;
+  function nextCycle(todayISO) {
     var y = +todayISO.slice(0, 4), m = +todayISO.slice(5, 7);
     m += 1; if (m > 12) { m = 1; y += 1; }
     return y + "-" + (m < 10 ? "0" : "") + m + "-01";
+  }
+  function effectiveFrom(before, after, todayISO) {
+    var changed = CYCLE_SECTIONS.some(function (k) { return JSON.stringify(before && before[k]) !== JSON.stringify(after[k]); });
+    return changed ? nextCycle(todayISO) : todayISO;
+  }
+  // What to save. `latest` = the newest saved VERSION (what the form shows, pending next-cycle changes included), `inForce` = what applies today,
+  // `draft` = the form. Billing-type sections only change from the next cycle; everything else changes today. When one save holds both kinds,
+  // it is saved as two versions: today's rules plus the non-billing changes now, then the whole draft from the next cycle.
+  // Returns [{ settings, effective }] in the order to save (empty = nothing to save).
+  function savePlan(latest, inForce, draft, todayISO, inSetup) {
+    if (JSON.stringify(draft) === JSON.stringify(latest)) return [];
+    if (inSetup) return [{ settings: draft, effective: todayISO }];
+    var cur = inForce || latest || {};
+    var cycleDiff = CYCLE_SECTIONS.some(function (k) { return JSON.stringify(cur[k]) !== JSON.stringify(draft[k]); });
+    var otherDiff = Object.keys(draft).some(function (k) { return CYCLE_SECTIONS.indexOf(k) < 0 && JSON.stringify(cur[k]) !== JSON.stringify(draft[k]); });
+    if (!cycleDiff) return [{ settings: draft, effective: todayISO }];
+    if (!otherDiff) return [{ settings: draft, effective: nextCycle(todayISO) }];
+    var now = JSON.parse(JSON.stringify(cur));
+    Object.keys(draft).forEach(function (k) { if (CYCLE_SECTIONS.indexOf(k) < 0) now[k] = JSON.parse(JSON.stringify(draft[k])); });
+    return [{ settings: now, effective: todayISO }, { settings: draft, effective: nextCycle(todayISO) }];
   }
 
 
@@ -405,5 +425,5 @@
   }
 
   return { SCHEMA_VERSION: SCHEMA_VERSION, STAFF_PERMISSIONS: STAFF_PERMISSIONS, STEPS: STEPS, defaults: defaults, withDefaults: withDefaults,
-    get: get, set: set, validate: validate, isVisible: isVisible, visibleOptions: visibleOptions, effectiveFrom: effectiveFrom, display: display, fourEyes: fourEyes, CYCLE_SECTIONS: CYCLE_SECTIONS };
+    get: get, set: set, validate: validate, isVisible: isVisible, visibleOptions: visibleOptions, effectiveFrom: effectiveFrom, savePlan: savePlan, display: display, fourEyes: fourEyes, CYCLE_SECTIONS: CYCLE_SECTIONS };
 });

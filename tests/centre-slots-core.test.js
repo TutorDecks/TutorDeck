@@ -116,3 +116,19 @@ test("the database's refusals, in plain words", () => {
   assert.match(e("Failed to fetch"), /Couldn’t reach the server/);
   assert.ok(SC.isMissing({ code: "PGRST202" })); assert.ok(!SC.isMissing({ message: "NOT_FOUND" }));
 });
+
+test("B5-FIX H1: every save with a tutor says what happened to the assigned tutors", () => {
+  assert.match(SC.savedText({ added: 1, assigned: [{ tutor_name: "Tutor One", student_name: "Kid 1" }], assign: { state: "added", tutor_name: "Tutor One" } }, "add"), /Tutor One was added to Kid 1’s assigned tutors/);
+  assert.match(SC.savedText({ added: 1, assigned: [], assign: { state: "already", tutor_name: "Tutor One", already: 1 } }, "add"), /Tutor One is already one of the student’s assigned tutors/);
+  assert.match(SC.savedText({ added: 3, assigned: [], assign: { state: "already", tutor_name: "Tutor One", already: 3 } }, "add"), /already one of the students’ assigned tutors/);
+  assert.match(SC.savedText({ added: 1, assigned: [], assign: { state: "off", tutor_name: "Tutor One" } }, "add"), /Tutor One was not added to the student’s assigned tutors, because that option is switched off in settings/);
+  assert.match(SC.savedText({ lessons_left: 2, assigned: [{ tutor_name: "Tutor Two", student_name: "Kid 2" }], assign: { state: "added" } }, "edit"), /Tutor Two was added to Kid 2’s assigned tutors/);
+  assert.strictEqual(SC.savedText({ added: 1, assign: { state: "no_tutor" } }, "add"), "Weekly slot added");
+  assert.strictEqual(SC.savedText({ added: 1, assigned: [] }, "add"), "Weekly slot added", "an older database answers without assign: nothing extra");
+});
+test("B5-FIX F: a student who is leaving can be kept in the class", () => {
+  assert.match(SC.memberPreview("add", { returned: true, dry: true, would_create: 6 }, "Kid 4", "21 Dec"), /Kid 4 stays in the class.*6 lessons will be made again/);
+  assert.match(SC.memberPreview("add", { returned: true, would_create: 0 }, "Kid 4", "21 Dec"), /No lessons need to be made again/);
+  assert.strictEqual(SC.memberDone("add", { returned: true, created: 6 }, "Kid 4"), "Kid 4 stays in the class. 6 lessons made again");
+  assert.strictEqual(SC.memberDone("add", { already: true }, "Kid 4"), "Kid 4 is already in this slot");
+});

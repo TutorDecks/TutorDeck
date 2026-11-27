@@ -240,7 +240,7 @@
   function blockText(code, org) {
     var n = org && org.min_notice_hours != null ? org.min_notice_hours : 24;
     var t = { TOO_LATE: "It starts in less than " + n + " hour" + (n === 1 ? "" : "s") + ", so only an admin can change it.", PAST: "It has already started.",
-      ALREADY_MARKED: "It is already marked, so only an admin can change it.", CANCELLED: "It was cancelled.", LOCKED: "Your centre has already closed it, so only an admin can change it.", LIMIT: "You have made all the changes your centre allows this month. Ask an admin.", NOT_FOUND: "" };
+      ALREADY_MARKED: "It is already marked, so only an admin can change it.", CANCELLED: "It was cancelled.", LOCKED: "Your centre has already closed it, so only an admin can change it.", LIMIT: "You have made all the changes your centre allows this month. Ask an admin.", NOT_FOUND: "Ask an admin to assign this student to you before you can change this lesson." };
     return t[code] || "";
   }
   // "16:30" + 90 minutes = "18:00"; null when it would pass midnight or the input isn't a time. Used to preview a move (the length never changes).
