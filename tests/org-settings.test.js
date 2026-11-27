@@ -8,6 +8,7 @@ const SQL = fs.readFileSync(require.resolve("../db/migration_org_foundation.sql"
 const MONEY = fs.readFileSync(require.resolve("../db/migration_money_settings.sql"), "utf8");   // T4 S0: the replacement validator
 const field = (path) => S.STEPS.flatMap((s) => s.fields).find((f) => f.path === path);
 const MOVES = fs.readFileSync(require.resolve("../db/migration_tutor_moves.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
+const OWN = fs.readFileSync(require.resolve("../db/migration_tutor_own_lessons.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
 const PAYOUT_SQL = fs.readFileSync(require.resolve("../db/migration_payout_permission.sql"), "utf8");
 
 test("defaults are valid once named, for both presets", () => {
@@ -274,13 +275,25 @@ test("T6.2: the six switches: postpone and cancel are built, the other four are 
     assert.ok(MOVES.includes("'{lessons,tutors_edit," + k + "}'"), k + " is validated in the migration");
     assert.equal(typeof S.get(S.defaults(), "lessons.tutors_edit." + k), "boolean", k);
   }
-  for (const k of ["postpone", "cancel"]) assert.ok(!field("lessons.tutors_edit." + k).soon, k + " is built");
-  for (const k of ["weekly_slots", "generate", "one_off", "link"]) assert.equal(field("lessons.tutors_edit." + k).soon, true, k + " must be soon");
+  for (const k of ["postpone", "cancel", "weekly_slots", "generate", "one_off"]) assert.ok(!field("lessons.tutors_edit." + k).soon, k + " is built");
+  for (const k of ["link"]) assert.equal(field("lessons.tutors_edit." + k).soon, true, k + " must be soon");
   // the defaults the form starts from are the ones the database assumes for a missing key (postpone on, cancel off)
   assert.equal(S.get(S.defaults(), "lessons.tutors_edit.postpone"), true);
   assert.equal(S.get(S.defaults(), "lessons.tutors_edit.cancel"), false);
   assert.match(MOVES, /tutors_edit,postpone\}'\)::boolean, true\)/);
   assert.match(MOVES, /tutors_edit,cancel\}'\)::boolean, false\)/);
+});
+
+test("T6.3: one_off, weekly_slots and generate are built, off by default in the form AND in the database, and each is a yes/no the validator already checks", () => {
+  for (const k of ["one_off", "weekly_slots", "generate"]) {
+    assert.equal(S.get(S.defaults(), "lessons.tutors_edit." + k), false, k + " starts off in the form");
+    assert.ok(!field("lessons.tutors_edit." + k).soon, k + " is built");
+    assert.ok(MOVES.includes("'{lessons,tutors_edit," + k + "}'"), k + " is validated");
+  }
+  assert.match(OWN, /\(cfg #>> array\['lessons', 'tutors_edit', p_switch\]\)::boolean, false\)/, "a missing switch means off in the database too");
+  for (const k of ["one_off", "weekly_slots", "generate"]) assert.ok(OWN.includes("'" + k + "'"), k + " is read by the new functions");
+  assert.equal(field("lessons.tutors_edit.link").soon, true, "the online link switch stays soon until step 5");
+  assert.deepEqual(field("lessons.timetable_editing").soonOptions, ["tutors_propose"], "tutors_propose stays soon until step 6");
 });
 
 test("T6.2: the limits are the same in the form and in the database, and the defaults are the owner's (24 hours, no limit)", () => {

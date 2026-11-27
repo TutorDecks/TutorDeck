@@ -108,6 +108,18 @@ const tabs = (page, phone) => page.locator(phone ? ".tabbar a" : ".tn-links a").
   { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, changes: Object.assign({}, CH, { tell_family: false, rows: CH.rows.map((r) => Object.assign({}, r, { tell_family: false })) }) }, { phone: true });
     await page.goto(BASE + "centre?id=c1"); await page.waitForSelector("#ch-changes");
     ok(await page.locator(".ch-chip").count() === 0 && /listed for your information/.test(await page.locator("#ch").innerText()), "notify_family off: the list is still there, but nothing says to tell the family"); await ctx.close(); }
+  // T6 steps 3-4: a lesson a tutor ADDED, a weekly slot, and one line per "Create lessons" press
+  { const rows = [row("n1", "added", "Tutor One", "Aiden Tan", { kind: "lesson", awaiting_centre: true, from_date: null, from_start: null, reason: null }),
+                  { kind: "slot", slot_id: "sl1", what: "added", changed_at: new Date().toISOString(), tutor_id: "m1", tutor_name: "Tutor One", student_id: "s1", student_name: "Aiden Tan", subject: "Math", weekday: 1, start_time: "16:00:00", end_time: "17:00:00", awaiting_centre: false, tell_family: true },
+                  { kind: "run", what: "generated", changed_at: new Date().toISOString(), tutor_id: "m2", tutor_name: "Tutor Two", created: 11, from_date: D(0), to_date: D(27), awaiting_centre: false, tell_family: true }];
+    const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, changes: { today: TODAY, days: 7, tell_family: true, rows } }, { phone: true });
+    await page.goto(BASE + "centre?id=c1"); await page.waitForSelector("#ch-changes");
+    const t = (await page.locator("#ch-changes").innerText()).replace(/\s+/g, " ");
+    ok(/Tutor One added a lesson for Aiden Tan/.test(t) && /Tutor One added a weekly slot for Aiden Tan/.test(t) && /Tutor Two created 11 lessons from their weekly slots/.test(t) && /Every Tuesday 4:00 pm – 5:00 pm/.test(t), "tutor changes: an added lesson, a slot and a press are each one plain line");
+    ok(await page.locator(".ch-chip", { hasText: "Price to confirm" }).count() === 1 && await page.locator(".ch-chip", { hasText: "Tell the family" }).count() === 2, "only the lesson whose details the centre must confirm says 'Price to confirm'; a press has no 'tell the family' (the lessons it made are the tutor's own slots)");
+    const hrefs = await page.locator("#ch-changes a").evaluateAll((e) => e.map((x) => x.getAttribute("href")));
+    ok(hrefs[0].includes("&date=" + D(3) + "&view=day") && hrefs[1].endsWith("&view=next14") && hrefs[2].endsWith("&view=next14") && hrefs.every((h) => !/undefined|null/.test(h)), "a lesson opens its day; a slot and a press open the next two weeks: " + hrefs.join(" "));
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1) && errs.length === 0, "no sideways scroll at 390px, no console errors " + errs.join("|")); await ctx.close(); }
   { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], home: FULL, changes: { today: TODAY, days: 7, tell_family: true, rows: [] } }, { phone: true });
     await page.goto(BASE + "centre?id=c1"); await page.waitForSelector(".ch-tile");
     ok(await page.locator("#ch-changes").count() === 0 && !/Tutor changes/.test(await page.locator("#ch").innerText()), "no changes: no 'Tutor changes' section at all"); await ctx.close(); }
