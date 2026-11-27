@@ -125,6 +125,8 @@ language sql immutable set search_path = public as $$
      array['id','batch_id','line_date','cents','kind','rule','household_id','payment_id','auto','confirmed_by=@who','confirmed_at','reversed_at','reversed_by=@who','reverse_reason'], null),
   ('statement_payer_links', 'include', 'org_id', 'id', 'uuid', null,
      array['id','payer_key','household_id','times_used','last_used','created_at'], null),
+  ('schedule_requests', 'include', 'org_id', 'id', 'uuid', null,
+     array['id','membership_id','kind','student_id','lesson_id','slot_id','reason','status','decision_code','decision_reason','decided_by=@who','decided_at','created_at','expires_at'], null),
   ('email_queue', 'include', 'org_id', 'id', 'uuid', null,
      array['id','kind','invoice_id','payment_id','household_id','guardian_id','reminder_no','status','reason','attempts','not_before','requested_by=@who','requested_at','updated_at'], null),
   ('email_send_log', 'include', 'org_id', 'id', 'int8', null,

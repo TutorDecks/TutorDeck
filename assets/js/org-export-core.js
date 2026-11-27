@@ -147,6 +147,11 @@
       ["reversed_at", "When it was undone (UTC)."], ["reversed_by", C.who("Who undid it")], ["reverse_reason", "Why it was undone."]]],
     ["statement_payer_links", "statement_payer_names.csv", "Remembered payer names", "Names that appear on your bank statement and the family each was matched to.", [
       ["id", C.id], ["payer_key", "The payer name, simplified for matching."], ["household_id", "The family."], ["times_used", "How often it was used."], ["last_used", "Date last used."], ["created_at", C.created]]],
+    ["schedule_requests", "tutor_requests.csv", "Tutor requests", "Each change a tutor asked for when the centre asks tutors to propose (move, cancel, add a lesson, weekly slot, online link), and how staff answered.", [
+      ["id", C.id], ["membership_id", "The tutor who asked (people_tutors_and_staff.csv id)."], ["kind", "postpone, revert, cancel, add_lesson, save_slot, stop_slot, generate or link."], ["student_id", "The student."],
+      ["lesson_id", "The lesson."], ["slot_id", "The weekly slot."], ["reason", "The tutor's own words."], ["status", "pending, approved, declined, cancelled, expired or no_longer_possible."],
+      ["decision_code", "The rule that stopped it, if any."], ["decision_reason", "What staff or the system told the tutor."], ["decided_by", C.who("Who answered")], ["decided_at", "When (UTC)."],
+      ["created_at", C.created], ["expires_at", "When it runs out (UTC)."]]],
     ["email_queue", "emails_queued.csv", "Emails to families: queue", "Each email to a family that was asked for, waiting, sent, held or stopped.", [
       ["id", C.id], ["kind", "invoice, receipt, reminder or late-fee notice."], ["invoice_id", "The invoice."], ["payment_id", "The payment (for a receipt)."], ["household_id", "The family."], ["guardian_id", "The parent or guardian."],
       ["reminder_no", "Which reminder this is."], ["status", "queued, sending, sent, failed, cancelled or skipped."], ["reason", "Why it was skipped or failed."], ["attempts", "Send attempts."], ["not_before", "Not sent before (UTC)."],

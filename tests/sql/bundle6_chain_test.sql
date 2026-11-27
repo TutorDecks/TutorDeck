@@ -17,7 +17,8 @@ begin
     ('T6 timetable editing (tutor_moves, base chain)', jsonb_set(base, '{lessons,timetable_editing}', '"zzz"'), true),
     ('T33 billing.starts_from (import)',               jsonb_set(base, '{billing,starts_from}', '"2019-01-01"'), stage = 'full'),
     ('T7.3 email.mode (invoice_email)',                jsonb_set(base, '{email}', '{"mode":"zzz"}'), stage = 'full'),
-    ('T18-4 billing.credits.rule (makeup_credits)',    jsonb_set(base, '{billing,credits}', '{"rule":"zzz"}'), stage = 'full')
+    ('T18-4 billing.credits.rule (makeup_credits)',    jsonb_set(base, '{billing,credits}', '{"rule":"zzz"}'), stage = 'full'),
+    ('T6.4 lessons.request_expiry_days (tutor_link_propose, last link)', jsonb_set(base, '{lessons,request_expiry_days}', '999'), stage = 'full')
   ) as c(label, doc, must) loop
     refused := false;
     begin perform org_validate_settings(r.doc); exception when others then refused := true; end;
