@@ -140,7 +140,7 @@ const noSideways = (page) => page.evaluate(() => document.documentElement.scroll
       const lab1 = await page.textContent("#mp-label"), asked = await page.evaluate(() => window.__calls.filter((c) => c[0] === "tutor_my_pay_month").map((c) => c[1] && c[1].p_month));
       ok(lab0 !== lab1 && asked.length >= 2 && asked[asked.length - 1] < asked[0], tag + ": the arrow asks for the month before (" + lab0 + " → " + lab1 + ")");
       const nav = await page.$$eval(".tabbar a", (e) => e.map((x) => x.textContent.trim() + (x.classList.contains("on") ? "*" : "")));
-      ok(nav.join(",") === "My lessons,Your pay*", tag + ": the Your pay tab is the active one (" + nav.join(",") + ")");
+      ok(nav.join(",") === "My lessons,Schedule,Your pay*", tag + ": the Your pay tab is the active one (" + nav.join(",") + ")");
     }
     await ctx.close();
   }

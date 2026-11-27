@@ -97,6 +97,8 @@ window.TL = (function () {
     var pageId = active;   // the page's own id (the menu may show a centre's items instead, T12c)
     var cur = org(), mn = MN.build(roleMode(), cur, OC ? OC.centreTabs(cur) : [], payOn()), G = mn.groups;   // what each login sees: assets/js/menus.js (UX1)
     var extras = mn.extras.filter(function (n) { return !n.ownerOnly || isOwner; });
+    // (T4 S7) Tutor pay: rates, the pay list and the lessons-taught report; only the owner and staff with "Run tutor pay" (tutors never see pay)
+    if (mn.kind === "centre" && OC && OC.can(cur, "run_tutor_pay")) extras = [{ id: "orgpay", label: "Tutor pay", href: "centre-tutor-pay?id=" + encodeURIComponent(cur.id), ic: "banknote" }].concat(extras);
     if (mn.kind === "centre") active = centreActive(active, G, cur);   // T12c: a centre has its own menu
     var grp = groupOf(active, G);
     var xg = extras.filter(function (n) { return n.id === active || (n.also || []).indexOf(active) > -1; })[0];   // an extra can own sub-tabs (UX1)
@@ -413,17 +415,10 @@ window.TL = (function () {
   function centreActive(active, G, o) {
     if (o.role === "tutor") return active;
     var tabQ = (/[?&]tab=([a-z]+)/.exec(location.search) || [])[1] || "";
-    var on = active === "centre-tutor-pay" ? "orgpay"                                                                        // (T4 S7) Tutor pay lives in the More sheet, so no main tab is active
-           : (active === "centre-students" || active === "centre-attendance" || active === "centre-timetable" || active === "centre-money" || active === "centre-people") ? (G.filter(function (g) { return g.page === active; })[0] || G[0] || {}).id
-           : active === "centre" ? (G.filter(function (g) { return (g.tab || "") === tabQ; })[0] || G[0] || {}).id
-           : active === "org" ? (/[?&]id=/.test(location.search) ? "orgsettings" : "orglist") : active;
-    var more = [];
-    // (T4 S7) Tutor pay: rates, the pay list and the lessons-taught report; only the owner and staff with "Run tutor pay" (tutors never see pay)
-    if (o.role !== "tutor" && OC && OC.can(o, "run_tutor_pay")) more.push({ id: "orgpay", label: "Tutor pay", href: "centre-tutor-pay?id=" + encodeURIComponent(o.id), ic: "money" });
-    if (o.role !== "tutor") more.push({ id: "orgsettings", label: "Centre settings", href: "org?id=" + encodeURIComponent(o.id), ic: "settings" },
-                                      { id: "orglist", label: "Your centres", href: "org", ic: "students" });
-    if (o.role === "tutor") return { groups: G, active: on, extras: [TUTOR_MENU_SETTINGS] };   // (T3.9) a tutor's Settings is their own page, never the solo /settings
-    return { groups: G, active: on, extras: more.concat(EXTRA.filter(function (n) { return n.id === "settings"; })) };
+    return active === "centre-tutor-pay" ? "orgpay"                                                                       // (T4 S7) Tutor pay lives in the More sheet, so no main tab is active
+         : (active === "centre-students" || active === "centre-attendance" || active === "centre-timetable" || active === "centre-money" || active === "centre-people") ? (G.filter(function (g) { return g.page === active; })[0] || G[0] || {}).id
+         : active === "centre" ? (G.filter(function (g) { return (g.tab || "") === tabQ; })[0] || G[0] || {}).id
+         : active === "org" ? (/[?&]id=/.test(location.search) ? "orgsettings" : "orglist") : active;
   }
   // ======== end T12c ========
 
