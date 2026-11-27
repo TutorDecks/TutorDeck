@@ -134,6 +134,12 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/slot_changes_test.sql
 $P -f db/migration_tutor_moves.sql
 $P -f db/migration_tutor_moves.sql                          # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_moves_test.sql
+$P -f db/migration_past_lessons.sql
+$P -f db/migration_past_lessons.sql                         # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/past_lessons_test.sql
+$P -f db/migration_past_lessons_down.sql
+$P -f db/migration_past_lessons.sql                         # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_past_lessons_down.sql
 $P -f db/migration_tutor_moves_down.sql
 $P -f db/migration_tutor_moves.sql                          # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_tutor_moves_down.sql

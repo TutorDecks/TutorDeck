@@ -31,7 +31,7 @@ BRANCH = {
     "tutor_payout": "t24c-2-payout", "payout_permission": "t24c-3-payout", "slot_changes": "t3-9-timetable-nav",
     "reassign_link": "b4-fix", "payment_fix": "b4-fix",
     "tutor_moves": "t6-2-tutor-moves", "centre_deposits": "t4-s4-deposits", "centre_refunds": "t4-s5-refunds", "centre_late_fees": "t4-s6-late-fees",
-    "centre_credit_undo": "t4-s5b-credit-undo",
+    "centre_credit_undo": "t4-s5b-credit-undo", "past_lessons": "t3-10-past-lessons",
 }
 WHAT = {
     "staff_home": "centre Home numbers", "staff_students": "centre students, households, tutor links", "staff_attendance": "centre attendance + guard",
@@ -46,6 +46,7 @@ WHAT = {
     "tutor_moves": "tutors move, put back and cancel their own lessons (centre option)",
     "centre_deposits": "refundable deposits: ledger, deposit invoice, waive, opening balance", "centre_refunds": "refunds + family credit (request, approve, pay, apply)",
     "centre_late_fees": "late fee proposals (approve / waive, monthly repeat)", "centre_credit_undo": "undo of applied credit / deposit, four-eyes guard, notices",
+    "past_lessons": "staff add past lessons (backfill), centre setting lessons.backfill_allowed_days",
 }
 
 

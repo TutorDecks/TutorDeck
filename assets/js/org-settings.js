@@ -199,6 +199,8 @@
       { path: "lessons.attendance_by", label: "Attendance is marked by", type: "select", options: [o("tutor", "The tutor"), o("admin", "An admin")] },
       { path: "lessons.attendance_window_days", label: "Tutors can mark or change attendance for (days after the lesson)", type: "number",
         help: "From the lesson's day, for this many days. After that only an admin can." },
+      { path: "lessons.backfill_allowed_days", label: "Staff can add past lessons up to (days back, 0-366; 0 = not allowed)", type: "number",
+        help: "For a student who started before the timetable was set up. Staff give a reason, and lessons marked attended are billed like any other. Once a month's TutorDeck fee is recorded only the owner can add lessons to it." },
       { path: "lessons.cancellations_marked_by", label: "Cancellations (in time or late) are marked by", type: "select", options: [o("admin", "An admin"), o("tutor", "The tutor")],
         help: "Whether a cancellation counts as late depends on your own cancellation policy, so most centres let an admin decide." },
       { path: "lessons.compensation_entered_by", label: "For an absent or cancelled lesson, the charge (compensation) is entered by", type: "select", options: [o("admin", "An admin"), o("tutor", "The tutor")],
@@ -274,7 +276,7 @@
       payments: { modes: ["manual_paynow"], paynow: { type: "uen", id: "" }, statement_bank: "DBS", hitpay: { paynow: true, cards: false },
         gateway_fees: "absorb", partial_payments: true, overpayments: "credit" },
       lessons: { class_type: "both", timetable_editing: "admin_only", tutors_edit: { postpone: true, cancel: false, weekly_slots: false, generate: false, one_off: false, link: false },
-        min_notice_hours: 24, max_changes_per_month: 0, notify_family: "list_for_admin", attendance_by: "tutor", attendance_window_days: 14, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
+        min_notice_hours: 24, max_changes_per_month: 0, notify_family: "list_for_admin", attendance_by: "tutor", attendance_window_days: 14, backfill_allowed_days: 31, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
         missed_remarks_reminders: true, replacement_tutors: true, auto_assign_tutors: true, tutors_see_parent_contact: false },
       tutor_pay: { mode: "report", payable_when: "parent_paid", rate_model: "per_hour", percent_base: "billed_after_discounts", part_payments: "after_full", cancelled_lessons: "pay_if_charged", group_count: "attended", adjustments: true,
         cycle: { cutoff_day: 31, pay_day: 7 }, payout_method: "manual_list", tutor_visibility: "closed_only" },
@@ -347,6 +349,7 @@
     if (!Array.isArray(s.payments.modes) || !s.payments.modes.length) e.push("Pick at least one way for parents to pay.");
     var mn = s.lessons.min_notice_hours; if (mn != null && !(Number.isSafeInteger(mn) && mn >= 0 && mn <= 168)) e.push("Notice before a tutor's change must be 0–168 hours.");
     var mc = s.lessons.max_changes_per_month; if (mc != null && !(Number.isSafeInteger(mc) && mc >= 0 && mc <= 500)) e.push("Changes per tutor per month must be 0–500 (0 = no limit).");
+    var bd = s.lessons.backfill_allowed_days; if (bd != null && !(Number.isSafeInteger(bd) && bd >= 0 && bd <= 366)) e.push("Days staff may add past lessons must be 0–366 (0 = off).");
     var aw = s.lessons.attendance_window_days; if (aw != null && !(Number.isSafeInteger(aw) && aw >= 1 && aw <= 60)) e.push("Attendance window must be 1–60 days.");
     var gd = s.invoicing.generate.day; if (!(gd >= 1 && gd <= 28)) e.push("Invoice day must be 1–28 (so it exists in every month).");
     var cd = s.tutor_pay.cycle; if (!(cd.cutoff_day >= 1 && cd.cutoff_day <= 31) || !(cd.pay_day >= 1 && cd.pay_day <= 31)) e.push("Pay days must be 1–31.");

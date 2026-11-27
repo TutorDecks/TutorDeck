@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Centre timetable · TutorDeck</title>
 <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
-<link rel="stylesheet" href="assets/css/app.css?v=354">
+<link rel="stylesheet" href="assets/css/app.css?v=355">
 <script>try{if(localStorage.getItem("td_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
   .tt-wrap{max-width:820px;display:flex;flex-direction:column;gap:14px}
@@ -164,7 +164,7 @@
   .sl-acts .btn{width:100%;min-height:48px;justify-content:center}
   .sl-stop{color:var(--owed)}
 </style>
-<link rel="stylesheet" href="assets/css/dark.css?v=354">
+<link rel="stylesheet" href="assets/css/dark.css?v=355">
 </head>
 <body>
 <div id="view" data-page="centre-timetable">
@@ -199,6 +199,7 @@
     <div class="tt-ctl">
       <button class="tt-pill" id="tt-notutor" type="button" aria-pressed="false">No tutor <span class="n" id="tt-nn">0</span></button>
       <button class="tt-clear" id="tt-clear" type="button" hidden>Clear filters</button>
+      <button class="btn pl-open" id="tt-past" type="button" hidden>Add past lessons</button>
     </div>
     <div class="tt-count" id="tt-count" role="status" aria-live="polite">Loading lessons…</div>
     <div id="tt-list"></div>
@@ -213,6 +214,7 @@
   <div class="tt-wrap" id="sl" hidden>
     <div class="sl-bar" id="sl-bar" hidden>
       <button class="btn btn-primary" id="sl-add" type="button">Add weekly slot</button>
+      <button class="btn pl-open" id="sl-past" type="button">Add past lessons</button>
       <div class="sl-gen">
         <div class="field"><label for="sl-to">Create lessons up to</label><input id="sl-to" type="date"></div>
         <button class="btn" id="sl-gen" type="button">Create lessons for the next 4 weeks</button>
@@ -261,16 +263,18 @@
 </div>
 
 <script src="assets/vendor/supabase-2.118.0.js"></script>
-<script src="assets/js/config.js?v=354"></script>
-<script src="assets/js/supabase.js?v=354"></script>
-<script src="assets/js/org-current.js?v=354"></script>
-<script src="assets/js/org-scope.js?v=354"></script>
-<script src="assets/js/app.js?v=354"></script>
-<script src="assets/js/centre-attendance-core.js?v=354"></script>
-<script src="assets/js/tutor-changes-core.js?v=354"></script>
-<script src="assets/js/centre-timetable-core.js?v=354"></script>
-<script src="assets/js/centre-slots-core.js?v=354"></script>
-<script src="assets/js/centre-slots.js?v=354"></script>
-<script src="assets/js/centre-timetable.js?v=354"></script>
+<script src="assets/js/config.js?v=355"></script>
+<script src="assets/js/supabase.js?v=355"></script>
+<script src="assets/js/org-current.js?v=355"></script>
+<script src="assets/js/org-scope.js?v=355"></script>
+<script src="assets/js/app.js?v=355"></script>
+<script src="assets/js/centre-attendance-core.js?v=355"></script>
+<script src="assets/js/tutor-changes-core.js?v=355"></script>
+<script src="assets/js/centre-timetable-core.js?v=355"></script>
+<script src="assets/js/centre-slots-core.js?v=355"></script>
+<script src="assets/js/centre-past-lessons-core.js?v=355"></script>
+<script src="assets/js/centre-past-lessons.js?v=355"></script>
+<script src="assets/js/centre-slots.js?v=355"></script>
+<script src="assets/js/centre-timetable.js?v=355"></script>
 </body>
 </html>

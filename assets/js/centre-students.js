@@ -98,7 +98,8 @@
       h += (tut.assigned || []).length ? '<div class="chips">' + tut.assigned.map(function (t) { return '<span class="chip">' + esc(t.name) + '</span>'; }).join("") + '</div>'
         : '<p class="cs-note" style="margin:0 0 8px">No tutor assigned yet.</p>';
       if ((tut.history || []).length) h += '<p class="hist">Before: ' + esc(tut.history.slice(0, 3).map(function (x) { return x.name + (x.until ? " until " + fmtDate(x.until) : ""); }).join(" · ")) + '</p>';
-      if (tut.can_edit) h += '<button class="btn" type="button" id="tt-edit">' + ((tut.assigned || []).length ? 'Change tutors' : 'Assign tutors') + '</button>';
+      if (tut.can_edit) h += '<button class="btn" type="button" id="tt-edit">' + ((tut.assigned || []).length ? 'Change tutors' : 'Assign tutors') + '</button>' +
+        (window.CentrePastLessons ? ' <button class="btn" type="button" id="tt-past">Add past lessons</button>' : '');
       else h += '<p class="cs-note">Only people who manage the timetable can change this.</p>';
       if (msg) h += '<p class="cs-note" role="status" style="margin-top:6px">' + esc(msg) + '</p>';
     }
@@ -117,6 +118,7 @@
   async function tutAct(e) {
     var id = e.target.id; if (!id || !tut || !cur) return;
     if (id === "tt-edit") { tutEdit = "tutors"; drawTutors(); }
+    else if (id === "tt-past") window.CentrePastLessons.open(orgId, { student: { id: cur.id, name: cur.name || "Student" } }, e.target);
     else if (id === "tl-edit") { tutEdit = "link"; drawTutors(); }
     else if (id === "tt-cancel" || id === "tl-cancel") { tutEdit = ""; drawTutors(); }
     else if (id === "tt-save") {
