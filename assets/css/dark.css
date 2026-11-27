@@ -1499,3 +1499,7 @@ html[data-theme="dark"] svg [fill="#13233F"]{fill:#E6EAF1}
 html[data-theme="dark"] svg circle[stroke="#fff"]{stroke:#172235}
 
 }
+/* ---- family email (T7.3): the billing-contact rows in the invoice sheet ---- */
+html[data-theme="dark"] .ce-chk{border-top:1px solid var(--line)}
+html[data-theme="dark"] .ce-chk:first-child{border-top:none}
+html[data-theme="dark"] .ce-chk:focus-within{outline:2px solid var(--accent);outline-offset:-2px}

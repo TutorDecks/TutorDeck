@@ -82,3 +82,17 @@ Same table as C, **Production environment**, LIVE values: `BREVO_API_KEY` = `tut
 
 ## What I did not do and cannot do for you
 Create the Brevo sender or keys, paste any key anywhere, change Supabase or Vercel settings, or send any email. Everything above is yours to click.
+
+## H. Emails to families: invoices, receipts, reminders (T7.3; after the `claude/t7-3-invoice-email` branch is on `dev`)
+
+Nothing is emailed to a family until a **centre** switches it on (Settings > Invoicing > "Email invoices to parents"; default off).
+1. **DEV database:** run `db/migration_invoice_email.sql` (after `migration_tutor_moves.sql`). LIVE: only at ship time, before the code reaches `main`.
+2. **Vercel variables** (Settings > Environment Variables). Already set for invites/billing: `BREVO_API_KEY` (Production = live key, Preview = DEV key), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `INVITE_TEST_ALLOW` (Preview). **New:**
+   | Name | Value | Environment | Secret? |
+   |---|---|---|---|
+   | `BREVO_WEBHOOK_SECRET` | any random string of 16+ characters | Production and Preview | yes |
+   | `EMAIL_LINK_ORIGIN` | optional: `https://www.tutordeck.com.sg` once that domain is live (invoice links in emails point there; default is the address staff used, or tutordeck.vercel.app for the daily job) | Production | no |
+   | `EMAIL_PLATFORM_DAILY_CAP` | optional: default 250 (Brevo free = 300 a day for everything). Raise only after upgrading Brevo; never above 300 | Production | no |
+3. **Brevo webhook (bounces):** Brevo > Transactional > Settings > Webhooks > Add: URL `https://<site>/api/brevo-webhook?s=<BREVO_WEBHOOK_SECRET>` (or the header `Authorization: Bearer <secret>` if Brevo offers it), events: hard bounce, blocked, invalid email, spam, error. Without it bounces are only seen when Brevo refuses an address at send time.
+4. **Daily job:** `vercel.json` runs `/api/email-cron` at 01:00 UTC (09:00 Singapore), production only. Vercel Hobby allows once a day; staff pressing Send, or opening Money > Email, also sends what is queued right away (within the caps). On Pro you can change the schedule to hourly.
+5. **Test on DEV:** make a demo centre's guardian email `you@tutordeck.com.sg`, switch email on (staff sends), press **Email invoice** on an invoice, check Money > Email and the send log.

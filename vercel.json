@@ -131,7 +131,8 @@
     }
   ],
   "crons": [
-    { "path": "/api/billing-cron", "schedule": "30 16 * * *" }
+    { "path": "/api/billing-cron", "schedule": "30 16 * * *" },
+    { "path": "/api/email-cron", "schedule": "0 1 * * *" }
   ],
   "functions": {
     "api/gcal.js": {
@@ -148,6 +149,15 @@
     },
     "api/delete-account.js": {
       "maxDuration": 60
+    },
+    "api/email-send.js": {
+      "maxDuration": 30
+    },
+    "api/email-cron.js": {
+      "maxDuration": 60
+    },
+    "api/brevo-webhook.js": {
+      "maxDuration": 15
     }
   }
 }

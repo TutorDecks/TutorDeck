@@ -119,6 +119,7 @@
     if (can.issue_invoices && rules.share_link) {
       acts += '<button type="button" class="btn" id="cp-copy">Copy link</button>';
       if (a.balance_cents > 0) acts += '<button type="button" class="btn" id="cp-wa">Send on WhatsApp</button>';
+      if (a.balance_cents > 0 && a.household_id && window.CentreEmail && window.CentreEmail.on()) acts += '<button type="button" class="btn" id="cp-email">Email invoice</button>';
       if (a.share) acts += '<button type="button" class="btn quiet" id="cp-newlink">Make a new link</button>';
     }
     h += acts ? '<div class="cm-acts col">' + acts + '</div>' : '';
@@ -128,7 +129,7 @@
     var b = function (id, fn) { var e = $(id); if (e) e.addEventListener("click", fn); };
     b("cp-famcredit", function () { window.CentreRefunds.creditMenu(a, null, function (m) { open(a.id, true, m); }); });
     b("cp-undo", function () { window.CentreRefunds.undoApplication(a, a.apps, function (m) { open(a.id, true, m); }); });
-    b("cp-pay", payForm); b("cp-credit", creditForm); b("cp-copy", function () { copyLink(false); }); b("cp-wa", whatsapp); b("cp-newlink", function () { copyLink(true); });
+    b("cp-pay", payForm); b("cp-credit", creditForm); b("cp-copy", function () { copyLink(false); }); b("cp-wa", whatsapp); b("cp-email", function () { window.CentreEmail.invoiceForm(a, back, function (m) { open(a.id, true, m); }); }); b("cp-newlink", function () { copyLink(true); });
     $("cm-sb").querySelectorAll("[data-rev]").forEach(function (e) { e.addEventListener("click", function () { reverse(a.payments[+e.dataset.rev]); }); });
   }
   function back() { renderDetail(); }
