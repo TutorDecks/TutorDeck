@@ -134,6 +134,17 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/slot_changes_test.sql
 $P -f db/migration_tutor_moves.sql
 $P -f db/migration_tutor_moves.sql                          # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_moves_test.sql
+$P -f db/migration_centre_billing_method.sql                # the export reads the billing-method and billing-start columns (the chain above had undone them)
+$P -f db/migration_centre_billing_start.sql
+$P -f db/migration_org_export.sql
+$P -f db/migration_org_export.sql                           # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_export_test.sql
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_export_perf_test.sql
+$P -f db/migration_org_export_down.sql
+$P -f db/migration_org_export.sql                           # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_org_export_down.sql
+$P -f db/migration_centre_billing_start_down.sql            # (back to how the chain was before the export block)
+$P -f db/migration_centre_billing_method_down.sql
 $P -f db/migration_tutor_moves_down.sql
 $P -f db/migration_tutor_moves.sql                          # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_tutor_moves_down.sql
