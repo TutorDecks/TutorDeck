@@ -1073,6 +1073,17 @@ html[data-theme="dark"] .og-doc .tot td{border-bottom:0}
 html[data-theme="dark"] .og-doc .small{color:#A7B1C3}
 html[data-theme="dark"] .og-audit td{border-bottom:1px solid var(--line)}
 html[data-theme="dark"] .og-audit .when{color:var(--muted)}
+html[data-theme="dark"] .og-search input[type=search]{border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+html[data-theme="dark"] .og-search input[type=search]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(15,118,110,0.342)}
+html[data-theme="dark"] .og-res{border:1px solid var(--line);background:var(--paper);box-shadow:var(--shadow)}
+html[data-theme="dark"] .og-res li.on,
+html[data-theme="dark"] .og-res li:hover{background:var(--accent-soft)}
+html[data-theme="dark"] .og-res li.og-res-none{color:var(--muted);background:none}
+html[data-theme="dark"] .og-res-name{color:var(--ink)}
+html[data-theme="dark"] .og-res-trail{color:var(--muted)}
+html[data-theme="dark"] .og-res-val{color:var(--ink)}
+html[data-theme="dark"] .og-res-hint{color:var(--warn)}
+@media (prefers-reduced-motion:reduce){html[data-theme="dark"] .og-hit{background:var(--accent-soft);box-shadow:0 0 0 6px var(--accent-soft),0 0 0 8px var(--accent)}}
 html[data-theme="dark"] .imp-sub{color:var(--muted)}
 html[data-theme="dark"] .imp-meta{color:var(--muted)}
 html[data-theme="dark"] .imp-help{color:var(--muted)}

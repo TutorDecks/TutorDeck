@@ -106,7 +106,7 @@
     var cur = S.STEPS.filter(function (x) { return x.id === st.step; })[0];
     var h = '<div><h2 style="font-size:20px;font-weight:800;margin:0">' + esc(st.org.trading_name) + "</h2>" +
       '<p class="og-sub" style="margin:2px 0 0">' + (setup() ? "Setup · step " + (cur ? cur.n : 10) + " of 10" : "Settings") +
-      (isOwner() ? "" : " · view only (the owner changes settings)") + "</p></div>" +
+      (isOwner() ? "" : " · view only (the owner changes settings)") + "</p></div>" + searchHtml() +
       '<div class="og-steps" role="tablist">' + tabs.map(function (x) {
         var done = setup() && x.n < (st.org.setup_step || 1);
         return '<button role="tab" data-step="' + x.id + '" class="' + (st.step === x.id ? "on " : "") + (done ? "done" : "") + '">' + (setup() ? '<span class="n">' + x.n + "</span>" : "") + esc(x.title) + "</button>";
@@ -114,6 +114,7 @@
       '<div id="og-body"></div>';
     $("og").innerHTML = h;
     $("og").querySelectorAll("[data-step]").forEach(function (b) { b.onclick = function () { go(b.getAttribute("data-step")); }; });
+    bindSearch();
     var on = $("og").querySelector(".og-steps .on"); if (on && on.scrollIntoView) on.scrollIntoView({ block: "nearest", inline: "center" });
     var strip = $("og").querySelector(".og-steps");
     if (strip) {
@@ -136,6 +137,89 @@
     if (st.step === "export") return tabExport();
     renderStep(cur);
   }
+  // ------------------------------------------------------------------ settings search (T48)
+  // A box above the tabs: type 2+ letters, pick a result, and the screen opens the right tab, scrolls to that setting and lights it up for 2 seconds.
+  // The matching and ranking live in assets/js/settings-search-core.js (unit-tested); this part only draws the list and moves the screen.
+  var SSC = window.SettingsSearchCore, sIdx = null, sIdxSetup = null, sRes = [], sActive = -1;
+  function searchIndex() {
+    if (!SSC) return null;
+    if (!sIdx || sIdxSetup !== !!setup()) { sIdxSetup = !!setup(); sIdx = SSC.createIndex({ steps: S.STEPS, extraTabs: EXTRA_TABS, setup: sIdxSetup, isVisible: S.isVisible, get: S.get, set: S.set, display: S.display }); }
+    return sIdx;
+  }
+  function searchHtml() {
+    if (!SSC) return "";
+    return '<div class="og-search" role="search"><label class="sr-only" for="og-q">Search settings</label>' +
+      '<input id="og-q" type="search" role="combobox" aria-expanded="false" aria-controls="og-res" aria-autocomplete="list" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" placeholder="Search settings (try late fee, deposit, attendance)">' +
+      '<ul id="og-res" class="og-res" role="listbox" aria-label="Matching settings" hidden></ul><div id="og-sr" class="sr-only" aria-live="polite"></div></div>';
+  }
+  function resultHtml(r, i) {
+    var e = r.entry, name = e.kind === "tab" ? e.label + " (tab)" : e.label;
+    var line2 = SSC.trail(e);
+    var tail = r.hidden ? '<span class="og-res-hint">' + esc(r.hidden.action) + "</span>"
+      : (r.value && e.kind === "field" && e.field.type !== "note" ? '<span class="og-res-val">Now: ' + esc(r.value) + "</span>" : "");
+    return '<li id="og-res-' + i + '" role="option" aria-selected="false" data-i="' + i + '"><span class="og-res-name">' + esc(name) +
+      (r.soon ? '<span class="og-soon">Coming soon</span>' : "") + "</span>" + (line2 ? '<span class="og-res-trail">' + esc(line2) + "</span>" : "") + tail + "</li>";
+  }
+  function setActive(i) {
+    var ul = $("og-res"), q = $("og-q"); if (!ul) return;
+    sActive = i;
+    ul.querySelectorAll("li").forEach(function (li, k) { var on = k === i; li.classList.toggle("on", on); li.setAttribute("aria-selected", on ? "true" : "false"); if (on && li.scrollIntoView) li.scrollIntoView({ block: "nearest" }); });
+    if (i >= 0) q.setAttribute("aria-activedescendant", "og-res-" + i); else q.removeAttribute("aria-activedescendant");
+  }
+  function runSearch() {
+    var q = $("og-q"), ul = $("og-res"), ix = searchIndex(); if (!q || !ul || !ix) return;
+    var text = q.value; sRes = SSC.search(ix, text, st.draft, { limit: 8 }); sActive = -1; q.removeAttribute("aria-activedescendant");
+    var typed = text.trim().length >= SSC.MIN_CHARS;
+    ul.innerHTML = sRes.map(resultHtml).join("") || (typed ? '<li class="og-res-none" role="presentation">Nothing matches \u201c' + esc(text.trim()) + "\u201d. Try another word, like \u201cfee\u201d, \u201cinvoice\u201d or \u201cattendance\u201d.</li>" : "");
+    ul.hidden = !typed; q.setAttribute("aria-expanded", typed ? "true" : "false");
+    $("og-sr").textContent = !typed ? "" : sRes.length ? sRes.length + (sRes.length === 1 ? " setting found" : " settings found") : "No settings found";
+  }
+  function clearSearch() { var q = $("og-q"); if (!q) return; q.value = ""; runSearch(); }
+  function bindSearch() {
+    var q = $("og-q"), ul = $("og-res"); if (!q) return;
+    q.addEventListener("input", runSearch);
+    q.addEventListener("focus", function () { if (q.value.trim().length >= SSC.MIN_CHARS) runSearch(); });
+    q.addEventListener("keydown", function (e) {
+      var n = sRes.length;
+      if (e.key === "ArrowDown" && n) { e.preventDefault(); setActive(sActive < n - 1 ? sActive + 1 : 0); }
+      else if (e.key === "ArrowUp" && n) { e.preventDefault(); setActive(sActive > 0 ? sActive - 1 : n - 1); }
+      else if (e.key === "Enter") { e.preventDefault(); if (n) jumpTo(sRes[sActive >= 0 ? sActive : 0], true); }
+      else if (e.key === "Escape") { if (q.value || !ul.hidden) { e.preventDefault(); clearSearch(); } }
+    });
+    ul.addEventListener("mousedown", function (e) { e.preventDefault(); });                 // keep focus in the box while the list is used
+    ul.addEventListener("click", function (e) { var li = e.target.closest("li[data-i]"); if (li) jumpTo(sRes[+li.getAttribute("data-i")], false); });
+    document.addEventListener("click", function (e) { if (!e.target.closest(".og-search")) { var u = $("og-res"); if (u) { u.hidden = true; var qq = $("og-q"); if (qq) qq.setAttribute("aria-expanded", "false"); } } });
+  }
+  // r = a search result. A setting that is hidden right now sends you to the option that shows it (and says so).
+  function jumpTo(r, viaKey) {
+    var ix = searchIndex(), e = r.entry, note = "";
+    if (r.hidden && r.hidden.parentPath && ix.byPath[r.hidden.parentPath]) { e = ix.byPath[r.hidden.parentPath]; note = r.hidden.action + " \u2014 then \u201c" + r.entry.label + "\u201d shows up."; }
+    clearSearch();
+    if (st.step !== e.stepId) { st.step = e.stepId; history.replaceState(null, "", location.pathname + location.search + "#" + e.stepId); render(); }
+    var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var key = e.path || (e.kind === "group" ? "group:" + e.label : null);
+    var el = key ? $("og-body") && $("og-body").querySelector('[data-find="' + key.replace(/"/g, '\\"') + '"]') : null;
+    if (!el && e.kind === "item") el = findItem(e);
+    if (!el) el = $("og-body") && ($("og-body").querySelector(".og-card h2") || $("og-body"));
+    if (el) {
+      if (e.kind !== "tab" && $("og-body")) $("og-body").classList.add("og-pad");               // room under a short tab, so the setting can sit mid-screen, clear of the bottom bar
+      el.scrollIntoView({ block: e.kind === "tab" ? "start" : "center", behavior: reduce ? "auto" : "smooth" });
+      el.classList.remove("og-hit"); void el.offsetWidth; el.classList.add("og-hit");
+      setTimeout(function () { el.classList.remove("og-hit"); }, 2000);
+      if (viaKey) { var c = el.matches("input,select,textarea") ? el : el.querySelector("input,select,textarea"); if (c && !c.disabled && c.type !== "text" && c.type !== "email" && c.tagName !== "TEXTAREA") c.focus({ preventScroll: true }); else if (c && !c.disabled) c.focus({ preventScroll: true }); }
+    }
+    var sr = $("og-sr"); if (sr) sr.textContent = note || "Opened " + e.label;
+    if (note && window.TL && TL.toast) TL.toast(note);
+  }
+  // the hand-built tabs (Branches, Rooms, Terms, Holidays, Invite…) have no data-find: find their heading (or a CSS selector) by the entry's `find`
+  function findItem(e) {
+    var body = $("og-body"), f = e.find || ""; if (!body || !f) return null;
+    if (f.charAt(0) === ".") return body.querySelector(f);
+    var hs = body.querySelectorAll("h3");
+    for (var i = 0; i < hs.length; i++) if (hs[i].textContent.trim().indexOf(f) === 0) return hs[i];
+    return null;
+  }
+
   function go(step) { st.step = step; history.replaceState(null, "", location.pathname + location.search + "#" + step); render(); window.scrollTo(0, 0); }
 
   // ------------------------------------------------------------------ generic step
@@ -166,13 +250,14 @@
     var s = st.draft, v = f.path ? S.get(s, f.path) : undefined, id = f.path ? "f-" + f.path.replace(/\./g, "-") : "", lock = !isOwner() || f.soon;
     if (!S.isVisible(f, s)) return "";
     var soon = f.soon ? '<span class="og-soon">Coming soon</span>' : "";
+    var sk = ' data-find="' + esc(f.path || "group:" + f.label) + '"';                       // where the settings search scrolls to and highlights
     var help = f.help ? '<span class="og-help">' + esc(f.help) + "</span>" : "";
-    if (f.type === "group") return '<div class="og-group' + (f.soon ? " og-off" : "") + '"><h3>' + esc(f.label) + soon + "</h3>" + (f.help ? '<span class="og-help">' + esc(f.help) + "</span>" : "") + "</div>";
-    if (f.type === "note") return '<div class="og-note' + (f.soon ? " og-off" : "") + '">' + (f.label ? "<b>" + esc(f.label) + "</b>" + soon + "<br>" : "") + esc(f.help || "") + "</div>";
+    if (f.type === "group") return '<div class="og-group' + (f.soon ? " og-off" : "") + '"' + sk + '><h3>' + esc(f.label) + soon + "</h3>" + (f.help ? '<span class="og-help">' + esc(f.help) + "</span>" : "") + "</div>";
+    if (f.type === "note") return '<div class="og-note' + (f.soon ? " og-off" : "") + '"' + sk + '>' + (f.label ? "<b>" + esc(f.label) + "</b>" + soon + "<br>" : "") + esc(f.help || "") + "</div>";
     if (f.type === "toggle")
-      return '<label class="og-check' + (f.soon ? " og-off" : "") + '"><input type="checkbox" id="' + id + '" data-path="' + f.path + '"' + (v ? " checked" : "") + (lock ? " disabled" : "") + "> <span>" + esc(f.label) + soon + "</span></label>" + help;
+      return '<label class="og-check' + (f.soon ? " og-off" : "") + '"' + sk + '><input type="checkbox" id="' + id + '" data-path="' + f.path + '"' + (v ? " checked" : "") + (lock ? " disabled" : "") + "> <span>" + esc(f.label) + soon + "</span></label>" + help;
     if (f.type === "multi")
-      return '<div class="field"><label>' + esc(f.label) + "</label>" + f.options.map(function (op) {
+      return '<div class="field"' + sk + '><label>' + esc(f.label) + "</label>" + f.options.map(function (op) {
         var so = (f.soonOptions || []).indexOf(op[0]) > -1, on = (v || []).indexOf(op[0]) > -1;
         return '<label class="og-check' + (so ? " og-off" : "") + '"><input type="checkbox" data-multi="' + f.path + '" value="' + esc(op[0]) + '"' + (on ? " checked" : "") + (lock || so ? " disabled" : "") + "> <span>" + esc(op[1]) + (so ? '<span class="og-soon">Coming soon</span>' : "") + "</span></label>";
       }).join("") + "</div>" + help;
@@ -194,7 +279,7 @@
         (t === "color" ? ' style="height:44px;padding:4px"' : "") + ">";
     }
     var unit = f.type === "money" ? " (S$)" : f.type === "percent" ? " (%)" : "";
-    return '<div class="field' + (f.soon ? " og-off" : "") + '"><label for="' + id + '">' + esc(f.label) + unit + soon + "</label>" + input + "</div>" + help;
+    return '<div class="field' + (f.soon ? " og-off" : "") + '"' + sk + '><label for="' + id + '">' + esc(f.label) + unit + soon + "</label>" + input + "</div>" + help;
   }
   function readInput(el) {
     var t = el.getAttribute("data-type"), v = el.value.trim();
