@@ -13,6 +13,9 @@
   var userId = null, anchor = null, mode = "week";
   var students = [], slots = [], exams = [], nameById = {}, locById = {}, hhById = {}, endById = {}, loadedStatic = false;
   var lessonCache = {}, pending = {}, lastBlocks = [], hidden = {};
+  // UX1: a both-role tutor (solo organisation + a centre they teach at) can lay their centre lessons over this calendar, read-only.
+  // The solo calendar itself only ever asks for solo-organisation rows (TL.scope); the centre lessons come from tutor_my_lessons, which has no money column.
+  var TCAL=window.TutorCalendar, centreAvail=false, centreOn=false, centreCache={}, centrePending={};
 
   function pad(n){ return (n<10?"0":"")+n; }
   function iso(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
@@ -128,6 +131,21 @@
       });
     return pending[key];
   }
+  function fetchCentre(key){
+    if(!centreAvail||!centreOn||key in centreCache) return Promise.resolve();
+    if(centrePending[key]) return centrePending[key];
+    var p=key.split("-"), y=+p[0], m=+p[1]-1, first=iso(new Date(y,m,1)), last=iso(new Date(y,m+1,0));
+    centrePending[key]=Promise.resolve(window.sb.rpc("tutor_my_lessons",{ p_from:first, p_to:last })).then(function(r){
+      centreCache[key]=(r&&!r.error)?(r.data||[]).map(TCAL.overlayBlock):[]; delete centrePending[key];
+    },function(){ centreCache[key]=[]; delete centrePending[key]; });
+    return centrePending[key];
+  }
+  function centreForRange(range){
+    if(!centreAvail||!centreOn) return [];
+    var s=iso(range.start), e=iso(range.end), out=[];
+    monthsIn(range).forEach(function(k){ (centreCache[k]||[]).forEach(function(b){ if(b.dateISO>=s&&b.dateISO<=e) out.push(b); }); });
+    return out;
+  }
   function lessonsForRange(range){
     var s=iso(range.start), e=iso(range.end), out=[];
     monthsIn(range).forEach(function(k){
@@ -140,8 +158,8 @@
   async function ensureData(){
     var jobs=[];
     if(!loadedStatic) jobs.push(loadStatic());
-    monthsIn(visibleRange()).forEach(function(k){ jobs.push(fetchMonth(k)); });
-    neighborMonths().forEach(function(k){ jobs.push(fetchMonth(k)); });   // panes either side are real too
+    monthsIn(visibleRange()).forEach(function(k){ jobs.push(fetchMonth(k)); jobs.push(fetchCentre(k)); });
+    neighborMonths().forEach(function(k){ jobs.push(fetchMonth(k)); jobs.push(fetchCentre(k)); });   // panes either side are real too
     await Promise.all(jobs);
     render();
     prefetchAdjacent();
@@ -156,7 +174,7 @@
     });
     return Object.keys(out);
   }
-  function prefetchAdjacent(){ neighborMonths().forEach(function(k){ fetchMonth(k); }); }  // fire-and-forget
+  function prefetchAdjacent(){ neighborMonths().forEach(function(k){ fetchMonth(k); fetchCentre(k); }); }  // fire-and-forget
 
   // ---- blocks: real lessons + projected slot occurrences across a date range ----
   // Every slot occurrence a lesson fulfils, keyed slot_id|slot_date. Because slot_date is
@@ -196,6 +214,7 @@
           studentId:s.student_id, slotId:s.id, rate:s.rate, split:s.split||1, startHM:hhmm(s.start_time), endHM:hhmm(s.end_time) });
       });
     }
+    centreForRange(range).forEach(function(c){ var b=Object.assign({}, c); b.day=dayIdx(c.dateISO); b.state=c.cancelled?"cancel":"centre"; b.cstate="centre"; b.id=c.id; blocks.push(b); });   // read-only overlay (UX1)
     // Client view hides the Paid/Unpaid switches, so ignore those two filters there (otherwise lessons vanish with no way back).
     var cv=document.body.classList.contains("client-view");
     return all ? blocks : blocks.filter(function(b){ return !hidden[b.state] || (cv && (b.state==="paid"||b.state==="unpaid")); });   // legend toggles (all=true ignores them)
@@ -206,7 +225,7 @@
   // projected ("not logged") block is only a preview of the template — neither is a real
   // booking, so overlapping either is not a clash. The clash appears once you actually log
   // the second lesson (it becomes real).
-  function isReal(b){ return b.state!=="cancel" && b.state!=="proj"; }
+  function isReal(b){ return b.state!=="cancel" && b.state!=="proj" && b.kind!=="centre"; }   // a centre lesson is shown for information only: it never makes a clash
   function laneAssign(day){
     day.sort(function(a,b){ return a.startMin-b.startMin || a.endMin-b.endMin; });
     var i=0;
@@ -243,12 +262,12 @@
 
   // ---- week (time-grid) ----
   function evHTML(b, top, height){
-    var cls=["cal-ev","is-"+b.state];
+    var cls=["cal-ev","is-"+b.state]; if(b.kind==="centre") cls.push("is-centre");
     if(b.clash) cls.push("is-clash");
     if(height<34) cls.push("tight");
     var w=100/b.lanes, left=b.lane*w;
     var style="top:"+top+"px;height:"+Math.max(height-2,15)+"px;left:calc("+left+"% + 2px);width:calc("+w+"% - 4px)";
-    var sub=[b.subject,b.level].filter(Boolean).join(" · ");
+    var sub=b.kind==="centre"?TCAL.overlayLabel(b):[b.subject,b.level].filter(Boolean).join(" · ");
     return '<div class="'+cls.join(" ")+'" style="'+style+'" data-ev="'+esc(String(b.id))+'">'+
       '<span class="ce-t">'+hhmm2(b.startMin)+(b.clash?'<span class="ce-warn">⚠</span>':'')+'</span>'+
       '<span class="ce-n">'+esc(b.name)+(b.adhoc?' ✦':'')+(b.postponed?' ↻':'')+'</span>'+
@@ -335,7 +354,7 @@
 
   // ---- month (day-cell grid) ----
   function chipHTML(b){
-    var cls="cal-chip is-"+b.state+(b.clash?" is-clash":"");
+    var cls="cal-chip is-"+b.state+(b.kind==="centre"?" is-centre":"")+(b.clash?" is-clash":"");
     return '<span class="'+cls+'" data-ev="'+esc(String(b.id))+'">'+(b.clash?'⚠ ':'')+hhmm2(b.startMin)+' '+esc(b.name)+'</span>';
   }
   function renderMonth(range){
@@ -389,8 +408,8 @@
       if(ex.length) html+='<div class="ag-ex">'+ex.map(examChipHTML).join("")+'</div>';
       if(!rows.length) html+='<div class="ag-none">No lessons</div>';
       else html+='<div class="ag-list">'+rows.map(function(b){
-        var sub=[b.subject,b.level,b.location].filter(Boolean).join(" · "), tag=STATE_TAG[b.state]||"";
-        return '<button type="button" class="ag-row is-'+b.state+(b.clash?' is-clash':'')+'" data-ev="'+esc(String(b.id))+'">'+
+        var sub=b.kind==="centre"?TCAL.overlayLabel(b):[b.subject,b.level,b.location].filter(Boolean).join(" · "), tag=b.kind==="centre"?(b.tag||""):(STATE_TAG[b.state]||"");
+        return '<button type="button" class="ag-row is-'+b.state+(b.kind==="centre"?' is-centre':'')+(b.clash?' is-clash':'')+'" data-ev="'+esc(String(b.id))+'">'+
           '<span class="ag-t"><b>'+hhmm2(b.startMin)+'</b><small>'+durLabel(b.endMin-b.startMin)+'</small></span>'+
           '<span class="ag-bar"></span>'+
           '<span class="ag-main"><span class="ag-n">'+esc(b.name)+(b.adhoc?' ✦':'')+(b.postponed?' ↻':'')+'</span>'+
@@ -510,8 +529,28 @@
     var revert=(b.postponed && b.slotId && b.slotDate)?'<button class="cp-btn" id="cp-revert">↩ Revert to slot</button>':'';
     return '<div class="cp-btns"><button class="cp-btn" id="cp-postpone">Postpone</button>'+revert+toggle+'<button class="cp-btn danger" id="cp-delete">Delete</button></div>';
   }
+  // A centre lesson (UX1): facts only, no prices and no buttons that change anything. The Schedule page is where it can be marked or moved.
+  function showCentrePopover(node,b){
+    popNode=node;
+    var pop=$("cal-pop"), dt=new Date(b.dateISO+"T00:00:00");
+    var when=DAY[(dt.getDay()+6)%7]+" "+dt.getDate()+" "+MON[dt.getMonth()]+" · "+hhmm2(b.startMin)+"–"+hhmm2(b.endMin);
+    var sub=[b.subject,b.level].filter(Boolean).join(" · ");
+    pop.innerHTML='<span class="cp-x" id="cp-x">×</span><h4>'+esc(b.name)+'</h4>'+
+      '<div class="cp-row">'+esc(when)+'</div>'+
+      (sub?'<div class="cp-row"><b>'+esc(sub)+'</b></div>':'')+
+      '<div class="cp-row">Centre <b>'+esc(b.centre||"Your centre")+'</b></div>'+
+      '<span class="cp-tag" style="background:rgba(100,116,139,.16);color:var(--ink)">Centre lesson</span>'+
+      (b.tag?' <span class="cp-tag" style="background:#F1EFEA;color:var(--muted)">'+esc(b.tag)+'</span>':'')+
+      (b.trial&&b.tag!=="Trial"?' <span class="cp-tag" style="background:#F1EFEA;color:var(--muted)">Trial</span>':'')+
+      '<a class="cp-act" href="tutor-schedule?d='+encodeURIComponent(b.dateISO)+'">Open in your centre schedule →</a>';
+    pop.style.display="block";
+    var pbd=$("cal-pop-bd"); if(pbd) pbd.classList.add("on");
+    positionPopover(node);
+    $("cp-x").addEventListener("click", hidePopover);
+  }
   function showPopover(node){
     var b=findBlock(node.dataset.ev); if(!b) return;
+    if(b.kind==="centre") return showCentrePopover(node,b);
     popNode=node;
     var pop=$("cal-pop");
     var label={paid:["Paid","rgba(15,118,110,.14)","#0B5D57"], unpaid:["Unpaid","rgba(180,67,47,.12)","#8a2f22"],
@@ -1366,6 +1405,21 @@
     });
   }
 
+  // "Also show my centre lessons": only a both-role tutor sees it (TL.roleMode "both", in their solo organisation); remembered per user.
+  function initCentreToggle(){
+    var btn=$("cal-centre"); if(!btn) return;
+    try{ centreAvail=!!(TCAL&&TCAL.overlayAvailable(TL.roleMode(), TL.org())); }catch(e){ centreAvail=false; }
+    if(!centreAvail){ btn.hidden=true; centreOn=false; return; }
+    try{ centreOn=TL.store.get("cal_centre")==="1"; }catch(e){ centreOn=false; }
+    btn.hidden=false; btn.setAttribute("aria-pressed", centreOn?"true":"false");
+    btn.addEventListener("click", function(e){
+      e.stopPropagation(); centreOn=!centreOn;
+      btn.setAttribute("aria-pressed", centreOn?"true":"false");
+      try{ TL.store.set("cal_centre", centreOn?"1":"0"); }catch(e2){}
+      if(centreOn) ensureData(); else render();
+    });
+  }
+
   function init(user){
     if($("ca-subject")&&$("ca-level"))caPick=TL.subjectPicker($("ca-subject"),$("ca-level"));
     userId=user.id; anchor=new Date();
@@ -1418,6 +1472,7 @@
     if($("ca-save")) $("ca-save").addEventListener("click", saveAdd);
     if($("add-modal")) $("add-modal").addEventListener("click", function(e){ if(e.target===$("add-modal")) closeAdd(); });
     initLegend();
+    initCentreToggle();
     // Clicks inside the popover (buttons, date/time fields) shouldn't bubble to the
     // document listener below, which closes it on any outside click.
     $("cal-pop").addEventListener("click", function(e){ e.stopPropagation(); });

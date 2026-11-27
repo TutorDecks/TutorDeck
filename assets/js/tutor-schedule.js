@@ -7,7 +7,11 @@
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
-  var TC = window.TutorCore, today = "", start = "", data = null, byId = {}, manyOrgs = false, editing = "admin_only", opener = null, seq = 0, cur = null, busy = false;
+  var TC = window.TutorCore, TCAL = window.TutorCalendar, today = "", start = "", data = null, byId = {}, manyOrgs = false, editing = "admin_only", opener = null, seq = 0, cur = null, busy = false;
+  var view = "list", sel = "", HP = 58;     // UX1: "list" | "cal" (remembered per user), the day shown on a phone's calendar, pixels per hour
+  function isPhone() { return !!(window.matchMedia && window.matchMedia("(max-width:820px)").matches); }
+  var WD1 = ["M", "T", "W", "T", "F", "S", "S"], WD3 = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  function calPhone() { return view === "cal" && isPhone(); }
   function orgOf(l) { return ((data && data.orgs) || []).filter(function (o) { return o.org_id === (l && l.org_id); })[0] || ((data && data.orgs) || [])[0] || {}; }
   function hhmm(t) { return String(t || "").slice(0, 5); }
 
@@ -21,10 +25,19 @@
       (c ? '<span class="tt-chip ' + c.tone + '">' + esc(c.text) + '</span>' : '') + chev() + '</button>';
   }
 
+  // The title above the list / grid: the week (list, and the desktop grid) or the one day on show (a phone's calendar).
+  function renderTitle() {
+    var end = TC.addDays(start, 6);
+    if (calPhone() && sel) { $("sc-title").innerHTML = esc(TC.dateLabel(sel, today)) + '<small>' + esc(TC.weekTitle(start, today) + " · " + TC.rangeLabel(start, end)) + '</small>'; }
+    else $("sc-title").innerHTML = esc(TC.weekTitle(start, today)) + '<small>' + esc(TC.rangeLabel(start, end)) + '</small>';
+    var step = calPhone() ? "day" : "week";
+    $("sc-prev").setAttribute("aria-label", "Previous " + step); $("sc-next").setAttribute("aria-label", "Next " + step);
+  }
+
   function renderWeek() {
     var end = TC.addDays(start, 6), days = TC.scheduleDays(data, start, end), n = 0, html = "";
     (data.lessons || []).forEach(function (l) { if (!l.cancelled) n++; });
-    $("sc-title").innerHTML = esc(TC.weekTitle(start, today)) + '<small>' + esc(TC.rangeLabel(start, end)) + '</small>';
+    renderTitle();
     $("sc-sum").innerHTML = '<b>' + n + '</b> lesson' + (n === 1 ? "" : "s") + ' this ' + (start === TC.weekStart(today) ? "week" : "page");
     if (!days.length) { $("sc-week").innerHTML = '<div class="card"><div class="tt-empty">No lessons this week.</div></div>'; return; }
     html = '<div class="card tt-list">';
@@ -34,6 +47,61 @@
       d.lessons.forEach(function (l) { html += row(l); });
     });
     $("sc-week").innerHTML = html + '</div>';
+  }
+
+
+  // ---- Calendar view: a week grid (days across, time down); on a phone one day at a time under a Mon-Sun strip. Same chips, same sheet, no money. ----
+  function evHtml(b, top, h, narrow) {
+    var l = b.l, c = TCAL.chip(l), key = c ? c.key : "upcoming", st = TCAL.state(l), t0 = TCAL.hhmm(b.startMin);
+    var label = TC.timeRange(l) + ", " + l.student_name + (l.subject ? ", " + l.subject : "") + (c ? ", " + c.text : "") + (manyOrgs ? ", " + l.org_name : "");
+    var w = 100 / b.lanes, sub = [l.student_level, l.subject].filter(Boolean).join(" · ");
+    return '<button type="button" class="sc-ev k-' + key + (h < 52 ? " tight" : "") + (narrow ? " narrow" : "") + '" data-id="' + esc(l.lesson_id) + '" aria-label="' + esc(label) + '" ' +
+      'style="top:' + top + 'px;height:' + Math.max(h - 2, 16) + 'px;left:calc(' + (b.lane * w) + '% + 1px);width:calc(' + w + '% - 2px)">' +
+      '<span class="e-n"><span class="e-t">' + esc(TC.timeLabel(t0 + ":00").replace(" ", "")) + '</span> ' + esc(l.student_name) + '</span>' +
+      (sub ? '<span class="e-s">' + esc(sub) + '</span>' : '') + (c ? '<span class="e-c">' + (st.key === "attended" ? "✓ " : "") + esc(c.text) + '</span>' : '') + '</button>';
+  }
+  function colHtml(day, bd, today2, narrow) {
+    var evs = TCAL.layoutDay(day.lessons).map(function (b) { return evHtml(b, (b.startMin - bd.start) / 60 * HP, (b.endMin - b.startMin) / 60 * HP, narrow || b.lanes > 2); }).join("");
+    return '<div class="sc-col' + (day.date === today2 ? " today" : "") + (day.holidays.length ? " hol" : "") + '" data-date="' + day.date + '">' + evs + '</div>';
+  }
+  function renderCal() {
+    var days = TCAL.week(data, start), all = data.lessons || [], bd = TCAL.bounds(all), hrs = (bd.end - bd.start) / 60, gutter = "", phone = isPhone(), html = "";
+    for (var h = 0; h < hrs; h++) gutter += '<div class="sc-hr">' + esc(TC.timeLabel(TCAL.hhmm(bd.start + h * 60) + ":00").replace(":00 ", " ")) + '</div>';
+    var style = '--hp:' + HP + 'px;height:' + (hrs * HP) + 'px';
+    if (phone) {
+      var one = days.filter(function (d) { return d.date === sel; })[0] || days[0];
+      html += '<div class="sc-strip" role="group" aria-label="Days of this week">' + days.map(function (d, di) {
+        var n = d.lessons.filter(function (l) { return !l.cancelled; }).length, dots = "";
+        for (var i = 0; i < Math.min(n, 3); i++) dots += "<i></i>";
+        return '<button type="button" class="sc-sd' + (d.date === one.date ? " on" : "") + (d.date === today ? " today" : "") + (d.holidays.length ? " hol" : "") + '" data-day="' + d.date + '" aria-pressed="' + (d.date === one.date) + '" aria-label="' +
+          esc(TC.dateLabel(d.date, today) + (n ? ", " + n + " lesson" + (n === 1 ? "" : "s") : "") + (d.holidays.length ? ", holiday" : "")) + '"><span>' + WD1[di] + '</span><b>' + Number(d.date.slice(8)) + '</b><span class="sc-dots">' + dots + '</span></button>';
+      }).join("") + '</div>';
+      if (one.holidays.length) html += '<div class="sc-holband">' + esc(one.holidays.join(", ")) + ' · holiday</div>';
+      html += '<div class="sc-cbody"><div class="sc-hours" style="' + style + '">' + gutter + '</div><div class="sc-cols" style="' + style + '">' + colHtml(one, bd, today) + '</div></div>';
+      if (!one.lessons.length) html += '<div class="sc-none">No lessons on ' + esc(TC.dateLabel(one.date, today)) + '. Swipe or tap another day.</div>';
+    } else {
+      html += '<div class="sc-chead"><div class="sc-gut"></div>' + days.map(function (d, di) {
+        return '<div class="sc-dh' + (d.date === today ? " today" : "") + (d.holidays.length ? " hol" : "") + '">' + WD3[di] + '<b>' + Number(d.date.slice(8)) + '</b>' +
+          (d.holidays.length ? '<small title="' + esc(d.holidays.join(", ")) + '">' + esc(d.holidays[0]) + '</small>' : '') + '</div>';
+      }).join("") + '</div><div class="sc-cbody"><div class="sc-hours" style="' + style + '">' + gutter + '</div><div class="sc-cols" style="' + style + '">' + days.map(function (d) { return colHtml(d, bd, today); }).join("") + '</div></div>';
+      if (!all.length) html += '<div class="sc-none">No lessons this week.</div>';
+    }
+    $("sc-cal").innerHTML = html;
+  }
+  function applyView() {
+    var cal = view === "cal";
+    $("sc-v-list").classList.toggle("on", !cal); $("sc-v-cal").classList.toggle("on", cal);
+    $("sc-v-list").setAttribute("aria-pressed", String(!cal)); $("sc-v-cal").setAttribute("aria-pressed", String(cal));
+    $("sc-week").hidden = cal; $("sc-cal").hidden = !cal;
+    if (data) { if (cal) { sel = TCAL.pickDay(start, today, sel); renderCal(); } renderTitle(); }
+  }
+  function setView(v) { view = v; try { TL.store.set("tutor_sched_view", v); } catch (e) {} applyView(); }
+  // Prev / next: a week at a time, or (a phone's calendar) a day at a time, moving into the next week when it has to.
+  function step(n) {
+    if (!calPhone()) { go(TC.addDays(start, 7 * n)); return; }
+    sel = TC.addDays(sel || start, n);
+    var ws = TC.weekStart(sel);
+    if (ws !== start) go(ws); else { renderCal(); renderTitle(); }
   }
 
   function renderSlots(rows) {
@@ -143,6 +211,7 @@
   function fail(err) {
     $("sc-sum").textContent = ""; $("sc-title").textContent = "";
     $("sc-week").innerHTML = '<div class="card"><div class="tt-empty">' + esc(TC.scheduleErrorText(err)) + '</div></div>';
+    $("sc-week").hidden = false; $("sc-cal").hidden = true; $("sc-seg").hidden = true;
     $("sc-slots").innerHTML = ""; $("sc-note").hidden = true; $("sc-slots").previousElementSibling.hidden = true;
     ["sc-prev", "sc-next", "sc-today"].forEach(function (i) { $(i).disabled = true; });
   }
@@ -156,7 +225,8 @@
     var orgs = {}; (data.lessons || []).forEach(function (l) { byId[l.lesson_id] = l; orgs[l.org_id] = 1; });
     manyOrgs = (data.orgs || []).length > 1;
     editing = (data.orgs && data.orgs[0] && data.orgs[0].timetable_editing) || "admin_only";
-    renderWeek(); note();
+    sel = TCAL.pickDay(start, today, sel);
+    renderWeek(); if (view === "cal") renderCal(); note();
   }
   async function loadSlots() {
     var r = await window.sb.rpc("tutor_my_slots");
@@ -166,11 +236,29 @@
   function go(newStart) { start = newStart; $("sc-week").setAttribute("aria-busy", "true"); loadWeek().then(function () { $("sc-week").removeAttribute("aria-busy"); }); }
 
   function init() {
-    today = TL.todayISO(); start = TC.weekStart(today);
-    $("sc-prev").addEventListener("click", function () { go(TC.addDays(start, -7)); });
-    $("sc-next").addEventListener("click", function () { go(TC.addDays(start, 7)); });
-    $("sc-today").addEventListener("click", function () { go(TC.weekStart(today)); });
+    today = TL.todayISO(); start = TC.weekStart(today); sel = today;
+    try { view = TL.store.get("tutor_sched_view") === "cal" ? "cal" : "list"; } catch (e) {}
+    var asked = (/[?&]d=(\d{4}-\d{2}-\d{2})(?:&|$)/.exec(location.search) || [])[1];      // /tutor-schedule?d=2026-11-24 opens the week of that day (the solo calendar links here)
+    if (asked) { start = TC.weekStart(asked); sel = asked; }
+    $("sc-prev").addEventListener("click", function () { step(-1); });
+    $("sc-next").addEventListener("click", function () { step(1); });
+    $("sc-today").addEventListener("click", function () { sel = today; if (TC.weekStart(today) !== start) go(TC.weekStart(today)); else { if (view === "cal") renderCal(); renderTitle(); } });
+    $("sc-v-list").addEventListener("click", function () { setView("list"); });
+    $("sc-v-cal").addEventListener("click", function () { setView("cal"); });
+    window.addEventListener("resize", function () { if (data && view === "cal") { renderCal(); renderTitle(); } });
     $("sc-week").addEventListener("click", function (e) { var b = e.target.closest(".tt-row"); if (b && byId[b.getAttribute("data-id")]) openSheet(byId[b.getAttribute("data-id")], b); });
+    $("sc-cal").addEventListener("click", function (e) {
+      var d = e.target.closest(".sc-sd"); if (d) { sel = d.getAttribute("data-day"); renderCal(); renderTitle(); return; }
+      var b = e.target.closest(".sc-ev"); if (b && byId[b.getAttribute("data-id")]) openSheet(byId[b.getAttribute("data-id")], b);
+    });
+    (function () {                                                    // phone: swipe the day sideways (the grid scrolls only up and down)
+      var x0 = null, y0 = null, host = $("sc-cal");
+      host.addEventListener("touchstart", function (e) { if (e.touches.length > 1 || !calPhone() || e.target.closest(".sc-strip")) { x0 = null; return; } x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+      host.addEventListener("touchend", function (e) {
+        if (x0 === null) return; var t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+        if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
+      }, { passive: true });
+    })();
     $("ts-close").addEventListener("click", closeSheet);
     $("ts-body").addEventListener("click", function (e) {
       var a = e.target.closest("[data-act]"), back = e.target.closest("#ts-back");
@@ -180,6 +268,7 @@
     });
     $("tt-sheet").addEventListener("click", function (e) { if (e.target === $("tt-sheet")) closeSheet(); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("tt-sheet").classList.contains("on")) closeSheet(); });
+    applyView();
     loadWeek().then(function () { if (data) loadSlots(); });
     try { TL.detectRole(); } catch (e) {}
   }
