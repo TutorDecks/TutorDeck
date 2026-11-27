@@ -36,7 +36,7 @@
     $("cp-list").innerHTML = !rows.length ? '<div class="card cm-block"><p class="cm-note">' + esc(CP.emptyText(filter, !!query.trim())) + '</p></div>' :
       '<div class="card cm-list">' + rows.map(function (x) {
         var i = list.rows.indexOf(x);
-        return '<button type="button" class="cm-row" data-i="' + i + '"><span class="cm-main"><span class="cm-name"><span class="cm-no">' + esc(x.number) + '</span> ' + esc(x.name) + '</span>' +
+        return '<button type="button" class="cm-row" data-i="' + i + '"><span class="cm-main"><span class="cm-name"><span class="cm-no">' + esc(x.number) + '</span> ' + esc(x.name) + (x.kind === "deposit" ? '<span class="cm-tag">Refundable deposit</span>' : x.kind === "late_fee" ? '<span class="cm-tag">Late fee</span>' : '') + '</span>' +
           '<span class="cm-sub' + (x.pay_status === "overdue" ? ' warn' : '') + '">' + esc(CP.rowSub(x, today)) + '</span></span>' + chip(x.pay_status) +
           '<span class="cm-amt">' + esc(CM.money(CP.rowAmount(x))) + '</span>' + UI.chev() + '</button>';
       }).join("") + '</div>' + (more ? '<p class="cm-foot">Showing the newest ' + list.rows.length + '. Use the filters or search to find older ones.</p>' : '');
@@ -71,7 +71,12 @@
     if (trigger !== true) { $("cm-sb").innerHTML = '<p class="cm-note">Loading…</p>'; UI.openSheet(trigger); }
     var r = await rpc("centre_invoice_account_get", { p_invoice: id });
     if (r.error) { $("cm-sb").innerHTML = '<p class="cm-note err">' + esc(CP.errorText(r.error)) + '</p>'; return; }
-    cur = r.data; today = cur.today || today; renderDetail(msg);
+    cur = r.data; today = cur.today || today;
+    // credit / deposit that was used on this invoice, with Undo (db/migration_centre_credit_undo.sql). If that migration isn't there yet, the sheet is as it was.
+    cur.apps = null;
+    var ap = await rpc("centre_invoice_applications", { p_invoice: id });
+    if (!ap.error && ap.data && Array.isArray(ap.data.rows)) { cur.apps = ap.data.rows; cur.appsRole = !!ap.data.can_undo_role; }
+    renderDetail(msg);
   }
   function groupHtml(title, inner) { return '<div class="cm-g"><div class="cm-gh">' + esc(title) + '</div>' + inner + '</div>'; }
   function renderDetail(msg) {
@@ -83,12 +88,22 @@
       return '<div' + (i === all.length - 1 ? ' class="big"' : '') + '><span>' + esc(r[0]) + '</span><span>' + esc(CM.money(r[1])) + '</span></div>'; }).join("") + '</div>';
     h += '<div class="cm-facts"><div><span>Issued</span><span>' + esc(CM.shortDate(a.issue_date)) + '</span></div><div><span>Due</span><span>' + esc(CM.shortDate(a.due_date)) + '</span></div></div>';
     if (a.credit_balance_cents > 0) h += '<p class="cm-credit">' + esc(CP.creditLine(a.credit_balance_cents)) + '</p>';
-    if ((a.payments || []).length) {
+    var internal = function (p) { return a.apps && (p.method === "family_credit" || p.method === "deposit"); };     // shown below as "Credit and deposit used"
+    if ((a.payments || []).some(function (p) { return !internal(p); })) {
       h += groupHtml("Payments", a.payments.map(function (p, i) {
+        if (internal(p)) return "";
         var isRev = p.kind === "reversal";
         return '<div class="cm-pay' + (p.reversed ? ' off' : '') + '"><span class="cm-ld">' + esc(CP.paymentLine(p)) + (p.reversed ? '<span class="cm-tag">Reversed</span>' : '') + '</span>' +
           '<span class="cm-la">' + esc(CM.money(p.cents)) + '</span>' +
           (can.record_payments && !isRev && !p.reversed ? '<button type="button" class="cm-link" data-rev="' + i + '">Reverse</button>' : '') + '</div>';
+      }).join(""));
+    }
+    if ((a.apps || []).length) {
+      h += groupHtml("Credit and deposit used", a.apps.map(function (x) {
+        var note = window.CentreRefundsCore.undoNote(x, a.appsRole);
+        return '<div class="cm-pay' + (x.state === "undone" ? ' off' : '') + '"><span class="cm-ld"><b>' + esc(window.CentreRefundsCore.undoTitle(x)) + '</b>' + (x.state === "undone" ? '<span class="cm-tag">Undone</span>' : '') +
+          '<span class="cm-sub"> ' + esc(window.CentreRefundsCore.undoRow(x)) + '</span>' + (note ? '<span class="cm-sub' + (x.state === "undone" ? '' : ' warn') + '"> ' + esc(note) + '</span>' : '') + '</span>' +
+          '<span class="cm-la">' + esc(CM.money(window.CentreRefundsCore.undoAmount(x))) + '</span></div>';
       }).join(""));
     }
     if ((a.credit_notes || []).length) {
@@ -99,16 +114,20 @@
     var acts = '';
     if (can.record_payments && a.balance_cents > 0) acts += '<button type="button" class="btn btn-primary" id="cp-pay">Record payment</button>';
     if (can.issue_invoices && CP.creditLeft(a) > 0) acts += '<button type="button" class="btn" id="cp-credit">Issue credit note</button>';
+    if (can.record_payments && a.credit_balance_cents > 0 && a.household_id && window.CentreRefunds) acts += '<button type="button" class="btn" id="cp-famcredit">Use or refund the family’s credit</button>';
+    if (a.appsRole && (a.apps || []).some(function (x) { return x.state === "active"; }) && window.CentreRefunds) acts += '<button type="button" class="btn" id="cp-undo">Undo credit or deposit used</button>';
     if (can.issue_invoices && rules.share_link) {
       acts += '<button type="button" class="btn" id="cp-copy">Copy link</button>';
       if (a.balance_cents > 0) acts += '<button type="button" class="btn" id="cp-wa">Send on WhatsApp</button>';
       if (a.share) acts += '<button type="button" class="btn quiet" id="cp-newlink">Make a new link</button>';
     }
     h += acts ? '<div class="cm-acts col">' + acts + '</div>' : '';
-    h += '<p class="cm-note">An issued invoice can’t be changed. A mistake is corrected with a credit note; a wrong payment is reversed, never edited.</p>';
+    h += '<p class="cm-note">An issued invoice can’t be changed. A mistake is corrected with a credit note; a wrong payment is reversed, and credit or a deposit that was used by mistake is undone, never edited.</p>';
     $("cm-sb").innerHTML = h;
     sheetMsg(msg && msg.text, msg && msg.bad);
     var b = function (id, fn) { var e = $(id); if (e) e.addEventListener("click", fn); };
+    b("cp-famcredit", function () { window.CentreRefunds.creditMenu(a, null, function (m) { open(a.id, true, m); }); });
+    b("cp-undo", function () { window.CentreRefunds.undoApplication(a, a.apps, function (m) { open(a.id, true, m); }); });
     b("cp-pay", payForm); b("cp-credit", creditForm); b("cp-copy", function () { copyLink(false); }); b("cp-wa", whatsapp); b("cp-newlink", function () { copyLink(true); });
     $("cm-sb").querySelectorAll("[data-rev]").forEach(function (e) { e.addEventListener("click", function () { reverse(a.payments[+e.dataset.rev]); }); });
   }
@@ -219,5 +238,5 @@
     if (!cur.share || !d.phone) open(cur.id, true, d.phone ? null : { text: noPhone });
   }
 
-  window.CentrePay = { show: show, open: function (id, trigger) { UI = window.CentreMoneyUI; orgId = UI.orgId(); today = today || UI.localToday(); return open(id, trigger); } };
+  window.CentrePay = { show: show, refresh: function () { if (built) load(); }, open: function (id, trigger) { UI = window.CentreMoneyUI; orgId = UI.orgId(); today = today || UI.localToday(); if (!built) frame(); return open(id, trigger); } };      // frame(): an invoice opened from another tab still refreshes this tab's list afterwards
 })();

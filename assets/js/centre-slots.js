@@ -7,7 +7,7 @@
   var SC = window.CentreSlotsCore;
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
-  var orgId = null, opts = {}, wired = false, seq = 0, state = { tutor: "", q: "", page: 1 }, last = null, canEdit = false, timer = null,
+  var orgId = null, opts = {}, wired = false, rangeSet = false, panel = null, pn = null, pnSeq = 0, pnTimer = null, seq = 0, state = { tutor: "", q: "", page: 1 }, last = null, canEdit = false, timer = null,
       sheetOpener = null, form = null, names = {}, pickSeq = 0, busy = false;
 
   var CAL = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
@@ -46,6 +46,7 @@
       }).join("");
     }
     $("sl-count").textContent = SC.countText(res.total, res.generated_until, fmtDay);
+    syncRange(!rangeSet);
     $("sl-pager").hidden = res.total <= res.size;
     $("sl-pl").textContent = SC.pagerLabel(res.page, res.size, res.total);
     $("sl-pp").disabled = res.page <= 1; $("sl-pn").disabled = res.page >= pages;
@@ -65,22 +66,33 @@
   }
 
   // ---------------------------------------------------------------- create the lessons
+  // The last day to create lessons for (T3.9): today + 4 weeks by default, up to 26 weeks. The button says how many weeks that is.
+  function syncRange(fresh) {
+    var today = last && last.today, to = $("sl-to"); if (!today) return;
+    to.min = today; to.max = SC.addDays(today, SC.MAX_DAYS - 1);
+    if (fresh || !to.value) to.value = SC.addDays(today, 27);
+    var g = SC.genRange(today, to.value), er = $("sl-to-err");
+    $("sl-gen").textContent = g.ok ? SC.genLabel(g.days) : "Create lessons";
+    er.hidden = g.ok; er.textContent = g.ok ? "" : g.error;
+  }
   async function generate() {
-    if (busy) return; busy = true; var b = $("sl-gen"); b.disabled = true; var old = b.textContent; b.textContent = "Creating…";
+    if (busy) return;
+    var g = SC.genRange(last && last.today, $("sl-to").value); if (!g.ok) { syncRange(false); $("sl-to").focus(); return; }
+    busy = true; var b = $("sl-gen"); b.disabled = true; var old = b.textContent; b.textContent = "Creating…";
     try {
-      var r = await window.sb.rpc("staff_generate_lessons", { p_org: orgId });
+      var r = await window.sb.rpc("staff_generate_lessons", { p_org: orgId, p_from: null, p_to: g.to });
       if (r.error) { say(esc(SC.errorText(r.error)), "err"); return; }
-      var m = SC.generateMessage(r.data);
-      say('<b>' + esc(m.head) + '</b>' + (m.more.length ? '<span>' + esc(m.more.join(" ")) + '</span>' : ""), "", '<button class="btn" type="button" id="sl-see">See the lessons</button>');
+      var m = SC.generateMessage(r.data, fmtDay);
+      say('<b>' + esc(m.head) + '</b>' + (m.period ? '<span>' + esc(m.period) + '</span>' : "") + (m.more.length ? '<span>' + esc(m.more.join(" ")) + '</span>' : ""), "", '<button class="btn" type="button" id="sl-see">See the lessons</button>');
       if (opts.lessonsChanged) opts.lessonsChanged();
       load();
-    } finally { busy = false; b.disabled = false; b.textContent = old; }
+    } finally { busy = false; b.disabled = false; syncRange(false); }
   }
 
   // ---------------------------------------------------------------- the sheet
   function lockBody(on) { document.body.classList.toggle("sheet-lock", on); }
   function openSheet(trigger) { sheetOpener = trigger || sheetOpener; $("sl-sheet").classList.add("on"); lockBody(true); var f = $("sl-sheet").querySelector("input,select,button.btn"); if (f) f.focus(); }
-  function closeSheet() { $("sl-sheet").classList.remove("on"); lockBody(false); form = null; if (sheetOpener && sheetOpener.focus && document.contains(sheetOpener)) sheetOpener.focus(); sheetOpener = null; }
+  function closeSheet() { $("sl-sheet").classList.remove("on"); lockBody(false); form = null; pn = null; if (sheetOpener && sheetOpener.focus && document.contains(sheetOpener)) sheetOpener.focus(); sheetOpener = null; }
   function rowByKey(key) { var rows = (last && last.rows) || []; for (var i = 0; i < rows.length; i++) if (rows[i].key === key) return rows[i]; return null; }
   function tutorOptions(sel) {
     return '<option value="">No tutor yet</option>' + ((last && last.tutors) || []).map(function (t) { return '<option value="' + esc(t.id) + '"' + (t.id === sel ? ' selected' : '') + '>' + esc(t.name) + '</option>'; }).join("");
@@ -90,6 +102,70 @@
   }
   function chipsHtml() {
     return form.students.map(function (id) { return '<button type="button" class="sl-chip" data-rm="' + esc(id) + '" aria-label="Remove ' + esc(names[id] || "student") + '">' + esc(names[id] || "Student") + ' ✕</button>'; }).join("");
+  }
+  // ---- who is in the slot, and the three things you can do from a day: stop, add a student, remove a student (T3.9) ----
+  function memberHtml(row) {
+    var today = (last && last.today) || "", studs = row.students || [], live = studs.filter(function (s) { return !s.stops_on; }).length;
+    return '<div class="sl-mem" id="sf-mem"><div class="sl-mhead">Students</div>' + studs.map(function (s) {
+      var tag = SC.memberTag(s, today, fmtDay);
+      return '<div class="sl-mrow"><span class="sl-mname">' + esc(s.name) + (tag ? ' <em>' + esc(tag) + '</em>' : '') + '</span>' +
+        (live > 1 && !s.stops_on ? '<button type="button" class="btn sl-mini" data-mrm="' + esc(s.id) + '" aria-label="Remove ' + esc(s.name) + ' from this slot">Remove…</button>' : '') + '</div>';
+    }).join("") + '<button type="button" class="btn sl-mini" id="sf-madd">Add a student…</button></div>';
+  }
+  function dayField(id, label, val) {
+    var t = last.today;
+    return '<div class="field"><label for="' + id + '">' + label + '</label><input id="' + id + '" type="date" min="' + esc(t) + '" max="' + esc(SC.addDays(t, 1090)) + '" value="' + esc(val || t) + '"></div>';
+  }
+  function openPanel(kind, extra) {
+    pn = Object.assign({ kind: kind }, extra || {}); var row = form && form.row; if (!row || !$("sf-panel")) return;
+    var h = '<h4 class="sl-ph">' + (kind === "stop" ? 'Stop this weekly slot' : kind === "add" ? 'Add a student to this slot' : 'Remove ' + esc(pn.name) + ' from this slot') + '</h4>';
+    if (kind === "add") h += '<div class="field"><label for="pn-find">Student</label><input id="pn-find" type="search" placeholder="Search by name" autocomplete="off"><div class="sl-pick" id="pn-pick" role="group" aria-label="Matching students"></div><div class="sl-chips" id="pn-chosen"></div></div>';
+    h += dayField("pn-day", kind === "stop" ? "Stop from" : kind === "add" ? "Joins from" : "Leaves from");
+    if (kind === "stop") h += '<label class="sl-check"><input type="checkbox" id="pn-rm"> Also remove its future lessons that are not marked, paid or invoiced</label>';
+    h += '<p class="sl-pre" id="pn-pre" role="status" aria-live="polite"></p><div class="sl-err" id="pn-e" role="alert" hidden></div>' +
+      '<div class="sl-acts"><button class="btn ' + (kind === "stop" ? 'sl-stop' : 'btn-primary') + '" type="button" id="pn-go" disabled>' + (kind === "stop" ? 'Stop weekly slot' : kind === "add" ? 'Add to slot' : 'Remove from slot') + '</button><button class="btn" type="button" id="pn-back">Back</button></div>';
+    var el = $("sf-panel"); el.innerHTML = h; el.hidden = false; $("sf-mem").hidden = true;
+    var f = el.querySelector("input,select"); if (f) f.focus();
+    if (kind === "add") pnPick(""); else panelPreview();
+  }
+  function closePanel() { pn = null; var el = $("sf-panel"); if (el) { el.hidden = true; el.innerHTML = ""; } if ($("sf-mem")) $("sf-mem").hidden = false; }
+  function panelArgs(dry) {
+    var row = form.row, day = $("pn-day").value;
+    if (pn.kind === "stop") return ["staff_stop_slot_from", { p_org: orgId, p_slot: row.slot_id, p_from: day, p_remove_future: $("pn-rm").checked, p_dry: dry }];
+    return ["staff_slot_student", { p_org: orgId, p_slot: row.slot_id, p_student: pn.student, p_action: pn.kind, p_from: day, p_dry: dry }];
+  }
+  async function panelPreview() {
+    if (!pn) return; var go = $("pn-go"), pre = $("pn-pre"), mine = ++pnSeq, day = $("pn-day").value;
+    if (!day || day < last.today) { pre.textContent = "Pick today or a day to come."; go.disabled = true; return; }
+    if (pn.kind === "add" && !pn.student) { pre.textContent = "Pick a student to add."; go.disabled = true; return; }
+    go.disabled = true; pre.textContent = "Counting lessons…";
+    var a = panelArgs(true), r = await window.sb.rpc(a[0], a[1]);
+    if (mine !== pnSeq || !pn) return;
+    if (r.error) { pre.textContent = SC.errorText(r.error); return; }
+    pre.textContent = pn.kind === "stop" ? SC.stopPreview(r.data, $("pn-rm").checked, fmtDay(day)) : SC.memberPreview(pn.kind, r.data, pn.name, fmtDay(day));
+    go.disabled = !!(r.data && r.data.already);
+  }
+  async function pnPick(q) {
+    var mine = ++pickSeq, box = $("pn-pick"); if (!box) return;
+    var r = await window.sb.rpc("staff_pick_students", { p_org: orgId, p_q: q || null, p_limit: 20 });
+    if (mine !== pickSeq || !$("pn-pick")) return;
+    if (r.error) { box.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:var(--owed)">' + esc(SC.errorText(r.error)) + '</div>'; return; }
+    var inSlot = (form.row.students || []).map(function (s) { return s.id; });
+    var list = (r.data || []).filter(function (s) { return inSlot.indexOf(s.id) < 0; });
+    list.forEach(function (s) { names[s.id] = s.name; });
+    box.innerHTML = list.length ? list.map(function (s) {
+      return '<button type="button" data-pst="' + esc(s.id) + '" aria-pressed="' + (pn.student === s.id) + '"><span>' + esc(s.name) + '</span><span class="lv">' + esc(s.level || "") + '</span></button>';
+    }).join("") : '<div style="padding:10px 12px;font-size:13px;color:var(--muted)">No student found.</div>';
+  }
+  async function panelGo() {
+    if (!pn || busy) return; busy = true; var go = $("pn-go"); go.disabled = true;
+    try {
+      var a = panelArgs(false), r = await window.sb.rpc(a[0], a[1]);
+      if (r.error) { var m = $("pn-e"); m.hidden = false; m.textContent = SC.errorText(r.error); go.disabled = false; return; }
+      var kind = pn.kind, name = pn.name;
+      closeSheet(); TL.toast(kind === "stop" ? SC.stoppedFromText(r.data) : SC.memberDone(kind, r.data, name), "ok");
+      if (opts.lessonsChanged) opts.lessonsChanged(); load();
+    } finally { busy = false; }
   }
   function openForm(mode, row, trigger) {
     form = { mode: mode, row: row || null, students: [], weekday: row ? String(row.weekday) : "", start: row ? SC.hm(row.start_time) : "16:00", end: row ? SC.hm(row.end_time) : "17:00",
@@ -102,8 +178,8 @@
         '<input id="sf-find" type="search" placeholder="Search by name" autocomplete="off"><div class="sl-pick" id="sf-pick" role="group" aria-label="Matching students"></div>' +
         '<div class="sl-chips" id="sf-chosen"></div><div class="sl-err" id="sf-e-students" role="alert" hidden></div></div>';
     } else {
-      h += '<div class="tt-facts" style="margin-bottom:12px"><div><span>Students</span><span>' + esc((row.students || []).map(function (s) { return s.name; }).join(", ")) + '</span></div></div>' +
-        (row.is_group ? '<p class="sl-more" style="margin:0 0 12px">This changes the whole class.</p>' : '');
+      h += memberHtml(row) + '<div class="sl-panel" id="sf-panel" hidden></div>' +
+        (row.is_group ? '<p class="sl-more" style="margin:0 0 12px">Day, time, tutor and rate change the whole class.</p>' : '');
     }
     h += '<div class="field"><label for="sf-day">Day</label><select id="sf-day">' + dayOptions(form.weekday) + '</select><div class="sl-err" id="sf-e-weekday" role="alert" hidden></div></div>' +
       '<div class="row2"><div class="field"><label for="sf-start">Starts</label><input id="sf-start" type="time" value="' + esc(form.start) + '"><div class="sl-err" id="sf-e-start" role="alert" hidden></div></div>' +
@@ -115,7 +191,7 @@
       '<div class="sl-acts"><button class="btn btn-primary" type="submit" id="sf-save">' + (mode === "add" ? 'Add weekly slot' : 'Save changes') + '</button>' +
       '<button class="btn" type="button" id="sf-cancel">Cancel</button>' +
       (mode === "edit" ? '<button class="btn sl-stop" type="button" id="sf-stop">Stop this weekly slot…</button>' : '') + '</div>' +
-      (mode === "edit" ? '<p class="tt-ro">Lessons already created keep their old time and tutor. Stopping a slot only stops new lessons being created.</p>' : '<p class="tt-ro">Adding a slot doesn’t create lessons by itself. Press “Create lessons for the next 4 weeks” afterwards.</p>') +
+      (mode === "edit" ? '<p class="tt-ro">Lessons already created keep their old time and tutor. Stopping a slot from a day stops new lessons from that day, and can remove the later ones nobody has marked, paid or invoiced.</p>' : '<p class="tt-ro">Adding a slot doesn’t create lessons by itself. Press “Create lessons for the next 4 weeks” afterwards.</p>') +
       '</form>';
     $("sl-sb").innerHTML = h;
     if (mode === "add") { $("sf-chosen").innerHTML = ""; pick(""); }
@@ -154,15 +230,6 @@
     if (r.error) { var m = $("sf-e"); m.hidden = false; m.textContent = SC.errorText(r.error); m.scrollIntoView({ block: "nearest" }); return; }
     var mode = form.mode; closeSheet(); TL.toast(SC.savedText(r.data, mode), "ok"); load();
   }
-  async function stop() {
-    if (!form || !form.row) return;
-    var row = form.row;
-    if (!(await TL.confirm({ title: "Stop this weekly slot?", message: SC.studentsText(row, 4) + " · " + SC.DAYS[row.weekday] + " " + SC.timeText(row) + ". No new lessons will be created from it. Lessons already created stay.", confirmText: "Stop slot" }))) return;
-    var r = await window.sb.rpc("staff_stop_slot", { p_org: orgId, p_slot: row.slot_id });
-    if (r.error) { var m = $("sf-e"); if (m) { m.hidden = false; m.textContent = SC.errorText(r.error); } else TL.toast(SC.errorText(r.error), "err"); return; }
-    closeSheet(); TL.toast(SC.stoppedText(r.data), "ok"); load();
-  }
-
   // ---------------------------------------------------------------- wiring
   function wire() {
     if (wired) return; wired = true;
@@ -180,7 +247,19 @@
     $("sl-sb").addEventListener("click", function (e) {
       var t = e.target;
       if (t.id === "sf-cancel") closeSheet();
-      else if (t.id === "sf-stop") stop();
+      else if (t.id === "sf-stop") openPanel("stop");
+      else if (t.id === "sf-madd") openPanel("add");
+      else if (t.id === "pn-back") closePanel();
+      else if (t.id === "pn-go") panelGo();
+      var mrm = t.closest("[data-mrm]");
+      if (mrm && form) { openPanel("remove", { student: mrm.dataset.mrm, name: (form.row.students.filter(function (x) { return x.id === mrm.dataset.mrm; })[0] || {}).name || "The student" }); return; }
+      var ps = t.closest("[data-pst]");
+      if (ps && pn) {
+        pn.student = ps.dataset.pst; pn.name = names[pn.student] || "The student";
+        $("pn-chosen").innerHTML = '<span class="sl-chip" style="cursor:default">' + esc(pn.name) + '</span>';
+        $("pn-pick").querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", String(b === ps)); });
+        panelPreview(); return;
+      }
       var st = t.closest("[data-st]");
       if (st && form) {
         var id = st.dataset.st, i = form.students.indexOf(id);
@@ -193,10 +272,12 @@
     });
     var FIELD = { "sf-day": "weekday", "sf-start": "start", "sf-end": "end", "sf-subject": "subject", "sf-rate": "rate" };
     function clearError(e) { var k = FIELD[e.target.id]; if (!k) return; var er = $("sf-e-" + k); if (er) er.hidden = true; var g = $("sf-e"); if (g) g.hidden = true; }
-    $("sl-sb").addEventListener("change", clearError);
+    $("sl-sb").addEventListener("change", function (e) { clearError(e); if (pn && (e.target.id === "pn-day" || e.target.id === "pn-rm")) panelPreview(); });
+    $("sl-to").addEventListener("change", function () { rangeSet = true; syncRange(false); });
     $("sl-sb").addEventListener("input", function (e) {
       clearError(e);
       if (e.target.id === "sf-find") { var q = e.target.value.trim(); clearTimeout(timer); timer = setTimeout(function () { pick(q); }, 250); }
+      if (e.target.id === "pn-find") { var q2 = e.target.value.trim(); clearTimeout(pnTimer); pnTimer = setTimeout(function () { pnPick(q2); }, 250); }
     });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("sl-sheet").classList.contains("on")) closeSheet(); });
   }

@@ -69,7 +69,7 @@
     var centres = rows.filter(function (x) { return x.organisations.kind === "centre"; });
     var solo = rows.filter(function (x) { return x.organisations.kind === "solo"; })[0];
     $("og").innerHTML =
-      '<section class="card og-card"><h2>Your organisations</h2><p class="og-sub">' +
+      '<section class="card og-card"><h2>Your centres</h2><p class="og-sub">' +
         (solo ? "Your own tuition, <b>" + esc(solo.organisations.trading_name) + "</b>, is set up in Settings and works as it always has." : "") + "</p>" +
         '<div class="og-list">' + (centres.map(function (x) {
           var o = x.organisations;
@@ -153,10 +153,11 @@
     if (f.type === "textarea") {
       input = '<textarea id="' + id + '" data-path="' + f.path + '" data-type="text" rows="4" maxlength="1000"' + (lock ? " disabled" : "") + ">" + esc(v == null ? "" : v) + "</textarea>";
     } else if (f.type === "select") {
+      var fe = f.path === "billing.deposit.refund_approved_by" ? S.fourEyes(st.members) : null;     // four-eyes needs a second approver
       input = '<select id="' + id + '" data-path="' + f.path + '"' + (lock ? " disabled" : "") + ">" + S.visibleOptions(f, s).map(function (op) {
-        var so = (f.soonOptions || []).indexOf(op[0]) > -1;
-        return '<option value="' + esc(JSON.stringify(op[0])) + '"' + (op[0] === v ? " selected" : "") + (so ? " disabled" : "") + ">" + esc(op[1]) + (so ? " (coming soon)" : "") + "</option>";
-      }).join("") + "</select>";
+        var so = (f.soonOptions || []).indexOf(op[0]) > -1, nb = !!fe && op[0] === "four_eyes" && !fe.ready;
+        return '<option value="' + esc(JSON.stringify(op[0])) + '"' + (op[0] === v ? " selected" : "") + (so || nb ? " disabled" : "") + ">" + esc(op[1]) + (so ? " (coming soon)" : nb ? " (needs a second approver)" : "") + "</option>";
+      }).join("") + "</select>" + (fe && !fe.ready ? '<span class="og-help" id="og-fe-why">' + esc(fe.reason) + "</span>" : "");
     } else {
       var shown = f.type === "money" ? (v == null ? "" : M.format(v, { symbol: false }).replace(/,/g, "")) : f.type === "percent" ? (v == null ? "" : String(v / 100))
         : f.type === "list" ? (v || []).join(", ") : (v == null ? "" : v);
@@ -217,8 +218,11 @@
     var e = S.validate(st.draft);
     if (e.length) { var m = $("og-msg"); if (m) { m.textContent = e.join(" "); m.className = "msg err"; } return false; }
     if (JSON.stringify(st.draft) !== JSON.stringify(st.saved)) {
+      if (S.get(st.draft, "billing.deposit.refund_approved_by") === "four_eyes" && !S.fourEyes(st.members).ready) {
+        var fm = $("og-msg"); if (fm) { fm.textContent = S.fourEyes(st.members).reason; fm.className = "msg err"; } return false;
+      }
       var r = await sb().rpc("org_save_settings", { p_org: st.org.id, p_settings: st.draft, p_effective_from: effective });
-      if (r.error) { $("og-msg").textContent = r.error.message; $("og-msg").className = "msg err"; return false; }
+      if (r.error) { $("og-msg").textContent = String(r.error.message || "").replace(/^FOUR_EYES_UNAVAILABLE: /, ""); $("og-msg").className = "msg err"; return false; }
       var p = st.draft.profile;     // keep the organisation's own columns in step with the profile
       var u = await sb().from("organisations").update({ trading_name: p.trading_name, legal_name: p.legal_name || null, uen: p.uen || null,
         address: p.address || null, brand_color: p.brand_color || null, reply_to_email: p.reply_to_email || null }).eq("id", st.org.id).select("*").single();
@@ -291,7 +295,7 @@
         var mt = HL.match(st.holidays, h), on = !!mt, rangeOnly = on && !mt.exact;
         var meta = shortDate(h.date) + (h.substitute_for ? " · only if you also close on the Monday" : "") + (rangeOnly ? " · part of “" + esc(mt.row.name) + "”" : "");
         out += '<label class="og-check og-hol-row"><input type="checkbox" data-hol="' + esc(h.date) + '"' + (on ? " checked" : "") + (!can || rangeOnly ? " disabled" : "") + '><span><span class="og-hol-name">' + esc(h.name) + '</span>' +
-          (h.status === "to_confirm" ? ' <span class="og-badge grey">To confirm</span>' : "") + '<span class="meta og-hol-meta">' + meta + "</span></span></label>";
+          (h.status === "to_confirm" ? ' <span class="og-badge grey">To confirm</span>' : "") + (h.substitute_for && !on ? ' <span class="og-badge grey">Substitute day, not ticked</span>' : "") + '<span class="meta og-hol-meta">' + meta + "</span></span></label>";
       });
       out += "</div></div>";
     });
@@ -344,8 +348,29 @@
   }
   async function addRow(table, row) {
     var r = await sb().from(table).insert(Object.assign({ org_id: st.org.id }, row));
-    if (r.error) { TL.alert(r.error.message); return; }
+    if (r.error) { TL.alert(r.error.message); return false; }
     await loadSide(); var y = window.scrollY; renderStep(S.STEPS[1]); window.scrollTo(0, y);
+    return true;
+  }
+  // (T3.9) After a holiday is added by hand: offer to cancel the lessons already on those days. The database counts first (a dry run), and only
+  // lessons nobody has marked, paid or invoiced can be cancelled, with no charge. Anything unexpected (older database, no permission, nothing to
+  // cancel) stays silent: the holiday is saved either way.
+  async function offerHolidayCancel(name, a, b) {
+    if (!st.org || st.org.kind !== "centre") return;
+    var args = { p_org: st.org.id, p_from: a, p_to: b, p_name: name };
+    var d = await sb().rpc("staff_holiday_cancel", Object.assign({ p_dry: true }, args));
+    var n = d.data && Number(d.data.cancel) || 0, kept = d.data && Number(d.data.kept) || 0;
+    if (d.error || !n) return;
+    var one = n === 1;
+    var yes = await TL.confirm({ title: "Also cancel " + (one ? "the lesson" : n + " lessons") + " already on " + (a === b ? "that day" : "those days") + "?",
+      message: n + (one ? " lesson is" : " lessons are") + " already planned on the days of " + name + ". They would be cancelled with no charge." +
+        (kept ? " " + kept + (kept === 1 ? " lesson stays" : " lessons stay") + " because " + (kept === 1 ? "it is" : "they are") + " marked, paid or invoiced." : "") +
+        " Lessons in the past are never changed.", confirmText: "Cancel the lesson" + (one ? "" : "s"), cancelText: "Keep them" });
+    if (!yes) return;
+    var r = await sb().rpc("staff_holiday_cancel", Object.assign({ p_dry: false }, args));
+    if (r.error) return TL.alert("The holiday is saved, but the lessons could not be cancelled: " + r.error.message);
+    var c = Number(r.data && r.data.cancel) || 0;
+    TL.toast(c + (c === 1 ? " lesson" : " lessons") + " cancelled with no charge.", "ok");
   }
   function bindCalendar() {
     var body = $("og-body"); if (st.lib && HL) bindLibrary();
@@ -356,7 +381,7 @@
         var n = $(x[0] + "-name").value.trim(), a = $(x[0] + "-from").value, b = $(x[0] + "-to").value || a;
         if (!n || !a) return TL.alert("Give it a name and a start date.");
         if (b < a) return TL.alert("The end date is before the start date.");
-        addRow(x[1], { name: n, starts_on: a, ends_on: b });
+        addRow(x[1], { name: n, starts_on: a, ends_on: b }).then(function (saved) { if (saved && x[1] === "holidays") return offerHolidayCancel(n, a, b); });
       };
     });
     body.querySelectorAll("[data-addroom]").forEach(function (b) {

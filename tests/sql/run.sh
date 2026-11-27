@@ -61,6 +61,8 @@ $P -f db/migration_staff_slots.sql                          # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_slots_test.sql
 $P -f db/migration_staff_reassign.sql
 $P -f db/migration_staff_reassign.sql                       # safe to run twice
+$P -f db/migration_reassign_link.sql                         # B4-FIX: replaces staff_reassign_lesson; the reassign tests below cover it
+$P -f db/migration_reassign_link.sql                         # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/staff_reassign_test.sql
 $P -f db/migration_tutor_schedule.sql
 $P -f db/migration_tutor_schedule.sql                       # safe to run twice
@@ -77,6 +79,9 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_invoice_run_test.sql
 $P -f db/migration_centre_payments.sql
 $P -f db/migration_centre_payments.sql                      # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_payments_test.sql
+$P -f db/migration_payment_fix.sql
+$P -f db/migration_payment_fix.sql                           # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/payment_fix_test.sql
 $P -f db/migration_invites.sql
 $P -f db/migration_invites.sql                              # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/invites_test.sql
@@ -109,6 +114,38 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_payout_test.sql
 $P -f db/migration_payout_permission.sql
 $P -f db/migration_payout_permission.sql                    # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/payout_permission_test.sql
+$P -f db/migration_fee_050.sql                              # re-apply: credit_undo (below) re-creates org_create_centre on top of the fee_050 body
+$P -f db/migration_centre_deposits.sql
+$P -f db/migration_centre_deposits.sql                      # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_deposits_test.sql
+$P -f db/migration_centre_refunds.sql
+$P -f db/migration_centre_refunds.sql                       # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_refunds_test.sql
+$P -f db/migration_centre_late_fees.sql
+$P -f db/migration_centre_late_fees.sql                     # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_late_fees_test.sql
+$P -f db/migration_centre_credit_undo.sql
+$P -f db/migration_centre_credit_undo.sql                   # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/centre_credit_undo_test.sql
+$P -f db/migration_invites.sql                              # (the People list reads the invite send log; the invites test above undid it)
+$P -f db/migration_slot_changes.sql
+$P -f db/migration_slot_changes.sql                         # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/slot_changes_test.sql
+$P -f db/migration_tutor_moves.sql
+$P -f db/migration_tutor_moves.sql                          # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_moves_test.sql
+$P -f db/migration_tutor_moves_down.sql
+$P -f db/migration_tutor_moves.sql                          # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_tutor_moves_down.sql
+$P -f db/migration_slot_changes_down.sql
+$P -f db/migration_slot_changes.sql                         # and again, so the undo chain below starts from the shipped state
+$P -f db/migration_slot_changes_down.sql
+$P -f db/migration_invites_down.sql
+$P -f db/migration_centre_credit_undo_down.sql
+$P -f db/migration_centre_late_fees_down.sql
+$P -f db/migration_centre_refunds_down.sql
+$P -f db/migration_centre_deposits_down.sql
+$P -f db/migration_fee_050_down.sql                         # fee_050 is unwound here (it was already undone once above; safe to repeat)
 $P -f db/migration_payout_permission_down.sql
 $P -f db/migration_payout_permission.sql                    # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_payout_permission_down.sql
@@ -118,11 +155,13 @@ $P -f db/migration_tutor_payout_down.sql
 $P -f db/migration_tutor_profile_down.sql
 $P -f db/migration_tutor_profile.sql                        # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_tutor_profile_down.sql
+$P -f db/migration_payment_fix_down.sql
 $P -f db/migration_centre_payments_down.sql
 $P -f db/migration_centre_invoice_run_down.sql
 $P -f db/migration_centre_money_down.sql
 $P -f db/migration_money_settings_down.sql
 $P -f db/migration_tutor_schedule_down.sql
+$P -f db/migration_reassign_link_down.sql
 $P -f db/migration_staff_reassign_down.sql
 $P -f db/migration_staff_slots_down.sql
 $P -f db/migration_staff_timetable_down.sql

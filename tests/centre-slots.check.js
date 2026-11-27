@@ -35,10 +35,10 @@ function override(cfg) {
       if (nm === "staff_slots") {
         var e = gate(false); if (e) return res(null, e);
         var groups = {}, order = [];
-        SL.forEach(function (s) { if (!s.active) return; var k = s.key || s.id; if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(s); });
+        SL.forEach(function (s) { if (!s.active || (s.stops_on && s.stops_on <= TODAY)) return; var k = s.key || s.id; if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(s); });
         var q = (a.p_q || "").toLowerCase();
         var rows = order.map(function (k) { var g = groups[k], f = g[0]; return { key: k, slot_id: f.id, weekday: f.weekday, start_time: f.start + ":00", end_time: f.end + ":00", minutes: 60, subject: f.subject, rate: canEdit ? f.rate : null,
-          tutor_id: f.tutor, tutor_name: tname(f.tutor), no_tutor: !f.tutor, is_group: g.length > 1, students: g.map(function (x) { return { id: x.student, name: STU.filter(function (s) { return s.id === x.student; })[0].name, level: "P5", ended: false, slot_id: x.id }; }) }; })
+          tutor_id: f.tutor, tutor_name: tname(f.tutor), no_tutor: !f.tutor, is_group: g.length > 1, students: g.map(function (x) { return { id: x.student, name: STU.filter(function (s) { return s.id === x.student; })[0].name, level: "P5", ended: false, slot_id: x.id, starts_on: x.starts_on || null, stops_on: x.stops_on || null }; }) }; })
           .filter(function (r) { return (!a.p_tutor || r.tutor_id === a.p_tutor) && (!q || (r.subject || "").toLowerCase().indexOf(q) >= 0 || r.students.some(function (s) { return s.name.toLowerCase().indexOf(q) >= 0; })); })
           .sort(function (x, y) { return x.weekday - y.weekday || x.start_time.localeCompare(y.start_time); });
         var gen = LS.length ? LS.map(function (l) { return l.d; }).sort().pop() : null;
@@ -51,7 +51,7 @@ function override(cfg) {
         if (a.p_slot == null) {
           var key = a.p_students.length > 1 ? "k" + (++seq) : null, ids = [];
           a.p_students.forEach(function (sid) { var s = { id: "sl" + (++seq), key: key, student: sid, weekday: a.p_weekday, start: a.p_start, end: a.p_end, tutor: a.p_tutor, subject: a.p_subject, rate: a.p_rate, active: true }; SL.push(s); ids.push(s.id); });
-          return res({ slot_ids: ids, added: ids.length, lessons_left: 0 });
+          return res({ slot_ids: ids, added: ids.length, lessons_left: 0, assigned: a.p_tutor ? [{ student_id: a.p_students[0], student_name: STU.filter(function (x) { return x.id === a.p_students[0]; })[0].name, tutor_name: tname(a.p_tutor) }] : [] });
         }
         var f = SL.filter(function (s) { return s.id === a.p_slot; })[0]; if (!f) return res(null, "NOT_FOUND");
         SL.filter(function (s) { return s.id === f.id || (f.key && s.key === f.key); }).forEach(function (s) { s.weekday = a.p_weekday; s.start = a.p_start; s.end = a.p_end; s.tutor = a.p_tutor; s.subject = a.p_subject; if (a.p_rate != null) s.rate = a.p_rate; });
@@ -63,20 +63,54 @@ function override(cfg) {
         var n = 0; SL.forEach(function (s) { if (s.active && (s.id === f2.id || (f2.key && s.key === f2.key))) { s.active = false; n++; } });
         return res({ stopped: n, lessons_left: 0 });
       }
+      if (nm === "staff_stop_slot_from") {
+        var e4b = gate(true); if (e4b) return res(null, e4b);
+        var f3 = SL.filter(function (s) { return s.id === a.p_slot; })[0]; if (!f3) return res(null, "NOT_FOUND");
+        if (!a.p_from || a.p_from < TODAY) return res(null, "BAD_DATE: pick today or a day to come");
+        var mem = SL.filter(function (s) { return s.id === f3.id || (f3.key && s.key === f3.key); }), ids3 = mem.map(function (s) { return s.id; });
+        var free = LS.filter(function (l) { return ids3.indexOf(l.slot) >= 0 && l.d >= a.p_from && !l.marked; }).length, kept = LS.filter(function (l) { return ids3.indexOf(l.slot) >= 0 && l.d >= a.p_from && l.marked; }).length;
+        if (a.p_dry) return res({ dry: true, stop_from: a.p_from, stopped: mem.length, removable: free, kept: kept, lessons_left: free + kept - (a.p_remove_future ? free : 0) });
+        mem.forEach(function (s) { s.stops_on = a.p_from; if (a.p_from <= TODAY) s.active = false; });
+        var removed = 0; if (a.p_remove_future) { var keep = LS.filter(function (l) { return !(ids3.indexOf(l.slot) >= 0 && l.d >= a.p_from && !l.marked); }); removed = LS.length - keep.length; LS = keep; }
+        return res({ dry: false, stop_from: a.p_from, stopped: mem.length, removed: removed, kept: kept, lessons_left: 0 });
+      }
+      if (nm === "staff_slot_student") {
+        var e4c = gate(true); if (e4c) return res(null, e4c);
+        var f4 = SL.filter(function (s) { return s.id === a.p_slot; })[0]; if (!f4) return res(null, "NOT_FOUND");
+        var mem4 = SL.filter(function (s) { return s.active && !s.stops_on && (s.id === f4.id || (f4.key && s.key === f4.key)); });
+        if (a.p_action === "add") {
+          if (mem4.some(function (s) { return s.student === a.p_student; })) return res({ dry: !!a.p_dry, added: 0, already: true, created: 0, assigned: [] });
+          var dates = LS.filter(function (l) { return l.slot === f4.id && l.d >= (a.p_from || TODAY); });
+          if (a.p_dry) return res({ dry: true, added: 0, would_create: dates.length, students: mem4.length + 1 });
+          var key4 = f4.key || "k" + (++seq); mem4.forEach(function (s) { s.key = key4; });
+          var ns = { id: "sl" + (++seq), key: key4, student: a.p_student, weekday: f4.weekday, start: f4.start, end: f4.end, tutor: f4.tutor, subject: f4.subject, rate: f4.rate, active: true, starts_on: a.p_from > TODAY ? a.p_from : null }; SL.push(ns);
+          dates.forEach(function (l) { LS.push({ slot: ns.id, d: l.d, student: a.p_student, tutor: ns.tutor, start: ns.start, end: ns.end, subject: ns.subject }); });
+          return res({ dry: false, added: 1, slot_id: ns.id, created: dates.length, assigned: f4.tutor ? [{ student_id: a.p_student, student_name: STU.filter(function (x) { return x.id === a.p_student; })[0].name, tutor_name: tname(f4.tutor) }] : [], students: mem4.length + 1 });
+        }
+        var mine4 = mem4.filter(function (s) { return s.student === a.p_student; })[0]; if (!mine4) return res(null, "NOT_FOUND");
+        if (mem4.length < 2) return res(null, "BAD_STUDENTS: this is the only student in the slot; stop the slot instead");
+        var fr = LS.filter(function (l) { return l.slot === mine4.id && l.d >= a.p_from && !l.marked; }).length, kp = LS.filter(function (l) { return l.slot === mine4.id && l.d >= a.p_from && l.marked; }).length;
+        if (a.p_dry) return res({ dry: true, removed: 0, removable: fr, kept: kp, students: mem4.length - 1 });
+        mine4.stops_on = a.p_from; if (a.p_from <= TODAY) mine4.active = false;
+        LS = LS.filter(function (l) { return !(l.slot === mine4.id && l.d >= a.p_from && !l.marked); });
+        return res({ dry: false, removed: 1, lessons_removed: fr, kept: kp, students: mem4.length - 1 });
+      }
       if (nm === "staff_generate_lessons") {
         var e5 = gate(true); if (e5) return res(null, e5);
+        var span = a.p_to ? Math.round((new Date(a.p_to + "T00:00:00Z") - new Date(TODAY + "T00:00:00Z")) / 86400000) + 1 : 28;
+        if (span > 182) return res(null, "BAD_RANGE: create at most 26 weeks (182 days) at a time");
         var created = 0, skipped = 0, hdays = {}, no_tutor = 0;
         try { hol = JSON.parse(localStorage.getItem("__holidays") || "[]"); } catch (e) {}
-        for (var i = 0; i < 28; i++) {
+        for (var i = 0; i < span; i++) {
           var d = add(TODAY, i);
           SL.forEach(function (s) {
-            if (!s.active || wdOf(d) !== s.weekday) return;
+            if (!s.active || wdOf(d) !== s.weekday || (s.stops_on && d >= s.stops_on) || (s.starts_on && d < s.starts_on)) return;
             if (LS.some(function (l) { return l.slot === s.id && l.d === d; })) { skipped++; return; }
             if (hol.some(function (h) { return h.starts_on <= d && h.ends_on >= d; })) { hdays[d] = 1; return; }
             LS.push({ slot: s.id, d: d, student: s.student, tutor: s.tutor, start: s.start, end: s.end, subject: s.subject }); created++; if (!s.tutor) no_tutor++;
           });
         }
-        return res({ from: TODAY, to: add(TODAY, 27), created: created, skipped: skipped, holidays: Object.keys(hdays).length, ended: 0, no_tutor: no_tutor, on_holiday: 0, slots: SL.filter(function (s) { return s.active; }).length });
+        return res({ from: TODAY, to: add(TODAY, span - 1), days: span, created: created, skipped: skipped, holidays: Object.keys(hdays).length, ended: 0, no_tutor: no_tutor, on_holiday: 0, slots: SL.filter(function (s) { return s.active; }).length });
       }
       if (nm === "staff_timetable") {
         var m = LS.filter(function (l) { return l.d >= a.p_from && l.d <= a.p_to; });
@@ -192,9 +226,11 @@ const calls = (page, nm) => page.evaluate((n) => window.__calls.filter((c) => c[
     await page.waitForTimeout(700); if (SC) await page.screenshot({ path: path.join(SC, "slots-" + mode + ".png"), fullPage: true });
     // stop it
     await page.locator(".sl-row").first().click(); await page.waitForSelector("#sf-stop"); await page.click("#sf-stop");
-    await page.waitForSelector(".td-confirm, [role=alertdialog], .modal.on, .cf-on, button:has-text('Stop slot')"); await page.locator("button", { hasText: "Stop slot" }).last().click();
+    await page.waitForSelector("#pn-day"); await page.waitForFunction(() => !document.querySelector("#pn-go").disabled);
+    ok(/No lessons will be created from/.test(await page.locator("#pn-pre").innerText()), tag + "stopping asks for a day and says what will happen: " + (await page.locator("#pn-pre").innerText()));
+    await page.click("#pn-go");
     await page.waitForFunction(() => /No weekly slots yet/.test(document.querySelector("#sl-list").textContent));
-    ok(true, tag + "stopping a slot (after a confirm) removes it from the list");
+    ok(true, tag + "stopping a slot from today removes it from the list");
     ok(errs.length === 0, tag + "no console errors " + errs.join("|"));
     ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), tag + "no sideways scroll");
     await ctx.close();
@@ -221,6 +257,66 @@ const calls = (page, nm) => page.evaluate((n) => window.__calls.filter((c) => c[
   { const { ctx, page } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")], missing: true });
     await page.goto(BASE + "centre-timetable.html?id=c1&mode=slots"); await page.waitForSelector("#sl-list .tt-block");
     ok(/migration_staff_slots/.test(await page.locator("#sl-list").innerText()), "migration missing: a plain message names the file"); await ctx.close(); }
+  // T3.9: a longer range, auto-assigned tutors, stop from a day (with the tick-box), add / remove a student on a slot
+  for (const mode of ["desktop", "phone"]) {
+    const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "owner")] }, { phone: mode === "phone" });
+    const tag = mode + " (T3.9): ";
+    await page.goto(BASE + "centre-timetable.html?id=c1&mode=slots"); await page.waitForSelector("#sl-add"); await page.click("#sl-add"); await page.waitForSelector("#sf-pick button");
+    await page.locator("#sf-pick button").nth(0).click(); await page.selectOption("#sf-day", String((new Date(TODAY + "T00:00:00Z").getUTCDay() + 6) % 7)); await page.selectOption("#sf-tutor", "m1"); await page.fill("#sf-rate", "60"); await page.click("#sf-save"); await page.waitForSelector(".sl-row");
+    ok(/Tutor One was added to Aiden Tan.s assigned tutors/.test(await page.locator("body").innerText()), tag + "saving a slot with a tutor tells staff the tutor was added to the student's assigned tutors");
+    // a longer range
+    ok((await page.locator("#sl-gen").innerText()).trim() === "Create lessons for the next 4 weeks", tag + "the button starts at 4 weeks");
+    await page.fill("#sl-to", plus(TODAY, 103)); await page.dispatchEvent("#sl-to", "change");
+    ok((await page.locator("#sl-gen").innerText()).trim() === "Create lessons for the next 15 weeks", tag + "choosing a later last day says how many weeks: " + (await page.locator("#sl-gen").innerText()));
+    await page.fill("#sl-to", plus(TODAY, 190)); await page.dispatchEvent("#sl-to", "change");
+    ok(await page.locator("#sl-to-err").isVisible() && /26 weeks/.test(await page.locator("#sl-to-err").innerText()), tag + "more than 26 weeks is refused in plain words, before any call");
+    await page.fill("#sl-to", plus(TODAY, 181)); await page.dispatchEvent("#sl-to", "change");
+    await page.click("#sl-gen"); await page.waitForFunction(() => /Covers 26 weeks/.test(document.querySelector("#sl-result").textContent));
+    ok(/26 created|2[5-6] created/.test(await page.locator("#sl-result b").innerText()) && /Covers 26 weeks/.test(await page.locator("#sl-result").innerText()), tag + "26 weeks create about 26 lessons, and the message says it covers 26 weeks: " + (await page.locator("#sl-result").innerText()).replace(/\n/g, " | "));
+    // add a student to the slot
+    await page.locator(".sl-row").first().click(); await page.waitForSelector("#sf-madd");
+    ok(/Aiden Tan/.test(await page.locator("#sf-mem").innerText()) && await page.locator("[data-mrm]").count() === 0, tag + "a one-student slot lists its student and offers no Remove (the last student can't leave)");
+    await page.click("#sf-madd"); await page.waitForSelector("#pn-find"); await page.waitForSelector("#pn-pick button");
+    ok(await page.locator("#pn-pick button", { hasText: "Aiden Tan" }).count() === 0, tag + "the picker leaves out students already in the slot");
+    await page.locator("#pn-pick button", { hasText: "Ravi Menon" }).click(); await page.waitForFunction(() => /joins from/.test(document.querySelector("#pn-pre").textContent) && !document.querySelector("#pn-go").disabled);
+    ok(/Ravi Menon joins from .*lessons will be created/.test(await page.locator("#pn-pre").innerText()), tag + "the preview says how many lessons will be created: " + (await page.locator("#pn-pre").innerText()));
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), tag + "the add-a-student panel has no sideways scroll");
+    if (SC) await page.screenshot({ path: path.join(SC, "slot-add-student-" + mode + ".png") });
+    await axe(page, tag + "add a student panel: ");
+    await page.click("#pn-go"); await page.waitForFunction(() => !document.querySelector("#sl-sheet.on"));
+    ok(/Ravi Menon added to the slot/.test(await page.locator("body").innerText()), tag + "the toast says the student was added");
+    ok(/Class of 2/.test(await page.locator(".sl-row").first().innerText()), tag + "the slot is now a class of 2");
+    // remove one again, from today
+    await page.locator(".sl-row").first().click(); await page.waitForSelector("[data-mrm]");
+    ok(await page.locator("[data-mrm]").count() === 2, tag + "a class lists a Remove for each student");
+    await page.locator('[data-mrm][aria-label*="Ravi"]').click(); await page.waitForFunction(() => /leaves from/.test(document.querySelector("#pn-pre").textContent) && !document.querySelector("#pn-go").disabled);
+    ok(/Ravi Menon leaves from .*lessons from that day will be removed/.test(await page.locator("#pn-pre").innerText()), tag + "the preview of a removal says how many lessons go: " + (await page.locator("#pn-pre").innerText()));
+    await page.click("#pn-go"); await page.waitForFunction(() => !document.querySelector("#sl-sheet.on"));
+    ok(!/Class of/.test(await page.locator(".sl-row").first().innerText()), tag + "after the removal it is a single slot again");
+    // stop from a future day, with the tick-box
+    await page.locator(".sl-row").first().click(); await page.waitForSelector("#sf-stop"); await page.click("#sf-stop"); await page.waitForSelector("#pn-day");
+    ok(await page.locator("#pn-rm").count() === 1 && /not marked, paid or invoiced/.test(await page.locator(".sl-check").innerText()), tag + "stopping offers the tick-box 'also remove its future lessons that are not marked, paid or invoiced'");
+    await page.fill("#pn-day", plus(TODAY, 14)); await page.dispatchEvent("#pn-day", "change"); await page.check("#pn-rm");
+    await page.waitForFunction(() => /will be removed/.test(document.querySelector("#pn-pre").textContent));
+    ok(/\d+ lessons? from that day will be removed/.test(await page.locator("#pn-pre").innerText()), tag + "with the box ticked it shows how many lessons will be removed BEFORE you confirm: " + (await page.locator("#pn-pre").innerText()));
+    await page.uncheck("#pn-rm"); await page.waitForFunction(() => /stay|already created/.test(document.querySelector("#pn-pre").textContent));
+    ok(/stay/.test(await page.locator("#pn-pre").innerText()), tag + "without the box the lessons stay and it says so");
+    await page.check("#pn-rm"); await page.waitForFunction(() => /will be removed/.test(document.querySelector("#pn-pre").textContent));
+    await page.fill("#pn-day", plus(TODAY, -1)); await page.dispatchEvent("#pn-day", "change");
+    await page.waitForFunction(() => /Pick today or a day to come/.test(document.querySelector("#pn-pre").textContent));
+    ok(await page.locator("#pn-go").isDisabled(), tag + "a day in the past is refused before any call and the button stays off");
+    await page.fill("#pn-day", plus(TODAY, 14)); await page.dispatchEvent("#pn-day", "change"); await page.waitForFunction(() => !document.querySelector("#pn-go").disabled);
+    if (SC) await page.screenshot({ path: path.join(SC, "slot-stop-" + mode + ".png") });
+    await axe(page, tag + "stop panel: ");
+    await page.click("#pn-go"); await page.waitForFunction(() => !document.querySelector("#sl-sheet.on"));
+    ok(/Weekly slot stops from that day/.test(await page.locator("body").innerText()), tag + "the toast says the slot stops from that day");
+    ok(await calls(page, "staff_stop_slot_from") >= 4, tag + "every preview and the real call went through staff_stop_slot_from (nothing touches a table)");
+    await page.locator(".sl-row").first().click(); await page.waitForSelector("#sf-mem");
+    ok(/leaves/.test(await page.locator("#sf-mem").innerText()), tag + "the slot's student is marked 'leaves <day>' while the stop day is still to come");
+    ok(errs.length === 0, tag + "no console errors " + errs.join("|"));
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), tag + "no sideways scroll");
+    await ctx.close();
+  }
   // the Students sheet: assigned tutors and the link
   for (const mode of ["desktop", "phone"]) {
     const { ctx, page, errs } = await open(browser, { members: [M(SOLO, "owner"), M(C, "staff", ["manage_timetable", "manage_students"])] }, { phone: mode === "phone" });

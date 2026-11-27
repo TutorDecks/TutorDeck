@@ -7,6 +7,7 @@ const S = require("../assets/js/org-settings.js");
 const SQL = fs.readFileSync(require.resolve("../db/migration_org_foundation.sql"), "utf8");
 const MONEY = fs.readFileSync(require.resolve("../db/migration_money_settings.sql"), "utf8");   // T4 S0: the replacement validator
 const field = (path) => S.STEPS.flatMap((s) => s.fields).find((f) => f.path === path);
+const MOVES = fs.readFileSync(require.resolve("../db/migration_tutor_moves.sql"), "utf8");   // T6 step 2: the validator that knows the tutor-editing options
 const PAYOUT_SQL = fs.readFileSync(require.resolve("../db/migration_payout_permission.sql"), "utf8");
 
 test("defaults are valid once named, for both presets", () => {
@@ -134,18 +135,31 @@ test("T4 S0: every new yes/no and number has the same limits in the form and in 
   for (const b of BOOLS) assert.equal(typeof S.get(S.defaults(), b), "boolean", b);
 });
 
-test("T4 S0: deposit, late-fee, trial and percentage-pay options are 'coming soon' until their step ships (honesty)", () => {
-  const soonPaths = ["billing.one_off_fees.deposit_cents", "billing.trials.charged", "billing.late_fee.enabled", "billing.late_fee.amount_cents", "billing.late_fee.after_days",
-    "billing.deposit.mode", "billing.deposit.percent_bp", "billing.deposit.taxable", "billing.deposit.due", "billing.deposit.waived_by", "billing.deposit.top_up",
-    "billing.deposit.release", "billing.deposit.forfeit_notice_days", "billing.deposit.set_off_unpaid", "billing.deposit.final_month", "billing.deposit.refund_approved_by",
-    "billing.late_fee.repeat", "billing.late_fee.type", "billing.late_fee.percent_bp", "billing.late_fee.cap_cents", "billing.late_fee.show_as", "billing.late_fee.waived_by",
+test("T4 S0/S4/S6: trial, percentage-pay and the unbuilt deposit options are 'coming soon' until their step ships (honesty)", () => {
+  const soonPaths = ["billing.trials.charged",
+    "billing.deposit.top_up",
+    "billing.deposit.set_off_unpaid", "billing.deposit.final_month",
     "tutor_pay.percent_base", "tutor_pay.part_payments", "tutor_pay.cancelled_lessons", "tutor_pay.group_count", "tutor_pay.rates_note"];
   for (const p of soonPaths) assert.equal(field(p).soon, true, p + " must be soon");
   assert.ok(field("tutor_pay.rate_model").soonOptions.includes("percent_of_fee"));
   assert.ok(field("billing.deposit.due").soonOptions.includes("before_first_lesson"));
   assert.ok(field("tutor_pay.part_payments").soonOptions.includes("pro_rata"));
-  // the sub-headings carry the same badge and say what is missing
-  for (const g of S.STEPS.flatMap((s) => s.fields).filter((f) => f.type === "group")) { assert.equal(g.soon, true, g.label); assert.match(g.help, /later update/); }
+  // the sub-headings carry the same badge and say what is missing (the deposit heading is live from S4: it says what is still to come)
+  for (const g of S.STEPS.flatMap((s) => s.fields).filter((f) => f.type === "group")) { if (g.label !== "Refundable deposit" && g.label !== "Late fees") assert.equal(g.soon, true, g.label); assert.match(g.help, /later update/); }
+  // T4 S6: every late-fee option is built (proposals a person approves or waives); only "a line on the next invoice" is still to come
+  for (const p of ["billing.late_fee.enabled", "billing.late_fee.repeat", "billing.late_fee.type", "billing.late_fee.amount_cents", "billing.late_fee.percent_bp", "billing.late_fee.after_days",
+    "billing.late_fee.cap_cents", "billing.late_fee.show_as", "billing.late_fee.waived_by"]) assert.ok(!field(p).soon, p + " is built in S6");
+  assert.deepEqual(field("billing.late_fee.show_as").soonOptions, ["next_invoice_line"], "the own-invoice placement is built; the line on the next invoice is not");
+  assert.match(S.STEPS.flatMap((s) => s.fields).find((f) => f.type === "group" && f.label === "Late fees").help, /later update/);
+  // T4 S4: what the invoice run now does with deposits is NOT 'soon'
+  for (const p of ["billing.deposit.mode", "billing.one_off_fees.deposit_cents", "billing.deposit.percent_bp", "billing.deposit.taxable", "billing.deposit.due", "billing.deposit.waived_by"]) assert.ok(!field(p).soon, p + " is built in S4");
+  // T4 S5: release, the forfeit notice and who approves a refund are built (refunds, family credit, keeping a deposit)
+  for (const p of ["billing.deposit.release", "billing.deposit.forfeit_notice_days", "billing.deposit.refund_approved_by"]) assert.ok(!field(p).soon, p + " is built in S5");
+  // the fixed amount is only asked for in fixed mode, the percentage only in percent mode
+  const d = S.defaults("centre");
+  d.billing.deposit.mode = "none"; assert.ok(!field("billing.one_off_fees.deposit_cents").show(d) && !field("billing.deposit.percent_bp").show(d));
+  d.billing.deposit.mode = "fixed"; assert.ok(field("billing.one_off_fees.deposit_cents").show(d) && !field("billing.deposit.percent_bp").show(d));
+  d.billing.deposit.mode = "percent_first_month"; assert.ok(!field("billing.one_off_fees.deposit_cents").show(d) && field("billing.deposit.percent_bp").show(d));
   // options that already work are not marked soon by accident
   for (const p of ["lessons.class_type", "profile.next_invoice_number", "billing.one_off_fees.registration_cents"]) assert.ok(!field(p).soon, p);
 });
@@ -158,7 +172,7 @@ test("T4 S0: the defaults are the owner's rules", () => {
   assert.equal(d.billing.deposit.mode, "none");
   assert.equal(d.tutor_pay.percent_base, "billed_after_discounts");       // after discounts, before GST
   assert.equal(d.tutor_pay.part_payments, "after_full");                  // payable only when the invoice line is fully paid
-  assert.equal(d.billing.late_fee.show_as, "next_invoice_line");
+  assert.equal(d.billing.late_fee.show_as, "own_invoice");               // a default must be something that is built
   assert.equal(d.billing.trials.charged, false);
   assert.equal(d.lessons.class_type, "both");                            // nothing changes for existing centres
 });
@@ -212,4 +226,88 @@ test("T4 S0: billing and pay changes (including the new options) start next cycl
   assert.equal(S.effectiveFrom(a, b, "2026-11-26"), "2026-12-01");
   const c = JSON.parse(JSON.stringify(a)); c.lessons.class_type = "one_to_one";
   assert.equal(S.effectiveFrom(a, c, "2026-11-26"), "2026-11-26");
+});
+
+// ---------------------------------------------------------------------------------------------------- T3.9: assigned tutors follow a weekly slot
+test("T3.9: 'a weekly slot adds its tutor to the student' is a setting: default on, built (not soon), and a yes/no the database reads as of today", () => {
+  const fields = {};
+  S.STEPS.forEach((st) => st.fields.forEach((f) => { fields[f.path] = f; }));
+  const f = fields["lessons.auto_assign_tutors"];
+  assert.ok(f, "the field exists in the wizard");
+  assert.equal(f.type, "toggle", "a yes/no (no enum: the SQL treats a missing or non-boolean value as on)");
+  assert.ok(!f.soon, "it is built (db/migration_slot_changes.sql, tests/sql/slot_changes_test.sql), so it is not marked soon");
+  assert.match(f.help, /nobody is taken off/i);
+  assert.strictEqual(S.defaults("centre").lessons.auto_assign_tutors, true, "default on");
+  assert.strictEqual(S.defaults("solo").lessons.auto_assign_tutors, true);
+  const s = S.defaults("centre"); s.profile.trading_name = "T"; s.lessons.auto_assign_tutors = false;
+  assert.deepEqual(S.validate(s), [], "off is valid");
+  // an older saved document without the key is still valid (the SQL reads a missing key as on)
+  const old = S.defaults("centre"); old.profile.trading_name = "T"; delete old.lessons.auto_assign_tutors;
+  assert.deepEqual(S.validate(old), []);
+});
+
+// ---- T6 step 2: tutors change their own lessons (db/migration_tutor_moves.sql)
+test("T6.2: 'who edits the timetable' has the same values in the form and in the database; the old tutors_own is gone", () => {
+  const sqlVals = (re) => MOVES.match(re)[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1)).sort();
+  const f = field("lessons.timetable_editing");
+  assert.deepEqual(f.options.map((x) => x[0]).sort(), sqlVals(/\{lessons,timetable_editing\}' not in \(([^)]*)\)/));
+  assert.deepEqual(f.options.map((x) => x[0]).sort(), ["admin_only", "tutors_direct", "tutors_propose"]);
+  assert.ok(!f.options.some((x) => x[0] === "tutors_own"), "tutors_own is renamed");
+  assert.deepEqual(f.soonOptions, ["tutors_propose"], "only asking-for-approval is still coming soon");
+  assert.equal(S.get(S.defaults("centre"), "lessons.timetable_editing"), "admin_only");
+  assert.equal(S.get(S.defaults("solo"), "lessons.timetable_editing"), "admin_only");
+});
+
+test("T6.2: notify_family has the same values in the form and in the database, default list_for_admin", () => {
+  const sql = MOVES.match(/\{lessons,notify_family\}' not in \(([^)]*)\)/)[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1)).sort();
+  assert.deepEqual(field("lessons.notify_family").options.map((x) => x[0]).sort(), sql);
+  assert.equal(S.get(S.defaults(), "lessons.notify_family"), "list_for_admin");
+  assert.ok(!field("lessons.notify_family").soon && !(field("lessons.notify_family").soonOptions || []).length, "the in-app list is built, so nothing here is marked soon");
+});
+
+test("T6.2: the six switches: postpone and cancel are built, the other four are coming soon; every switch is a yes/no in the database", () => {
+  const sw = ["postpone", "cancel", "weekly_slots", "generate", "one_off", "link"];
+  for (const k of sw) {
+    assert.ok(MOVES.includes("'{lessons,tutors_edit," + k + "}'"), k + " is validated in the migration");
+    assert.equal(typeof S.get(S.defaults(), "lessons.tutors_edit." + k), "boolean", k);
+  }
+  for (const k of ["postpone", "cancel"]) assert.ok(!field("lessons.tutors_edit." + k).soon, k + " is built");
+  for (const k of ["weekly_slots", "generate", "one_off", "link"]) assert.equal(field("lessons.tutors_edit." + k).soon, true, k + " must be soon");
+  // the defaults the form starts from are the ones the database assumes for a missing key (postpone on, cancel off)
+  assert.equal(S.get(S.defaults(), "lessons.tutors_edit.postpone"), true);
+  assert.equal(S.get(S.defaults(), "lessons.tutors_edit.cancel"), false);
+  assert.match(MOVES, /tutors_edit,postpone\}'\)::boolean, true\)/);
+  assert.match(MOVES, /tutors_edit,cancel\}'\)::boolean, false\)/);
+});
+
+test("T6.2: the limits are the same in the form and in the database, and the defaults are the owner's (24 hours, no limit)", () => {
+  for (const [path, key, lo, hi] of [["lessons.min_notice_hours", "min_notice_hours", 0, 168], ["lessons.max_changes_per_month", "max_changes_per_month", 0, 500]]) {
+    const m = MOVES.match(new RegExp("\\('\\{lessons," + key + "\\}', (\\d+), (\\d+),"));
+    assert.ok(m, path + " is checked in the migration");
+    assert.deepEqual([+m[1], +m[2]], [lo, hi], path);
+  }
+  assert.equal(S.get(S.defaults(), "lessons.min_notice_hours"), 24);
+  assert.equal(S.get(S.defaults(), "lessons.max_changes_per_month"), 0);
+  assert.match(MOVES, /min_notice_hours\}'\)::int, 24\)/);
+  assert.match(MOVES, /max_changes_per_month\}'\)::int, 0\)/);
+  const ok = () => { const s = S.defaults(); s.profile.trading_name = "T"; return s; };
+  for (const [k, v, want] of [["min_notice_hours", 169, /Notice before a tutor/], ["min_notice_hours", -1, /Notice before a tutor|whole number/], ["min_notice_hours", 1.5, /Notice before a tutor|whole number/],
+    ["max_changes_per_month", 501, /Changes per tutor per month/], ["max_changes_per_month", -2, /Changes per tutor per month|whole number/]]) {
+    const s = ok(); s.lessons[k] = v; assert.match(S.validate(s).join(" | "), want, k + "=" + v);
+  }
+  for (const [k, v] of [["min_notice_hours", 0], ["min_notice_hours", 168], ["max_changes_per_month", 0], ["max_changes_per_month", 500]]) {
+    const s = ok(); s.lessons[k] = v; assert.deepEqual(S.validate(s), [], k + "=" + v);
+  }
+});
+
+test("T6.2: the switches and limits show only when tutors may change lessons; settings saved before this load with the defaults", () => {
+  const s = S.defaults("centre");
+  const paths = ["lessons.tutors_edit.postpone", "lessons.tutors_edit.cancel", "lessons.tutors_edit.weekly_slots", "lessons.min_notice_hours", "lessons.max_changes_per_month", "lessons.notify_family"];
+  for (const p of paths) assert.equal(S.isVisible(field(p), s), false, p + " hidden while admin_only");
+  s.lessons.timetable_editing = "tutors_direct";
+  for (const p of paths) assert.equal(S.isVisible(field(p), s), true, p + " shown for tutors_direct");
+  const old = S.withDefaults({ schema_version: 1, preset: "centre", profile: { trading_name: "Old" }, lessons: { attendance_by: "admin" } });
+  assert.equal(old.lessons.timetable_editing, "admin_only"); assert.equal(old.lessons.min_notice_hours, 24); assert.equal(old.lessons.tutors_edit.postpone, true);
+  assert.deepEqual(S.validate(old), []);
+  assert.equal(S.effectiveFrom(S.defaults(), Object.assign(S.defaults(), { lessons: Object.assign({}, S.defaults().lessons, { timetable_editing: "tutors_direct" }) }), "2026-11-26"), "2026-11-26", "a process rule applies today");
 });

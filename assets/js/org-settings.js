@@ -26,9 +26,11 @@
   // Nothing in the app reads these settings yet (T18 plan, 2026-11-24): shown as "coming soon" so the wizard promises nothing it does not do.
   var CREDITS_SOON = "Make-up credits come in a later update; for now a make-up is added as a normal lesson.";
   // Centre money (T4, steps S0-S8): the options exist from S0 so owners can see what is coming; nothing reads them until their step ships.
-  var DEPOSIT_SOON = "Deposits come in a later update. Until then, collect and hold a deposit outside TutorDeck.";
-  var LATE_SOON = "Late fees come in a later update. Until then, TutorDeck adds nothing to an invoice for lateness.";
+  var DEPOSIT_HELP = "A refundable deposit is money you hold for the family, not income. It is invoiced separately, once, with a student's first invoice. When a student leaves, it is refunded, kept against unpaid invoices or kept by the centre, always approved and recorded step by step. A top-up, and using it as the final month's fee, come in a later update.";
+  var LATE_HELP = "When a lesson invoice is still unpaid after its grace period, TutorDeck suggests a late fee. A person approves or waives each one (a reason is needed to waive); nothing is added to a family’s bill on its own. An approved fee is its own small invoice. Adding it as a line on the family’s next invoice comes in a later update.";
   var PAY_SOON = "Percentage pay and pay runs come in a later update.";
+  var TUTOR_EDIT_SOON = "Coming in a later update; until then only an admin does this.";
+  function tutorsChange(s) { return s.lessons.timetable_editing !== "admin_only"; }          // the switches and limits matter only when tutors may change lessons
   var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
   // Field: { path, label, type, options?, help?, soon?, show?(s) }
   // types: text, email, color, toggle, select, number, money (cents), percent (bp), days, list (number list),
@@ -95,45 +97,49 @@
       { path: "billing.one_off_fees.materials_cents", label: "Materials fee", type: "money" },
       { path: "billing.trials.charged", label: "Charge for trial lessons", type: "toggle", soon: true,
         help: "Off means trial lessons are free. Charging trials comes with centre invoicing." },
-      { type: "group", label: "Refundable deposit", soon: true, help: DEPOSIT_SOON },
-      { path: "billing.deposit.mode", label: "Deposit", type: "select", soon: true, options: [
+      { type: "group", label: "Refundable deposit", help: DEPOSIT_HELP },
+      { path: "billing.deposit.mode", label: "Deposit", type: "select", options: [
         o("none", "No deposit"), o("fixed", "A fixed amount"), o("percent_first_month", "A percentage of the first month's fee")] },
-      { path: "billing.one_off_fees.deposit_cents", label: "Deposit amount", type: "money", soon: true },
-      { path: "billing.deposit.percent_bp", label: "Deposit as a share of the first month's fee", type: "percent", soon: true,
+      { path: "billing.one_off_fees.deposit_cents", label: "Deposit amount", type: "money",
+        show: function (s) { return s.billing.deposit.mode === "fixed"; } },
+      { path: "billing.deposit.percent_bp", label: "Deposit as a share of the first month's fee", type: "percent",
+        show: function (s) { return s.billing.deposit.mode === "percent_first_month"; },
         help: "For example 50% of the first month's lesson fee. The amount is worked out once, with the first invoice, and then stays fixed." },
-      { path: "billing.deposit.taxable", label: "Charge GST on the deposit when it is received", type: "toggle", soon: true,
+      { path: "billing.deposit.taxable", label: "Charge GST on the deposit when it is received", type: "toggle",
         help: "Normally off: a refundable deposit is held for the family and is not income. Ask your accountant." },
-      { path: "billing.deposit.due", label: "Deposit is invoiced", type: "select", soon: true, options: [
+      { path: "billing.deposit.due", label: "Deposit is invoiced", type: "select", options: [
         o("with_first_invoice", "Together with the first lesson invoice"), o("before_first_lesson", "Before the first lesson")],
         soonOptions: ["before_first_lesson"] },
-      { path: "billing.deposit.waived_by", label: "A deposit can be waived by", type: "select", soon: true, options: [
+      { path: "billing.deposit.waived_by", label: "A deposit can be waived by", type: "select", options: [
         o("owner", "The owner"), o("issue_invoices", "Staff who issue invoices"), o("nobody", "Nobody")],
         help: "Waiving always needs a reason." },
       { path: "billing.deposit.top_up", label: "Ask for a top-up when the required deposit goes up", type: "toggle", soon: true,
         help: "For example a returning student, or a fee increase." },
-      { path: "billing.deposit.release", label: "When a student leaves, TutorDeck suggests", type: "select", soon: true, options: [
-        o("refund_full", "Refunding the whole deposit"), o("refund_less_unpaid", "Refunding it minus any unpaid invoices"), o("admin_decides", "Nothing, an admin decides")] },
-      { path: "billing.deposit.forfeit_notice_days", label: "Notice needed to get the deposit back (days, 0 = none needed)", type: "days", soon: true,
+      { path: "billing.deposit.release", label: "When a student leaves, TutorDeck suggests", type: "select", options: [
+        o("refund_full", "Refunding the whole deposit"), o("refund_less_unpaid", "Keeping it against any unpaid invoices, refunding the rest"), o("admin_decides", "Nothing, an admin decides")],
+        help: "Only a suggestion: staff can change the amounts, and the refund still needs approval. A deposit that carried GST is refunded, never kept against invoices." },
+      { path: "billing.deposit.forfeit_notice_days", label: "Notice needed to get the deposit back (days, 0 = none needed)", type: "days",
         help: "Leaving with less notice suggests keeping the deposit. An admin always confirms." },
       { path: "billing.deposit.set_off_unpaid", label: "Staff may use the deposit to cover unpaid fees", type: "toggle", soon: true },
       { path: "billing.deposit.final_month", label: "Family may use the deposit as the final month's fee", type: "toggle", soon: true },
-      { path: "billing.deposit.refund_approved_by", label: "Deposit refunds are approved by", type: "select", soon: true, options: [
-        o("owner", "The owner"), o("staff", "Any staff member who records payments"), o("four_eyes", "Someone other than the person who asked")],
-        help: "Staff request a refund; it is paid and recorded only after it is approved." },
-      { type: "group", label: "Late fees", soon: true, help: LATE_SOON },
-      { path: "billing.late_fee.enabled", label: "Late fee", type: "toggle", soon: true },
-      { path: "billing.late_fee.repeat", label: "How often", type: "select", soon: true, options: [
+      { path: "billing.deposit.refund_approved_by", label: "Refunds are approved by", type: "select", options: [
+        o("owner", "The owner"), o("staff", "Any staff member who handles that kind of refund"), o("four_eyes", "Someone other than the person who asked")],
+        help: "Deposit refunds are handled by the owner and staff who issue invoices; refunds of family credit by the owner and staff who record payments. A refund is paid and recorded only after it is approved. “Someone other than the person who asked” needs a second approver: it can be chosen only while the centre has the owner, a staff member who issues invoices and a staff member who records payments, all switched on. If one of them is later removed, switched off or loses that permission, TutorDeck changes this back to “The owner” and tells the owner." },
+      { type: "group", label: "Late fees", help: LATE_HELP },
+      { path: "billing.late_fee.enabled", label: "Late fee", type: "toggle" },
+      { path: "billing.late_fee.repeat", label: "How often", type: "select", options: [
         o("none", "Never"), o("once", "Once per invoice"), o("monthly", "Every month the invoice stays unpaid")] },
-      { path: "billing.late_fee.type", label: "Late fee is", type: "select", soon: true, options: [
+      { path: "billing.late_fee.type", label: "Late fee is", type: "select", options: [
         o("fixed", "A fixed amount"), o("percent", "A percentage of what is still unpaid")] },
-      { path: "billing.late_fee.amount_cents", label: "Late fee amount", type: "money", soon: true },
-      { path: "billing.late_fee.percent_bp", label: "Late fee percentage", type: "percent", soon: true },
-      { path: "billing.late_fee.after_days", label: "Grace period after the due date (days)", type: "days", soon: true,
+      { path: "billing.late_fee.amount_cents", label: "Late fee amount", type: "money" },
+      { path: "billing.late_fee.percent_bp", label: "Late fee percentage", type: "percent" },
+      { path: "billing.late_fee.after_days", label: "Grace period after the due date (days)", type: "days",
         help: "Paying on the due date, or within this many days after it, is on time." },
-      { path: "billing.late_fee.cap_cents", label: "Most late fees one invoice can collect (0 = no limit)", type: "money", soon: true },
-      { path: "billing.late_fee.show_as", label: "A late fee is added as", type: "select", soon: true, options: [
-        o("next_invoice_line", "A line on the family's next invoice"), o("own_invoice", "Its own small invoice")] },
-      { path: "billing.late_fee.waived_by", label: "A late fee can be waived by", type: "select", soon: true, options: [
+      { path: "billing.late_fee.cap_cents", label: "Most late fees one invoice can collect (0 = no limit)", type: "money" },
+      { path: "billing.late_fee.show_as", label: "A late fee is added as", type: "select", options: [
+        o("next_invoice_line", "A line on the family's next invoice"), o("own_invoice", "Its own small invoice")],
+        soonOptions: ["next_invoice_line"] },
+      { path: "billing.late_fee.waived_by", label: "A late fee can be waived by", type: "select", options: [
         o("owner", "The owner"), o("issue_invoices", "Staff who issue invoices")],
         help: "TutorDeck suggests late fees; a person applies or waives each one. Make sure your terms for parents mention late fees." }
     ]},
@@ -171,8 +177,25 @@
       { path: "payments.overpayments", label: "Overpayments", type: "select", options: [o("credit", "Kept as credit for the family"), o("refund", "Refunded manually")] }
     ]},
     { id: "lessons", n: 7, title: "Tutors and lessons", fields: [
-      { path: "lessons.timetable_editing", label: "Who edits the timetable", type: "select", options: [o("admin_only", "Admins only"), o("tutors_own", "Tutors may edit their own lessons")],
-        soonOptions: ["tutors_own"] },
+      { path: "lessons.timetable_editing", label: "Who edits the timetable", type: "select", options: [
+        o("admin_only", "Admins only"), o("tutors_direct", "Tutors may change their own lessons (staff are told)"), o("tutors_propose", "Tutors ask, and an admin approves")],
+        soonOptions: ["tutors_propose"],
+        help: "A tutor only ever changes their own lessons for students assigned to them, never one that is marked, paid or invoiced, and never sees a price." },
+      { path: "lessons.tutors_edit.postpone", label: "A tutor may move a lesson (and put it back)", type: "toggle", show: tutorsChange,
+        help: "The lesson keeps its length and its price. Staff see an amber “changed by tutor” flag for 7 days." },
+      { path: "lessons.tutors_edit.cancel", label: "A tutor may cancel a lesson in advance, at no charge to the family", type: "toggle", show: tutorsChange,
+        help: "No make-up credit is created by the tutor's cancel; staff decide that." },
+      { path: "lessons.tutors_edit.weekly_slots", label: "A tutor may add, change or stop their own weekly slots", type: "toggle", soon: true, show: tutorsChange, help: TUTOR_EDIT_SOON },
+      { path: "lessons.tutors_edit.generate", label: "A tutor may create their own lessons from their weekly slots", type: "toggle", soon: true, show: tutorsChange, help: TUTOR_EDIT_SOON },
+      { path: "lessons.tutors_edit.one_off", label: "A tutor may add a one-off lesson", type: "toggle", soon: true, show: tutorsChange, help: TUTOR_EDIT_SOON },
+      { path: "lessons.tutors_edit.link", label: "A tutor may set the online lesson link", type: "toggle", soon: true, show: tutorsChange, help: TUTOR_EDIT_SOON },
+      { path: "lessons.min_notice_hours", label: "A tutor can change a lesson only if it starts in at least (hours, 0-168)", type: "number", show: tutorsChange,
+        help: "For example 24: nothing can be moved or cancelled by a tutor closer to its start than that." },
+      { path: "lessons.max_changes_per_month", label: "Most changes one tutor can make in a month (0 = no limit)", type: "number", show: tutorsChange,
+        help: "A move, a put-back and a cancel each count as one." },
+      { path: "lessons.notify_family", label: "When a tutor changes a lesson", type: "select", show: tutorsChange, options: [
+        o("list_for_admin", "Show staff a list, so they can tell the family"), o("off", "Don't add anything for staff to do")],
+        help: "TutorDeck does not email the family yet; sending that email comes with the email provider." },
       { path: "lessons.attendance_by", label: "Attendance is marked by", type: "select", options: [o("tutor", "The tutor"), o("admin", "An admin")] },
       { path: "lessons.attendance_window_days", label: "Tutors can mark or change attendance for (days after the lesson)", type: "number",
         help: "From the lesson's day, for this many days. After that only an admin can." },
@@ -190,6 +213,8 @@
       { path: "lessons.missed_remarks_reminders", label: "Remind tutors about missing remarks", type: "toggle", soon: true,
         help: "Reminders go by email, which comes with the email provider. Until then the My lessons page shows what's overdue." },
       { path: "lessons.replacement_tutors", label: "Admins can give one lesson to a replacement tutor", type: "toggle" },
+      { path: "lessons.auto_assign_tutors", label: "A weekly slot with a tutor also adds that tutor to the student's assigned tutors", type: "toggle",
+        help: "Only ever adds: nobody is taken off. Switch it off to choose assigned tutors by hand on the student's page." },
       { path: "lessons.tutors_see_parent_contact", label: "Tutors can see parents' contact details", type: "toggle",
         help: "Tutors always see student names and levels." }
     ]},
@@ -242,14 +267,15 @@
         one_off_fees: { registration_cents: 0, deposit_cents: 0, materials_cents: 0 }, trials: { charged: false },
         deposit: { mode: "none", percent_bp: 5000, taxable: false, due: "with_first_invoice", waived_by: "owner", top_up: false, release: "admin_decides",
           forfeit_notice_days: 0, set_off_unpaid: false, final_month: false, refund_approved_by: "owner" },
-        late_fee: { enabled: false, repeat: "once", type: "fixed", amount_cents: 1000, percent_bp: 500, after_days: 7, cap_cents: 0, show_as: "next_invoice_line", waived_by: "owner" } },
+        late_fee: { enabled: false, repeat: "once", type: "fixed", amount_cents: 1000, percent_bp: 500, after_days: 7, cap_cents: 0, show_as: "own_invoice", waived_by: "owner" } },
       invoicing: { grouping: "family", generate: { mode: "day_of_month", day: 1, days_before: 7 }, due_days: 7, review_before_sending: true,
         delivery: { email: false, share_link: true },
         whatsapp_template: "Hi {name}, this is {centre}. Invoice {number} for {amount} is due on {due_date}.\nYou can see it and pay by PayNow here: {link}\nThank you!", reminders: { enabled: false, schedule: [-3, 0, 7] } },
       payments: { modes: ["manual_paynow"], paynow: { type: "uen", id: "" }, statement_bank: "DBS", hitpay: { paynow: true, cards: false },
         gateway_fees: "absorb", partial_payments: true, overpayments: "credit" },
-      lessons: { class_type: "both", timetable_editing: "admin_only", attendance_by: "tutor", attendance_window_days: 14, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
-        missed_remarks_reminders: true, replacement_tutors: true, tutors_see_parent_contact: false },
+      lessons: { class_type: "both", timetable_editing: "admin_only", tutors_edit: { postpone: true, cancel: false, weekly_slots: false, generate: false, one_off: false, link: false },
+        min_notice_hours: 24, max_changes_per_month: 0, notify_family: "list_for_admin", attendance_by: "tutor", attendance_window_days: 14, cancellations_marked_by: "admin", compensation_entered_by: "admin", trials_flagged_by: "admin", remarks: { required: false, deadline_hours: 24, visibility: "admin_only" },
+        missed_remarks_reminders: true, replacement_tutors: true, auto_assign_tutors: true, tutors_see_parent_contact: false },
       tutor_pay: { mode: "report", payable_when: "parent_paid", rate_model: "per_hour", percent_base: "billed_after_discounts", part_payments: "after_full", cancelled_lessons: "pay_if_charged", group_count: "attended", adjustments: true,
         cycle: { cutoff_day: 31, pay_day: 7 }, payout_method: "manual_list", tutor_visibility: "closed_only" },
       data: {}
@@ -319,6 +345,8 @@
     if (!/^[A-Za-z0-9-]{1,8}$/.test(p.invoice_prefix || "")) e.push("Invoice prefix: 1–8 letters or numbers.");
     if (!(p.next_invoice_number >= 1)) e.push("Next invoice number must be 1 or more.");
     if (!Array.isArray(s.payments.modes) || !s.payments.modes.length) e.push("Pick at least one way for parents to pay.");
+    var mn = s.lessons.min_notice_hours; if (mn != null && !(Number.isSafeInteger(mn) && mn >= 0 && mn <= 168)) e.push("Notice before a tutor's change must be 0–168 hours.");
+    var mc = s.lessons.max_changes_per_month; if (mc != null && !(Number.isSafeInteger(mc) && mc >= 0 && mc <= 500)) e.push("Changes per tutor per month must be 0–500 (0 = no limit).");
     var aw = s.lessons.attendance_window_days; if (aw != null && !(Number.isSafeInteger(aw) && aw >= 1 && aw <= 60)) e.push("Attendance window must be 1–60 days.");
     var gd = s.invoicing.generate.day; if (!(gd >= 1 && gd <= 28)) e.push("Invoice day must be 1–28 (so it exists in every month).");
     var cd = s.tutor_pay.cycle; if (!(cd.cutoff_day >= 1 && cd.cutoff_day <= 31) || !(cd.pay_day >= 1 && cd.pay_day <= 31)) e.push("Pay days must be 1–31.");
@@ -348,6 +376,23 @@
     return y + "-" + (m < 10 ? "0" : "") + m + "-01";
   }
 
+
+  // Four-eyes refund approval needs a SECOND person. Same rule as org_four_eyes_status() in db/migration_centre_credit_undo.sql (the database enforces it; this
+  // only explains it before a save): an active owner, plus active staff who issue invoices (deposit refunds) and active staff who record payments (credit refunds).
+  // `members` = rows of memberships ({ role, status, permissions, user_id }). A pending invite (no user yet) or a switched-off account doesn't count.
+  function fourEyes(members) {
+    var act = (members || []).filter(function (m) { return m && m.status === "active" && m.user_id; });
+    var staffWith = function (perm) { return act.some(function (m) { return m.role === "staff" && (m.permissions || []).indexOf(perm) > -1; }); };
+    var owner = act.some(function (m) { return m.role === "owner"; }), deposit = staffWith("issue_invoices"), credit = staffWith("record_payments");
+    var need = [];
+    if (!owner) need.push("an active owner");
+    if (!deposit) need.push("a staff member who issues invoices (for deposit refunds)");
+    if (!credit) need.push("a staff member who records payments (for credit refunds)");
+    var ready = owner && deposit && credit;
+    return { ready: ready, owner: owner, deposit: deposit, credit: credit, missing: need,
+      reason: ready ? "" : "Not available yet: it needs a second person to approve. Add " + need.join(" and ") + " in step 3 (Users and permissions) and make sure they are switched on." };
+  }
+
   // Human-readable value for the review step.
   function display(f, v) {
     if (f.type === "toggle") return v ? "Yes" : "No";
@@ -360,5 +405,5 @@
   }
 
   return { SCHEMA_VERSION: SCHEMA_VERSION, STAFF_PERMISSIONS: STAFF_PERMISSIONS, STEPS: STEPS, defaults: defaults, withDefaults: withDefaults,
-    get: get, set: set, validate: validate, isVisible: isVisible, visibleOptions: visibleOptions, effectiveFrom: effectiveFrom, display: display, CYCLE_SECTIONS: CYCLE_SECTIONS };
+    get: get, set: set, validate: validate, isVisible: isVisible, visibleOptions: visibleOptions, effectiveFrom: effectiveFrom, display: display, fourEyes: fourEyes, CYCLE_SECTIONS: CYCLE_SECTIONS };
 });

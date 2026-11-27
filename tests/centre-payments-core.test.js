@@ -119,5 +119,12 @@ test("refusals come out in plain words", () => {
   assert.match(CP.errorText({ message: "NOT_FOUND" }), /isn’t available any more/);
   assert.match(CP.errorText({ message: "Failed to fetch" }), /Couldn’t reach the server/);
   assert.match(CP.errorText({ message: "something odd" }), /Something went wrong/);
+  // a database error word we know is named in plain words instead of the bare fallback
+  assert.match(CP.errorText({ code: "21000", message: "DELETE requires a WHERE clause" }), /nothing was recorded.*code 21000/);
+  assert.match(CP.errorText({ code: "40P01", message: "deadlock detected" }), /at the same moment/);
+  assert.match(CP.errorText({ code: "23514", message: "check violation" }), /didn’t add up/);
+  assert.match(CP.errorText({ code: "XX999", message: "odd" }), /Something went wrong \(code XX999\)/);
+  assert.match(CP.errorText({ code: "P0001", message: "NOT_FOUND" }), /isn’t available any more/);
+  assert.match(CP.errorText({ message: "Failed to fetch" }), /Couldn’t reach the server/);
   assert.ok(CP.isMissing({ code: "PGRST202" }));
 });
