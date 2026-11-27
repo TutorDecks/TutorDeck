@@ -311,3 +311,50 @@ test("T6.2: the switches and limits show only when tutors may change lessons; se
   assert.deepEqual(S.validate(old), []);
   assert.equal(S.effectiveFrom(S.defaults(), Object.assign(S.defaults(), { lessons: Object.assign({}, S.defaults().lessons, { timetable_editing: "tutors_direct" }) }), "2026-11-26"), "2026-11-26", "a process rule applies today");
 });
+
+// ---------------------------------------------------------------- family emails (T7.3)
+const EMAIL_SQL = fs.readFileSync(require.resolve("../db/migration_invoice_email.sql"), "utf8");
+test("email options: every value of every option is in the wizard and in the database validator", () => {
+  const f = (p) => field(p);
+  assert.deepEqual(f("email.mode").options.map((o) => o[0]).sort(), ["auto_on_issue", "off", "staff_send"]);
+  assert.match(EMAIL_SQL, /s#>>'\{email,mode\}' not in \('off','staff_send','auto_on_issue'\)/);
+  for (const p of ["email.receipts", "email.late_fee_notice", "email.reminders.enabled"]) assert.equal(f(p).type, "toggle", p);
+  for (const p of ["email.reminders.first_after_days", "email.reminders.repeat_days", "email.reminders.max_count", "email.daily_cap", "email.per_hour"]) assert.ok(f(p), p);
+  for (const k of ["invoice", "receipt", "reminder", "late_fee"]) { assert.equal(f("email.templates." + k + ".subject").type, "text"); assert.equal(f("email.templates." + k + ".body").type, "textarea"); }
+  assert.ok(!f("invoicing.delivery.email") && !f("invoicing.reminders.enabled"), "the old 'coming soon' placeholders are gone");
+  for (const p of ["email.mode", "email.receipts", "email.reminders.enabled", "email.daily_cap", "email.templates.invoice.body"]) assert.ok(!f(p).soon, p + " is built, so it is not marked soon");
+});
+test("email options: defaults are OFF, valid, and the other options are hidden until email is switched on", () => {
+  const s = S.defaults("centre"); s.profile.trading_name = "X";
+  assert.equal(s.email.mode, "off"); assert.deepEqual(S.validate(s), []);
+  assert.ok(!S.isVisible(field("email.receipts"), s) && !S.isVisible(field("email.daily_cap"), s) && S.isVisible(field("email.mode"), s));
+  s.email.mode = "staff_send";
+  assert.ok(S.isVisible(field("email.receipts"), s) && S.isVisible(field("email.daily_cap"), s) && !S.isVisible(field("email.reminders.first_after_days"), s));
+  s.email.reminders.enabled = true;
+  assert.ok(S.isVisible(field("email.reminders.first_after_days"), s) && S.isVisible(field("email.reminders.max_count"), s));
+  for (const mode of ["off", "staff_send", "auto_on_issue"]) { const t = S.defaults("centre"); t.profile.trading_name = "X"; t.email.mode = mode; assert.deepEqual(S.validate(t), [], mode); }
+});
+test("email options: the same ranges as the database (both edges), wording rules, and the link requirement", () => {
+  const bad = (mutate) => { const s = S.defaults("centre"); s.profile.trading_name = "X"; s.email.mode = "staff_send"; mutate(s); return S.validate(s).join(" | "); };
+  for (const [path, lo, hi] of [["first_after_days", 1, 90], ["repeat_days", 0, 90], ["max_count", 1, 10]]) {
+    assert.equal(bad((s) => { s.email.reminders[path] = lo; }), "", path + " low edge"); assert.equal(bad((s) => { s.email.reminders[path] = hi; }), "", path + " high edge");
+    assert.notEqual(bad((s) => { s.email.reminders[path] = lo - 1; }), "", path + " below"); assert.notEqual(bad((s) => { s.email.reminders[path] = hi + 1; }), "", path + " above");
+  }
+  for (const p of ["daily_cap", "per_hour"]) { assert.equal(bad((s) => { s.email[p] = 1; }), ""); assert.equal(bad((s) => { s.email[p] = 300; }), ""); assert.notEqual(bad((s) => { s.email[p] = 0; }), ""); assert.notEqual(bad((s) => { s.email[p] = 301; }), ""); }
+  assert.match(bad((s) => { s.email.mode = "sometimes"; }), /pick an option/);
+  assert.match(bad((s) => { s.email.receipts = "yes"; }), /yes or no/);
+  assert.match(bad((s) => { s.email.templates.invoice.body = "Hi {nam}"; }), /can only use/);
+  assert.match(bad((s) => { s.email.templates.receipt.subject = "x".repeat(121); }), /too long/);
+  assert.equal(bad((s) => { s.email.templates.receipt.subject = "x".repeat(120); s.email.templates.reminder.body = "y".repeat(1000); }), "");
+  assert.match(bad((s) => { s.invoicing.delivery.share_link = false; }), /needs the shareable invoice link/);
+  const off = S.defaults("centre"); off.profile.trading_name = "X"; off.invoicing.delivery.share_link = false; assert.deepEqual(S.validate(off), [], "with email off the link may be off");
+  // the database repeats every one of these
+  for (const [p, lo, hi] of [["{email,reminders,first_after_days}", 1, 90], ["{email,reminders,repeat_days}", 0, 90], ["{email,reminders,max_count}", 1, 10], ["{email,daily_cap}", 1, 300], ["{email,per_hour}", 1, 300]])
+    assert.ok(EMAIL_SQL.includes("('" + p + "', " + lo + ", " + hi + ","), p);
+});
+test("email options: they apply today (not from the next billing cycle) and old stored settings gain them", () => {
+  const a = S.defaults("centre"); a.profile.trading_name = "X"; const b = JSON.parse(JSON.stringify(a)); b.email.mode = "auto_on_issue"; b.email.reminders.enabled = true;
+  assert.equal(S.effectiveFrom(a, b, "2026-11-23"), "2026-11-23");
+  const old = S.withDefaults({ schema_version: 1, preset: "centre", profile: { trading_name: "Old" }, invoicing: { grouping: "family", delivery: { email: false, share_link: true }, reminders: { enabled: false, schedule: [-3, 0, 7] } } });
+  assert.equal(old.email.mode, "off"); assert.equal(old.email.daily_cap, 200); assert.deepEqual(S.validate(old), []);
+});

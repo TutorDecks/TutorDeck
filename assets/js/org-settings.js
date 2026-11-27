@@ -30,6 +30,8 @@
   var LATE_HELP = "When a lesson invoice is still unpaid after its grace period, TutorDeck suggests a late fee. A person approves or waives each one (a reason is needed to waive); nothing is added to a family’s bill on its own. An approved fee is its own small invoice. Adding it as a line on the family’s next invoice comes in a later update.";
   var PAY_SOON = "Percentage pay and pay runs come in a later update.";
   var TUTOR_EDIT_SOON = "Coming in a later update; until then only an admin does this.";
+  function emailOn(s) { return !!s.email && s.email.mode !== "off"; }                                              // the email options matter only when email is on
+  function remindersOn(s) { return emailOn(s) && !!s.email.reminders && s.email.reminders.enabled; }
   function tutorsChange(s) { return s.lessons.timetable_editing !== "admin_only"; }          // the switches and limits matter only when tutors may change lessons
   var HOLIDAYS_SOON = "Skipping holidays comes in a later update; for now cancel or delete a holiday lesson by hand.";
   // Field: { path, label, type, options?, help?, soon?, show?(s) }
@@ -150,13 +152,34 @@
       { path: "invoicing.generate.days_before", label: "Days before the period", type: "days", show: function (s) { return s.invoicing.generate.mode === "days_before"; } },
       { path: "invoicing.due_days", label: "Payment due (days after the invoice date)", type: "days" },
       { path: "invoicing.review_before_sending", label: "Create as drafts for an admin to approve", type: "toggle" },
-      { path: "invoicing.delivery.email", label: "Email parents a secure link", type: "toggle", soon: true },
-      { path: "invoicing.delivery.share_link", label: "Shareable link for WhatsApp", type: "toggle" },
+      { path: "invoicing.delivery.share_link", label: "Shareable invoice link (WhatsApp and email)", type: "toggle",
+        help: "A secret link a family opens without logging in. Emailing invoices needs it switched on." },
       { path: "invoicing.whatsapp_template", label: "WhatsApp message for an invoice", type: "textarea",
         help: "Your own wording. {name} {centre} {number} {amount} {due_date} {link} are filled in for each invoice. Leave it as it is to use the standard message." },
-      { path: "invoicing.reminders.enabled", label: "Payment reminders", type: "toggle", soon: true },
-      { path: "invoicing.reminders.schedule", label: "Remind (days from due date, e.g. -3, 0, 7)", type: "list", soon: true,
-        show: function (s) { return s.invoicing.reminders.enabled; } }
+      { path: "email.mode", label: "Email invoices to parents", type: "select", options: [
+        o("off", "Off: I share invoices myself (WhatsApp or the link)"), o("staff_send", "A person sends them (staff who issue invoices press Send)"),
+        o("auto_on_issue", "Automatically, when an invoice is issued")],
+        help: "Emails go to each family’s billing contacts (their first parent or guardian unless you choose others) with a secure link instead of an attachment. Tutors never receive them. Needs the shareable link switched on." },
+      { path: "email.receipts", label: "Email a receipt when a payment is recorded", type: "toggle", show: emailOn },
+      { path: "email.late_fee_notice", label: "Email a notice when a late fee is added", type: "toggle", show: emailOn },
+      { path: "email.reminders.enabled", label: "Email payment reminders for overdue invoices", type: "toggle", show: emailOn,
+        help: "Only invoices issued in the last 120 days are reminded about, and an invoice that gets paid before its reminder goes out is never reminded." },
+      { path: "email.reminders.first_after_days", label: "First reminder (days after the due date)", type: "days", show: remindersOn },
+      { path: "email.reminders.repeat_days", label: "Repeat every (days; 0 = one reminder only)", type: "days", show: remindersOn },
+      { path: "email.reminders.max_count", label: "Most reminders for one invoice", type: "number", show: remindersOn },
+      { path: "email.daily_cap", label: "Most emails sent per day", type: "number", show: emailOn,
+        help: "TutorDeck’s email service allows 300 emails a day across all centres, so a long queue is sent over several days. You see “N queued, sends over M days” on the Money > Email screen." },
+      { path: "email.per_hour", label: "Most emails sent per hour", type: "number", show: emailOn },
+      { path: "email.wording_note", label: "Wording of the emails", type: "note", show: emailOn,
+        help: "Leave a box empty to use our standard wording. You can use " + "{name} {centre} {number} {amount} {due_date} {link} {contact} {paid_on} {days_overdue}" + ". Plain text only; every email also carries your centre’s name and contact." },
+      { path: "email.templates.invoice.subject", label: "Invoice email: subject", type: "text", show: emailOn },
+      { path: "email.templates.invoice.body", label: "Invoice email: message", type: "textarea", show: emailOn },
+      { path: "email.templates.receipt.subject", label: "Receipt email: subject", type: "text", show: emailOn },
+      { path: "email.templates.receipt.body", label: "Receipt email: message", type: "textarea", show: emailOn },
+      { path: "email.templates.reminder.subject", label: "Reminder email: subject", type: "text", show: emailOn },
+      { path: "email.templates.reminder.body", label: "Reminder email: message", type: "textarea", show: emailOn },
+      { path: "email.templates.late_fee.subject", label: "Late-fee email: subject", type: "text", show: emailOn },
+      { path: "email.templates.late_fee.body", label: "Late-fee email: message", type: "textarea", show: emailOn }
     ]},
     { id: "payments", n: 6, title: "How parents pay", fields: [
       { path: "payments.modes", label: "Ways to pay", type: "multi", options: [
@@ -269,8 +292,10 @@
           forfeit_notice_days: 0, set_off_unpaid: false, final_month: false, refund_approved_by: "owner" },
         late_fee: { enabled: false, repeat: "once", type: "fixed", amount_cents: 1000, percent_bp: 500, after_days: 7, cap_cents: 0, show_as: "own_invoice", waived_by: "owner" } },
       invoicing: { grouping: "family", generate: { mode: "day_of_month", day: 1, days_before: 7 }, due_days: 7, review_before_sending: true,
-        delivery: { email: false, share_link: true },
-        whatsapp_template: "Hi {name}, this is {centre}. Invoice {number} for {amount} is due on {due_date}.\nYou can see it and pay by PayNow here: {link}\nThank you!", reminders: { enabled: false, schedule: [-3, 0, 7] } },
+        delivery: { share_link: true },
+        whatsapp_template: "Hi {name}, this is {centre}. Invoice {number} for {amount} is due on {due_date}.\nYou can see it and pay by PayNow here: {link}\nThank you!" },
+      email: { mode: "off", receipts: false, late_fee_notice: false, reminders: { enabled: false, first_after_days: 3, repeat_days: 7, max_count: 3 }, daily_cap: 200, per_hour: 60,
+        templates: { invoice: { subject: "", body: "" }, receipt: { subject: "", body: "" }, reminder: { subject: "", body: "" }, late_fee: { subject: "", body: "" } } },
       payments: { modes: ["manual_paynow"], paynow: { type: "uen", id: "" }, statement_bank: "DBS", hitpay: { paynow: true, cards: false },
         gateway_fees: "absorb", partial_payments: true, overpayments: "credit" },
       lessons: { class_type: "both", timetable_editing: "admin_only", tutors_edit: { postpone: true, cancel: false, weekly_slots: false, generate: false, one_off: false, link: false },
@@ -362,6 +387,30 @@
       if (lf.after_days != null && !(lf.after_days >= 0 && lf.after_days <= 365)) e.push("Late fee grace period must be 0–365 days.");
     }
     if (tr && tr.charged != null && typeof tr.charged !== "boolean") e.push("Trial lessons charged must be yes or no.");
+    // family emails (T7.3); each rule is repeated in org_validate_settings() in db/migration_invoice_email.sql and the wording rules in assets/js/invoice-email-core.js
+    var em = s.email;
+    if (em) {
+      if (em.mode != null && ["off", "staff_send", "auto_on_issue"].indexOf(em.mode) < 0) e.push("Email invoices to parents: pick an option.");
+      ["receipts", "late_fee_notice"].forEach(function (k) { if (em[k] != null && typeof em[k] !== "boolean") e.push("Email options must be yes or no."); });
+      var rm = em.reminders || {};
+      if (rm.enabled != null && typeof rm.enabled !== "boolean") e.push("Email options must be yes or no.");
+      [["first_after_days", 1, 90, "Send the first reminder 1–90 days after the due date."], ["repeat_days", 0, 90, "Repeat reminders every 0–90 days (0 = only one reminder)."],
+        ["max_count", 1, 10, "Send 1–10 reminders at most."]].forEach(function (r) {
+        if (rm[r[0]] != null && !(Number.isSafeInteger(rm[r[0]]) && rm[r[0]] >= r[1] && rm[r[0]] <= r[2])) e.push(r[3]);
+      });
+      if (em.daily_cap != null && !(Number.isSafeInteger(em.daily_cap) && em.daily_cap >= 1 && em.daily_cap <= 300)) e.push("Emails per day must be 1–300.");
+      if (em.per_hour != null && !(Number.isSafeInteger(em.per_hour) && em.per_hour >= 1 && em.per_hour <= 300)) e.push("Emails per hour must be 1–300.");
+      var tpl = em.templates || {}, FIELDS = ["name", "centre", "number", "amount", "due_date", "link", "contact", "paid_on", "days_overdue"], BAD = new RegExp("\\{(" + FIELDS.join("|") + ")\\}", "g");
+      ["invoice", "receipt", "reminder", "late_fee"].forEach(function (k) {
+        ["subject", "body"].forEach(function (part) {
+          var v = tpl[k] && tpl[k][part]; if (v == null) return;
+          if (typeof v !== "string") { e.push("Email wording must be text."); return; }
+          if (v.length > (part === "subject" ? 120 : 1000)) e.push("The " + k.replace("_", "-") + " email " + part + " is too long (" + (part === "subject" ? 120 : 1000) + " characters at most).");
+          if (/[{}]/.test(v.replace(BAD, ""))) e.push("The " + k.replace("_", "-") + " email " + part + " can only use {name} {centre} {number} {amount} {due_date} {link} {contact} {paid_on} {days_overdue}.");
+        });
+      });
+      if (em.mode && em.mode !== "off" && s.invoicing && s.invoicing.delivery && s.invoicing.delivery.share_link === false) e.push("Emailing invoices needs the shareable invoice link switched on.");
+    }
     return e;
   }
 

@@ -134,6 +134,12 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/slot_changes_test.sql
 $P -f db/migration_tutor_moves.sql
 $P -f db/migration_tutor_moves.sql                          # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/tutor_moves_test.sql
+$P -f db/migration_invoice_email.sql
+$P -f db/migration_invoice_email.sql                        # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/invoice_email_test.sql
+$P -f db/migration_invoice_email_down.sql                   # undone right away: the chain below then unwinds tutor_moves and the rest exactly as before
+$P -f db/migration_invoice_email.sql                        # and again, so the undo is proven on the shipped state too
+$P -f db/migration_invoice_email_down.sql
 $P -f db/migration_tutor_moves_down.sql
 $P -f db/migration_tutor_moves.sql                          # and again, so the undo chain below starts from the shipped state
 $P -f db/migration_tutor_moves_down.sql
