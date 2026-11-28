@@ -137,9 +137,18 @@
     if (/NOT_ALLOWED/.test(m) && !st) { $("cm-mail").innerHTML = '<div class="card cm-block"><h2 class="cm-h2">Family email isn’t switched on for your account</h2><p class="cm-note">Ask the centre owner to give you the “Issue invoices” or “Record payments” permission.</p></div>'; return; }
     UI.say(E.errorText(err), true);
   }
+  var waits = 0;
   function show() {
     UI = window.CentreMoneyUI; orgId = UI.orgId();
     if (!built) frame();
+    // B8-FIX F1: clicked before the centre has loaded, the tab said "invalid input syntax for type uuid: "null"". Wait for the centre instead.
+    if (!orgId || orgId === "null" || orgId === "undefined") {
+      $("ce-sum").innerHTML = '<div class="cm-sum-s">Loading your centre…</div>';
+      if (waits++ < 40) setTimeout(show, 250);
+      else $("ce-sum").innerHTML = '<div class="cm-sum-t">Couldn’t load your centre</div><p class="cm-note">Refresh the page and try again.</p>';
+      return;
+    }
+    waits = 0;
     load().then(function () { if (st && st.mode !== "off" && st.queued > 0 && st.remaining_today > 0) { /* the queue has room today: a gentle nudge so nothing waits for tomorrow's job */ sendNow(true).then(function (r) { if (r && r.sent) load(); }); } });
   }
 
@@ -211,20 +220,30 @@
     $("ce-back").addEventListener("click", back);
     $("ce-save").addEventListener("click", async function () { if (busy) return; busy = true; var ok = await saveContacts(); busy = false; if (ok) invoiceForm(a, back, done); });
     $("ce-send").addEventListener("click", async function () {
-      if (busy) return; busy = true; $("ce-send").disabled = true;
-      if (!(await saveContacts())) { busy = false; $("ce-send").disabled = false; return; }
-      var q = await rpc("email_enqueue", { p_org: orgId, p_invoices: [a.id], p_resend: false });
-      if (!q.error && q.data && !q.data.queued && q.data.problems && q.data.problems[0] && q.data.problems[0].reason === "already_sent") {
+      if (busy) return;
+      busy = true; $("ce-send").disabled = true; sheetMsg("Queuing the email…", false);      // B8-FIX F3: always say what is happening, and never leave the button stuck
+      var queued = 0;
+      try {
+        if (!(await saveContacts())) { $("ce-send").disabled = false; return; }
+        var q = await rpc("email_enqueue", { p_org: orgId, p_invoices: [a.id], p_resend: false });
+        if (!q.error && q.data && !q.data.queued && q.data.problems && q.data.problems[0] && q.data.problems[0].reason === "already_sent") {
+          busy = false;
+          if (!(await TL.confirm({ title: "Send it again?", message: "This invoice was already emailed or queued. Send it again to the same people?", confirmText: "Send again" }))) { $("ce-send").disabled = false; sheetMsg("", false); return; }
+          busy = true; sheetMsg("Queuing the email…", false); q = await rpc("email_enqueue", { p_org: orgId, p_invoices: [a.id], p_resend: true });
+        }
+        if (q.error) { $("ce-send").disabled = false; return sheetMsg(E.errorText(q.error), true); }
+        var d = q.data || {};
+        if (!d.queued) { $("ce-send").disabled = false; return sheetMsg(d.problems && d.problems[0] ? E.reasonText(d.problems[0].reason) + "." : "Nothing was queued: this family has no parent or guardian with an email address.", true); }
+        queued = d.queued;
+        sheetMsg(E.queuedText(queued), false);                              // shown at once, before the send attempt
+        toast("Email queued");
+        await sendNow(true);                                                 // the server sends whatever is due now, within the caps; this invoice is in the queue either way
+      } catch (err) {
+        if (!queued) { $("ce-send").disabled = false; sheetMsg("Couldn’t queue the email just now. Try again.", true); }
+      } finally {
         busy = false;
-        if (!(await TL.confirm({ title: "Send it again?", message: "This invoice was already emailed or queued. Send it again to the same people?", confirmText: "Send again" }))) { $("ce-send").disabled = false; return; }
-        busy = true; q = await rpc("email_enqueue", { p_org: orgId, p_invoices: [a.id], p_resend: true });
+        if (queued) { filter = "waiting"; if (built) load(); }                // the Email tab shows it waiting
       }
-      if (q.error) { busy = false; $("ce-send").disabled = false; return sheetMsg(E.errorText(q.error), true); }
-      var d = q.data || {};
-      if (!d.queued) { busy = false; $("ce-send").disabled = false; return sheetMsg(d.problems && d.problems[0] ? E.reasonText(d.problems[0].reason) + "." : "Nothing was queued.", true); }
-      await sendNow(true); busy = false;                                       // the server sends whatever is due now, within the caps; this invoice is in the queue either way
-      var text = "Queued for " + E.plural(d.queued, "email", "emails") + ". It goes out within minutes, or tomorrow if today’s limit has been reached (see Money > Email).";
-      toast("Email queued"); done({ text: text }); if (built) load();
     });
   }
   // the invoice sheet asks this to decide whether to show the "Email invoice" button

@@ -127,3 +127,24 @@ test("B5-FIX A: the run explains why a student gets no deposit, in plain words",
   assert.equal(CD.whyLine({ reason: "already has a draft invoice from an earlier run." }), "This student already has a draft invoice from an earlier run.");
   assert.equal(CD.whyLine({}), "No deposit is raised.");
 });
+
+// ---- B8-FIX F4 / F5: a discarded draft and a refunded deposit have their own words
+test("B8-FIX F4: a discarded deposit draft says so (never 'Invoice not issued yet') and still shows what it will be", () => {
+  assert.deepEqual(CD.stateChip("discarded"), { text: "Draft discarded", tone: "muted" });
+  const r = { state: "discarded", household_name: "Tan", due_cents: 6000, required_cents: 6000, held_cents: 0, short_cents: 0 };
+  assert.match(CD.rowSub(r), /Draft discarded/);
+  assert.doesNotMatch(CD.rowSub(r), /not issued yet|to collect/i);
+  assert.equal(CD.rowAmount(r), 6000);
+  assert.equal(CD.canWaive(Object.assign({ source: "invoice_run" }, r)), false, "nothing left to waive on a discarded draft");
+});
+test("B8-FIX F5: a refunded deposit is never shown as 'to collect'", () => {
+  for (const state of ["refunded", "settled"]) {
+    const r = { state, household_name: "Tan", invoice_number: "DLC-30", due_cents: 6000, required_cents: 6000, held_cents: 0, short_cents: 0 };
+    assert.doesNotMatch(CD.rowSub(r), /to collect.*DLC|Not paid yet/i, state);
+    assert.match(CD.rowSub(r), /nothing to collect/i, state);
+    assert.notEqual(CD.stateChip(state).text, "Not paid yet", state);
+    assert.notEqual(CD.stateChip(state).tone, "warn", state);
+    assert.equal(CD.rowAmount(r), 0, state);
+  }
+  assert.equal(CD.stateChip("refunded").text, "Refunded");
+});

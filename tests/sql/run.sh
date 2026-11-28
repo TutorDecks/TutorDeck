@@ -193,6 +193,14 @@ $P -f db/migration_org_export.sql                           # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_export_test.sql
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_export_perf_test.sql
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=full -f tests/sql/bundle6_chain_test.sql   # the settings check and the invoice run carry EVERY rule of the chain
+FDEFS_BEFORE=$(fdefs)
+$P -f db/migration_b8_fix.sql                               # B8-FIX (F4 deposits raised again, F5 refunded state, F6 trial lessons never earn credits)
+$P -f db/migration_b8_fix.sql                               # safe to run twice
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/b8_fix_credits_test.sql
+psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/b8_fix_deposits_test.sql
+$P -f db/migration_b8_fix_down.sql
+if [ "$FDEFS_BEFORE" != "$(fdefs)" ]; then echo "FAIL: undoing b8_fix did not put every function back exactly"; exit 1; fi
+echo "PASS undoing b8_fix puts every function back exactly"
 # undo in reverse, twice each (safe to run twice), then the whole set again, then undo again: undo + re-apply are proven on the shipped state
 for round in 1 2; do
   for m in org_export tutor_own_pay past_lessons tutor_link_propose makeup_credits invoice_email statement_matching centre_tutor_pay import; do $P -f db/migration_${m}_down.sql; $P -f db/migration_${m}_down.sql; done

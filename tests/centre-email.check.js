@@ -213,6 +213,9 @@ const owner = { members: [M(SOLO, "owner"), M(C, "owner")] };
     const cs = await page.evaluate(() => ({ set: window.__calls.filter((c) => c[0] === "email_set_billing_contacts").pop()[1].p_guardians, enq: window.__calls.filter((c) => c[0] === "email_enqueue").map((c) => c[1].p_resend) }));
     ok(JSON.stringify(cs.set) === '["gb"]' && JSON.stringify(cs.enq) === "[false]", tag + "it saves the billing contacts you ticked, then queues the invoice (not a resend)");
     ok(api.length === 1 && /Queued for 1 email\. It goes out within minutes/.test(await page.evaluate(() => document.body.innerText)), tag + "then asks the server to send what is due, and says it is queued");
+    // B8-FIX F3: the message stays on the sheet (no jump back to the invoice); the person goes back themselves
+    ok(await page.locator("#ce-send").isDisabled(), tag + "the Email invoice button is disabled after queuing (no double press)");
+    await page.click("#ce-back");
     // again → "send it again?"
     await page.waitForSelector("#cp-email"); await page.click("#cp-email"); await page.waitForSelector("#ce-send"); await page.click("#ce-send");
     await page.waitForSelector(".td-dlg"); ok(/Send it again\?/.test(await text(page, ".td-dlg-t")), tag + "a second press asks 'Send it again?' (it was already emailed)");

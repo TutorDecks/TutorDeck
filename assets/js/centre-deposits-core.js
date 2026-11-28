@@ -10,7 +10,8 @@
   var plural = CM.plural, money = CM.money, shortDate = CM.shortDate;
 
   // ---- state chips (colour = meaning: teal = held, amber = something still to collect, grey = not money yet) ----
-  var CHIPS = { held: ["Held", "ok"], part_paid: ["Part-paid", "warn"], unpaid: ["Not paid yet", "warn"], draft: ["Draft invoice", "muted"], waived: ["Waived", "muted"] };
+  var CHIPS = { held: ["Held", "ok"], part_paid: ["Part-paid", "warn"], unpaid: ["Not paid yet", "warn"], draft: ["Draft invoice", "muted"], waived: ["Waived", "muted"],
+                 discarded: ["Draft discarded", "muted"], refunded: ["Refunded", "muted"], settled: ["Settled", "muted"] };
   function stateChip(state) { var c = CHIPS[state] || CHIPS.unpaid; return { text: c[0], tone: c[1] }; }
 
   // ---- how the amount was worked out ----
@@ -38,10 +39,13 @@
     if (r.state === "unpaid") return who + money(r.short_cents) + " to collect" + (r.invoice_number ? " · " + r.invoice_number : "");
     if (r.state === "draft") return who + "Invoice not issued yet";
     if (r.state === "waived") return who + money(r.waived_cents) + " waived";
+    if (r.state === "discarded") return who + "Draft discarded · raised again in the next Invoice run";
+    if (r.state === "refunded") return who + "Refunded to the family · nothing to collect";
+    if (r.state === "settled") return who + "Used up · nothing to collect";
     return who;
   }
   // what the right-hand figure shows: the money actually held (a draft or waived deposit holds nothing)
-  function rowAmount(r) { return r.state === "draft" || r.state === "unpaid" ? r.due_cents != null ? r.due_cents : r.required_cents : r.held_cents; }
+  function rowAmount(r) { return r.state === "draft" || r.state === "unpaid" || r.state === "discarded" ? r.due_cents != null ? r.due_cents : r.required_cents : r.held_cents; }
   function summaryLine(t) {
     t = t || {};
     var held = t.students_holding || 0;
