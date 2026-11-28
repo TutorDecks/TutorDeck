@@ -1,5 +1,5 @@
--- B8-FIX F6 tests: trial lessons earn no make-up credit unless the centre chose it (billing.credits.earn_trials, db/migration_b8_fix.sql).
--- Every value of the setting (missing, false, true, and bad ones) x a trial and an ordinary lesson; the validator. Runs after migration_b8_fix.sql in the same throwaway database (reuses t.* helpers).
+-- B8-FIX F6 tests: a TRIAL lesson never earns a make-up credit; a normal lesson still earns one (fixed rule, owner 2026-11-28; db/migration_b8_fix.sql).
+-- Trial vs ordinary lesson x every mark that earns; no setting can switch it on. Runs after migration_b8_fix.sql in the same throwaway database (reuses t.* helpers).
 \set ON_ERROR_STOP on
 set client_min_messages = notice;
 grant usage on schema t to anon; grant select on t.ids to anon; grant execute on all functions in schema t to anon;   -- test helpers only
@@ -129,27 +129,6 @@ end $$;
 select set_config('request.jwt.claims', '', false);
 
 
--- ===================================================================== F6. trial lessons and make-up credits
--- the settings with an earn_trials value (null = the key is missing); the rest is the usual one-credit-per-missed-lesson centre
-create function pg_temp.cfg_trials(p_val jsonb) returns void language plpgsql as $$
-declare c jsonb := jsonb_build_object('rule', 'one_per_missed', 'earn_absences', 'all_missed', 'earn_tutor_cancel', 'staff_decide', 'earn_holiday', false,
-                                      'grant_by', 'manage_timetable', 'book_by', 'manage_timetable', 'makeup_price', 'free');
-begin
-  if p_val is not null then c := c || jsonb_build_object('earn_trials', p_val); end if;
-  perform set_config('request.jwt.claims', json_build_object('sub', '00000000-0000-0000-0000-000000b88001', 'role', 'authenticated')::text, false);
-  set local role authenticated;
-  perform org_save_settings(t.id('mc'), jsonb_set(t.centre_settings(), '{billing}', jsonb_build_object('model', 'postpaid_lessons', 'credit_expiry_days', 0, 'credits', c)), current_date);
-  reset role;
-end $$;
--- a lesson (trial or not) marked with a missed-lesson mark; returns how many credits it earned
-create function pg_temp.missed(p_key text, p_trial boolean, p_n int) returns int language plpgsql as $$
-begin
-  perform pg_temp.les(p_key, '00000000-0000-0000-0000-000000b88102', -2, ('06:00'::time + (p_n || ' hours')::interval)::time, 'm1');
-  update lessons set trial = p_trial where id = t.id(p_key);
-  perform pg_temp.mark('00000000-0000-0000-0000-000000b88002', p_key, 'cancelled_early');
-  return pg_temp.ncred(p_key);
-end $$;
-
 create function pg_temp.save(p_billing jsonb, p_expect text, p_msg text) returns void language plpgsql as $$
 declare m text := 'ok';
 begin
@@ -162,26 +141,26 @@ begin
   if p_expect <> 'ok' and m not like p_expect || '%' then raise exception 'FAIL: % (got "%", expected "%...")', p_msg, m, p_expect; end if;
   raise notice 'PASS %: %', case when p_expect = 'ok' then 'saved' else 'refused' end, p_msg;
 end $$;
--- the validator: both values save; anything that is not a real yes/no is refused; a centre that never saved the key is fine
-select pg_temp.save('{}', 'ok', 'no earn_trials key at all (a centre that saved before this migration)');
-select pg_temp.save(format('{"credits":{"earn_trials":%s}}', v)::jsonb, 'ok', 'earn_trials = ' || v) from unnest(array['true', 'false']) v;
-select pg_temp.save('{"credits":{"earn_trials":"yes"}}', 'Setting {billing,credits,earn_trials} must be yes or no', 'earn_trials as text is refused');
-select pg_temp.save('{"credits":{"earn_trials":1}}', 'Setting {billing,credits,earn_trials} must be yes or no', 'earn_trials as a number is refused');
 
--- missing key = the default = OFF
-select pg_temp.cfg_trials(null);
-select t.eq(pg_temp.missed('T1', true, 1), 0, 'earn_trials missing (default off): a missed TRIAL lesson earns no credit');
-select t.eq(pg_temp.missed('T2', false, 2), 1, 'earn_trials missing: an ordinary missed lesson still earns its credit');
--- false
-select pg_temp.cfg_trials('false'::jsonb);
-select t.eq(pg_temp.missed('T3', true, 3), 0, 'earn_trials = false: a missed trial lesson earns no credit');
-select t.eq(pg_temp.missed('T4', false, 4), 1, 'earn_trials = false: an ordinary missed lesson earns its credit');
--- true
-select pg_temp.cfg_trials('true'::jsonb);
-select t.eq(pg_temp.missed('T5', true, 5), 1, 'earn_trials = true: a missed trial lesson earns a credit');
-select t.eq(pg_temp.missed('T6', false, 6), 1, 'earn_trials = true: an ordinary missed lesson earns its credit');
--- the rule "none" still earns nothing, trial or not
-select pg_temp.cfg(p_rule => 'none');
-select t.eq(pg_temp.missed('T7', true, 7) + pg_temp.missed('T8', false, 8), 0, 'rule none earns nothing, trial or not (earn_trials does not switch credits on)');
-select t.eq((select count(*)::int from makeup_credits c where c.source_lesson_id in (t.id('T1'), t.id('T3'))), 0, 'no credit rows exist for the refused trial lessons');
+-- ===================================================================== F6. a trial lesson never earns a credit (fixed rule)
+create function pg_temp.missed(p_key text, p_trial boolean, p_n int, p_att text default 'cancelled_early') returns int language plpgsql as $$
+begin
+  perform pg_temp.les(p_key, '00000000-0000-0000-0000-000000b88102', -2, ('06:00'::time + (p_n || ' hours')::interval)::time, 'm1');
+  update lessons set trial = p_trial where id = t.id(p_key);
+  perform pg_temp.mark('00000000-0000-0000-0000-000000b88002', p_key, p_att);
+  return pg_temp.ncred(p_key);
+end $$;
+-- the most generous centre: every missed mark earns, tutor cancels earn, holidays earn
+select pg_temp.cfg(p_abs => 'all_missed', p_tc => 'automatic', p_hol => true);
+select t.eq(pg_temp.missed('T1', true, 1), 0, 'a TRIAL lesson cancelled in time earns 0 credits');
+select t.eq(pg_temp.missed('T2', false, 2), 1, 'a normal lesson cancelled in time still earns 1 credit');
+select t.eq(pg_temp.missed('T3', true, 3, 'late_cancelled'), 0, 'a trial lesson cancelled late earns 0 credits');
+select t.eq(pg_temp.missed('T4', false, 4, 'late_cancelled'), 1, 'a normal lesson cancelled late earns 1 credit');
+select t.eq(pg_temp.missed('T5', true, 5, 'absent'), 0, 'a trial lesson marked absent earns 0 credits');
+select t.eq(pg_temp.missed('T6', false, 6, 'absent'), 1, 'a normal lesson marked absent earns 1 credit');
+select t.eq((select count(*)::int from makeup_credits c where c.source_lesson_id in (t.id('T1'), t.id('T3'), t.id('T5'))), 0, 'no credit rows exist for the trial lessons');
+-- a settings key someone might still send changes nothing (there is no such setting)
+select pg_temp.save('{"credits":{"earn_trials":true}}', 'ok', 'an unknown extra key is simply ignored by the validator');
+select pg_temp.cfg(p_abs => 'all_missed');
+select t.eq(pg_temp.missed('T7', true, 7), 0, 'still 0 for a trial lesson');
 select 'b8 credits ok';
