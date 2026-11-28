@@ -59,6 +59,8 @@
     var issueNow = p.review_before_sending === false;
     var deps = (p.totals && p.totals.deposits) || 0, withDeps = deps > 0 ? " and " + deps + " " + plural(deps, "deposit", "deposits") : "";
     if (ready > 0) return { kind: "create", count: ready, label: (issueNow ? "Create and issue " : "Create ") + ready + " " + plural(ready, issueNow ? "invoice" : "draft", issueNow ? "invoices" : "drafts") + withDeps };
+    // a discarded deposit is raised again even when no lesson invoice is waiting (the lesson invoice stayed)
+    if (deps > 0) return { kind: "create", count: 0, label: (issueNow ? "Create and issue " : "Create ") + deps + " " + plural(deps, "deposit", "deposits") };
     if (drafts > 0) return { kind: "approve", count: drafts, label: "Approve " + (drafts === 1 ? "the draft" : "all " + drafts + " drafts") };
     return { kind: null };
   }

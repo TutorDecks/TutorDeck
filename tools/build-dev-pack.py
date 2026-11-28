@@ -22,7 +22,7 @@ BUNDLE4 = ["staff_home", "staff_students", "staff_attendance", "staff_charges", 
            "centre_billing_start", "tutor_profile", "tutor_payout", "payout_permission"]
 BUNDLE5 = ["reassign_link", "payment_fix", "centre_deposits", "centre_refunds", "centre_late_fees", "centre_credit_undo", "slot_changes", "tutor_moves"]
 ON_DEV = STANDARD + BUNDLE4 + BUNDLE5
-LATER = set()                      # nothing is held back for a later bundle
+LATER = {"b8_fix"}                 # held back: B8-FIX (db/migration_b8_fix.sql) is applied to DEV on its own by the orchestrator, not in bundle 7's pack
 
 # which branch each file came from (for the headers only)
 BRANCH = {

@@ -89,3 +89,13 @@ test("wording for the model and grouping", () => {
   assert.strictEqual(CM.groupingLabel({ grouping: "student" }), "One invoice per student");
   assert.strictEqual(CM.unitWord({ grouping: "family" }, 2), "families");
 });
+
+test("B8-FIX F4: a discarded deposit alone (no lesson invoice ready) still gets a Create button", () => {
+  const p = { built: true, review_before_sending: true, totals: { ready: 0, deposits: 1 } };
+  assert.deepStrictEqual(CM.nextStep(p, []).kind, "create");
+  assert.match(CM.nextStep(p, []).label, /^Create 1 deposit$/);
+  assert.match(CM.nextStep({ built: true, review_before_sending: false, totals: { ready: 0, deposits: 2 } }, []).label, /^Create and issue 2 deposits$/);
+  assert.deepStrictEqual(CM.nextStep({ built: true, totals: { ready: 0, deposits: 0 } }, [{ status: "draft" }]).kind, "approve", "no deposit: drafts are approved as before");
+  assert.deepStrictEqual(CM.nextStep({ built: true, totals: { ready: 3, deposits: 1 } }, []).label, "Create 3 drafts and 1 deposit", "with lesson invoices ready the text is as before");
+  assert.deepStrictEqual(CM.secondStep(p, [{ status: "draft" }]).kind, "approve", "existing drafts can still be approved beside it");
+});

@@ -474,6 +474,14 @@ test("T18-4: every make-up credit choice has the same values in the form and in 
   assert.equal(field("billing.credits.earn_holiday").type, "toggle"); assert.ok(!field("billing.credits.earn_holiday").soon);
 });
 
+test("B8-FIX F6: trial lessons never earn credits is a FIXED rule: there is no earn_trials setting (owner 2026-11-28)", () => {
+  assert.equal(S.FIELDS ? S.FIELDS.some((f) => f.path === "billing.credits.earn_trials") : false, false);
+  assert.equal("earn_trials" in S.defaults("centre").billing.credits, false);
+  const B8 = fs.readFileSync(require.resolve("../db/migration_b8_fix.sql"), "utf8");
+  assert.doesNotMatch(B8, /earn_trials/);
+  assert.match(B8, /coalesce\(l\.trial, false\) then return/);
+});
+
 test("T18-4: the defaults are the owner's decisions: one missed lesson = one credit, notice only, tutor cancel is a staff decision, holidays no, never expires, free make-up", () => {
   const d = S.defaults("centre");
   assert.deepEqual(d.billing.credits, { rule: "one_per_missed", earn_absences: "notice_only", earn_tutor_cancel: "staff_decide", earn_holiday: false, grant_by: "manage_timetable", book_by: "manage_timetable", makeup_price: "free" });

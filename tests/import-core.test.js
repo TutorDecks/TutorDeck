@@ -310,3 +310,11 @@ test("undoLines: says what went, and why the rest stayed", () => {
   assert.match(IC.undoLines({ would_delete: { students: 3 }, kept: [] }, true)[0], /^Undo will remove: 3 students\.$/);
   assert.match(IC.undoLines({ deleted: {}, kept: [] }, false)[0], /Removed: nothing/);
 });
+
+test("B8-FIX F8: the import's 'What is wrong' reads as one sentence, never 'Error is not a real date'", () => {
+  const s = IC.sentence({ severity: "error", column: "start_date", message: "is not a real date." });
+  assert.equal(s, "Start date is not a real date.");
+  assert.equal(IC.sentence({ severity: "error", column: "", message: "repeats another row." }), "Repeats another row.");
+  assert.equal(IC.sentence({ severity: "warning", column: "family_id", message: "is not in families.csv." }), "Family id is not in families.csv.");
+  for (const it of [{ column: "start_date", message: "is not a real date." }, { column: "", message: "is empty" }]) assert.doesNotMatch(IC.sentence(it), /^(error|warning)\b/i);
+});

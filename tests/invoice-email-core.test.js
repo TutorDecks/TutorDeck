@@ -180,3 +180,9 @@ test("reasons and labels are plain words; unknown codes are still readable", () 
 test("the platform room is what is left of Brevo's day", () => {
   assert.equal(E.PLATFORM_DAILY_CAP, 250); assert.equal(E.platformRoom(0), 250); assert.equal(E.platformRoom(249), 1); assert.equal(E.platformRoom(250), 0); assert.equal(E.platformRoom(400), 0); assert.equal(E.platformRoom(10, 20), 10); assert.equal(E.platformRoom(null), 250);
 });
+
+test("B8-FIX F3: the confirmation under 'Email invoice' says how many emails were queued", () => {
+  assert.match(E.queuedText(1), /^Queued for 1 email\./);
+  assert.match(E.queuedText(3), /^Queued for 3 emails\./);
+  assert.match(E.queuedText(1), /Money > Email/);
+});

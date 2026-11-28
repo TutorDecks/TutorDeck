@@ -78,7 +78,7 @@
             '<div class="imp-scroll"><table class="imp-tbl"><thead><tr><th scope="col">Line</th><th scope="col">Column</th><th scope="col">Value</th><th scope="col">What is wrong</th><th scope="col">How to fix</th></tr></thead><tbody>' +
             main.slice(0, SHOW).map(function (it) {
               return '<tr class="' + it.severity + '"><td data-label="Line">' + esc(it.line) + '</td><td data-label="Column">' + esc(it.column || "–") + '</td><td data-label="Value">' + (it.value === "" ? "–" : "<code>" + esc(it.value) + "</code>") +
-                '</td><td data-label="What is wrong"><span class="imp-sev ' + it.severity + '">' + (it.severity === "error" ? "Error" : "Warning") + "</span> " + esc(it.message) + '</td><td data-label="How to fix">' + esc(it.fix) + "</td></tr>";
+                '</td><td data-label="What is wrong"><span class="imp-sev ' + it.severity + '" role="img" aria-label="' + (it.severity === "error" ? "Error" : "Warning") + '" title="' + (it.severity === "error" ? "Error" : "Warning") + '">' + (it.severity === "error" ? "!" : "?") + "</span> " + esc(IC.sentence(it)) + '</td><td data-label="How to fix">' + esc(it.fix) + "</td></tr>";
             }).join("") + "</tbody></table></div>" +
             (main.length > SHOW ? '<p class="imp-help">Showing the first ' + SHOW + " of " + main.length + ". Use Download all errors (CSV) for the rest.</p>" : "") + "</section>";
         }
