@@ -260,3 +260,4 @@ echo "PASS undo restores the baseline exactly"
 $P -f db/migration_org_foundation.sql                     # and it can be applied again after an undo
 echo "PASS migration re-applies after undo"
 bash tests/sql/dev_seed_money_test.sh                         # T47: the rich DEV money demo seed on its own throwaway database (builds the chain itself, so it cannot rot)
+bash tests/sql/dev_seed_fresh_test.sh                         # T52: the fresh DEV demo centre (left in setup) on its own throwaway database
