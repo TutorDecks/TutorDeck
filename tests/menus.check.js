@@ -147,7 +147,10 @@ const MONEY = /(S\$|\$\s?\d|\bprice\b|\brate\b|\bpaid\b|\bamount\b|\bcompensatio
       ok(pos.length === 2 && pos[0][0] !== pos[1][0], tag + ": two overlapping lessons sit side by side " + JSON.stringify(pos));
     } else {
       ok((await page.$$(".sc-sd")).length === 7, tag + ": a Mon-Sun day strip");
-      ok(evs.length >= 1 && (await page.$$(".sc-col")).length === 1, tag + ": one day's timeline (" + evs.length + " lessons)");
+      // the fixture has lessons on Mon, Wed, Thu, Fri only: open Monday so the check does not depend on the weekday it runs on (it failed on Sat, Sun and Tue)
+      await page.click(".sc-sd:nth-child(1)"); await page.waitForTimeout(300);
+      const dayEvs = await page.$$eval(".sc-ev", (e) => e.filter((x) => x.offsetWidth).length);
+      ok(dayEvs >= 1 && (await page.$$(".sc-col")).length === 1, tag + ": one day's timeline (" + dayEvs + " lessons)");
       const t0 = await page.textContent("#sc-title"); await page.click("#sc-next"); await page.waitForTimeout(400);
       const t1 = await page.textContent("#sc-title"); ok(t0 !== t1, tag + ": the arrow moves a day (" + t0.slice(0, 18) + " → " + t1.slice(0, 18) + ")");
       await page.click("#sc-today"); await page.waitForTimeout(400);

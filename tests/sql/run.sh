@@ -194,7 +194,7 @@ psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_export_test.sql
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/org_export_perf_test.sql
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -v stage=full -f tests/sql/bundle6_chain_test.sql   # the settings check and the invoice run carry EVERY rule of the chain
 FDEFS_BEFORE=$(fdefs)
-$P -f db/migration_b8_fix.sql                               # B8-FIX (F4 deposits raised again, F5 refunded state, F6 trial credits setting)
+$P -f db/migration_b8_fix.sql                               # B8-FIX (F4 deposits raised again, F5 refunded state, F6 trial lessons never earn credits)
 $P -f db/migration_b8_fix.sql                               # safe to run twice
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/b8_fix_credits_test.sql
 psql -qAt -v ON_ERROR_STOP=1 -d $DB -f tests/sql/b8_fix_deposits_test.sql

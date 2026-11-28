@@ -544,7 +544,8 @@ select t.eq((select count(*) from centre_tutor_period(date '2026-03-10', 29) whe
 select pg_temp.o(format('select centre_tutor_taught_report(%L, %L)', t.id('P'), pg_temp.d1(10))) as rp \gset
 select t.ok((select (e->>'lessons')::int = 2 and (e->>'minutes')::int = 120 and (e->>'students')::int = 1 from jsonb_array_elements(:'rp'::jsonb->'tutors') e where (e->>'membership_id')::uuid = t.id('Tiko')),
             'report: Tiko taught 2 lessons, 120 minutes, 1 student');
-select t.ok(:'rp'::text !~* '(cents|rate|pay_|amount|fee|price|paid)', 'the lessons-taught report carries no money and no rate fields at all');
+-- the ids in the report are random uuids and hex digits can spell "fee": look at the report without them (was a 1-in-20 flake)
+select t.ok(regexp_replace(:'rp'::text, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', '', 'g') !~* '(cents|rate|pay_|amount|fee|price|paid)', 'the lessons-taught report carries no money and no rate fields at all');
 
 -- ================================================================== 11. the three modes
 select pg_temp.cfg(t.id('P'), '{"mode":"report"}');

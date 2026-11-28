@@ -693,7 +693,8 @@ select coalesce(string_agg(distinct k, ','), '') as badkeys from pg_temp.said s,
 \echo money-like keys found: :badkeys
 select t.ok(not exists (select 1 from pg_temp.said s, lateral pg_temp.keys(case when s.txt like '{%' then s.txt::jsonb else '{}'::jsonb end) k where k ~* '(^|_)(rate|price|amount|paid|compens[a-z]*|charge|fee|cents|cost|fare|owe|balance|invoice)(_|$)'),
             'no key of any answer a tutor received is a money word');
-select t.ok(not exists (select 1 from pg_temp.said s where s.txt ~ '(12\.5|40\.0|SECRET)'), 'no price appears in any answer a tutor received');
+-- clock times are removed first: an expiry like "…T09:10:12.512345" contains the text 12.5 for one second in every 600 (this was the flaky check)
+select t.ok(not exists (select 1 from pg_temp.said s where regexp_replace(s.txt, '[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?', '', 'g') ~ '(12\.5|40\.0|SECRET)'), 'no price appears in any answer a tutor received');
 select t.ok((select count(*) from pg_temp.said) >= 20, 'and there were answers to check (' || (select count(*) from pg_temp.said) || ')');
 select pg_temp.call(:'STAFF', format('select staff_schedule_requests(%L, ''all'')', t.id('lp'))) as allr \gset
 select t.ok(not exists (select 1 from pg_temp.keys(:'allr'::jsonb) k where k ~* '(^|_)(rate|price|amount|paid|compens[a-z]*|charge|fee|cents|cost|balance|invoice|contact)(_|$)'), 'the staff list has no money word and no phone number');

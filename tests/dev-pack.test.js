@@ -9,3 +9,8 @@ test("docs/orchestrator/dev-apply-pack.sql is up to date", () => {
   const r = spawnSync("python3", [path.join(__dirname, "../tools/build-dev-pack.py"), "--check"]);
   assert.strictEqual(r.status, 0, "rebuild it: python3 tools/build-dev-pack.py");
 });
+
+test("docs/orchestrator/dev-apply-pack-b8.sql is up to date", () => {
+  const r = spawnSync("python3", [path.join(__dirname, "../tools/build-dev-pack-b8.py"), "--check"]);
+  assert.strictEqual(r.status, 0, "rebuild it: python3 tools/build-dev-pack-b8.py");
+});
