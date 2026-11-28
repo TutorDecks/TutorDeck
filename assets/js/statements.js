@@ -41,9 +41,18 @@
     $("st-main").addEventListener("input", onInput);
     built = true;
   }
+  var waits = 0;
   async function show() {
     UI = window.CentreMoneyUI; orgId = UI.orgId();
     if (!built) frame();
+    // B8-FIX F1: clicked before the centre has loaded, the tab said "invalid input syntax for type uuid: "null"". Wait for the centre instead.
+    if (!orgId || orgId === "null" || orgId === "undefined") {
+      $("st-main").innerHTML = '<div class="card cm-block"><p class="cm-note">Loading your centre…</p></div>';
+      if (waits++ < 40) setTimeout(show, 250);
+      else $("st-main").innerHTML = '<div class="card cm-block"><h2 class="cm-h2">Couldn’t load your centre</h2><p class="cm-note">Refresh the page and try again.</p></div>';
+      return;
+    }
+    waits = 0;
     await load();
   }
   async function load(msg) {

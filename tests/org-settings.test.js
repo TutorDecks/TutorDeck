@@ -474,9 +474,20 @@ test("T18-4: every make-up credit choice has the same values in the form and in 
   assert.equal(field("billing.credits.earn_holiday").type, "toggle"); assert.ok(!field("billing.credits.earn_holiday").soon);
 });
 
+test("B8-FIX F6: trial lessons earn make-up credits is a centre setting, default OFF, a built toggle, checked by the database (both values tested in tests/sql/b8_fix_credits_test.sql)", () => {
+  const f = field("billing.credits.earn_trials");
+  assert.equal(f.type, "toggle"); assert.ok(!f.soon, "built");
+  assert.equal(S.get(S.defaults("centre"), "billing.credits.earn_trials"), false, "default off (owner decision 2026-11-28)");
+  assert.deepEqual(f.parent, ["billing.credits.rule"]);
+  const B8 = fs.readFileSync(require.resolve("../db/migration_b8_fix.sql"), "utf8");
+  assert.ok(B8.includes("{billing,credits,earn_trials}") && /must be yes or no/.test(B8), "the database validates the key");
+  assert.ok(/earn_trials/.test(B8.slice(B8.indexOf("credit_cfg"))), "credit_cfg reads it");
+  assert.doesNotMatch([f.label, f.help].join(" "), /coming soon|S\$/i);
+});
+
 test("T18-4: the defaults are the owner's decisions: one missed lesson = one credit, notice only, tutor cancel is a staff decision, holidays no, never expires, free make-up", () => {
   const d = S.defaults("centre");
-  assert.deepEqual(d.billing.credits, { rule: "one_per_missed", earn_absences: "notice_only", earn_tutor_cancel: "staff_decide", earn_holiday: false, grant_by: "manage_timetable", book_by: "manage_timetable", makeup_price: "free" });
+  assert.deepEqual(d.billing.credits, { rule: "one_per_missed", earn_absences: "notice_only", earn_tutor_cancel: "staff_decide", earn_holiday: false, earn_trials: false, grant_by: "manage_timetable", book_by: "manage_timetable", makeup_price: "free" });
   assert.equal(d.billing.credit_expiry_days, 0, "credits never expire by default");
   assert.deepEqual(S.validate(Object.assign(S.defaults("centre"), { profile: Object.assign({}, d.profile, { trading_name: "T" }) })), []);
 });
@@ -491,7 +502,7 @@ test("T18-4: credit expiry has the same limits in the form and in the database, 
 
 test("T18-4: the credit options appear only while credits are on, and the tutor never has an option", () => {
   const on = S.defaults("centre"), off = S.defaults("centre"); off.billing.credits.rule = "none";
-  for (const k of ["earn_absences", "earn_tutor_cancel", "earn_holiday", "makeup_price", "grant_by", "book_by"]) {
+  for (const k of ["earn_absences", "earn_tutor_cancel", "earn_holiday", "earn_trials", "makeup_price", "grant_by", "book_by"]) {
     const f = field("billing.credits." + k);
     assert.equal(f.show(on), true, k + " shown when credits are on"); assert.equal(f.show(off), false, k + " hidden when credits are off");
   }

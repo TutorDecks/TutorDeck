@@ -672,6 +672,15 @@
     var where = it.file + (it.line ? ", line " + it.line : "") + (it.column ? ", " + it.column : "");
     return where + ": " + (it.value !== "" && it.value != null ? '"' + it.value + '" ' : "") + it.message + (it.fix ? " " + it.fix : "");
   }
+  // what the page shows in "What is wrong" (B8-FIX F8): one sentence that starts with the column, never an "Error" label glued to the message
+  // ("Start date is not a real date." / "Row repeats another row." / "Is empty ..." is never shown without its column).
+  function sentence(it) {
+    var m = String((it && it.message) || "").trim(), col = String((it && it.column) || "").replace(/_/g, " ").trim();
+    if (!m) return "";
+    var lead = col ? col.charAt(0).toUpperCase() + col.slice(1) + " " : "";
+    if (lead) return lead + m;
+    return m.charAt(0).toUpperCase() + m.slice(1);
+  }
   function errorsCsv(items) {
     return "﻿" + toCsv([["severity", "file", "line", "column", "value", "what is wrong", "how to fix"]].concat(items.map(function (i) { return [i.severity, i.file, i.line, i.column, i.value, i.message, i.fix]; })), true);
   }
@@ -680,6 +689,6 @@
     MAX_CHARS: MAX_CHARS, LEVELS: LEVELS, DAYS: DAYS, FILES: FILES, FILE_ORDER: FILE_ORDER, STAGE_A: STAGE_A,
     readCsv: readCsv, toCsv: toCsv, templateRows: templateRows, templateCsv: templateCsv, readmeText: readmeText,
     parseDate: parseDate, parseTime: parseTime, parseCents: parseCents, fmtMoney: fmtMoney, suggestLevel: suggestLevel,
-    validateFiles: validateFiles, buildPayload: buildPayload, serverIssue: serverIssue, SERVER_TEXT: SERVER_TEXT, resultLines: resultLines, undoLines: undoLines, detectText: detectText, describe: describe, errorsCsv: errorsCsv, detectFile: detectFile, norm: norm
+    validateFiles: validateFiles, buildPayload: buildPayload, serverIssue: serverIssue, SERVER_TEXT: SERVER_TEXT, resultLines: resultLines, undoLines: undoLines, detectText: detectText, describe: describe, sentence: sentence, errorsCsv: errorsCsv, detectFile: detectFile, norm: norm
   };
 });

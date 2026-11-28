@@ -79,7 +79,7 @@
     var step = CM.nextStep(p, invs), second = CM.secondStep(p, invs), t = p.totals || {};
     var head = invs.some(function (i) { return i.status === "draft"; }) || t.ready || t.held_back || t.drafts ? CM.summaryText(p) : "";
     var tot = CM.totalText(p);
-    var empty = !t.ready && !t.held_back && !t.drafts && !invs.length;
+    var empty = !t.ready && !t.held_back && !t.drafts && !t.deposits && !invs.length;
     return '<div class="card cm-sum">' +
       '<div class="cm-sum-t">' + (empty ? 'Nothing to invoice for ' + esc(CM.monthLabel(month)) : esc(head || "All done for " + CM.monthLabel(month))) + '</div>' +
       (tot ? '<div class="cm-sum-s">' + esc(tot) + '</div>' : '') +

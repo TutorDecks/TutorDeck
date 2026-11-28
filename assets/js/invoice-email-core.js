@@ -148,6 +148,8 @@
     return s + ".";
   }
   function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
+  // the confirmation under the "Email invoice" button (B8-FIX F3): shown the moment the email is in the queue
+  function queuedText(n) { return "Queued for " + plural(n, "email", "emails") + ". It goes out within minutes, or tomorrow if today’s limit has been reached (see Money > Email)."; }
   // "12 queued · sends over 2 days (200 a day)"
   function queueLine(st) {
     if (!st) return "";
@@ -203,5 +205,5 @@
   return { KINDS: KINDS, MODES: MODES, FIELDS: FIELDS, FIELD_HELP: FIELD_HELP, LIMITS: LIMITS, DEFAULTS: DEFAULTS, TEMPLATES: TEMPLATES, RETRY_MINUTES: RETRY_MINUTES, MAX_ATTEMPTS: MAX_ATTEMPTS,
     PLATFORM_DAILY_CAP: PLATFORM_DAILY_CAP, validEmail: validEmail, maskEmail: maskEmail, money: money, dateText: dateText, addDays: addDays, checkTemplates: checkTemplates, fill: fill,
     fieldsFor: fieldsFor, compose: compose, classifyBrevo: classifyBrevo, retryDelayMinutes: retryDelayMinutes, reminderDates: reminderDates, reminderLine: reminderLine,
-    queueLine: queueLine, reasonText: reasonText, kindText: kindText, STATUS_TEXT: STATUS_TEXT, RESULT_TEXT: RESULT_TEXT, platformRoom: platformRoom, esc: esc, plural: plural, errorText: errorText, isMissing: isMissing, sentLine: sentLine };
+    queueLine: queueLine, reasonText: reasonText, kindText: kindText, STATUS_TEXT: STATUS_TEXT, RESULT_TEXT: RESULT_TEXT, platformRoom: platformRoom, esc: esc, plural: plural, errorText: errorText, isMissing: isMissing, sentLine: sentLine, queuedText: queuedText };
 });

@@ -309,12 +309,14 @@
     var goBackSheet = function () { if (fromBack) fromBack(); else UI.closeSheet(); };
     $("cr-back").addEventListener("click", goBackSheet); $("cr-cancel").addEventListener("click", goBackSheet);
     if (act.length > 1) $("cu-pick").addEventListener("change", draw);
+    $("cu-reason").addEventListener("input", function () { $("cr-err").textContent = ""; });      // typing a reason clears an earlier "Say why"
     draw();
     $("cr-form").addEventListener("submit", async function (e) {
       e.preventDefault(); if (busy) return;
       var a = sel(); if (!a.can_undo) return;
       var c = RC.checkUndo({ reason: $("cu-reason").value });
       if (!c.ok) { $("cr-err").textContent = c.error; return; }
+      $("cr-err").textContent = "";          // the reason is fine now: the red "Say why" must not stay beside the confirm dialog
       if (!(await TL.confirm({ title: "Undo this?", message: RC.undoQuestion(a, inv.number), confirmText: "Undo" }))) return;
       $("cr-err").textContent = ""; busy = true; $("cr-go").disabled = true;
       var r = await rpc("centre_undo_application", { p_payment: a.payment_id, p_reason: c.reason });
